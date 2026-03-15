@@ -1,0 +1,23 @@
+{
+  "name": "sean2077-skills",
+  "owner": {
+    "name": "sean2077",
+    "url": "https://github.com/sean2077"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Reusable skills for development, ops, and productivity — battle-tested patterns with working examples",
+    "license": "MIT",
+    "repository": "https://github.com/sean2077/skills"
+  },
+  "plugins": [
+    {
+      "name": "rich-tui-viewer",
+      "description": "Build interactive TUI data viewers with Rich + Textual (table overview → click detail → ESC back, dual-mode TUI + CLI)",
+      "source": "./skills/rich-tui-viewer",
+      "strict": false,
+      "category": "development",
+      "tags": ["tui", "cli", "rich", "textual", "python", "data-viewer"]
+    }
+  ]
+}
