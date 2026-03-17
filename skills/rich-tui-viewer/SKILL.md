@@ -1,6 +1,6 @@
 ---
 name: rich-tui-viewer
-description: Build interactive TUI data viewers with Rich + Textual. Use when the user asks to create a CLI tool for browsing data (logs, conversations, records, API responses) with a table overview and detail view, or asks for a "human-friendly" terminal interface.
+description: Build interactive TUI data viewers with Rich + Textual + Typer. Use when the user asks to create a CLI tool for browsing data (logs, conversations, records, API responses) with a table overview and detail view, or asks for a "human-friendly" terminal interface.
 allowed-tools: Read, Write, Bash, Glob, Grep
 argument-hint: [description of what to browse]
 ---
@@ -14,98 +14,106 @@ Build an interactive terminal data viewer with two modes:
 ## Architecture
 
 ```
-App (holds data)
+cli (typer.Typer)
+├── --select → cli_show()       ← Rich Console output (pipes, scripts)
+└── (default) → ViewerApp.run() ← Textual TUI below
+
+ViewerApp (App)
 ├── DataTable (cursor_type="row")
 │   └── on_data_table_row_selected → push_screen(DetailScreen)
-└── Footer (shows key bindings)
+└── Footer
 
 DetailScreen (Screen)
 ├── VerticalScroll
 │   └── Static(Group(...))   ← embed any Rich renderable
 ├── Binding("escape") → app.pop_screen()
 └── Footer
+
+Shared: render_*() helpers return Rich objects → used by both cli_show() and DetailScreen
 ```
 
 ## Implementation Rules
 
 ### 1. Dependencies
 
-**Option A — PEP 723 inline metadata** (single-file scripts, no extra files):
-
 ```python
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["rich>=13.0", "textual>=3.0"]
+# dependencies = ["rich>=13.0", "textual>=3.0", "typer>=0.15"]
 # ///
 ```
 
-**Option B — pyproject.toml** (multi-file projects):
+For multi-file projects, put the same deps in `pyproject.toml`. Both work with `uv run`.
 
-```toml
-[project]
-dependencies = ["rich>=13.0", "textual>=3.0"]
-```
+### 2. Dual-Mode Entry Point (Typer)
 
-Both work with `uv run`.
-
-### 2. Dual-Mode Entry Point
+Use `Annotated` + `str | None` syntax (Python 3.11+), `rich_markup_mode="rich"` for styled `--help`, and name the Typer instance `cli` (not `app`) to avoid confusion with Textual's `App`:
 
 ```python
-def main():
-    if args.select:
-        cli_show(data)       # Rich Console output
+from typing import Annotated
+import typer
+
+cli = typer.Typer(rich_markup_mode="rich")
+
+@cli.command()
+def main(
+    select: Annotated[str | None, typer.Option("-s", "--select", help="View a specific item")] = None,
+    lines: Annotated[int | None, typer.Option("-n", "--lines", help="Show only last N entries")] = None,
+) -> None:
+    data = load_data()
+    if select:
+        item = find_item(data, select)  # raise typer.BadParameter(...) on miss
+        cli_show(item, n=lines)         # Rich Console output
     else:
-        ViewerApp(data).run()  # Textual TUI
+        ViewerApp(data).run()           # Textual TUI
+
+if __name__ == "__main__":
+    cli()
 ```
 
-### 3. Screen Navigation (NOT widget toggling)
+**Typer gotchas:**
+- **Do NOT use `from __future__ import annotations`** — typer inspects types at runtime; PEP 563 deferred annotations break this and produce cryptic errors
+- Use `typer.BadParameter("msg")` for validation errors (auto-formats with usage hint)
+- Use `typer.Exit(code)` instead of `sys.exit()` (testable, no traceback)
+- `rich_markup_mode="rich"` enables `[bold]`, `[green]` etc. in help strings
 
-Use `push_screen()` / `pop_screen()` for list→detail navigation:
+### 3. Screen Navigation & ESC Binding
+
+Use `push_screen()` / `pop_screen()` for list→detail navigation (NOT widget toggling):
 - Each Screen has independent Bindings and state
 - Returning to the list preserves scroll position and selected row
-- Code stays decoupled across classes
 
-### 4. ESC Binding
-
-**Wrong** — bare `pop_screen` is not a Screen-level action:
+**ESC must use the namespaced action** — bare `pop_screen` silently fails:
 ```python
-BINDINGS = [Binding("escape", "pop_screen", "Back")]
-```
-
-**Correct** — use the namespaced `app.pop_screen` action:
-```python
+# Wrong:  Binding("escape", "pop_screen", "Back")
+# Correct:
 BINDINGS = [Binding("escape", "app.pop_screen", "Back")]
 ```
 
-**Alternative** — custom action (when you need extra logic before popping):
-```python
-BINDINGS = [Binding("escape", "go_back", "Back", priority=True)]
+Set `priority=True` if child widgets (e.g. `VerticalScroll`) consume ESC before it reaches the Screen.
 
-def action_go_back(self) -> None:
-    # ... cleanup, save state, etc.
-    self.app.pop_screen()
-```
+### 4. Embedding Rich Renderables in Textual
 
-Set `priority=True` if child widgets (e.g. `VerticalScroll`) consume the key before it reaches the Screen.
-
-### 5. Embedding Rich Renderables in Textual
-
-Use `Static(renderable)` to bridge Rich into Textual:
+Use `Static(renderable)` to bridge Rich into Textual. Extract render functions that return Rich objects — reuse them in both CLI (`console.print`) and TUI (`Static(...)`) modes:
 
 ```python
 from rich.console import Group
 from rich.text import Text
 from rich.panel import Panel
 
-# Compose multi-line message as a single widget
-parts = [header_text, *content_lines]
-container.mount(Static(Group(*parts)))
+def render_item(item: Item) -> list[Text]:
+    """Shared renderer — returns Rich objects usable in both modes."""
+    return [header_text, *(Text(line) for line in item.lines)]
 
-# Or a panel
-container.mount(Static(Panel(info, border_style="cyan")))
+# TUI: wrap in Static + Group
+container.mount(Static(Group(*render_item(item))))
+
+# CLI: iterate and print
+for part in render_item(item):
+    console.print(part)
 ```
 
-### 6. DataTable Setup
+### 5. DataTable Setup
 
 ```python
 table = DataTable(cursor_type="row")  # Row selection, not cell
@@ -113,7 +121,7 @@ table.add_columns("#", "Name", "Count", "Last Active")
 table.add_row("1", "Channel A", "42", "03-15 08:00")
 ```
 
-### 7. Lint Suppressions
+### 6. Lint Suppressions
 
 Textual class attributes trigger RUF012 (mutable class defaults). Suppress with:
 ```python
@@ -125,5 +133,6 @@ BINDINGS = [...]  # noqa: RUF012
 A complete working example is in `example.py` alongside this SKILL.md. Read it for the full pattern including:
 - Data model with `@dataclass`
 - Overview table with icons and stats
+- Shared rendering helpers (DRY across CLI/TUI)
 - Detail screen with styled message rendering
-- CLI fallback mode with `argparse`
+- Typer CLI with `Annotated` options, `BadParameter`, and `rich_markup_mode`

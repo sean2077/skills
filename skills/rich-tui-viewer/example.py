@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["rich>=13.0", "textual>=3.0"]
+# dependencies = ["rich>=13.0", "textual>=3.0", "typer>=0.15"]
 # ///
 """Rich + Textual TUI data viewer pattern: minimal working example.
 
@@ -10,16 +10,16 @@ Two modes:
   - CLI (-s flag): direct rich output for pipes and scripts
 
 Usage:
-  uv run example.py          # TUI interactive mode
-  uv run example.py -s 1     # CLI output for item #1
-  uv run example.py -s 1 -n 5  # Last 5 messages only
+  uv run example.py              # TUI interactive mode
+  uv run example.py -s 1         # CLI output for item #1
+  uv run example.py -s 1 -n 5    # Last 5 messages only
+  uv run example.py --help        # Show help
 """
 
-from __future__ import annotations
-
-import argparse
-import sys
 from dataclasses import dataclass
+from typing import Annotated
+
+import typer
 
 from rich import box
 from rich.console import Console, Group
@@ -62,35 +62,58 @@ def load_sample_data() -> list[Channel]:
     """Generate sample data. Replace with real data loading logic."""
     return [
         Channel("Tech Discussion", "👥", [
-            Message("Alice", "API docs have been updated", "09:01"),
-            Message("Bot", "Synced to wiki", "09:02"),
-            Message("Bob", "Perf test results are in", "09:15"),
-            Message("Bot", "P99 latency dropped from 120ms to 45ms — 62% improvement", "09:16"),
-            Message("Alice", "Nice! Ready to ship", "09:30"),
-            Message("Charlie", "Rollout plan decided?", "09:45"),
-            Message("Alice", "10% canary for one day first", "09:46"),
-            Message("Bot", "Canary deploy created, ETA 10:00", "09:50"),
+            Message("Alice", "API docs updated", "09:01"),
+            Message("Bot", "P99 latency 120ms → 45ms (–62%)", "09:16"),
+            Message("Alice", "Nice! Ship it", "09:30"),
         ]),
         Channel("Alerts", "🔔", [
-            Message("Monitor", "CPU usage above 80%: node-03", "08:30"),
+            Message("Monitor", "CPU above 80%: node-03", "08:30"),
             Message("Bot", "Auto-scaled 2 nodes", "08:31"),
-            Message("Monitor", "node-03 CPU back to normal (45%)", "08:45"),
-            Message("Monitor", "Disk usage alert: db-primary (92%)", "14:00"),
-            Message("Bot", "Triggered log cleanup job", "14:01"),
+            Message("Monitor", "node-03 back to normal (45%)", "08:45"),
         ]),
         Channel("DM · Dave", "👤", [
             Message("Dave", "Did you fix that bug?", "10:00"),
-            Message("Bot", "PR #142 submitted, awaiting review", "10:01"),
-            Message("Dave", "Let me check", "10:05"),
+            Message("Bot", "PR #142 submitted", "10:01"),
             Message("Dave", "LGTM, merged", "10:20"),
         ]),
-        Channel("Weekly Reports", "📊", [
-            Message("Bot", "This week: 5 features, 3 bugfixes", "17:00"),
-            Message("Bot", "Pending: 2 P1 issues", "17:00"),
-            Message("Eve", "What's the focus next week?", "17:15"),
-            Message("Bot", "1. Data migration  2. Perf optimization launch  3. Docs", "17:16"),
-        ]),
     ]
+
+
+def resolve_channel(channels: list[Channel], query: str) -> Channel:
+    """Find a channel by 1-based index or name substring. Raises typer.BadParameter on miss."""
+    try:
+        idx = int(query) - 1
+    except ValueError:
+        pass  # not a number — fall through to name search
+    else:
+        if 0 <= idx < len(channels):
+            return channels[idx]
+        raise typer.BadParameter(f"Index {query} out of range (1–{len(channels)})")
+    for ch in channels:
+        if query.lower() in ch.name.lower():
+            return ch
+    raise typer.BadParameter(f"No channel matching '{query}'")
+
+
+# -- Rendering helpers ---------------------------------------------------------
+
+
+def render_channel_header(channel: Channel) -> Panel:
+    """Rich panel with channel name, icon, and message count."""
+    info = Text()
+    info.append(f"  {channel.icon} {channel.name}", style="bold")
+    info.append(f"   {channel.msg_count} messages", style="cyan")
+    return Panel(info, box=box.ROUNDED, border_style="cyan", padding=(0, 1))
+
+
+def render_message(msg: Message) -> list[Text]:
+    """Render a single message as a list of Rich Text lines."""
+    is_bot = msg.sender == "Bot"
+    header = Text()
+    header.append(f" {msg.time} ", style="dim")
+    header.append(f" {msg.sender} ", style="bold white on dark_green" if is_bot else "bold white on blue")
+    body_style = "green" if is_bot else "default"
+    return [header, *(Text(f"   {line}", style=body_style) for line in msg.text.split("\n"))]
 
 
 # -- CLI output mode -----------------------------------------------------------
@@ -101,26 +124,13 @@ def cli_show(channel: Channel, n: int | None = None) -> None:
     console = Console()
     msgs = channel.messages[-n:] if n else channel.messages
 
-    info = Text()
-    info.append(f"  {channel.icon} {channel.name}", style="bold")
-    info.append(f"   {channel.msg_count} messages", style="cyan")
     console.print()
-    console.print(Panel(info, box=box.ROUNDED, border_style="cyan", padding=(0, 1)))
+    console.print(render_channel_header(channel))
     console.print()
 
     for msg in msgs:
-        header = Text()
-        header.append(f" {msg.time} ", style="dim")
-        if msg.sender == "Bot":
-            header.append(" Bot ", style="bold white on dark_green")
-            console.print(header)
-            for line in msg.text.split("\n"):
-                console.print(Text(f"   {line}", style="green"))
-        else:
-            header.append(f" {msg.sender} ", style="bold white on blue")
-            console.print(header)
-            for line in msg.text.split("\n"):
-                console.print(Text(f"   {line}"))
+        for line in render_message(msg):
+            console.print(line)
         console.print()
 
 
@@ -147,29 +157,11 @@ class DetailScreen(Screen):
         container = self.query_one("#scroll", VerticalScroll)
         ch = self._channel
 
-        info = Text()
-        info.append(f"  {ch.icon} {ch.name}", style="bold")
-        info.append(f"   {ch.msg_count} messages", style="cyan")
-        container.mount(Static(Panel(info, border_style="cyan", padding=(0, 1))))
+        container.mount(Static(render_channel_header(ch)))
         container.mount(Static(Rule(style="bright_black")))
 
         for msg in ch.messages:
-            parts: list[Text] = []
-            header = Text()
-            header.append(f" {msg.time} ", style="dim")
-
-            if msg.sender == "Bot":
-                header.append(" Bot ", style="bold white on dark_green")
-                parts.append(header)
-                for line in msg.text.split("\n"):
-                    parts.append(Text(f"   {line}", style="green"))
-            else:
-                header.append(f" {msg.sender} ", style="bold white on blue")
-                parts.append(header)
-                for line in msg.text.split("\n"):
-                    parts.append(Text(f"   {line}"))
-
-            container.mount(Static(Group(*parts)))
+            container.mount(Static(Group(*render_message(msg))))
 
 
 class ViewerApp(App):
@@ -220,32 +212,23 @@ class ViewerApp(App):
 # -- Entry point ---------------------------------------------------------------
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Channel viewer (Rich + Textual example)")
-    parser.add_argument("-s", "--select", help="View a specific channel (number or name keyword)")
-    parser.add_argument("-n", "--lines", type=int, help="Show only the last N messages")
-    args = parser.parse_args()
+cli = typer.Typer(rich_markup_mode="rich")
 
+
+@cli.command()
+def main(
+    select: Annotated[str | None, typer.Option("-s", "--select", help="View a specific channel (number or name keyword)")] = None,
+    lines: Annotated[int | None, typer.Option("-n", "--lines", help="Show only the last N messages")] = None,
+) -> None:
+    """Interactive channel viewer with TUI and CLI modes."""
     channels = load_sample_data()
 
-    if args.select:
-        target = None
-        try:
-            idx = int(args.select) - 1
-            if 0 <= idx < len(channels):
-                target = channels[idx]
-        except ValueError:
-            for ch in channels:
-                if args.select.lower() in ch.name.lower():
-                    target = ch
-                    break
-        if target is None:
-            Console().print(f"[red]Not found: {args.select}[/red]")
-            sys.exit(1)
-        cli_show(target, n=args.lines)
+    if select:
+        target = resolve_channel(channels, select)
+        cli_show(target, n=lines)
     else:
         ViewerApp(channels).run()
 
 
 if __name__ == "__main__":
-    main()
+    cli()
