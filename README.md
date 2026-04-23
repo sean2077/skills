@@ -2,34 +2,46 @@
 
 Reusable agent skills for development, ops, and productivity — battle-tested patterns with working examples.
 
-Uses the universal [SKILL.md](https://github.com/anthropics/skills) format. Compatible with Claude Code, OpenCode, Cursor, GitHub Copilot, Windsurf, and other agents supporting the Agent Skills spec.
+Uses the universal [SKILL.md](https://github.com/anthropics/skills) format. Compatible with Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, Windsurf, and other agents supporting the Agent Skills spec.
 
 ## Install
 
 ```bash
-# Claude Code
-/plugin install sean2077/skills
+# Recommended: one install flow for both Claude Code and Codex
+npx skills add sean2077/skills -a claude-code -a codex
 
-# npx skills (Vercel Labs cross-agent package manager)
-npx skills add sean2077/skills
+# Codex only
+npx skills add sean2077/skills -a codex
+
+# Claude Code only
+npx skills add sean2077/skills -a claude-code
+```
+
+Optional Claude Code marketplace compatibility is still available:
+
+```bash
+/plugin install sean2077/skills
 ```
 
 ## Skills
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
+| [conventional-commit-zh](skills/conventional-commit-zh/) | Generate a Chinese Conventional Commits message from the current diff and create one local commit. | Git |
 | [rich-tui-viewer](skills/rich-tui-viewer/) | Interactive TUI data viewer: table overview → click detail → ESC back. Dual-mode (TUI + CLI fallback). | Python, Rich, Textual |
 
 ## Structure
 
 ```
 .claude-plugin/
-└── marketplace.json       # Skill collection manifest
+└── marketplace.json       # Optional Claude Code marketplace manifest
 skills/
 └── <name>/
-    ├── SKILL.md           # Skill definition (universal agent format)
+    ├── SKILL.md           # Single source of truth for every installer
     └── example.py         # Minimal working example (PEP 723 inline deps, uv run ready)
 ```
+
+`npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
 
 ## Try the Examples
 

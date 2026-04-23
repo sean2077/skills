@@ -12,6 +12,14 @@
   },
   "plugins": [
     {
+      "name": "conventional-commit-zh",
+      "description": "Create a local git commit with a Chinese Conventional Commits message",
+      "source": "./skills/conventional-commit-zh",
+      "strict": false,
+      "category": "development",
+      "tags": ["git", "commit", "conventional-commits", "chinese", "workflow"]
+    },
+    {
       "name": "rich-tui-viewer",
       "description": "Build interactive TUI data viewers with Rich + Textual (table overview → click detail → ESC back, dual-mode TUI + CLI)",
       "source": "./skills/rich-tui-viewer",
