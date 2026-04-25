@@ -39,6 +39,34 @@ Do not use this skill for:
 - **Commit mode**: default when the user asks to commit, submit, save the work, or otherwise create a local commit. Create exactly one local commit.
 - **Message-only mode**: use when the user explicitly asks only to generate, draft, or suggest a commit message. Do not stage files or run `git commit`.
 
+## Output Discipline
+
+This skill should behave like a terse commit command, not like a planning or review assistant.
+
+In commit mode:
+
+- Do not announce that you are using this skill.
+- Do not describe a plan before running git commands.
+- Do not print diff summaries, file-by-file explanations, rationale, checklists, or command transcripts.
+- Do not explain how you chose the commit type, scope, or wording unless the user explicitly asks.
+- Use tool calls to inspect/stage/commit/verify, then return only the result.
+
+Successful commit output should be one short line:
+
+```text
+已提交: <short-hash> <subject>
+```
+
+Blocked output should be one short sentence that states the blocker, for example:
+
+```text
+没有可提交的改动。
+```
+
+If verification fails after the commit, report the commit result plus the failed verification in the smallest useful form. Do not paste full command output unless it is needed to diagnose the failure.
+
+In message-only mode, output exactly one commit subject as plain text. Do not wrap it in backticks, bullets, Markdown, or explanatory prose unless the user explicitly asks for rationale.
+
 ## Context-First Rule
 
 Use the conversation context first. If the current context already contains a reliable description of the intended changes, affected files, diff snippets, test results, or prior command output, do not run `git status`, `git diff`, or `git log` just to rediscover what changed.
@@ -101,10 +129,11 @@ Guidelines:
 4. Draft one Chinese conventional commit subject.
 5. In message-only mode, output only the subject unless the user asked for rationale, then stop.
 6. In commit mode, stage the intended files.
-7. Run `git commit -m "<subject>"` unless local instructions require a body/trailers; when needed, use an additional `-m "<body-or-trailers>"`.
+7. Run `git commit` with the subject. Prefer a safe message path such as `git commit -F -` when a body/trailers are needed or shell quoting would be fragile. Do not inject untrusted or complex commit text directly into a shell command.
 8. Verify with:
    - `git status --short`
    - `git log -1 --format=%s`
+9. Return only the concise result required by **Output Discipline**.
 
 ## If The User Supplies A Message
 
