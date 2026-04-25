@@ -13,7 +13,7 @@
   "plugins": [
     {
       "name": "conventional-commit-zh",
-      "description": "Create a local git commit with a Chinese Conventional Commits message",
+      "description": "Create or draft a Chinese Conventional Commits message, committing only when requested",
       "source": "./skills/conventional-commit-zh",
       "strict": false,
       "category": "development",

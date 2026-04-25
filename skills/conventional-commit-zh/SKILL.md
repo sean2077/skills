@@ -1,12 +1,12 @@
 ---
 name: conventional-commit-zh
-description: Create one local git commit with a Chinese commit message that follows Conventional Commits. Use when the user asks to commit current changes, generate a Chinese commit message, or submit work with a conventional commit format such as "帮我提交", "生成中文 commit message", or "按 conventional commit 提交".
+description: Create one local git commit with a Chinese Conventional Commits subject, or generate only the subject when the user explicitly asks for a commit message without committing. Use for requests such as "帮我提交", "生成中文 commit message", or "按 conventional commit 提交".
 allowed-tools: Read, Bash, Grep, Glob
 ---
 
 # Conventional Commit ZH
 
-Create exactly one local git commit with this format:
+Create a Chinese Conventional Commits subject:
 
 ```text
 type(scope): 中文摘要
@@ -23,7 +23,6 @@ Examples:
 
 Use this skill when the user wants the agent to:
 
-- inspect the current git diff
 - generate a Chinese conventional commit message
 - stage the intended files
 - create one local commit
@@ -35,19 +34,33 @@ Do not use this skill for:
 - cleaning branches or worktrees
 - rewriting git history
 
-## Required Checks
+## Modes
 
-Before committing, inspect:
+- **Commit mode**: default when the user asks to commit, submit, save the work, or otherwise create a local commit. Create exactly one local commit.
+- **Message-only mode**: use when the user explicitly asks only to generate, draft, or suggest a commit message. Do not stage files or run `git commit`.
+
+## Context-First Rule
+
+Use the conversation context first. If the current context already contains a reliable description of the intended changes, affected files, diff snippets, test results, or prior command output, do not run `git status`, `git diff`, or `git log` just to rediscover what changed.
+
+Only inspect git state when the available context is missing, stale, ambiguous, or insufficient to choose the intended files and commit message. When inspection is needed, use the lightest useful command, for example:
 
 - `git status --short`
 - `git diff --staged`
 - `git diff`
 - `git log --oneline -10`
 
+Verification commands after staging or committing are still allowed; do not confuse result verification with rediscovering the change.
+
+## Staging Rules
+
 If the user scoped the request to specific files, only stage those files.
-If the request is simply to commit current work, staging the relevant current changes is acceptable.
+If the relevant files are clear from context, stage those exact files directly with `git add -- <paths>` instead of doing repo-wide discovery first.
+If the request is simply to commit current work and context does not identify the intended files, inspect the git state before staging.
+Avoid `git add .` unless the user explicitly wants all current changes and git state inspection shows there are no unrelated files.
+When skipping discovery, still prevent unrelated staged changes from being committed: either commit with an explicit pathspec for the intended files or run a lightweight staged path check such as `git diff --cached --name-only` after staging.
 Do not stage secrets, `.env` files, credentials, or obviously unrelated generated artifacts unless the user explicitly asked for them.
-If there are no changes, stop and report that there is nothing to commit.
+If there are no changes or `git commit` reports nothing to commit, stop and report that there is nothing to commit.
 
 ## Message Rules
 
@@ -78,15 +91,18 @@ Guidelines:
 4. Use a lower-case scope only when it adds value.
 5. Omit the scope when it does not help.
 6. Use `!` only for real breaking changes.
+7. If repository or user instructions require a commit body or trailers, keep the subject in this format and put the extra content after a blank line.
 
 ## Workflow
 
-1. Review the current git state and diff.
-2. Infer the dominant change and choose the best `type`.
-3. Draft one Chinese conventional commit subject.
-4. Stage the intended files.
-5. Run `git commit -m "<message>"`.
-6. Verify with:
+1. Read the current context for the intended change summary, file scope, and verification evidence.
+2. Decide whether this is commit mode or message-only mode.
+3. Infer the dominant change and choose the best `type`.
+4. Draft one Chinese conventional commit subject.
+5. In message-only mode, output only the subject unless the user asked for rationale, then stop.
+6. In commit mode, stage the intended files.
+7. Run `git commit -m "<subject>"` unless local instructions require a body/trailers; when needed, use an additional `-m "<body-or-trailers>"`.
+8. Verify with:
    - `git status --short`
    - `git log -1 --format=%s`
 

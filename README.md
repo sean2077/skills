@@ -27,7 +27,7 @@ Optional Claude Code marketplace compatibility is still available:
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
-| [conventional-commit-zh](skills/conventional-commit-zh/) | Generate a Chinese Conventional Commits message from the current diff and create one local commit. | Git |
+| [conventional-commit-zh](skills/conventional-commit-zh/) | Generate a Chinese Conventional Commits message from context or git state, and create one local commit when requested. | Git |
 | [rich-tui-viewer](skills/rich-tui-viewer/) | Interactive TUI data viewer: table overview → click detail → ESC back. Dual-mode (TUI + CLI fallback). | Python, Rich, Textual |
 
 ## Structure
@@ -38,7 +38,7 @@ Optional Claude Code marketplace compatibility is still available:
 skills/
 └── <name>/
     ├── SKILL.md           # Single source of truth for every installer
-    └── example.py         # Minimal working example (PEP 723 inline deps, uv run ready)
+    └── example.py         # Optional runnable example for code-building skills
 ```
 
 `npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
