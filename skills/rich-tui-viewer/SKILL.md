@@ -2,7 +2,6 @@
 name: rich-tui-viewer
 description: Build interactive TUI data viewers with Rich + Textual + Typer. Use when the user asks to create a CLI tool for browsing data (logs, conversations, records, API responses) with a table overview and detail view, or asks for a "human-friendly" terminal interface.
 allowed-tools: Read, Write, Bash, Glob, Grep
-argument-hint: [description of what to browse]
 ---
 
 # Rich + Textual TUI Data Viewer
