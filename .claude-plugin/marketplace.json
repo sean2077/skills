@@ -20,6 +20,14 @@
       "tags": ["git", "commit", "conventional-commits", "chinese", "workflow"]
     },
     {
+      "name": "project-docs-organizer",
+      "description": "Build or reorganize project documentation systems with README-only simple projects and major/subcategory numbered docs zones for complex projects",
+      "source": "./skills/project-docs-organizer",
+      "strict": false,
+      "category": "development",
+      "tags": ["documentation", "docs", "readme", "adr", "specs", "maintenance"]
+    },
+    {
       "name": "rich-tui-viewer",
       "description": "Build interactive TUI data viewers with Rich + Textual (table overview → click detail → ESC back, dual-mode TUI + CLI)",
       "source": "./skills/rich-tui-viewer",

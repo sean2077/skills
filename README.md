@@ -28,6 +28,7 @@ Optional Claude Code marketplace compatibility is still available:
 | Skill | Description | Stack |
 |-------|-------------|-------|
 | [conventional-commit-zh](skills/conventional-commit-zh/) | Generate a Chinese Conventional Commits message from context or git state, and create one local commit when requested. | Git |
+| [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [rich-tui-viewer](skills/rich-tui-viewer/) | Interactive TUI data viewer: table overview → click detail → ESC back. Dual-mode (TUI + CLI fallback). | Python, Rich, Textual |
 
 ## Structure
