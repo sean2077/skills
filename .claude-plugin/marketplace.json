@@ -12,12 +12,12 @@
   },
   "plugins": [
     {
-      "name": "conventional-commit-zh",
-      "description": "Create or draft a Chinese Conventional Commits message, committing only when requested",
-      "source": "./skills/conventional-commit-zh",
+      "name": "conventional-commit",
+      "description": "Create or draft a Conventional Commits message using the repository's historical language convention, committing only when requested",
+      "source": "./skills/conventional-commit",
       "strict": false,
       "category": "development",
-      "tags": ["git", "commit", "conventional-commits", "chinese", "workflow"]
+      "tags": ["git", "commit", "conventional-commits", "workflow"]
     },
     {
       "name": "project-docs-organizer",
