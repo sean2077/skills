@@ -6,3 +6,6 @@ dist/
 build/
 .ruff_cache/
 uv.lock
+
+# oma relay ledger (cross-agent session state, not project content)
+.oma/

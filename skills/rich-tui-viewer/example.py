@@ -141,6 +141,8 @@ class DetailScreen(Screen):
     """Detail view: scrollable message list, ESC to go back."""
 
     BINDINGS = [  # noqa: RUF012
+        # Sample data is short, so VerticalScroll never consumes ESC here. With long
+        # scrollable content, add priority=True so ESC reaches the Screen (see SKILL.md §3).
         Binding("escape", "app.pop_screen", "Back"),
     ]
 

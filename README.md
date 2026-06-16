@@ -17,29 +17,27 @@ npx skills add sean2077/skills -a codex
 npx skills add sean2077/skills -a claude-code
 ```
 
-Optional Claude Code marketplace compatibility is still available:
-
-```bash
-/plugin install sean2077/skills
-```
-
 ## Skills
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
 | [conventional-commit](skills/conventional-commit/) | Generate a Conventional Commits message using the repository's historical language convention, defaulting to English when unclear, and create one local commit when requested. | Git |
+| [deep-interview](skills/deep-interview/) | Socratic requirements interview with mathematical ambiguity gating; crystallizes a vague idea into an approved spec file before any implementation. | Requirements |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [rich-tui-viewer](skills/rich-tui-viewer/) | Interactive TUI data viewer: table overview → click detail → ESC back. Dual-mode (TUI + CLI fallback). | Python, Rich, Textual |
 
 ## Structure
 
 ```
-.claude-plugin/
-└── marketplace.json       # Optional Claude Code marketplace manifest
 skills/
 └── <name>/
     ├── SKILL.md           # Single source of truth for every installer
-    └── example.py         # Optional runnable example for code-building skills
+    ├── reference.md       # Optional: on-demand detail kept out of the resident skill body
+    └── example.py         # Optional: runnable example for code-building skills
+scripts/
+└── validate_skills.py     # Catalog check: frontmatter, name↔dir, README coverage, placeholders
+.github/workflows/
+└── validate.yml           # Runs the validator on push / PR
 ```
 
 `npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
