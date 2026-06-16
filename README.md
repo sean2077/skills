@@ -23,6 +23,7 @@ npx skills add sean2077/skills -a claude-code
 |-------|-------------|-------|
 | [conventional-commit](skills/conventional-commit/) | Generate a Conventional Commits message using the repository's historical language convention, defaulting to English when unclear, and create one local commit when requested. | Git |
 | [deep-interview](skills/deep-interview/) | Socratic requirements interview with mathematical ambiguity gating; crystallizes a vague idea into an approved spec file before any implementation. | Requirements |
+| [git-worktree](skills/git-worktree/) | Worktree-per-change git workflow: an isolated `.worktrees/<name>` branch per change, one-command merge-back + cleanup, fast-forward-only push. Ships `worktree.sh`. | Git |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [rich-tui-viewer](skills/rich-tui-viewer/) | Interactive TUI data viewer: table overview → click detail → ESC back. Dual-mode (TUI + CLI fallback). | Python, Rich, Textual |
 
