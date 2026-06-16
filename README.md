@@ -26,6 +26,7 @@ npx skills add sean2077/skills -a claude-code
 | [git-worktree](skills/git-worktree/) | Worktree-per-change git workflow: an isolated `.worktrees/<name>` branch per change, one-command merge-back + cleanup, fast-forward-only push. Ships `worktree.sh`. | Git |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [rich-tui-viewer](skills/rich-tui-viewer/) | Interactive TUI data viewer: table overview → click detail → ESC back. Dual-mode (TUI + CLI fallback). | Python, Rich, Textual |
+| [semver-release](skills/semver-release/) | Cut a semver release from conventional commits: infer the bump, update CHANGELOG + version file, tag, then hand off to tag-triggered release CI (or publish a GitHub/GitLab release directly). | Git, Release |
 
 ## Structure
 
