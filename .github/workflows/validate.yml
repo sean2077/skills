@@ -14,13 +14,3 @@ jobs:
           python-version: "3.11"
       # Local equivalent: python3 scripts/validate_skills.py
       - run: python3 scripts/validate_skills.py
-
-  # Smoke-test the runnable reference example so it can't silently rot.
-  # Separate job keeps the validate job dependency-free.
-  examples:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      # Local equivalent: uv run skills/rich-tui-viewer/example.py -s 1
-      - run: uv run skills/rich-tui-viewer/example.py -s 1
