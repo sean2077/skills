@@ -1,6 +1,6 @@
 ---
 name: git-worktree
-description: Run a worktree-per-change git workflow — create an isolated `.worktrees/<name>` branch for each change, merge it back into the local trunk and clean it up with one command, pushing fast-forward-only and never rewriting history. Use when starting a change in an isolated worktree, finishing/merging one back, cutting a tag-pinned packaging worktree, or listing worktrees. Not for writing commit messages (use conventional-commit) or rewriting history.
+description: Run a worktree-per-change git workflow — create an isolated `.worktrees/<name>` branch for each change, merge it back into the local trunk and clean it up with one command, pushing fast-forward-only and never rewriting history. Ships an optional PreToolUse hook (`trunk_edit_guard.sh`) that mechanically blocks edits on a trunk worktree. Use when starting a change in an isolated worktree, finishing/merging one back, cutting a tag-pinned packaging worktree, or listing worktrees. Not for writing commit messages (use conventional-commit) or rewriting history.
 allowed-tools: Read, Bash(git:*), Grep, Glob
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Read, Bash(git:*), Grep, Glob
 
 Drive a **worktree-per-change** workflow: never edit a trunk (`main` / `release/*`) worktree directly — every change gets its own `.worktrees/<name>` branch cut from the trunk tip, merged back into the local trunk and torn down with one command, pushed fast-forward-only with no history rewrites.
 
-A ready-to-use script ships next to this skill as `worktree.sh`. Prefer it; the manual git steps below are the fallback when the script is unavailable or the user wants to see the raw commands.
+A ready-to-use script ships next to this skill as `worktree.sh`. Prefer it; the manual git steps below are the fallback when the script is unavailable or the user wants to see the raw commands. An optional PreToolUse hook, `trunk_edit_guard.sh`, ships alongside it to enforce the no-trunk-edit rule mechanically — see **Mechanical enforcement**.
 
 ## When To Use
 
@@ -18,6 +18,7 @@ Use this skill when the user wants to:
 - finish a worktree — merge it back to trunk and clean up ("合回 / done / merge this back / wrap up this worktree")
 - cut a tag- or ref-pinned worktree for packaging/release builds
 - list or reason about existing worktrees
+- set up mechanical enforcement of the no-trunk-edit rule (install the `trunk_edit_guard.sh` PreToolUse hook)
 
 Do not use this skill for:
 
@@ -27,11 +28,49 @@ Do not use this skill for:
 
 ## Invariants
 
-- **Never edit a trunk worktree directly.** Trunks (`main`, `master`, `release/*`, `maintenance/*`) are integration points. The sole exception is when the user explicitly names a trunk for a one-off change in this conversation.
+- **Never edit a trunk worktree directly.** Trunks (`main`, `master`, `release/*`, `maintenance/*`) are integration points. The sole exception is when the user explicitly names a trunk for a one-off change in this conversation. The shipped `trunk_edit_guard.sh` hook enforces this mechanically when installed (see **Mechanical enforcement**).
 - **One editing session per worktree.** Directory names are not branches — check `git worktree list` and `git status --short --branch` before assuming where you are.
 - **`.worktrees/` lives inside the repo and stays out of `git status`.** Worktrees go under `<repo-root>/.worktrees/<name>`, never outside the repo. The script keeps them ignored via the repo-local `.git/info/exclude` (so it never dirties the tracked tree and never blocks a later `done`); for a durable, shared rule, add `.worktrees/` to the committed `.gitignore` yourself.
 - **Push is fast-forward-only.** Merge back, then `git push` the trunk. On rejection: `git fetch` + `git merge --ff-only` + retry. Never `--force` — that is the user's backstop, not the agent's.
 - **Branch naming is `<type>/<name>`** with `type ∈ {feat, fix, docs, chore}` and `name` lowercase kebab-case.
+
+## Mechanical enforcement
+
+`worktree.sh` is the workflow; `trunk_edit_guard.sh` (shipped beside it) is the guard that makes invariant #1 unskippable. Installed as a Claude Code **PreToolUse** hook, it inspects every `Edit`/`Write`/`NotebookEdit` and **blocks** (exit 2) any edit to a tracked file while the target worktree is on a trunk (`main` / `master` / `release/*` / `maintenance/*`), printing the `worktree.sh new <name>` remedy on stderr. Without it, the no-trunk-edit rule rests on agent discipline alone.
+
+It fails open: it only guards files in the project repo (same git-common-dir, so nested/sibling repos pass), never blocks gitignored paths, and allows the call if it cannot parse the input or find a parser (`python3`, else `jq`).
+
+**Install** (per repo):
+
+```bash
+mkdir -p .claude/hooks
+cp <skill-dir>/trunk_edit_guard.sh .claude/hooks/
+chmod +x .claude/hooks/trunk_edit_guard.sh
+```
+
+Register it in `.claude/settings.json` (merge with any existing `hooks` block):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/trunk_edit_guard.sh" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+`worktree.sh`'s path is repo-specific, so the block message defaults to a bare `worktree.sh new <name>`. To point it at the real path, set `WORKTREE_GUARD_CMD` in the hook command, e.g. `"command": "WORKTREE_GUARD_CMD=tools/worktree.sh \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/trunk_edit_guard.sh"`.
+
+**Escape hatches** — only when the user explicitly authorizes a trunk edit:
+
+- `WORKTREE_ALLOW_TRUNK_EDIT=1` — one-shot env bypass (disables the guard for that call).
+- `touch <repo>/.claude/allow-trunk-edit` — flag file, auto-expires in 2 h; re-touch to renew.
 
 ## Subcommands
 
