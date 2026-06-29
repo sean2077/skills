@@ -4,7 +4,7 @@
 # config, and re-running it changes nothing.
 #
 # Usage:
-#   bash harness-init.sh <init|retrofit|verify|upgrade> [flags]
+#   bash harness-init.sh <init|retrofit|plan|verify|upgrade> [flags]
 #
 # Modes:
 #   init       greenfield — lay down the full harness (seeds an example subagent)
@@ -14,7 +14,7 @@
 #   upgrade    retrofit + re-copy the vendored scripts over the installed ones
 #
 # Flags:
-#   --no-format-hook        do not wire format_on_edit.sh (still copied for later)
+#   --no-format-hook        do not wire format_on_edit.sh (still copied; does not unwire an existing one)
 #   --no-husky              do not set up the .husky/pre-commit drift guard
 #   --no-example-subagent   do not seed the example code-reviewer subagent (init)
 #   --example-subagent      seed it even on retrofit/upgrade
@@ -22,6 +22,7 @@
 #   -h, --help              this help
 #
 # Run it from anywhere inside the TARGET project; it resolves the repo via git.
+# ---8<--- help ends here
 set -euo pipefail
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,12 +33,12 @@ log()  { printf '%s[harness]%s %s\n' "$c_blue"   "$c_off" "$*"; }
 ok()   { printf '%s[harness]%s %s\n' "$c_green"  "$c_off" "$*"; }
 warn() { printf '%s[harness]%s %s\n' "$c_yellow" "$c_off" "$*" >&2; }
 die()  { printf '%s[harness] ABORT:%s %s\n' "$c_red" "$c_off" "$*" >&2; exit 2; }
-usage() { sed -n '2,24p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
+usage() { sed -n '2,/^# ---8<---/p' "$0" | sed '/^# ---8<---/d; s/^# \?//'; exit "${1:-0}"; }
 
 # ---- args ------------------------------------------------------------------
 [[ $# -ge 1 ]] || usage 1
 MODE="$1"; shift
-case "$MODE" in init|retrofit|verify|upgrade|plan) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|plan|verify|upgrade)";; esac
+case "$MODE" in init|retrofit|plan|verify|upgrade) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|plan|verify|upgrade)";; esac
 
 FORMAT_HOOK=1; HUSKY=1; FORCE_SCRIPTS=0
 EXAMPLE_SUBAGENT="auto"   # auto → on for init, off otherwise
@@ -116,7 +117,8 @@ with open(os.environ["HARNESS_OUT"], "w") as f:
 merge_hooks() {
   local existing="$1" add="$2" out="$3"
   if [[ ! -f "$existing" ]]; then cp "$add" "$out"; return 0; fi
-  if command -v jq >/dev/null 2>&1; then
+  # HARNESS_NO_JQ forces the python3 path (lets the e2e test prove both paths agree).
+  if [[ -z "${HARNESS_NO_JQ:-}" ]] && command -v jq >/dev/null 2>&1; then
     jq --slurpfile add "$add" "$JQ_PROG" "$existing" > "$out" && return 0
   fi
   if command -v python3 >/dev/null 2>&1; then
@@ -170,6 +172,7 @@ ensure_line() {  # <file> <line>
 
 # ---- AGENTS.md (init writes template; retrofit injects the marked block) ----
 ensure_agents_md() {
+  local migrated="${1:-0}"
   local agents="$TARGET/AGENTS.md" cm="$TARGET/CLAUDE.md" block="$TMPDIR_H/block.md"
   awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$TPL/AGENTS.root.md" > "$block"
   # Retrofit a project whose contract already lives in a REAL CLAUDE.md (no AGENTS.md
@@ -209,6 +212,7 @@ make_symlink() {
 }
 
 ensure_claude_md_symlink() {
+  local migrated="${1:-0}"
   local cm="$TARGET/CLAUDE.md" agents="$TARGET/AGENTS.md"
   if [[ -L "$cm" ]]; then
     [[ "$(readlink "$cm")" == "AGENTS.md" ]] || warn "CLAUDE.md symlink points at $(readlink "$cm"), not AGENTS.md"
@@ -268,9 +272,14 @@ sys.stdout.write("updated" if changed else "unchanged")
 wire_subagents() {
   local pkg="$TARGET/package.json"
   local manager="" prepare=0
-  # detect a non-husky hook manager
+  # detect a pre-existing non-husky hook manager so we never bolt husky on beside it
   if [[ -f "$TARGET/lefthook.yml" || -f "$TARGET/lefthook.yaml" || -f "$TARGET/.lefthook.yml" ]]; then manager=lefthook
   elif [[ -f "$TARGET/.pre-commit-config.yaml" ]]; then manager=pre-commit
+  elif [[ -f "$pkg" ]] && grep -qE '"(simple-git-hooks|yorkie)"' "$pkg" 2>/dev/null; then
+    manager="$(grep -oE 'simple-git-hooks|yorkie' "$pkg" | head -1)"
+  else
+    local nat; nat="$(git -C "$TARGET" rev-parse --git-path hooks/pre-commit 2>/dev/null || true)"
+    if [[ -n "$nat" && -f "$nat" ]]; then manager="existing git pre-commit hook"; fi
   fi
 
   if [[ -n "$manager" ]]; then
@@ -328,8 +337,11 @@ do_install() {
   copy_if_missing "$TPL/codex.config.toml" "$TARGET/.codex/config.toml"
 
   # 4. contracts + ignore
-  ensure_agents_md
-  ensure_claude_md_symlink
+  # CLAUDE.md -> AGENTS.md adoption: decide once here, pass to both steps (no shared global).
+  local migrated=0
+  if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then migrated=1; fi
+  ensure_agents_md "$migrated"
+  ensure_claude_md_symlink "$migrated"
   local gi="$TARGET/.gitignore"
   ensure_line "$gi" ".worktrees/"
   ensure_line "$gi" ".claude/settings.local.json"
@@ -350,6 +362,7 @@ do_install() {
       cp "$TPL/subagent.metadata.json"   "$TARGET/.agents/subagents/code-reviewer/metadata.json"
       cp "$TPL/subagent.instructions.md" "$TARGET/.agents/subagents/code-reviewer/instructions.md"
       ok "seeded example subagent .agents/subagents/code-reviewer (delete it once you add your own)"
+      command -v python3 >/dev/null 2>&1 || log "  (install python3, then run upgrade to project it into .claude/ + .codex/)"
     fi
   fi
   [[ "$EXAMPLE_SUBAGENT" == 1 ]] || touch "$TARGET/.agents/subagents/.gitkeep"
