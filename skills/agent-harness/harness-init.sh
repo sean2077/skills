@@ -64,6 +64,7 @@ log "target repo: $TARGET   mode: $MODE"
 TMPDIR_H="$(mktemp -d)"; trap 'rm -rf "$TMPDIR_H"' EXIT
 
 # ---- json merge (jq → node → paste-block) ----------------------------------
+# shellcheck disable=SC2016  # $a/$b/$g/$h below are jq variables, not shell expansions
 JQ_PROG='
 def unionByCommand($a; $b):
   reduce $b[] as $h ($a; if (map(.command) | index($h.command)) then . else . + [$h] end);
@@ -175,8 +176,11 @@ ensure_claude_md_symlink() {
   elif [[ -e "$cm" ]]; then
     warn "CLAUDE.md is a real file — merge it into AGENTS.md, then: ln -sf AGENTS.md CLAUDE.md"
   else
-    ( cd "$TARGET" && ln -s AGENTS.md CLAUDE.md ) && ok "CLAUDE.md → AGENTS.md symlink created" \
-      || warn "could not create CLAUDE.md symlink (filesystem without symlink support?) — create a CLAUDE.md mirror by hand"
+    if ( cd "$TARGET" && ln -s AGENTS.md CLAUDE.md ); then
+      ok "CLAUDE.md → AGENTS.md symlink created"
+    else
+      warn "could not create CLAUDE.md symlink (filesystem without symlink support?) — create a CLAUDE.md mirror by hand"
+    fi
   fi
 }
 
@@ -217,8 +221,11 @@ wire_node() {
     warn "detected $manager — add 'node tools/agent/generate-subagents.mjs --check' to your $manager config to guard subagent drift"
   fi
 
-  HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" node -e "$PKG_MERGE" >/dev/null \
-    && log "package.json: ensured gen:subagents / check:agents scripts" || warn "could not update package.json scripts"
+  if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" node -e "$PKG_MERGE" >/dev/null; then
+    log "package.json: ensured gen:subagents / check:agents scripts"
+  else
+    warn "could not update package.json scripts"
+  fi
 }
 
 # ---- the install path (shared by init / retrofit / upgrade) ----------------
