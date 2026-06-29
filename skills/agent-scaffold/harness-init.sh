@@ -9,6 +9,7 @@
 # Modes:
 #   init       greenfield — lay down the full harness (seeds an example subagent)
 #   retrofit   merge into a project that already has some .claude/.codex/AGENTS.md
+#   plan       read-only — preview what init/retrofit would create/merge/migrate
 #   verify     read-only — report harness presence / drift / parity
 #   upgrade    retrofit + re-copy the vendored scripts over the installed ones
 #
@@ -31,12 +32,12 @@ log()  { printf '%s[harness]%s %s\n' "$c_blue"   "$c_off" "$*"; }
 ok()   { printf '%s[harness]%s %s\n' "$c_green"  "$c_off" "$*"; }
 warn() { printf '%s[harness]%s %s\n' "$c_yellow" "$c_off" "$*" >&2; }
 die()  { printf '%s[harness] ABORT:%s %s\n' "$c_red" "$c_off" "$*" >&2; exit 2; }
-usage() { sed -n '2,23p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
+usage() { sed -n '2,24p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
 
 # ---- args ------------------------------------------------------------------
 [[ $# -ge 1 ]] || usage 1
 MODE="$1"; shift
-case "$MODE" in init|retrofit|verify|upgrade) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|verify|upgrade)";; esac
+case "$MODE" in init|retrofit|verify|upgrade|plan) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|plan|verify|upgrade)";; esac
 
 FORMAT_HOOK=1; HUSKY=1; FORCE_SCRIPTS=0
 EXAMPLE_SUBAGENT="auto"   # auto → on for init, off otherwise
@@ -151,8 +152,14 @@ ensure_line() {  # <file> <line>
 
 # ---- AGENTS.md (init writes template; retrofit injects the marked block) ----
 ensure_agents_md() {
-  local agents="$TARGET/AGENTS.md" block="$TMPDIR_H/block.md"
+  local agents="$TARGET/AGENTS.md" cm="$TARGET/CLAUDE.md" block="$TMPDIR_H/block.md"
   awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$TPL/AGENTS.root.md" > "$block"
+  # Retrofit a project whose contract already lives in a REAL CLAUDE.md (no AGENTS.md
+  # yet): adopt that prose as the AGENTS.md SSOT; CLAUDE.md becomes a symlink below.
+  if [[ ! -e "$agents" && -f "$cm" && ! -L "$cm" ]]; then
+    cp "$cm" "$agents"; CLAUDE_MD_MIGRATED=1
+    ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
+  fi
   if [[ ! -e "$agents" ]]; then
     cp "$TPL/AGENTS.root.md" "$agents"; ok "AGENTS.md created from template (fill the TODO sections)"
   elif grep -qF '<!-- agent-scaffold:start' "$agents"; then
@@ -173,8 +180,16 @@ ensure_claude_md_symlink() {
   local cm="$TARGET/CLAUDE.md"
   if [[ -L "$cm" ]]; then
     [[ "$(readlink "$cm")" == "AGENTS.md" ]] || warn "CLAUDE.md symlink points at $(readlink "$cm"), not AGENTS.md"
+  elif [[ -f "$cm" && "${CLAUDE_MD_MIGRATED:-0}" == 1 ]]; then
+    # prose already adopted into AGENTS.md (above) → retire the real file for the symlink
+    rm -f "$cm"
+    if ( cd "$TARGET" && ln -s AGENTS.md CLAUDE.md ); then
+      ok "CLAUDE.md → AGENTS.md symlink created (former prose now lives in AGENTS.md)"
+    else
+      warn "adopted CLAUDE.md into AGENTS.md but could not create the symlink — recreate CLAUDE.md as a mirror by hand"
+    fi
   elif [[ -e "$cm" ]]; then
-    warn "CLAUDE.md is a real file — merge it into AGENTS.md, then: ln -sf AGENTS.md CLAUDE.md"
+    warn "CLAUDE.md and AGENTS.md are both real files — merge CLAUDE.md into AGENTS.md, then: ln -sf AGENTS.md CLAUDE.md"
   else
     if ( cd "$TARGET" && ln -s AGENTS.md CLAUDE.md ); then
       ok "CLAUDE.md → AGENTS.md symlink created"
@@ -282,11 +297,18 @@ do_install() {
     copy_script "$TPL/generate-subagents.mjs" "$TARGET/tools/agent/generate-subagents.mjs"
     wire_node
     if command -v node >/dev/null 2>&1; then
-      node "$TARGET/tools/agent/generate-subagents.mjs" || warn "generate-subagents.mjs returned nonzero"
+      # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
+      # into the .agents/ SSOT (no-op when there are none / a source already exists), then it
+      # projects everything back. Importing first also stops the projection step from pruning a
+      # hand-authored agent as a sourceless "orphan".
+      node "$TARGET/tools/agent/generate-subagents.mjs" --import || warn "generate-subagents.mjs --import returned nonzero"
     fi
   else
     log "no package.json → skipping subagent generator + drift guard (pure-bash harness installed)."
     log "  to enable subagents later: add Node, then re-run 'agent-scaffold upgrade'."
+    if find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
+      warn "hand-authored .claude/agents or .codex/agents found but project is non-Node — cannot adopt them into .agents/ SSOT. Add a package.json, then: agent-scaffold upgrade"
+    fi
   fi
 
   # 8. closing notes
@@ -298,6 +320,89 @@ do_install() {
   log "    trust_level = \"trusted\""
   [[ "${HARNESS_MERGE_DEFERRED:-0}" == 1 ]] && warn "one or more hook configs need a manual merge (see above)."
   log "next: fill the AGENTS.md TODO sections; start changes with tools/agent/worktree.sh new <name>."
+}
+
+# ---- plan (read-only preview of what init/retrofit would do) ---------------
+do_plan() {
+  local NEW="${c_green}+ create${c_off}" MRG="${c_yellow}~ merge${c_off}" \
+        MIG="${c_blue}» migrate${c_off}" SKP="· present" MAN="${c_red}! needs you${c_off}"
+  log "plan for $TARGET  (read-only — nothing is written)"
+  printf '  legend: %s  %s  %s  %s  %s\n\n' "$NEW" "$MRG" "$MIG" "$MAN" "$SKP"
+
+  local agents="$TARGET/AGENTS.md" cm="$TARGET/CLAUDE.md"
+  echo "Contracts (AGENTS.md is the SSOT; CLAUDE.md a symlink to it):"
+  if [[ ! -e "$agents" && -f "$cm" && ! -L "$cm" ]]; then
+    printf '  %s AGENTS.md   adopt prose from your real CLAUDE.md, then append the harness block\n' "$MIG"
+    printf '  %s CLAUDE.md   real file retired → symlink to AGENTS.md (prose preserved in AGENTS.md)\n' "$MIG"
+  else
+    if [[ ! -e "$agents" ]]; then
+      printf '  %s AGENTS.md   from template (fill the TODO sections)\n' "$NEW"
+    elif grep -qF '<!-- agent-scaffold:start' "$agents" 2>/dev/null; then
+      printf '  %s AGENTS.md   refresh only the agent-scaffold block; your prose untouched\n' "$MRG"
+    else
+      printf '  %s AGENTS.md   append the harness block (review placement)\n' "$MRG"
+    fi
+    if [[ -L "$cm" ]]; then
+      if [[ "$(readlink "$cm")" == "AGENTS.md" ]]; then printf '  %s CLAUDE.md   already a symlink to AGENTS.md\n' "$SKP"
+      else printf '  %s CLAUDE.md   symlink points at %s, not AGENTS.md\n' "$MAN" "$(readlink "$cm")"; fi
+    elif [[ -e "$cm" ]]; then
+      printf '  %s CLAUDE.md   real file beside a real AGENTS.md — merge by hand, then symlink\n' "$MAN"
+    else
+      printf '  %s CLAUDE.md   symlink → AGENTS.md\n' "$NEW"
+    fi
+  fi
+  echo
+
+  echo "Hook wiring (merged into existing config, never clobbered):"
+  local cfg label
+  for pair in ".claude/settings.json:Claude Code" ".codex/hooks.json:Codex"; do
+    cfg="${pair%%:*}"; label="${pair##*:}"
+    if [[ -f "$TARGET/$cfg" ]]; then printf '  %s %s   merge our hooks into existing %s\n' "$MRG" "$label" "$cfg"
+    else printf '  %s %s   %s\n' "$NEW" "$label" "$cfg"; fi
+  done
+  echo
+
+  echo "Subagents:"
+  if [[ -f "$TARGET/package.json" ]]; then
+    local -A seen=(); local any=0 af base
+    for af in "$TARGET/.claude/agents"/*.md "$TARGET/.codex/agents"/*.toml; do
+      [[ -e "$af" ]] || continue
+      base="$(basename "$af")"; base="${base%.*}"
+      if [[ -n "${seen[$base]:-}" ]]; then continue; fi
+      if [[ -d "$TARGET/.agents/subagents/$base" ]]; then continue; fi
+      if grep -q 'do not edit by hand' "$af" 2>/dev/null; then continue; fi
+      seen[$base]=1; any=1
+      printf '  %s subagent %s → adopt hand-authored agent into .agents/subagents/%s\n' "$MIG" "$base" "$base"
+    done
+    if [[ "$any" == 0 ]]; then
+      printf '  %s no hand-authored subagents to adopt; generator projects .agents/subagents/\n' "$SKP"
+    fi
+  elif find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
+    printf '  %s hand-authored subagents found, but project is non-Node — add package.json to adopt them\n' "$MAN"
+  else
+    printf '  %s non-Node project — subagent generator skipped\n' "$SKP"
+  fi
+  echo
+
+  echo "Skills:"
+  local nss=0
+  if [[ -d "$TARGET/.agents/skills" ]]; then
+    nss="$(find "$TARGET/.agents/skills" -mindepth 1 -maxdepth 1 -type d ! -name '_*' | wc -l | tr -d ' ')"
+  fi
+  printf '  %s %s project skill(s) under .agents/skills → (re)symlinked into .claude/skills\n' "$MRG" "$nss"
+  if [[ -d "$TARGET/.claude/skills" ]]; then
+    local d name
+    for d in "$TARGET/.claude/skills"/*/; do
+      [[ -d "$d" ]] || continue
+      name="$(basename "$d")"
+      if [[ -L "${d%/}" ]]; then continue; fi
+      printf '  %s .claude/skills/%s is a real dir (npx/vendor) — left as-is; if project-owned, move it to .agents/skills/%s\n' "$SKP" "$name" "$name"
+    done
+  fi
+  echo
+
+  log "to apply: bash <skill-dir>/harness-init.sh retrofit"
+  log "Codex trust: project-level .codex/ loads only for a TRUSTED project (reference.md §7)."
 }
 
 # ---- verify (read-only) ----------------------------------------------------
@@ -364,5 +469,6 @@ do_verify() {
 
 case "$MODE" in
   init|retrofit|upgrade) do_install ;;
+  plan) do_plan ;;
   verify) do_verify ;;
 esac
