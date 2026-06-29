@@ -30,6 +30,7 @@ Use this skill when the user wants the agent to:
 
 Do not use this skill for:
 
+- cutting a release, tagging a version, or updating a changelog (use `semver-release`)
 - pushing branches
 - creating pull requests
 - cleaning branches or worktrees
