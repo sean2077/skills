@@ -151,6 +151,27 @@ printf -- '---\nname: ghost\ndescription: no source\n---\n\nbody\n' > "$A/.claud
 ( cd "$A" && python3 tools/agent/generate-subagents.py ) >/dev/null 2>&1
 check "sourceless hand-authored projection not pruned" test -f "$A/.claude/agents/ghost.md"
 
+echo "== jq and python3 hook-merge paths agree =="
+if command -v jq >/dev/null 2>&1; then
+  # shellcheck disable=SC2317  # jq_py_agree runs indirectly through check() "$@"
+  jq_py_agree() { python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))==json.load(open(sys.argv[2])) else 1)' "$1" "$2"; }
+  for variant in jq py; do
+    d="$work/merge-$variant"; mkdir -p "$d"
+    git -C "$d" init -q -b main
+    git -C "$d" config user.email t@t.t; git -C "$d" config user.name tester
+    git -C "$d" commit -q --allow-empty -m init
+    mkdir -p "$d/.claude" "$d/.codex"
+    printf '{"hooks":{"PreToolUse":[{"matcher":"Edit","hooks":[{"type":"command","command":"user-extra.sh"}]}]}}' > "$d/.claude/settings.json"
+    printf '{"hooks":{"PreToolUse":[{"matcher":"apply_patch","hooks":[{"type":"command","command":"user-cx.sh"}]}]}}' > "$d/.codex/hooks.json"
+  done
+  ( cd "$work/merge-jq" && bash "$H" retrofit ) >/dev/null 2>&1
+  ( cd "$work/merge-py" && HARNESS_NO_JQ=1 bash "$H" retrofit ) >/dev/null 2>&1
+  check "jq and python3 merges agree (CC)"    jq_py_agree "$work/merge-jq/.claude/settings.json" "$work/merge-py/.claude/settings.json"
+  check "jq and python3 merges agree (Codex)" jq_py_agree "$work/merge-jq/.codex/hooks.json"     "$work/merge-py/.codex/hooks.json"
+else
+  echo "  (jq absent - only the python3 merge path runs; cross-check skipped)"
+fi
+
 echo
 if [ "$fails" -eq 0 ]; then echo "OK: agent-scaffold e2e passed"; exit 0; fi
 echo "FAIL: $fails agent-scaffold e2e assertion(s) failed"; exit 1

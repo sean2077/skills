@@ -62,7 +62,8 @@ if [ -d "$repo/tools/agent" ]; then
     "trunk_edit_guard.sh:tools/agent/hooks/trunk_edit_guard.sh" \
     "authority_doc_budget.sh:tools/agent/hooks/authority_doc_budget.sh" \
     "format_on_edit.sh:tools/agent/hooks/format_on_edit.sh" \
-    "relink-skills.sh:.agents/relink-skills.sh"; do
+    "relink-skills.sh:.agents/relink-skills.sh" \
+    "generate-subagents.py:tools/agent/generate-subagents.py"; do
     inst="$repo/${pair##*:}"
     if [ ! -f "$inst" ]; then
       fail "dogfood harness file missing: ${pair##*:} (run: agent-scaffold upgrade)"
@@ -70,6 +71,13 @@ if [ -d "$repo/tools/agent" ]; then
       fail "dogfood drift: ${pair##*:} differs from its skill template (run: agent-scaffold upgrade)"
     fi
   done
+fi
+
+# 6. subagent projection drift: this repo dogfoods the generator, so CI stands in for the
+#    pre-commit --check guard (no package.json/husky here). No sources -> clean exit 0.
+if [ -f "$repo/tools/agent/generate-subagents.py" ] && command -v python3 >/dev/null 2>&1; then
+  ( cd "$repo" && python3 tools/agent/generate-subagents.py --check >/dev/null 2>&1 ) \
+    || fail "subagent projection drift (run: python3 tools/agent/generate-subagents.py)"
 fi
 
 if [ "$fails" -eq 0 ]; then

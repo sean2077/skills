@@ -25,9 +25,10 @@
 #
 # Trunk defaults to $WORKTREE_TRUNK or "main"; override per-call with --trunk.
 # Push is fast-forward-only; it never force-pushes — that stays the user's call.
+# ---8<--- help ends here
 set -euo pipefail
 
-usage() { sed -n '2,28p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
+usage() { sed -n '2,/^# ---8<---/p' "$0" | sed '/^# ---8<---/d; s/^# \?//'; exit "${1:-0}"; }
 log()  { printf '\033[1;34m[worktree]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[worktree] ABORT:\033[0m %s\n' "$*" >&2; exit 2; }
 
@@ -67,8 +68,12 @@ share_dirs() {
         [[ -d "$ROOT/$d" ]] || { log "WARN: share dir '$d' not found, skipping"; continue; }
         [[ -e "$wt/$d" ]] && { log "WARN: '$d' already present in worktree, skipping share"; continue; }
         mkdir -p "$wt/$(dirname "$d")"
-        cp -al "$ROOT/$d" "$wt/$d" 2>/dev/null || cp -a "$ROOT/$d" "$wt/$d"
-        log "shared $d ← main worktree (hardlinked, zero new disk)"
+        if cp -al "$ROOT/$d" "$wt/$d" 2>/dev/null; then
+            log "shared $d ← main worktree (hardlinked, zero new disk)"
+        else
+            cp -a "$ROOT/$d" "$wt/$d"
+            log "WARN: hardlink unsupported here - copied $d (uses disk; not a zero-cost share)"
+        fi
     done
     repoint_submodules "$wt"
 }
@@ -153,7 +158,8 @@ $(git -C "$WT" status --short | head -10)"
         log "merged → $TRUNK @ $(git rev-parse --short HEAD)"
     fi
     git worktree remove "$WT" 2>/dev/null || git worktree remove --force "$WT"
-    [[ $KEEP -eq 1 ]] || git branch -d "$BRANCH"
+    [[ $KEEP -eq 1 ]] || git branch -d "$BRANCH" 2>/dev/null \
+        || log "WARN: branch $BRANCH not fully merged into $TRUNK - kept; delete: git branch -D $BRANCH"
     git worktree prune
     if [[ $PUSH -eq 1 ]]; then
         git push origin "$TRUNK" || die "push rejected (remote moved?): run
