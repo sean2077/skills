@@ -194,26 +194,45 @@ ensure_agents_md() {
   fi
 }
 
+# Windows/Git Bash without symlink support makes `ln -s` SILENTLY COPY instead of
+# link; this is the one-line fix we point users at.
+SYMLINK_HELP='Windows/Git Bash copied instead of linking — enable real symlinks with: git config core.symlinks true; export MSYS=winsymlinks:nativestrict; + Developer Mode (or admin), then re-run.'
+
+# make_symlink <target> <linkname> — create the link inside $TARGET. Returns 0 only
+# when a REAL symlink results; on the Git-Bash copy case it removes the bogus copy
+# and returns 1 so the caller can fall back + warn.
+make_symlink() {
+  ( cd "$TARGET" && ln -s "$1" "$2" ) 2>/dev/null || true
+  [[ -L "$TARGET/$2" ]] && return 0
+  [[ -e "$TARGET/$2" && ! -L "$TARGET/$2" ]] && rm -rf "${TARGET:?}/$2"
+  return 1
+}
+
 ensure_claude_md_symlink() {
-  local cm="$TARGET/CLAUDE.md"
+  local cm="$TARGET/CLAUDE.md" agents="$TARGET/AGENTS.md"
   if [[ -L "$cm" ]]; then
     [[ "$(readlink "$cm")" == "AGENTS.md" ]] || warn "CLAUDE.md symlink points at $(readlink "$cm"), not AGENTS.md"
-  elif [[ -f "$cm" && "${CLAUDE_MD_MIGRATED:-0}" == 1 ]]; then
-    # prose already adopted into AGENTS.md (above) → retire the real file for the symlink
-    rm -f "$cm"
-    if ( cd "$TARGET" && ln -s AGENTS.md CLAUDE.md ); then
-      ok "CLAUDE.md → AGENTS.md symlink created (former prose now lives in AGENTS.md)"
-    else
-      warn "adopted CLAUDE.md into AGENTS.md but could not create the symlink — recreate CLAUDE.md as a mirror by hand"
-    fi
-  elif [[ -e "$cm" ]]; then
+    return 0
+  fi
+  # Decide whether an existing real CLAUDE.md is safe to retire for the symlink:
+  #   - nothing there yet, or
+  #   - just-migrated prose (already copied into AGENTS.md), or
+  #   - a prior copy-fallback still byte-identical to AGENTS.md (idempotent re-run).
+  local retire=0
+  if [[ ! -e "$cm" ]]; then retire=1
+  elif [[ -f "$cm" && "${CLAUDE_MD_MIGRATED:-0}" == 1 ]]; then retire=1
+  elif [[ -f "$cm" && -f "$agents" ]] && cmp -s "$cm" "$agents"; then retire=1
+  fi
+  if [[ "$retire" != 1 ]]; then
     warn "CLAUDE.md and AGENTS.md are both real files — merge CLAUDE.md into AGENTS.md, then: ln -sf AGENTS.md CLAUDE.md"
+    return 0
+  fi
+  rm -f "$cm"
+  if make_symlink AGENTS.md CLAUDE.md; then
+    ok "CLAUDE.md → AGENTS.md symlink created"
   else
-    if ( cd "$TARGET" && ln -s AGENTS.md CLAUDE.md ); then
-      ok "CLAUDE.md → AGENTS.md symlink created"
-    else
-      warn "could not create CLAUDE.md symlink (filesystem without symlink support?) — create a CLAUDE.md mirror by hand"
-    fi
+    cp "$agents" "$cm"
+    warn "CLAUDE.md → AGENTS.md: $SYMLINK_HELP Left a drift-prone COPY for now."
   fi
 }
 
@@ -315,6 +334,12 @@ do_install() {
   ensure_line "$gi" ".worktrees/"
   ensure_line "$gi" ".claude/settings.local.json"
   ensure_line "$gi" ".claude/allow-trunk-edit"
+  # keep the vendored scripts LF so they run under Windows/Git Bash (CRLF breaks bash)
+  local ga="$TARGET/.gitattributes"
+  ensure_line "$ga" "tools/agent/*.sh text eol=lf"
+  ensure_line "$ga" "tools/agent/hooks/*.sh text eol=lf"
+  ensure_line "$ga" "tools/agent/*.py text eol=lf"
+  ensure_line "$ga" ".agents/relink-skills.sh text eol=lf"
 
   # 5. example subagent (so the source → projection round-trip is demonstrable)
   if [[ "$EXAMPLE_SUBAGENT" == 1 ]]; then

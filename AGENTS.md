@@ -33,6 +33,10 @@ shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell s
   `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
 - Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
   green before any merge back to `main`.
+- **Cross-platform (design goal)** — skills + bundled scripts target macOS / Linux / Windows
+  (**Git Bash only**): keep them POSIX-bash + GNU-coreutils compatible, **LF** line endings
+  (enforced by `.gitattributes` + a CI CRLF check), and **symlink-degradation-aware** (never
+  silently copy when the OS lacks symlink support). Subagents/hook-JSON use `python3`.
 
 ## Catalog Maintenance Gotchas
 

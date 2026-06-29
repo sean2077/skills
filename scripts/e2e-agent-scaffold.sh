@@ -29,6 +29,8 @@ check() { local d="$1"; shift; if "$@"; then ok "$d"; else bad "$d"; fi; }
 jmatch() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d["hooks"][sys.argv[2]][0]["matcher"]==sys.argv[3] else 1)' "$@"; }
 # shellcheck disable=SC2317
 jcount() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
+# shellcheck disable=SC2317  # run indirectly through check() "$@"
+is_real_dir() { [ -d "$1" ] && [ ! -L "$1" ]; }
 
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 S="$work/scratch"; mkdir -p "$S"
@@ -45,6 +47,7 @@ check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" 
 check "CC PreToolUse matcher"                jmatch "$S/.claude/settings.json" PreToolUse "Edit|MultiEdit|Write|NotebookEdit"
 check "Codex PreToolUse matcher"             jmatch "$S/.codex/hooks.json"     PreToolUse "Edit|Write|apply_patch"
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
+check ".gitattributes pins LF on scripts"    grep -qF "tools/agent/*.sh text eol=lf" "$S/.gitattributes"
 
 echo "== idempotent re-run =="
 ( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
@@ -87,6 +90,23 @@ mkdir -p "$S/.claude/skills/vendor-skill"; echo x > "$S/.claude/skills/vendor-sk
 check "project skill symlinked into .claude/skills" test -L "$S/.claude/skills/proj-skill"
 { test -d "$S/.claude/skills/vendor-skill" && ! test -L "$S/.claude/skills/vendor-skill"; }; rc=$?
 check "npx-installed real dir left untouched" test "$rc" = 0
+
+echo "== relink: Git Bash symlink degradation → convergence =="
+# fake ln: -s* COPIES the link-relative target instead of linking (Git Bash w/o winsymlinks)
+LNSHIM="$work/lnshim"; mkdir -p "$LNSHIM"
+cat > "$LNSHIM/ln" <<'SH'
+#!/bin/sh
+case "$1" in -s*) shift; t="$1"; l="$2"; rm -rf "$l"; exec cp -RL "$(dirname "$l")/$t" "$l";; esac
+exec /usr/bin/ln "$@"
+SH
+chmod +x "$LNSHIM/ln"
+rm -rf "$S/.claude/skills/proj-skill"
+( cd "$S" && PATH="$LNSHIM:$PATH" bash .agents/relink-skills.sh ) >/dev/null 2>&1
+check "degraded: project skill is a real-dir copy"   is_real_dir "$S/.claude/skills/proj-skill"
+check "degraded: vendor-native dir untouched"        is_real_dir "$S/.claude/skills/vendor-skill"
+( cd "$S" && bash .agents/relink-skills.sh ) >/dev/null 2>&1   # re-run with real ln
+check "converged: project skill back to a symlink"   test -L "$S/.claude/skills/proj-skill"
+check "converged: vendor-native dir still untouched" is_real_dir "$S/.claude/skills/vendor-skill"
 
 echo "== verify mode (read-only) =="
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
