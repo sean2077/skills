@@ -12,3 +12,5 @@ uv.lock
 
 # oma relay ledger (cross-agent session state, not project content)
 .oma/
+.claude/settings.local.json
+.claude/allow-trunk-edit
