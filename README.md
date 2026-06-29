@@ -15,6 +15,12 @@ npx skills add sean2077/skills -a codex
 
 # Claude Code only
 npx skills add sean2077/skills -a claude-code
+
+# Install one skill from this catalog
+npx skills add sean2077/skills --skill agent-scaffold -a codex
+
+# From a local checkout, keep the leading ./ so it is parsed as a path
+npx skills add ./skills/agent-scaffold -a codex
 ```
 
 ## Skills
