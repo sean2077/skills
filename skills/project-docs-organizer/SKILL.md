@@ -90,35 +90,7 @@ docs/
 └── 91-archive/
 ```
 
-Avoid using the first digit alone as the only meaningful classification:
-
-```text
-docs/
-├── 20-development/
-├── 30-iteration/
-└── 40-tooling-standards/
-```
-
-This loses the subcategory semantics. Prefer:
-
-```text
-docs/
-├── 21-architecture/
-├── 22-codebase/
-├── 32-adrs/
-├── 33-specs-rfcs/
-├── 41-development-tools/
-└── 44-coding-standards/
-```
-
-Use nested numeric prefixes only when readers must consume documents in sequence:
-
-```text
-docs/01-quickstart/
-├── 00-install.md
-├── 01-first-run.md
-└── 02-first-change.md
-```
+The first digit alone is **not** a sufficient classification — `20-development/ 30-iteration/ 40-tooling-standards/` collapses each major area into one landing folder and loses the subcategory semantics; prefer real subcategories (`21-architecture/ 22-codebase/ 32-adrs/ 33-specs-rfcs/ 41-development-tools/ 44-coding-standards/`). Add nested numeric prefixes (`00-`, `01-`) inside a subcategory only when readers must consume the files in sequence. Worked before/after examples: [`reference.md`](reference.md) → *Numbering pitfalls*.
 
 ## Default Zone Model
 

@@ -19,6 +19,8 @@
 #                        (default: internal/ vendor/ tests/ legacy/ + dotfiles + _underscore dirs)
 set -euo pipefail
 
+case "${1:-}" in -h | --help) sed -n '2,19p' "$0" | sed 's/^# \?//'; exit 0 ;; esac
+
 MANIFEST="${1:-tools/tools-manifest.tsv}"
 [[ -f "$MANIFEST" ]] || { echo "manifest not found: $MANIFEST" >&2; exit 2; }
 SCAN_DIR="${TOOLS_DIR:-$(dirname "$MANIFEST")}"
