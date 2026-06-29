@@ -148,6 +148,7 @@ $(git -C "$WT" status --short | head -10)"
         log "$BRANCH has zero new commits over $TRUNK — skipping merge, just cleaning up"
     else
         # git-native message so commitlint's defaultIgnores skips this merge commit
+        # shellcheck disable=SC2016  # single quotes are literal: git's default "Merge branch 'x'" wording
         git merge --no-ff "$BRANCH" -m "${MSG:-Merge branch '$BRANCH'}"
         log "merged → $TRUNK @ $(git rev-parse --short HEAD)"
     fi
