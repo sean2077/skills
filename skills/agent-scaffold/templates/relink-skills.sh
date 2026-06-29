@@ -54,6 +54,11 @@ for d in "$src"/*/; do
   target="../../.agents/skills/$name"
   if [ -L "$vendor/$name" ]; then
     [ "$(readlink "$vendor/$name")" = "$target" ] || link_one "$name" "$target"
+  elif [ -d "$vendor/$name" ] && diff -rq "$vendor/$name" "$src/$name" >/dev/null 2>&1; then
+    # a prior Git-Bash degradation copy (byte-identical to the source) — converge it
+    # back to a real symlink now that linking works. A genuine vendor-native dir has
+    # different contents and falls through to the skip branch below, untouched.
+    rm -rf "${vendor:?}/$name"; link_one "$name" "$target"
   elif [ -e "$vendor/$name" ]; then
     echo "relink: skip $vendor/$name — exists and is not a symlink (vendor-native skill?)" >&2
   else
