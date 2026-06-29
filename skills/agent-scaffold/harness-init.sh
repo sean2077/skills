@@ -174,8 +174,8 @@ ensure_agents_md() {
   awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$TPL/AGENTS.root.md" > "$block"
   # Retrofit a project whose contract already lives in a REAL CLAUDE.md (no AGENTS.md
   # yet): adopt that prose as the AGENTS.md SSOT; CLAUDE.md becomes a symlink below.
-  if [[ ! -e "$agents" && -f "$cm" && ! -L "$cm" ]]; then
-    cp "$cm" "$agents"; CLAUDE_MD_MIGRATED=1
+  if [[ "$migrated" == 1 && ! -e "$agents" ]]; then
+    cp "$cm" "$agents"
     ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
   fi
   if [[ ! -e "$agents" ]]; then
@@ -220,7 +220,7 @@ ensure_claude_md_symlink() {
   #   - a prior copy-fallback still byte-identical to AGENTS.md (idempotent re-run).
   local retire=0
   if [[ ! -e "$cm" ]]; then retire=1
-  elif [[ -f "$cm" && "${CLAUDE_MD_MIGRATED:-0}" == 1 ]]; then retire=1
+  elif [[ -f "$cm" && "$migrated" == 1 ]]; then retire=1
   elif [[ -f "$cm" && -f "$agents" ]] && cmp -s "$cm" "$agents"; then retire=1
   fi
   if [[ "$retire" != 1 ]]; then
