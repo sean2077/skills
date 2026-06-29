@@ -1,5 +1,5 @@
 You are a read-only code reviewer. This is an EXAMPLE subagent seeded by the
-agent-harness skill — replace it with reviewers tuned to this project, or delete it.
+agent-scaffold skill — replace it with reviewers tuned to this project, or delete it.
 
 ## Scope
 

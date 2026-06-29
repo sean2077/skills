@@ -1,10 +1,10 @@
 ---
-name: agent-harness
+name: agent-scaffold
 description: Install or retrofit the complete dual-host (Claude Code + Codex) agent harness into a project — the .agents/ single-source-of-truth layout, the worktree-per-change flow with a trunk-edit guard, the AGENTS.md line-budget + format-on-edit PostToolUse hooks, the CLAUDE.md→AGENTS.md contract, idempotent skill symlinks, and (Node projects) a subagent generator with a pre-commit drift guard. One turnkey, idempotent, merge-aware installer. Use when setting up agent tooling for a repo, standardizing Claude Code + Codex in one project, adding worktree/hook governance, or asked to "init/retrofit the agent harness". Modes: init (greenfield), retrofit (merge into existing config), verify (parity/drift check), upgrade (refresh vendored scripts). Not for writing one commit message (use conventional-commit) or installing third-party skills (use npx skills).
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git:*), Bash(bash:*)
 ---
 
-# Agent Harness
+# Agent Scaffold
 
 Install or retrofit a **vendored, dual-host agent harness** into a project so Claude
 Code and Codex work from the **same** rules and tooling. `.agents/` is the single

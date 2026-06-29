@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check-agent-harness.sh — quality gate for the agent-harness skill.
+# check-agent-scaffold.sh — quality gate for the agent-scaffold skill.
 #
 # Asserts the bundled scripts are syntactically valid and that the three hook
 # scripts keep the `tools/agent/hooks/` install-depth resolver — `proj` three
@@ -14,11 +14,11 @@ usage() { sed -n '2,10p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
 case "${1:-}" in -h | --help) usage 0 ;; esac
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-sk="$repo/skills/agent-harness"
+sk="$repo/skills/agent-scaffold"
 fails=0
 fail() { printf 'FAIL: %s\n' "$*"; fails=$((fails + 1)); }
 
-[ -d "$sk" ] || { echo "agent-harness skill not present — nothing to check"; exit 0; }
+[ -d "$sk" ] || { echo "agent-scaffold skill not present — nothing to check"; exit 0; }
 
 # 1. bash syntax on every shipped shell script
 for f in "$sk/harness-init.sh" "$sk"/templates/*.sh; do
@@ -47,8 +47,8 @@ for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.mjs; do
 done
 
 if [ "$fails" -eq 0 ]; then
-  echo "OK: agent-harness checks passed"
+  echo "OK: agent-scaffold checks passed"
   exit 0
 fi
-echo "FAIL: $fails agent-harness check(s) failed"
+echo "FAIL: $fails agent-scaffold check(s) failed"
 exit 1

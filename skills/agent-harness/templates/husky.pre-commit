@@ -1,2 +1,0 @@
-# agent-harness: keep the dual-host subagent projections in sync with their source
-node tools/agent/generate-subagents.mjs --check
