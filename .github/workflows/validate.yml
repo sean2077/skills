@@ -14,3 +14,5 @@ jobs:
           python-version: "3.11"
       # Local equivalent: python3 scripts/validate_skills.py
       - run: python3 scripts/validate_skills.py
+      # Local equivalent: bash scripts/check-agent-harness.sh
+      - run: bash scripts/check-agent-harness.sh
