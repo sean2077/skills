@@ -47,7 +47,8 @@ check "Codex PreToolUse matcher"             jmatch "$S/.codex/hooks.json"     P
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
 
 echo "== idempotent re-run =="
-( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1
+( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
+check "retrofit re-run exits 0"              test "$rc" = 0
 check "PostToolUse stays 2 hooks (no dup)"   jcount "$S/.claude/settings.json" PostToolUse 2
 
 echo "== retrofit-merge preserves a pre-existing user hook =="
@@ -57,7 +58,8 @@ p = sys.argv[1]; d = json.load(open(p))
 d["hooks"]["PreToolUse"][0]["hooks"].append({"type": "command", "command": "user-custom.sh"})
 json.dump(d, open(p, "w"))
 PY
-( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1
+( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
+check "retrofit-merge exits 0"               test "$rc" = 0
 check "trunk_edit_guard still wired"         grep -q trunk_edit_guard "$S/.claude/settings.json"
 check "pre-existing user hook preserved"     grep -q user-custom "$S/.claude/settings.json"
 
