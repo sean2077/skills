@@ -23,3 +23,7 @@ jobs:
       - name: Shellcheck bundled scripts
         if: always()
         run: shellcheck $(find scripts skills -type f -name '*.sh')
+      # Local equivalent: bash scripts/e2e-agent-scaffold.sh  (installs the harness into a throwaway repo and asserts it works)
+      - name: E2E installer test (agent-scaffold)
+        if: always()
+        run: bash scripts/e2e-agent-scaffold.sh
