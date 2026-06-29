@@ -27,19 +27,22 @@ npx skills add sean2077/skills -a claude-code
 | [deepinit](skills/deepinit/) | Generate or refresh a tree of hierarchical AGENTS.md files — one per significant directory, each linked to its parent — so agents can navigate what each directory holds and how to work in it. Preserves hand-written sections on regeneration. | Documentation |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [tooling-conventions](skills/tooling-conventions/) | Govern a project's `tools/`/`scripts/` directory at scale: surface taxonomy, failure-domain aggregation, placement tree, script contract, and a reconciliation-checked surface manifest. Ships `manifest-check.sh`. | Shell, Governance |
+| [agent-harness](skills/agent-harness/) | Install or retrofit the full dual-host (Claude Code + Codex) agent harness into a project: `.agents/` single-source-of-truth layout, worktree-per-change flow + trunk-edit guard, AGENTS.md line-budget + format-on-edit hooks, `CLAUDE.md`→`AGENTS.md` contract, and (Node) a subagent generator + pre-commit drift guard. One idempotent, merge-aware installer (`harness-init.sh`); coexists with `npx skills` for third-party skills. | Shell, Node, Governance |
 
 ## Structure
 
 ```
 skills/
 └── <name>/
-    ├── SKILL.md           # Single source of truth for every installer
-    ├── reference.md       # Optional: on-demand detail kept out of the resident skill body
-    └── example.py         # Optional: runnable example for code-building skills
+    ├── SKILL.md            # Single source of truth for every installer
+    ├── reference.md        # Optional: on-demand detail kept out of the resident skill body
+    ├── example.py          # Optional: runnable example for code-building skills
+    └── *.sh / templates/   # Optional: scripts/templates a skill ships (agent-harness, git-worktree, tooling-conventions)
 scripts/
-└── validate_skills.py     # Catalog check: frontmatter, name↔dir, README coverage, placeholders
+├── validate_skills.py      # Catalog check: frontmatter, name↔dir, README coverage, placeholders
+└── check-agent-harness.sh  # agent-harness gate: script syntax + hook install-depth invariant
 .github/workflows/
-└── validate.yml           # Runs the validator on push / PR
+└── validate.yml            # Runs the checks on push / PR
 ```
 
 `npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
