@@ -88,7 +88,7 @@ files carry `<!-- Parent: ../AGENTS.md -->` and stay subordinate to the root.
 | `.claude/allow-trunk-edit`, `.claude/settings.local.json` | escape hatch / personal overrides | ❌ ignored |
 
 - **Add a skill**: edit `.agents/skills/` → run `./.agents/relink-skills.sh` → commit source + symlink.
-- **Add a subagent** (needs Node): edit `.agents/subagents/` → run `node tools/agent/generate-subagents.mjs` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
+- **Add a subagent** (needs python3): edit `.agents/subagents/` → run `python3 tools/agent/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
 - **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
 
 **Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a

@@ -64,7 +64,7 @@ log "target repo: $TARGET   mode: $MODE"
 
 TMPDIR_H="$(mktemp -d)"; trap 'rm -rf "$TMPDIR_H"' EXIT
 
-# ---- json merge (jq → node → paste-block) ----------------------------------
+# ---- json merge (jq → python3 → paste-block) -------------------------------
 # shellcheck disable=SC2016  # $a/$b/$g/$h below are jq variables, not shell expansions
 JQ_PROG='
 def unionByCommand($a; $b):
@@ -82,16 +82,34 @@ def mergeEvent($cur; $add):
 | .hooks.PostToolUse = mergeEvent((.hooks.PostToolUse // []); ($a.hooks.PostToolUse // []))
 '
 
-NODE_MERGE='
-const fs=require("fs");
-const ex=process.env.HARNESS_EXISTING, ad=process.env.HARNESS_ADD, out=process.env.HARNESS_OUT;
-const existing = (ex && fs.existsSync(ex)) ? JSON.parse(fs.readFileSync(ex,"utf8")) : {};
-const add = JSON.parse(fs.readFileSync(ad,"utf8"));
-existing.hooks = existing.hooks || {};
-const union=(a,b)=>{const o=[...(a||[])];for(const h of b){if(!o.some(x=>x.command===h.command))o.push(h);}return o;};
-const mergeEvent=(cur,addArr)=>{cur=cur||[];for(const g of addArr){const i=cur.findIndex(x=>x.matcher===g.matcher);if(i<0)cur.push(g);else cur[i].hooks=union(cur[i].hooks,g.hooks);}return cur;};
-for(const ev of ["PreToolUse","PostToolUse"]){if(add.hooks[ev])existing.hooks[ev]=mergeEvent(existing.hooks[ev],add.hooks[ev]);}
-fs.writeFileSync(out, JSON.stringify(existing,null,2)+"\n");
+PY_MERGE='
+import json, os
+ex = os.environ.get("HARNESS_EXISTING") or ""
+existing = json.load(open(ex)) if ex and os.path.exists(ex) else {}
+add = json.load(open(os.environ["HARNESS_ADD"]))
+existing.setdefault("hooks", {})
+def union(a, b):
+    out = list(a or [])
+    seen = {h.get("command") for h in out}
+    for h in b or []:
+        if h.get("command") not in seen:
+            out.append(h)
+            seen.add(h.get("command"))
+    return out
+def merge_event(cur, add_arr):
+    cur = cur or []
+    for g in add_arr:
+        i = next((k for k, x in enumerate(cur) if x.get("matcher") == g.get("matcher")), -1)
+        if i < 0:
+            cur.append(g)
+        else:
+            cur[i]["hooks"] = union(cur[i].get("hooks"), g.get("hooks"))
+    return cur
+for ev in ("PreToolUse", "PostToolUse"):
+    if add["hooks"].get(ev):
+        existing["hooks"][ev] = merge_event(existing["hooks"].get(ev), add["hooks"][ev])
+with open(os.environ["HARNESS_OUT"], "w") as f:
+    f.write(json.dumps(existing, indent=2, ensure_ascii=False) + "\n")
 '
 
 # merge_hooks <existing-or-empty> <addition-file> <out>  → 0 merged, 1 needs paste
@@ -101,8 +119,8 @@ merge_hooks() {
   if command -v jq >/dev/null 2>&1; then
     jq --slurpfile add "$add" "$JQ_PROG" "$existing" > "$out" && return 0
   fi
-  if command -v node >/dev/null 2>&1; then
-    HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" node -e "$NODE_MERGE" && return 0
+  if command -v python3 >/dev/null 2>&1; then
+    HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" python3 -c "$PY_MERGE" && return 0
   fi
   return 1
 }
@@ -126,7 +144,7 @@ write_hook_config() {  # <host-label> <existing-file> <addition-file>
       mkdir -p "$(dirname "$existing")"; mv "$out" "$existing"; ok "$label hooks wired → ${existing#"$TARGET"/}"
     fi
   else
-    warn "$label: no jq or node to merge JSON safely. Add this block to ${existing#"$TARGET"/} by hand:"
+    warn "$label: no jq or python3 to merge JSON safely. Add this block to ${existing#"$TARGET"/} by hand:"
     sed 's/^/    /' "$add" >&2
     HARNESS_MERGE_DEFERRED=1
   fi
@@ -199,19 +217,36 @@ ensure_claude_md_symlink() {
   fi
 }
 
-# ---- Node wiring: package.json scripts + .husky/pre-commit drift guard ------
-PKG_MERGE='
-const fs=require("fs"); const p=process.env.HARNESS_PKG;
-const j=JSON.parse(fs.readFileSync(p,"utf8"));
-j.scripts=j.scripts||{}; let changed=false;
-const want={"gen:subagents":"node tools/agent/generate-subagents.mjs","check:agents":"node tools/agent/generate-subagents.mjs --check"};
-for(const k in want){ if(!j.scripts[k]){ j.scripts[k]=want[k]; changed=true; } }
-if(process.env.HARNESS_PREPARE==="1" && !j.scripts.prepare){ j.scripts.prepare="husky"; changed=true; }
-if(changed) fs.writeFileSync(p, JSON.stringify(j,null,2)+"\n");
-process.stdout.write(changed?"updated":"unchanged");
+# ---- subagent wiring: pre-commit drift guard + (Node projects) package.json scripts ----
+# The generator itself is python3 (needs no package.json). package.json scripts are a
+# convenience added only when the project already has one; husky is npm-based, so its
+# path is likewise gated on package.json. Everything else just advises the one line to wire.
+GEN_CHECK='python3 tools/agent/generate-subagents.py --check'
+PKG_MERGE_PY='
+import json, os, sys
+p = os.environ["HARNESS_PKG"]
+with open(p) as f:
+    j = json.load(f)
+j.setdefault("scripts", {})
+changed = False
+want = {
+    "gen:subagents": "python3 tools/agent/generate-subagents.py",
+    "check:agents": "python3 tools/agent/generate-subagents.py --check",
+}
+for k, v in want.items():
+    if k not in j["scripts"]:
+        j["scripts"][k] = v
+        changed = True
+if os.environ.get("HARNESS_PREPARE") == "1" and "prepare" not in j["scripts"]:
+    j["scripts"]["prepare"] = "husky"
+    changed = True
+if changed:
+    with open(p, "w") as f:
+        f.write(json.dumps(j, indent=2, ensure_ascii=False) + "\n")
+sys.stdout.write("updated" if changed else "unchanged")
 '
 
-wire_node() {
+wire_subagents() {
   local pkg="$TARGET/package.json"
   local manager="" prepare=0
   # detect a non-husky hook manager
@@ -219,27 +254,32 @@ wire_node() {
   elif [[ -f "$TARGET/.pre-commit-config.yaml" ]]; then manager=pre-commit
   fi
 
-  if [[ "$HUSKY" == 1 && -z "$manager" ]]; then
-    # husky path: create/extend .husky/pre-commit with the drift-guard line
+  if [[ -n "$manager" ]]; then
+    warn "detected $manager — add '$GEN_CHECK' to your $manager config to guard subagent drift"
+  elif [[ "$HUSKY" == 1 && -f "$pkg" ]]; then
+    # husky path (npm-based, so it needs a package.json): create/extend .husky/pre-commit
     local hook="$TARGET/.husky/pre-commit"
     if [[ ! -f "$hook" ]]; then
       mkdir -p "$TARGET/.husky"
       cp "$TPL/husky.pre-commit" "$hook"
     else
-      ensure_line "$hook" "node tools/agent/generate-subagents.mjs --check"
+      ensure_line "$hook" "$GEN_CHECK"
     fi
     chmod +x "$hook" 2>/dev/null || true
     prepare=1
     ok ".husky/pre-commit drift guard wired"
     [[ -d "$TARGET/node_modules/husky" ]] || warn "husky not installed yet — activate the hook with: npm install -D husky && npm run prepare"
-  elif [[ -n "$manager" ]]; then
-    warn "detected $manager — add 'node tools/agent/generate-subagents.mjs --check' to your $manager config to guard subagent drift"
+  elif [[ "$HUSKY" == 1 ]]; then
+    warn "no package.json → husky unavailable; add '$GEN_CHECK' to your pre-commit / CI to guard subagent drift"
   fi
 
-  if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" node -e "$PKG_MERGE" >/dev/null; then
-    log "package.json: ensured gen:subagents / check:agents scripts"
-  else
-    warn "could not update package.json scripts"
+  # package.json convenience scripts — only when the project actually has a package.json
+  if [[ -f "$pkg" ]]; then
+    if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" python3 -c "$PKG_MERGE_PY" >/dev/null; then
+      log "package.json: ensured gen:subagents / check:agents scripts"
+    else
+      warn "could not update package.json scripts"
+    fi
   fi
 }
 
@@ -276,7 +316,7 @@ do_install() {
   ensure_line "$gi" ".claude/settings.local.json"
   ensure_line "$gi" ".claude/allow-trunk-edit"
 
-  # 5. example subagent (so the Node round-trip is demonstrable)
+  # 5. example subagent (so the source → projection round-trip is demonstrable)
   if [[ "$EXAMPLE_SUBAGENT" == 1 ]]; then
     if find "$TARGET/.agents/subagents" -mindepth 1 -maxdepth 1 -type d ! -name '_*' 2>/dev/null | grep -q .; then
       log "subagents already exist — skipping example seed"
@@ -292,22 +332,20 @@ do_install() {
   # 6. relink skills (idempotent)
   bash "$TARGET/.agents/relink-skills.sh" || warn "relink-skills.sh returned nonzero"
 
-  # 7. Node-gated: subagent generator + drift guard
-  if [[ -f "$TARGET/package.json" ]]; then
-    copy_script "$TPL/generate-subagents.mjs" "$TARGET/tools/agent/generate-subagents.mjs"
-    wire_node
-    if command -v node >/dev/null 2>&1; then
-      # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
-      # into the .agents/ SSOT (no-op when there are none / a source already exists), then it
-      # projects everything back. Importing first also stops the projection step from pruning a
-      # hand-authored agent as a sourceless "orphan".
-      node "$TARGET/tools/agent/generate-subagents.mjs" --import || warn "generate-subagents.mjs --import returned nonzero"
-    fi
+  # 7. python3-gated: subagent generator + drift guard
+  if command -v python3 >/dev/null 2>&1; then
+    copy_script "$TPL/generate-subagents.py" "$TARGET/tools/agent/generate-subagents.py"
+    wire_subagents
+    # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
+    # into the .agents/ SSOT (no-op when there are none / a source already exists), then it
+    # projects everything back. Importing first also stops the projection step from pruning a
+    # hand-authored agent as a sourceless "orphan".
+    python3 "$TARGET/tools/agent/generate-subagents.py" --import || warn "generate-subagents.py --import returned nonzero"
   else
-    log "no package.json → skipping subagent generator + drift guard (pure-bash harness installed)."
-    log "  to enable subagents later: add Node, then re-run 'agent-scaffold upgrade'."
+    log "no python3 → skipping subagent generator + drift guard (rest of the bash harness is installed)."
+    log "  to enable subagents later: install python3, then re-run 'agent-scaffold upgrade'."
     if find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
-      warn "hand-authored .claude/agents or .codex/agents found but project is non-Node — cannot adopt them into .agents/ SSOT. Add a package.json, then: agent-scaffold upgrade"
+      warn "hand-authored .claude/agents or .codex/agents found but python3 is unavailable — cannot adopt them into .agents/ SSOT. Install python3, then: agent-scaffold upgrade"
     fi
   fi
 
@@ -363,7 +401,7 @@ do_plan() {
   echo
 
   echo "Subagents:"
-  if [[ -f "$TARGET/package.json" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
     local -A seen=(); local any=0 af base
     for af in "$TARGET/.claude/agents"/*.md "$TARGET/.codex/agents"/*.toml; do
       [[ -e "$af" ]] || continue
@@ -378,9 +416,9 @@ do_plan() {
       printf '  %s no hand-authored subagents to adopt; generator projects .agents/subagents/\n' "$SKP"
     fi
   elif find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
-    printf '  %s hand-authored subagents found, but project is non-Node — add package.json to adopt them\n' "$MAN"
+    printf '  %s hand-authored subagents found, but python3 is unavailable — install python3 to adopt them\n' "$MAN"
   else
-    printf '  %s non-Node project — subagent generator skipped\n' "$SKP"
+    printf '  %s python3 unavailable — subagent generator skipped\n' "$SKP"
   fi
   echo
 
@@ -453,14 +491,14 @@ do_verify() {
   done
   [[ "$drift" == 0 ]] && printf '%s installed scripts match the skill templates\n' "$pass" || printf '%s %d script(s) drifted — run: agent-scaffold upgrade\n' "$info" "$drift"
 
-  if [[ -f "$TARGET/package.json" && -f "$TARGET/tools/agent/generate-subagents.mjs" ]]; then
-    if node "$TARGET/tools/agent/generate-subagents.mjs" --check >/dev/null 2>&1; then
+  if [[ -f "$TARGET/tools/agent/generate-subagents.py" ]] && command -v python3 >/dev/null 2>&1; then
+    if python3 "$TARGET/tools/agent/generate-subagents.py" --check >/dev/null 2>&1; then
       printf '%s subagent projections in sync\n' "$pass"
     else
-      printf '%s subagent projections drifted — run: npm run gen:subagents\n' "$fail"; fails=$((fails+1))
+      printf '%s subagent projections drifted — run: python3 tools/agent/generate-subagents.py\n' "$fail"; fails=$((fails+1))
     fi
   else
-    printf '%s no Node subagent generator (non-Node project or not installed)\n' "$info"
+    printf '%s no subagent generator (python3 unavailable or not installed)\n' "$info"
   fi
 
   echo

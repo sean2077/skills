@@ -9,7 +9,7 @@ Deep material for the `agent-scaffold` skill. Read on demand; `SKILL.md` is the 
 - [5. The `.agents/` SSOT model](#5-the-agents-ssot-model)
 - [6. AGENTS.md governance & budget](#6-agentsmd-governance--budget)
 - [7. Codex trust gate](#7-codex-trust-gate)
-- [8. Node vs non-Node degradation](#8-node-vs-non-node-degradation)
+- [8. Subagent generator (python3)](#8-subagent-generator-python3)
 - [9. format_on_edit genericization](#9-format_on_edit-genericization)
 - [10. Coexistence with `npx skills`](#10-coexistence-with-npx-skills)
 - [11. Troubleshooting](#11-troubleshooting)
@@ -31,7 +31,7 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 | `authority_doc_budget.sh` | `tools/agent/hooks/authority_doc_budget.sh` | PostToolUse AGENTS.md line-budget advisor |
 | `format_on_edit.sh` | `tools/agent/hooks/format_on_edit.sh` | PostToolUse formatter (default Prettier; env-overridable) |
 | `relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
-| `generate-subagents.mjs` | `tools/agent/generate-subagents.mjs` | subagent projection + `--check` drift mode (Node) |
+| `generate-subagents.py` | `tools/agent/generate-subagents.py` | subagent projection + `--check` drift mode (python3) |
 | `claude.settings.json` | merged into `.claude/settings.json` | CC hook block (merge source) |
 | `codex.hooks.json` | merged into `.codex/hooks.json` | Codex hook block (merge source) |
 | `codex.config.toml` | `.codex/config.toml` (create if missing) | trust-gate note; sets nothing else |
@@ -39,8 +39,8 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 | `AGENTS.nested.md` | `<dir>/AGENTS.md` (on request) | hierarchical, parent-linked nested template w/ `<!-- Parent -->` |
 | `agents-skills.README.md` | `.agents/skills/README.md` | authoring contract |
 | `agents-subagents.README.md` | `.agents/subagents/README.md` | authoring contract |
-| `subagent.metadata.json` + `subagent.instructions.md` | `.agents/subagents/code-reviewer/` (init) | deletable example, exercises the Node round-trip |
-| `husky.pre-commit` | merged into `.husky/pre-commit` (Node) | only the `--check` drift line is harness-owned |
+| `subagent.metadata.json` + `subagent.instructions.md` | `.agents/subagents/code-reviewer/` (init) | deletable example, exercises the source → projection round-trip |
+| `husky.pre-commit` | merged into `.husky/pre-commit` (npm/husky projects) | only the `--check` drift line is harness-owned |
 | `gitignore.snippet` | appended to `.gitignore` | `.worktrees/`, `.claude/settings.local.json`, `.claude/allow-trunk-edit` |
 
 The vendored scripts derive their own paths (git-common-dir / `$BASH_SOURCE`), so they are
@@ -121,13 +121,13 @@ proj="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/de
 ## 4. The JSON-merge algorithm
 
 Retrofitting must **add** our hook entries without clobbering existing ones or duplicating on
-re-run. The installer never string-munges JSON; it uses **jq → node → "paste this block"**:
+re-run. The installer never string-munges JSON; it uses **jq → python3 → "paste this block"**:
 
 1. **Missing config** → write the template verbatim.
 2. **Existing config** → for each event (`PreToolUse`/`PostToolUse`) and our matcher, ensure a
    matcher group exists; within it, **union hooks by `.command`** (exact string). Idempotent:
    re-running adds nothing because the command strings are identical.
-3. **Neither jq nor node** → print the block to paste by hand and flag the run as deferred
+3. **Neither jq nor python3** → print the block to paste by hand and flag the run as deferred
    (`HARNESS_MERGE_DEFERRED`), rather than risk corrupting the file.
 
 The jq core (`mergeEvent` matches groups by `.matcher`; `unionByCommand` dedups by `.command`):
@@ -159,16 +159,16 @@ the `<!-- agent-scaffold:start … end -->` markers.
 | **Subagents** | `.agents/subagents/<name>/{metadata.json,instructions.md}` | `.claude/agents/<name>.md` **generated** | `.codex/agents/<name>.toml` **generated** |
 
 - **Skills**: `relink-skills.sh` rebuilds the symlinks idempotently. Codex needs no symlinks.
-- **Subagents**: `generate-subagents.mjs` projects each source into both host formats (YAML
+- **Subagents**: `generate-subagents.py` projects each source into both host formats (YAML
   frontmatter + body for CC; TOML with `developer_instructions` for Codex). **Never hand-edit**
   the generated files — they carry a "do not edit" banner. `--check` exits 1 on drift; wire it
-  into pre-commit / CI (`npm run check:agents`). `--import` does the reverse — adopt hand-authored
-  host agents into sources ([§13](#13-retrofitting-an-in-flight-project-migration--adoption)).
-- **Drift guard**: on a Node project the installer adds `node tools/agent/generate-subagents.mjs --check`
-  to `.husky/pre-commit` and the `gen:subagents` / `check:agents` npm scripts. Activate husky with
-  `npm install -D husky && npm run prepare` if it is not installed yet. If the project uses a
-  different hook manager (lefthook / pre-commit), the installer leaves it alone and prints the one
-  line to wire in.
+  into pre-commit / CI (`python3 tools/agent/generate-subagents.py --check`). `--import` does the
+  reverse — adopt hand-authored host agents into sources ([§13](#13-retrofitting-an-in-flight-project-migration--adoption)).
+- **Drift guard**: the installer adds `python3 tools/agent/generate-subagents.py --check` to
+  `.husky/pre-commit` on a husky/npm project (alongside the `gen:subagents` / `check:agents` npm
+  scripts; activate husky with `npm install -D husky && npm run prepare`). If the project uses a
+  different hook manager (lefthook / pre-commit) or no `package.json` at all, the installer leaves it
+  alone and prints the one line to wire into your pre-commit / CI.
 
 ## 6. AGENTS.md governance & budget
 
@@ -231,15 +231,17 @@ silently skipped, so the harness looks half-installed on the Codex side. Trust o
 `verify` cannot read your `~/.codex/config.toml` reliably across machines, so it always prints
 the trust reminder rather than asserting trust.
 
-## 8. Node vs non-Node degradation
+## 8. Subagent generator (python3)
 
 | Capability | Needs | Without it |
 |---|---|---|
-| worktree flow, 3 hooks, `relink-skills.sh`, both host configs, `AGENTS.md` contract | bash (+ python3 **or** jq for hook JSON; jq **or** node for the config merge) | always installed |
-| subagent projection (`generate-subagents.mjs`) + `--check` drift guard + npm scripts | Node (`package.json` at root) | cleanly skipped; installer says how to enable |
+| worktree flow, 3 hooks, `relink-skills.sh`, both host configs, `AGENTS.md` contract | bash (+ jq **or** python3 for the hook-JSON merge) | always installed |
+| subagent projection (`generate-subagents.py`) + `--check` drift guard | python3 (no Node / `package.json`) | cleanly skipped; installer says how to enable |
+| `gen:subagents` / `check:agents` npm scripts + husky `--check` hook | a `package.json` (npm/husky) | other hook managers / CI: installer prints the one line to wire |
 
-To enable subagents later on a project that gained Node: add a `package.json`, then re-run
-`agent-scaffold upgrade`.
+`generate-subagents.py` is standard-library python3 — no Node, no `package.json`. Because the core
+already prefers python3 for the hook-JSON merge, subagents install wherever the rest of the harness
+does. To enable them on a host that lacked python3: install python3, then re-run `agent-scaffold upgrade`.
 
 ## 9. format_on_edit genericization
 
@@ -272,7 +274,7 @@ Two mechanisms live side by side, partitioned by **symlink (ours) vs real direct
 - **Hooks don't fire (Codex)** → the project isn't trusted ([§7](#7-codex-trust-gate)); or a matcher typo; or the script isn't executable (`chmod +x tools/agent/hooks/*.sh`).
 - **Hooks don't fire (Claude Code)** → confirm `.claude/settings.json` parses and the command path is right; restart the session after editing settings.
 - **Duplicate hook entries after a re-run** → shouldn't happen (dedup by `.command`); if you hand-edited a command string, the dedup key changed — align it with the template or run `upgrade`.
-- **`generate-subagents --check` fails in CI** → run `npm run gen:subagents` and commit the regenerated `.claude/agents/*` + `.codex/agents/*`.
+- **`generate-subagents --check` fails in CI** → run `python3 tools/agent/generate-subagents.py` and commit the regenerated `.claude/agents/*` + `.codex/agents/*`.
 - **`relink-skills.sh` skipped my skill** → a real directory of the same name exists in `.claude/skills/` (likely an `npx`-installed skill). Rename one ([§10](#10-coexistence-with-npx-skills)).
 - **`trunk_edit_guard` blocks everything** → you're on a trunk branch. Start a worktree: `tools/agent/worktree.sh new <name>`. Only with explicit authorization: `touch .claude/allow-trunk-edit` (2 h).
 - **Symlinks on Windows** → `CLAUDE.md → AGENTS.md` and the `.claude/skills/*` symlinks need symlink support (`git config core.symlinks true` + privilege). If creation fails, the installer warns; create a `CLAUDE.md` mirror by hand.
@@ -318,11 +320,13 @@ test ! -d .worktrees/demo && git log --oneline | grep -q "Merge branch 'chore/de
 printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | CLAUDE_PROJECT_DIR="$PWD" tools/agent/hooks/trunk_edit_guard.sh; echo "exit=$?"   # 2
 printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$PWD" tools/agent/hooks/trunk_edit_guard.sh; echo "exit=$?"  # 0
 
-# Node path: generator + drift guard + scripts
+# subagents: generator + drift guard (python3 — no package.json needed)
+bash "$H" upgrade
+python3 tools/agent/generate-subagents.py --check      # exit 0, in sync
+# opt-in npm convenience + husky hook on a Node project:
 echo '{"name":"scratch","version":"1.0.0"}' > package.json
 bash "$H" upgrade
-node tools/agent/generate-subagents.mjs --check        # exit 0, in sync
-grep -q 'generate-subagents.mjs --check' .husky/pre-commit
+grep -q 'generate-subagents.py --check' .husky/pre-commit
 jq -e '.scripts["check:agents"]' package.json
 
 # authority budget advises over-budget
@@ -347,11 +351,11 @@ bash "$H" plan | grep -q migrate                                             # p
 bash "$H" retrofit
 test -L CLAUDE.md && [ "$(readlink CLAUDE.md)" = AGENTS.md ] && grep -q rules AGENTS.md
 
-# adopt a hand-authored subagent into the SSOT (Node)
-echo '{"name":"s","version":"1.0.0"}' > package.json
+# adopt a hand-authored subagent into the SSOT (python3 — no package.json needed)
+mkdir -p .claude/agents
 printf -- '---\nname: rev\ndescription: hand-authored\ntools: Read\n---\n\nReview.\n' > .claude/agents/rev.md
 bash "$H" upgrade
-test -f .agents/subagents/rev/metadata.json && node tools/agent/generate-subagents.mjs --check
+test -f .agents/subagents/rev/metadata.json && python3 tools/agent/generate-subagents.py --check
 ```
 
 ## 13. Retrofitting an in-flight project (migration & adoption)
@@ -380,10 +384,10 @@ SSOT and `CLAUDE.md` as its symlink, so:
   both and tells you to merge `CLAUDE.md` into `AGENTS.md` by hand, then symlink.
 - **already a symlink** → left as-is (warned if it points somewhere other than `AGENTS.md`).
 
-### Adopting hand-authored subagents (`--import`, Node)
+### Adopting hand-authored subagents (`--import`, python3)
 
-A project may already have hand-written `.claude/agents/*.md` or `.codex/agents/*.toml`. On a Node
-project the installer runs `generate-subagents.mjs --import` before projecting:
+A project may already have hand-written `.claude/agents/*.md` or `.codex/agents/*.toml`. When python3
+is available the installer runs `generate-subagents.py --import` before projecting:
 
 1. For each host agent file with **no** `.agents/subagents/<name>/` source and **no** generated
    banner, it parses the frontmatter / TOML (name, description, tools/model, Codex knobs, body) and
@@ -394,5 +398,5 @@ project the installer runs `generate-subagents.mjs --import` before projecting:
 
 Adoption is idempotent (a name that already has a source is skipped) and **never destructive**: the
 projection step that finds a sourceless, banner-less file **keeps** it and tells you to `--import`
-it, rather than pruning it as an orphan. On a non-Node project the installer cannot parse agents, so
-it flags any hand-authored ones and points you at adding a `package.json` + `upgrade`.
+it, rather than pruning it as an orphan. Without python3 the installer cannot parse agents, so it
+flags any hand-authored ones and points you at installing python3 + `upgrade`.

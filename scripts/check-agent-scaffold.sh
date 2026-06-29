@@ -7,7 +7,7 @@
 # makes them dual-host-correct: Codex has no $CLAUDE_PROJECT_DIR, so a shallower
 # CC-only resolver would silently break the Codex side. Do not flatten it.
 #
-# Exit 0 clean, 1 on failure. No third-party deps (bash; node only if present).
+# Exit 0 clean, 1 on failure. No third-party deps (bash; python3 only if present).
 set -uo pipefail
 
 usage() { sed -n '2,10p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
@@ -26,9 +26,10 @@ for f in "$sk/harness-init.sh" "$sk"/templates/*.sh; do
   bash -n "$f" 2>/dev/null || fail "bash syntax error: ${f#"$repo"/}"
 done
 
-# 2. node syntax on the generator (when node is available)
-if command -v node >/dev/null 2>&1 && [ -f "$sk/templates/generate-subagents.mjs" ]; then
-  node --check "$sk/templates/generate-subagents.mjs" 2>/dev/null || fail "node syntax error: generate-subagents.mjs"
+# 2. python syntax on the generator (when python3 is available)
+if command -v python3 >/dev/null 2>&1 && [ -f "$sk/templates/generate-subagents.py" ]; then
+  python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$sk/templates/generate-subagents.py" 2>/dev/null \
+    || fail "python syntax error: generate-subagents.py"
 fi
 
 # 3. install-depth invariant on the three hooks (3 levels up + git fallback)
@@ -41,7 +42,7 @@ for h in trunk_edit_guard authority_doc_budget format_on_edit; do
 done
 
 # 4. shipped scripts are executable
-for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.mjs; do
+for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.py; do
   [ -f "$f" ] || continue
   [ -x "$f" ] || fail "not executable (commit the +x bit): ${f#"$repo"/}"
 done

@@ -8,7 +8,7 @@
 # Mirrors skills/agent-scaffold/reference.md section 12. All writes stay in a mktemp dir.
 #
 # Usage: bash scripts/e2e-agent-scaffold.sh [-h|--help]
-# Exit 0 = all assertions passed, 1 = a failure. Needs git + python3 (node optional).
+# Exit 0 = all assertions passed, 1 = a failure. Needs git + python3.
 set -uo pipefail
 
 usage() { sed -n '2,11p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
@@ -111,29 +111,25 @@ check "AGENTS.md keeps the original prose"    grep -q "Hand-written agent rules 
 check "AGENTS.md gains the harness block"     grep -qF "<!-- agent-scaffold:start" "$M/AGENTS.md"
 check "CLAUDE.md is now a symlink to AGENTS.md" test "$(readlink "$M/CLAUDE.md")" = AGENTS.md
 
-echo "== retrofit adopts hand-authored subagents into the SSOT (Node) =="
-if command -v node >/dev/null 2>&1; then
-  A="$work/adopt"; mkdir -p "$A/.claude/agents"
-  git -C "$A" init -q -b main
-  git -C "$A" config user.email t@t.t; git -C "$A" config user.name tester
-  git -C "$A" commit -q --allow-empty -m init
-  printf '{"name":"x","version":"1.0.0"}\n' > "$A/package.json"
-  printf -- '---\nname: custom-rev\ndescription: hand-authored reviewer\ntools: Read, Grep\n---\n\nReview the diff and report.\n' > "$A/.claude/agents/custom-rev.md"
-  git -C "$A" add -A && git -C "$A" commit -q -m "hand-authored subagent"
-  ( cd "$A" && bash "$H" retrofit --no-husky ) >/dev/null 2>&1; rc=$?
-  check "retrofit exits 0"                       test "$rc" = 0
-  check "hand-authored agent adopted into SSOT"  test -f "$A/.agents/subagents/custom-rev/metadata.json"
-  check "adopted metadata keeps the tools"       grep -q Read "$A/.agents/subagents/custom-rev/metadata.json"
-  check "CC projection regenerated with banner"  grep -q "do not edit by hand" "$A/.claude/agents/custom-rev.md"
-  check "Codex projection generated"             test -f "$A/.codex/agents/custom-rev.toml"
-  ( cd "$A" && node tools/agent/generate-subagents.mjs --check ) >/dev/null 2>&1; rc=$?
-  check "subagent projections in sync after adopt" test "$rc" = 0
-  printf -- '---\nname: ghost\ndescription: no source\n---\n\nbody\n' > "$A/.claude/agents/ghost.md"
-  ( cd "$A" && node tools/agent/generate-subagents.mjs ) >/dev/null 2>&1
-  check "sourceless hand-authored projection not pruned" test -f "$A/.claude/agents/ghost.md"
-else
-  printf '  \033[1;33mSKIP\033[0m subagent adoption (node not available)\n'
-fi
+echo "== retrofit adopts hand-authored subagents into the SSOT (python3, no package.json) =="
+A="$work/adopt"; mkdir -p "$A/.claude/agents"
+git -C "$A" init -q -b main
+git -C "$A" config user.email t@t.t; git -C "$A" config user.name tester
+git -C "$A" commit -q --allow-empty -m init
+printf -- '---\nname: custom-rev\ndescription: hand-authored reviewer\ntools: Read, Grep\n---\n\nReview the diff and report.\n' > "$A/.claude/agents/custom-rev.md"
+git -C "$A" add -A && git -C "$A" commit -q -m "hand-authored subagent"
+( cd "$A" && bash "$H" retrofit --no-husky ) >/dev/null 2>&1; rc=$?
+check "retrofit exits 0"                          test "$rc" = 0
+check "adopted without creating a package.json"   test ! -f "$A/package.json"
+check "hand-authored agent adopted into SSOT"     test -f "$A/.agents/subagents/custom-rev/metadata.json"
+check "adopted metadata keeps the tools"          grep -q Read "$A/.agents/subagents/custom-rev/metadata.json"
+check "CC projection regenerated with banner"     grep -q "do not edit by hand" "$A/.claude/agents/custom-rev.md"
+check "Codex projection generated"                test -f "$A/.codex/agents/custom-rev.toml"
+( cd "$A" && python3 tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "subagent projections in sync after adopt"  test "$rc" = 0
+printf -- '---\nname: ghost\ndescription: no source\n---\n\nbody\n' > "$A/.claude/agents/ghost.md"
+( cd "$A" && python3 tools/agent/generate-subagents.py ) >/dev/null 2>&1
+check "sourceless hand-authored projection not pruned" test -f "$A/.claude/agents/ghost.md"
 
 echo
 if [ "$fails" -eq 0 ]; then echo "OK: agent-scaffold e2e passed"; exit 0; fi
