@@ -44,4 +44,4 @@ node tools/agent/generate-subagents.mjs --check   # exit 1 on drift
 > TOML reader. The generated **Codex** projection is still valid TOML.
 
 > Requires Node (the generator + the `--check` drift guard). On a project without `package.json`
-> the agent-harness skill skips subagent projection; add Node and re-run `agent-harness upgrade` to enable it.
+> the agent-scaffold skill skips subagent projection; add Node and re-run `agent-scaffold upgrade` to enable it.

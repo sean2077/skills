@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # trunk_edit_guard.sh — shared PreToolUse guard for the worktree-per-change flow.
 #
-# Installed by the agent-harness skill. Enforces the hard invariant: never edit
+# Installed by the agent-scaffold skill. Enforces the hard invariant: never edit
 # tracked files in a trunk worktree (main / master / release/* / maintenance/*).
 # Blocks the wrong move and points at the right one (tools/agent/worktree.sh
 # new <name>).

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # worktree.sh — one-command worktree-per-change lifecycle, the mechanical half
-# of trunk_edit_guard.sh. Installed into a project by the agent-harness skill.
+# of trunk_edit_guard.sh. Installed into a project by the agent-scaffold skill.
 #
 # Discipline (why this exists): never edit a trunk worktree (main / release/*)
 # directly. Every change starts in its own .worktrees/<name> branch cut from the

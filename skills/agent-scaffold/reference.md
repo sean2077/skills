@@ -1,6 +1,6 @@
-# agent-harness — reference
+# agent-scaffold — reference
 
-Deep material for the `agent-harness` skill. Read on demand; `SKILL.md` is the lean router.
+Deep material for the `agent-scaffold` skill. Read on demand; `SKILL.md` is the lean router.
 
 - [1. Bundled files: provenance + landing](#1-bundled-files-provenance--landing)
 - [2. Hook semantics](#2-hook-semantics)
@@ -34,7 +34,7 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 | `claude.settings.json` | merged into `.claude/settings.json` | CC hook block (merge source) |
 | `codex.hooks.json` | merged into `.codex/hooks.json` | Codex hook block (merge source) |
 | `codex.config.toml` | `.codex/config.toml` (create if missing) | trust-gate note; sets nothing else |
-| `AGENTS.root.md` | `AGENTS.md` (init) / harness block injected (retrofit) | the `<!-- agent-harness:start … end -->` block is the reusable contract |
+| `AGENTS.root.md` | `AGENTS.md` (init) / harness block injected (retrofit) | the `<!-- agent-scaffold:start … end -->` block is the reusable contract |
 | `AGENTS.nested.md` | `<dir>/AGENTS.md` (on request) | hierarchical, parent-linked nested template w/ `<!-- Parent -->` |
 | `agents-skills.README.md` | `.agents/skills/README.md` | authoring contract |
 | `agents-subagents.README.md` | `.agents/subagents/README.md` | authoring contract |
@@ -47,7 +47,7 @@ layout-independent once they land at the paths above. **They are intentionally t
 `tools/agent/` install depth** — e.g. `trunk_edit_guard.sh` resolves `proj` three levels up
 (`tools/agent/hooks/` → repo root) plus a git-toplevel fallback for Codex. Do not "simplify" that
 resolver to a shallower path: the git-toplevel fallback is what makes the hooks work under Codex
-(which has no `$CLAUDE_PROJECT_DIR`), and `scripts/check-agent-harness.sh` guards this invariant.
+(which has no `$CLAUDE_PROJECT_DIR`), and `scripts/check-agent-scaffold.sh` guards this invariant.
 
 ## 2. Hook semantics
 
@@ -146,7 +146,7 @@ optional `prepare: husky`) are merged the same way — added only when absent.
 
 **Idempotency keys:** hooks by exact `.command` + `.matcher`; `.gitignore`/`.husky/pre-commit`
 lines by `grep -qxF`; `package.json` scripts by key presence; the `AGENTS.md` harness section by
-the `<!-- agent-harness:start … end -->` markers.
+the `<!-- agent-scaffold:start … end -->` markers.
 
 ## 5. The `.agents/` SSOT model
 
@@ -183,7 +183,7 @@ block:
 - `AGENTS.md` with the markers → replace **only** the block, preserving surrounding prose.
 - `AGENTS.md` without the markers → append the block (review placement).
 
-Keep project prose **outside** the `<!-- agent-harness:start … end -->` markers; `upgrade`
+Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade`
 refreshes everything between them.
 
 ### Generating the nested AGENTS.md tree
@@ -233,7 +233,7 @@ the trust reminder rather than asserting trust.
 | subagent projection (`generate-subagents.mjs`) + `--check` drift guard + npm scripts | Node (`package.json` at root) | cleanly skipped; installer says how to enable |
 
 To enable subagents later on a project that gained Node: add a `package.json`, then re-run
-`agent-harness upgrade`.
+`agent-scaffold upgrade`.
 
 ## 9. format_on_edit genericization
 

@@ -152,14 +152,14 @@ ensure_line() {  # <file> <line>
 # ---- AGENTS.md (init writes template; retrofit injects the marked block) ----
 ensure_agents_md() {
   local agents="$TARGET/AGENTS.md" block="$TMPDIR_H/block.md"
-  awk '/<!-- agent-harness:start/{f=1} f{print} /<!-- agent-harness:end/{f=0}' "$TPL/AGENTS.root.md" > "$block"
+  awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$TPL/AGENTS.root.md" > "$block"
   if [[ ! -e "$agents" ]]; then
     cp "$TPL/AGENTS.root.md" "$agents"; ok "AGENTS.md created from template (fill the TODO sections)"
-  elif grep -qF '<!-- agent-harness:start' "$agents"; then
+  elif grep -qF '<!-- agent-scaffold:start' "$agents"; then
     awk -v bf="$block" '
       BEGIN { while ((getline l < bf) > 0) blk = blk l "\n" }
-      /<!-- agent-harness:start/ { printf "%s", blk; skip=1; next }
-      skip && /<!-- agent-harness:end/ { skip=0; next }
+      /<!-- agent-scaffold:start/ { printf "%s", blk; skip=1; next }
+      skip && /<!-- agent-scaffold:end/ { skip=0; next }
       !skip { print }
     ' "$agents" > "$agents.tmp" && mv "$agents.tmp" "$agents"
     log "AGENTS.md harness block refreshed (project prose preserved)"
@@ -286,7 +286,7 @@ do_install() {
     fi
   else
     log "no package.json → skipping subagent generator + drift guard (pure-bash harness installed)."
-    log "  to enable subagents later: add Node, then re-run 'agent-harness upgrade'."
+    log "  to enable subagents later: add Node, then re-run 'agent-scaffold upgrade'."
   fi
 
   # 8. closing notes
@@ -330,7 +330,7 @@ do_verify() {
     printf '%s CLAUDE.md is not a symlink to AGENTS.md\n' "$fail"; fails=$((fails+1))
   fi
 
-  if [[ -f "$TARGET/AGENTS.md" ]] && grep -qF '<!-- agent-harness:start' "$TARGET/AGENTS.md"; then
+  if [[ -f "$TARGET/AGENTS.md" ]] && grep -qF '<!-- agent-scaffold:start' "$TARGET/AGENTS.md"; then
     printf '%s AGENTS.md carries the harness block\n' "$pass"
   else
     printf '%s AGENTS.md missing the harness block\n' "$fail"; fails=$((fails+1))
@@ -346,7 +346,7 @@ do_verify() {
     local t="${pair%%:*}" inst="$TARGET/${pair##*:}"
     [[ -f "$inst" ]] && ! cmp -s "$TPL/$t" "$inst" && { printf '%s drift: %s differs from the skill template\n' "$info" "${pair##*:}"; drift=$((drift+1)); }
   done
-  [[ "$drift" == 0 ]] && printf '%s installed scripts match the skill templates\n' "$pass" || printf '%s %d script(s) drifted — run: agent-harness upgrade\n' "$info" "$drift"
+  [[ "$drift" == 0 ]] && printf '%s installed scripts match the skill templates\n' "$pass" || printf '%s %d script(s) drifted — run: agent-scaffold upgrade\n' "$info" "$drift"
 
   if [[ -f "$TARGET/package.json" && -f "$TARGET/tools/agent/generate-subagents.mjs" ]]; then
     if node "$TARGET/tools/agent/generate-subagents.mjs" --check >/dev/null 2>&1; then

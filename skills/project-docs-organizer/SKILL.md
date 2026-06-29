@@ -20,7 +20,7 @@ Do not use this skill for:
 
 - application source layout (that is normal architecture)
 - governing the `scripts/`/`tools/` directory itself or a script surface manifest (use `tooling-conventions`) — this skill organizes *docs about* tools, not the tools
-- the `AGENTS.md`/`CLAUDE.md` agent-contract tree or its line budget (use `agent-harness`)
+- the `AGENTS.md`/`CLAUDE.md` agent-contract tree or its line budget (use `agent-scaffold`)
 - a single throwaway note that needs no place in the documentation system
 
 ## Core Rules

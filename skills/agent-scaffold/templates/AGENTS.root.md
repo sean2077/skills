@@ -17,7 +17,7 @@
 <!-- TODO: the load-bearing modules and how they relate. Keep it an INDEX that links
      into docs/ for depth, not a full tour. -->
 
-<!-- agent-harness:start — managed by the agent-harness skill. Edit project prose OUTSIDE these markers; `agent-harness upgrade` refreshes this block. -->
+<!-- agent-scaffold:start — managed by the agent-scaffold skill. Edit project prose OUTSIDE these markers; `agent-scaffold upgrade` refreshes this block. -->
 ## Agent Harness (Claude Code + Codex)
 
 This repo carries a vendored, dual-host agent harness. `.agents/` is the single
@@ -67,4 +67,4 @@ files carry `<!-- Parent: ../AGENTS.md -->` and stay subordinate to the root.
 **trusted** project; until trusted it is silently skipped. Trust once: run `codex`
 here and accept, or add `[projects."<repo abs path>"] trust_level = "trusted"` to
 `~/.codex/config.toml`.
-<!-- agent-harness:end -->
+<!-- agent-scaffold:end -->
