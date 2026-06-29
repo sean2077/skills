@@ -1,0 +1,6 @@
+# Shell + Python tooling must stay LF: these run under bash (incl. Windows/Git Bash,
+# where CRLF makes bash fail with `$'\r': command not found`) and the skill templates
+# are copied verbatim into consumer projects, so a CRLF commit would ship CRLF scripts.
+*.sh text eol=lf
+*.py text eol=lf
+/skills/agent-scaffold/templates/husky.pre-commit text eol=lf

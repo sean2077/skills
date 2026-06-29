@@ -96,6 +96,14 @@ Both hosts call the **same** hook scripts under `tools/agent/hooks/`; only the i
 
 The hook scripts resolve their own project root either way, so nothing host-specific leaks into them. **Codex only loads project-level `.codex/` for a TRUSTED project** — the installer prints how to trust it. Full snippets + rationale: `reference.md`.
 
+## Platform support
+
+macOS, Linux, and **Windows (Git Bash only)**. Bundled scripts stay POSIX-bash + GNU-coreutils and
+**LF-only** (the installer writes `.gitattributes` rules; CRLF breaks bash). Symlink creation
+degrades **loudly, never silently** — on Git Bash without symlink support `ln -s` copies instead of
+linking, so the installer detects it, warns, and leaves a drift-prone copy to fix once symlinks work.
+Windows specifics (enabling symlinks; `python3` for hooks/subagents): `reference.md` §11.
+
 ## When subagents are available
 
 The bash core (worktree flow, the 3 hooks, `relink-skills.sh`, both host configs, the `AGENTS.md`

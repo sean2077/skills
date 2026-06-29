@@ -47,6 +47,13 @@ for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.py; do
   [ -x "$f" ] || fail "not executable (commit the +x bit): ${f#"$repo"/}"
 done
 
+# 4b. shipped scripts must be LF-only — CRLF breaks bash under Windows/Git Bash, and
+#     these are copied verbatim into consumer projects (cross-platform design goal).
+for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.py "$sk/templates/husky.pre-commit"; do
+  [ -f "$f" ] || continue
+  [ -n "$(tr -dc '\015' < "$f")" ] && fail "CRLF line endings — must be LF (Windows/Git Bash): ${f#"$repo"/}"
+done
+
 # 5. dogfood drift: if this repo installed the harness (tools/agent/ exists), the
 #    installed copies must stay byte-identical to the skill templates they came from.
 if [ -d "$repo/tools/agent" ]; then

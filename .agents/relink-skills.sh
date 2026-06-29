@@ -23,7 +23,18 @@ vendor=".claude/skills"
 [ -d "$src" ] || { echo "relink: no $src here" >&2; exit 1; }
 mkdir -p "$vendor"
 
-made=0 pruned=0
+made=0 pruned=0 copied=0
+# Make one skill symlink, detecting the Git-Bash-on-Windows case where `ln -s`
+# silently COPIES instead of linking (the copy then drifts from the source).
+link_one() {  # <name> <target>
+  ln -sfn "$2" "$vendor/$1" 2>/dev/null || true
+  if [ -L "$vendor/$1" ]; then
+    made=$((made + 1))
+  else
+    copied=$((copied + 1))
+    echo "relink: WARN $vendor/$1 is a COPY, not a symlink — it will drift from $src/$1. Windows/Git Bash: git config core.symlinks true; export MSYS=winsymlinks:nativestrict; + Developer Mode, then re-run." >&2
+  fi
+}
 # prune symlinks whose source skill no longer exists (and any _* leftovers)
 for link in "$vendor"/*; do
   [ -L "$link" ] || continue
@@ -42,13 +53,15 @@ for d in "$src"/*/; do
   esac
   target="../../.agents/skills/$name"
   if [ -L "$vendor/$name" ]; then
-    [ "$(readlink "$vendor/$name")" = "$target" ] || { ln -sfn "$target" "$vendor/$name"; made=$((made + 1)); }
+    [ "$(readlink "$vendor/$name")" = "$target" ] || link_one "$name" "$target"
   elif [ -e "$vendor/$name" ]; then
     echo "relink: skip $vendor/$name — exists and is not a symlink (vendor-native skill?)" >&2
   else
-    ln -s "$target" "$vendor/$name"; made=$((made + 1))
+    link_one "$name" "$target"
   fi
 done
 
 skill_count="$(find "$src" -mindepth 1 -maxdepth 1 -type d ! -name '_*' | wc -l | tr -d ' ')"
-echo "relink: ${skill_count} skills · ${made} link(s) (re)created · ${pruned} stale pruned"
+summary="relink: ${skill_count} skills · ${made} link(s) (re)created · ${pruned} stale pruned"
+[ "$copied" -gt 0 ] && summary="$summary · ${copied} copied (no symlink support — see warnings)"
+echo "$summary"

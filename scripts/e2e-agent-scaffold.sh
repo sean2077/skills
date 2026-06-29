@@ -45,6 +45,7 @@ check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" 
 check "CC PreToolUse matcher"                jmatch "$S/.claude/settings.json" PreToolUse "Edit|MultiEdit|Write|NotebookEdit"
 check "Codex PreToolUse matcher"             jmatch "$S/.codex/hooks.json"     PreToolUse "Edit|Write|apply_patch"
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
+check ".gitattributes pins LF on scripts"    grep -qF "tools/agent/*.sh text eol=lf" "$S/.gitattributes"
 
 echo "== idempotent re-run =="
 ( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?

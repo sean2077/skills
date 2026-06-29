@@ -2,6 +2,10 @@
 
 Deep material for the `agent-scaffold` skill. Read on demand; `SKILL.md` is the lean router.
 
+> **Platform target:** macOS / Linux / Windows (**Git Bash only**). Bundled scripts stay
+> POSIX-bash + GNU-coreutils and **LF-only**; symlink creation degrades *loudly* (never silently)
+> when the OS lacks symlink support. Windows/Git Bash specifics: [§11](#11-troubleshooting).
+
 - [1. Bundled files: provenance + landing](#1-bundled-files-provenance--landing)
 - [2. Hook semantics](#2-hook-semantics)
 - [3. Dual-host wiring (exact snippets)](#3-dual-host-wiring-exact-snippets)
@@ -277,7 +281,7 @@ Two mechanisms live side by side, partitioned by **symlink (ours) vs real direct
 - **`generate-subagents --check` fails in CI** → run `python3 tools/agent/generate-subagents.py` and commit the regenerated `.claude/agents/*` + `.codex/agents/*`.
 - **`relink-skills.sh` skipped my skill** → a real directory of the same name exists in `.claude/skills/` (likely an `npx`-installed skill). Rename one ([§10](#10-coexistence-with-npx-skills)).
 - **`trunk_edit_guard` blocks everything** → you're on a trunk branch. Start a worktree: `tools/agent/worktree.sh new <name>`. Only with explicit authorization: `touch .claude/allow-trunk-edit` (2 h).
-- **Symlinks on Windows** → `CLAUDE.md → AGENTS.md` and the `.claude/skills/*` symlinks need symlink support (`git config core.symlinks true` + privilege). If creation fails, the installer warns; create a `CLAUDE.md` mirror by hand.
+- **Windows / Git Bash** (the only supported Windows surface) → two OS-level needs. **(1) Symlinks:** `CLAUDE.md → AGENTS.md` and `.claude/skills/*` need real symlinks — enable with `git config core.symlinks true`, `export MSYS=winsymlinks:nativestrict`, and Developer Mode (or admin). Without them `ln -s` *silently copies* instead of linking; the installer/relinker **detect this, warn loudly, and leave a drift-prone copy** you can fix by re-running once symlinks work (it never degrades silently). **(2) LF endings:** the installer writes `.gitattributes` rules pinning the vendored `*.sh`/`*.py` to LF (CRLF breaks bash); a CI check guards it. **python3** (not bundled with Git Bash) is needed for subagents and for the hooks' JSON parsing — without it the trunk guard fails open and subagents are skipped; install it to enable them.
 
 ## 12. End-to-end test recipe
 
