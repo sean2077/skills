@@ -51,6 +51,12 @@ scripts/
 
 `npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
 
+## Maintainer Notes
+
+- Treat the real `npx skills` CLI as the source of truth for install behavior. After changing `SKILL.md` frontmatter, skill names, or catalog layout, smoke-test discovery with `npx skills add . -l`; after pushing a discovery fix, smoke-test the remote path too.
+- Keep frontmatter valid for a strict YAML parser. Plain scalars containing `: `, such as `Modes: init`, must be quoted or `npx skills` silently drops that skill during discovery.
+- Local subdirectory installs need an explicit path prefix: use `npx skills add ./skills/agent-scaffold`, not `npx skills add skills/agent-scaffold`, because the latter is parsed as the GitHub repository `skills/agent-scaffold`.
+
 ## License
 
 MIT
