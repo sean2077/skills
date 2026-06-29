@@ -13,7 +13,6 @@
 #   upgrade    retrofit + re-copy the vendored scripts over the installed ones
 #
 # Flags:
-#   --trunk <branch>        trunk branch name for the worktree flow (default: main)
 #   --no-format-hook        do not wire format_on_edit.sh (still copied for later)
 #   --no-husky              do not set up the .husky/pre-commit drift guard
 #   --no-example-subagent   do not seed the example code-reviewer subagent (init)
@@ -32,18 +31,17 @@ log()  { printf '%s[harness]%s %s\n' "$c_blue"   "$c_off" "$*"; }
 ok()   { printf '%s[harness]%s %s\n' "$c_green"  "$c_off" "$*"; }
 warn() { printf '%s[harness]%s %s\n' "$c_yellow" "$c_off" "$*" >&2; }
 die()  { printf '%s[harness] ABORT:%s %s\n' "$c_red" "$c_off" "$*" >&2; exit 2; }
-usage() { sed -n '2,38p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
+usage() { sed -n '2,23p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
 
 # ---- args ------------------------------------------------------------------
 [[ $# -ge 1 ]] || usage 1
 MODE="$1"; shift
 case "$MODE" in init|retrofit|verify|upgrade) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|verify|upgrade)";; esac
 
-TRUNK="main"; FORMAT_HOOK=1; HUSKY=1; FORCE_SCRIPTS=0
+FORMAT_HOOK=1; HUSKY=1; FORCE_SCRIPTS=0
 EXAMPLE_SUBAGENT="auto"   # auto → on for init, off otherwise
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --trunk) TRUNK="$2"; shift ;;
     --no-format-hook) FORMAT_HOOK=0 ;;
     --no-husky) HUSKY=0 ;;
     --no-example-subagent) EXAMPLE_SUBAGENT=0 ;;
