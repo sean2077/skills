@@ -36,8 +36,9 @@ skills/
     ├── reference.md        # Optional: on-demand detail kept out of the resident skill body
     └── *.sh / templates/   # Optional: scripts/templates a skill ships (agent-scaffold, tooling-conventions)
 scripts/
-├── validate_skills.py      # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
-└── check-agent-scaffold.sh  # agent-scaffold gate: script syntax + hook install-depth invariant
+├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
+├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
+└── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 .github/workflows/
 └── validate.yml            # Runs the checks on push / PR
 ```

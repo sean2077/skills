@@ -14,11 +14,12 @@ Agent-Skills hosts). It ships 5 skills: `conventional-commit`, `semver-release`,
 
 ## Development Commands
 
-Two gates must stay green — CI runs both on push/PR (`.github/workflows/validate.yml`):
+The CI gates must stay green — `.github/workflows/validate.yml` runs them on push/PR:
 
 ```bash
 python3 scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
-bash scripts/check-agent-scaffold.sh    # agent-scaffold script syntax + hook install-depth invariant
+bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
+bash scripts/e2e-agent-scaffold.sh      # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell script stays clean
 ```
 
@@ -27,10 +28,10 @@ shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell s
 - `skills/<name>/SKILL.md` — the **distributable** catalog (what `npx skills` consumers install);
   optional `reference.md` holds on-demand depth, plus any scripts/templates a skill ships. Kept lean
   (router + invariants + skeleton; depth sinks to `reference.md`).
-- `scripts/` — the two quality gates above; `.github/workflows/validate.yml` runs them in CI.
+- `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI.
 - **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product);
   `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
-- Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); both gates
+- Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
   green before any merge back to `main`.
 
 <!-- agent-scaffold:start — managed by the agent-scaffold skill. Edit project prose OUTSIDE these markers; `agent-scaffold upgrade` refreshes this block. -->
