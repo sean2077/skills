@@ -1,11 +1,27 @@
 ---
 name: project-docs-organizer
 description: Build, restructure, or clean up project documentation systems. Use when the user asks to create or organize README files, docs/ or doc/ trees, onboarding docs, maintainer docs, ADRs, specs, plans, tooling docs, standards, runbooks, archives, or documentation navigation for a software project.
+allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git:*)
 ---
 
 # Project Docs Organizer
 
 Create or reorganize a project's documentation system so readers can quickly find the right entry point, maintainers can evolve the docs safely, and stale material does not keep competing with current guidance.
+
+## When To Use
+
+Use this skill when the user wants to:
+
+- create or restructure a project's `README`, `docs/`, or `doc/` tree
+- design onboarding, maintainer, ADR, spec, plan, runbook, or archive zones
+- clean up documentation sprawl, or fix doc navigation and cross-links
+
+Do not use this skill for:
+
+- application source layout (that is normal architecture)
+- governing the `scripts/`/`tools/` directory itself or a script surface manifest (use `tooling-conventions`) — this skill organizes *docs about* tools, not the tools
+- the `AGENTS.md`/`CLAUDE.md` agent-contract tree or its line budget (use `agent-harness`)
+- a single throwaway note that needs no place in the documentation system
 
 ## Core Rules
 
