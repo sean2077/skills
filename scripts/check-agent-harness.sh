@@ -10,6 +10,9 @@
 # Exit 0 clean, 1 on failure. No third-party deps (bash; node only if present).
 set -uo pipefail
 
+usage() { sed -n '2,10p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
+case "${1:-}" in -h | --help) usage 0 ;; esac
+
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sk="$repo/skills/agent-harness"
 fails=0

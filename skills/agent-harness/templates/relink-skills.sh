@@ -12,6 +12,9 @@
 # (re)pointed or pruned. Keep project skill names distinct from installed ones.
 set -euo pipefail
 
+usage() { sed -n '2,12p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
+case "${1:-}" in -h | --help) usage 0 ;; esac
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
