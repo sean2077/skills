@@ -3,8 +3,10 @@
 
 Catches the drift classes that have actually bitten this repo: a skill missing
 from the README, a deleted install path still advertised, frontmatter that lost
-its `name`/`description`, a `name` that no longer matches its directory, and the
-`{{ARGUMENTS}}` moustache placeholder (Claude Code substitutes `$ARGUMENTS`).
+its `name`/`description`, a `name` that no longer matches its directory, the
+`{{ARGUMENTS}}` moustache placeholder (Claude Code substitutes `$ARGUMENTS`), and
+a `reference.md` link with no shipped file. Warnings flag softer hygiene: missing
+or over-broad (`Bash`, `Bash(bash:*)`) `allowed-tools`, and an over-long description.
 
 No third-party dependencies. Exit 0 = clean, 1 = errors. Warnings never fail.
 
@@ -96,11 +98,20 @@ def main() -> int:
         if "{{ARGUMENTS}}" in text:
             errors.append(f"{dir_name}: SKILL.md uses `{{{{ARGUMENTS}}}}` — Claude Code substitutes `$ARGUMENTS`")
 
+        # A SKILL.md that routes to `reference.md` must actually ship it (no dangling link).
+        if "reference.md" in text and not (d / "reference.md").exists():
+            errors.append(f"{dir_name}: SKILL.md links `reference.md` but {dir_name}/reference.md does not exist")
+
         # `allowed-tools` pre-approves (suppresses prompts) for the listed tools.
-        # Bare, unscoped `Bash` pre-approves arbitrary shell — risky for mutation-capable skills.
         tools = [t.strip() for t in fm.get("allowed-tools", "").split(",") if t.strip()]
+        if "allowed-tools" not in fm:
+            warnings.append(f"{dir_name}: no `allowed-tools` in frontmatter — every tool call prompts; declare a scoped set (e.g. `Read, Edit, Write, Grep, Glob, Bash(git:*)`)")
+        # Bare `Bash` pre-approves arbitrary shell; `Bash(bash:*)`/`Bash(sh:*)` are nearly as broad.
         if "Bash" in tools:
             warnings.append(f"{dir_name}: `allowed-tools` pre-approves bare `Bash` (arbitrary shell, no prompt) — scope it (e.g. `Bash(git *)`) or drop it unless arbitrary shell is intended")
+        broad = [t for t in tools if t.startswith("Bash(bash") or t.startswith("Bash(sh")]
+        if broad:
+            warnings.append(f"{dir_name}: `allowed-tools` pre-approves {', '.join(broad)} (a shell interpreter — nearly as broad as bare `Bash`); intended only when the skill runs bundled scripts")
 
         # README coverage
         if readme and f"(skills/{dir_name}/)" not in readme:
