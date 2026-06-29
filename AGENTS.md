@@ -34,6 +34,17 @@ shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell s
 - Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
   green before any merge back to `main`.
 
+## Catalog Maintenance Gotchas
+
+- Treat the real `npx skills` CLI as the source of truth for install behavior. After changing
+  `SKILL.md` frontmatter, skill names, or catalog layout, smoke-test discovery with
+  `npx skills add . -l`; after pushing a discovery fix, smoke-test the remote path too.
+- Keep frontmatter valid for a strict YAML parser. Plain scalars containing `: `, such as
+  `Modes: init`, must be quoted or `npx skills` silently drops that skill during discovery.
+- Local subdirectory installs need an explicit path prefix: use
+  `npx skills add ./skills/agent-scaffold`, not `npx skills add skills/agent-scaffold`, because
+  the latter is parsed as the GitHub repository `skills/agent-scaffold`.
+
 <!-- agent-scaffold:start — managed by the agent-scaffold skill. Edit project prose OUTSIDE these markers; `agent-scaffold upgrade` refreshes this block. -->
 ## Agent Harness (Claude Code + Codex)
 
