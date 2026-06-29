@@ -34,10 +34,9 @@ skills/
 └── <name>/
     ├── SKILL.md            # Single source of truth for every installer
     ├── reference.md        # Optional: on-demand detail kept out of the resident skill body
-    ├── example.py          # Optional: runnable example for code-building skills
     └── *.sh / templates/   # Optional: scripts/templates a skill ships (agent-harness, tooling-conventions)
 scripts/
-├── validate_skills.py      # Catalog check: frontmatter, name↔dir, README coverage, placeholders
+├── validate_skills.py      # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 └── check-agent-harness.sh  # agent-harness gate: script syntax + hook install-depth invariant
 .github/workflows/
 └── validate.yml            # Runs the checks on push / PR
