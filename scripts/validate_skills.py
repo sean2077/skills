@@ -146,4 +146,7 @@ def report() -> int:
 
 
 if __name__ == "__main__":
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        print(__doc__)
+        sys.exit(0)
     sys.exit(main())
