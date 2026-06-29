@@ -127,6 +127,21 @@ function orphans(subagents) {
 const rel = (p) => p.slice(ROOT.length + 1);
 
 function main() {
+  if (process.argv.includes('-h') || process.argv.includes('--help')) {
+    console.log(
+      [
+        'generate-subagents.mjs — project .agents/subagents/ into Claude Code + Codex agent files.',
+        '',
+        'Usage:',
+        '  node generate-subagents.mjs           write .claude/agents/*.md + .codex/agents/*.toml',
+        '  node generate-subagents.mjs --check   exit 1 on drift (CI / pre-commit); writes nothing',
+        '  node generate-subagents.mjs -h|--help  show this help',
+        '',
+        'Source per subagent: .agents/subagents/<name>/{metadata.json, instructions.md}.',
+      ].join('\n')
+    );
+    return;
+  }
   const check = process.argv.includes('--check');
   const subagents = loadSubagents();
   const wanted = projections(subagents);
