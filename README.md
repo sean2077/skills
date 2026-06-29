@@ -22,12 +22,10 @@ npx skills add sean2077/skills -a claude-code
 | Skill | Description | Stack |
 |-------|-------------|-------|
 | [conventional-commit](skills/conventional-commit/) | Generate a Conventional Commits message using the repository's historical language convention, defaulting to English when unclear, and create one local commit when requested. | Git |
-| [git-worktree](skills/git-worktree/) | Worktree-per-change git workflow: an isolated `.worktrees/<name>` branch per change, one-command merge-back + cleanup, fast-forward-only push. Ships `worktree.sh` and an optional `trunk_edit_guard.sh` PreToolUse hook that blocks trunk edits. | Git |
 | [semver-release](skills/semver-release/) | Cut a semver release from conventional commits: infer the bump, update CHANGELOG + version file, tag, then hand off to tag-triggered release CI (or publish a GitHub/GitLab release directly). | Git, Release |
-| [deepinit](skills/deepinit/) | Generate or refresh a tree of hierarchical AGENTS.md files — one per significant directory, each linked to its parent — so agents can navigate what each directory holds and how to work in it. Preserves hand-written sections on regeneration. | Documentation |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [tooling-conventions](skills/tooling-conventions/) | Govern a project's `tools/`/`scripts/` directory at scale: surface taxonomy, failure-domain aggregation, placement tree, script contract, and a reconciliation-checked surface manifest. Ships `manifest-check.sh`. | Shell, Governance |
-| [agent-harness](skills/agent-harness/) | Install or retrofit the full dual-host (Claude Code + Codex) agent harness into a project: `.agents/` single-source-of-truth layout, worktree-per-change flow + trunk-edit guard, AGENTS.md line-budget + format-on-edit hooks, `CLAUDE.md`→`AGENTS.md` contract, and (Node) a subagent generator + pre-commit drift guard. One idempotent, merge-aware installer (`harness-init.sh`); coexists with `npx skills` for third-party skills. | Shell, Node, Governance |
+| [agent-harness](skills/agent-harness/) | Install or retrofit the full dual-host (Claude Code + Codex) agent harness into a project: `.agents/` single-source-of-truth layout, worktree-per-change flow + trunk-edit guard, AGENTS.md line-budget + format-on-edit hooks, `CLAUDE.md`→`AGENTS.md` contract + a parent-linked nested AGENTS.md tree, and (Node) a subagent generator + pre-commit drift guard. One idempotent, merge-aware installer (`harness-init.sh`); coexists with `npx skills` for third-party skills. | Shell, Node, Governance |
 
 ## Structure
 
@@ -37,7 +35,7 @@ skills/
     ├── SKILL.md            # Single source of truth for every installer
     ├── reference.md        # Optional: on-demand detail kept out of the resident skill body
     ├── example.py          # Optional: runnable example for code-building skills
-    └── *.sh / templates/   # Optional: scripts/templates a skill ships (agent-harness, git-worktree, tooling-conventions)
+    └── *.sh / templates/   # Optional: scripts/templates a skill ships (agent-harness, tooling-conventions)
 scripts/
 ├── validate_skills.py      # Catalog check: frontmatter, name↔dir, README coverage, placeholders
 └── check-agent-harness.sh  # agent-harness gate: script syntax + hook install-depth invariant

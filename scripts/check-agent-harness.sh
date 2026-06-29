@@ -4,9 +4,8 @@
 # Asserts the bundled scripts are syntactically valid and that the three hook
 # scripts keep the `tools/agent/hooks/` install-depth resolver — `proj` three
 # levels up plus a `git rev-parse --show-toplevel` fallback. That resolver is what
-# makes them dual-host-correct (Codex has no $CLAUDE_PROJECT_DIR) and is the
-# DELIBERATE divergence from the git-worktree skill's shallower `.claude/hooks/`
-# variant: the two copies are NOT interchangeable, so do not "sync" them.
+# makes them dual-host-correct: Codex has no $CLAUDE_PROJECT_DIR, so a shallower
+# CC-only resolver would silently break the Codex side. Do not flatten it.
 #
 # Exit 0 clean, 1 on failure. No third-party deps (bash; node only if present).
 set -uo pipefail
