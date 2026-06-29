@@ -1,6 +1,6 @@
 ---
 name: agent-scaffold
-description: 'Install or retrofit the complete dual-host (Claude Code + Codex) agent harness into a project — the .agents/ single-source-of-truth layout, the worktree-per-change flow with a trunk-edit guard, the AGENTS.md line-budget + format-on-edit PostToolUse hooks, the CLAUDE.md→AGENTS.md contract, idempotent skill symlinks, and (Node projects) a subagent generator with a pre-commit drift guard. One turnkey, idempotent, merge-aware installer. Use when setting up agent tooling for a repo, standardizing Claude Code + Codex in one project, adding worktree/hook governance, or asked to "init/retrofit the agent harness". Modes: init (greenfield), retrofit (merge into existing config), verify (parity/drift check), upgrade (refresh vendored scripts). Not for writing one commit message (use conventional-commit) or installing third-party skills (use npx skills).'
+description: 'Install or retrofit the complete dual-host (Claude Code + Codex) agent harness into a project: the .agents/ single-source-of-truth layout, worktree-per-change flow with a trunk-edit guard, AGENTS.md budget + format-on-edit hooks, the CLAUDE.md→AGENTS.md contract, skill symlinks, and (Node) a subagent generator with a drift guard. One idempotent, merge-aware installer that also retrofits a project already mid-development — it adopts an existing real CLAUDE.md as the AGENTS.md SSOT and reverse-generates hand-authored .claude/agents or .codex/agents into .agents/subagents sources. Use when setting up or standardizing agent tooling, adding worktree/hook governance, migrating an existing CLAUDE.md or hand-written subagents into the harness, or asked to "init/retrofit the agent harness". Modes: init, retrofit (merge/migrate an existing project), plan (read-only preview), verify (drift check), upgrade (refresh scripts). Not for one commit message (use conventional-commit) or third-party skills (use npx skills).'
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git:*), Bash(bash:*)
 ---
 
@@ -44,13 +44,29 @@ Do **not** use this skill for:
 | Mode | When | Command (run from the target repo root) |
 |---|---|---|
 | `init` | greenfield — no `.claude/`, `.codex/`, or `AGENTS.md` | `bash <skill-dir>/harness-init.sh init` |
-| `retrofit` | project already has some `.claude`/`.codex`/`AGENTS.md` | `bash <skill-dir>/harness-init.sh retrofit` |
+| `retrofit` | project already has some `.claude`/`.codex`/`AGENTS.md`, or is mid-development (a real `CLAUDE.md`, hand-written subagents) | `bash <skill-dir>/harness-init.sh retrofit` |
+| `plan` | preview what init/retrofit would create / merge / migrate (read-only) | `bash <skill-dir>/harness-init.sh plan` |
 | `verify` | check presence / drift / dual-host parity (read-only) | `bash <skill-dir>/harness-init.sh verify` |
 | `upgrade` | re-copy the vendored scripts + add any new hook | `bash <skill-dir>/harness-init.sh upgrade` |
 
 `<skill-dir>` is this skill's installed directory (where `harness-init.sh` sits). `init` and
 `retrofit` share one idempotent code path — when unsure which applies, run `retrofit`; it
 creates what is missing and merges into what exists.
+
+## Retrofitting a project mid-development
+
+`retrofit` is not only for near-empty repos — it folds an in-flight project's existing agent
+assets into the SSOT instead of stranding them. **Run `plan` first** to preview every
+create / merge / migrate decision without writing anything.
+
+- **A real `CLAUDE.md` and no `AGENTS.md`** → its prose is adopted as the `AGENTS.md` SSOT and
+  `CLAUDE.md` is replaced with the symlink. A real `CLAUDE.md` *beside* a real `AGENTS.md` is left
+  for you to merge by hand (the installer says which).
+- **Hand-authored `.claude/agents/*.md` / `.codex/agents/*.toml`** (Node) → reverse-generated into
+  `.agents/subagents/<name>/` sources (`generate-subagents.mjs --import`), then re-projected with
+  the do-not-edit banner. A sourceless hand-authored projection is never silently pruned; on a
+  non-Node project the installer flags them instead (add a `package.json`, then `upgrade`).
+- **Everything else** (hook configs, `.gitignore`, `package.json` scripts) is merged, never clobbered.
 
 ## Workflow
 

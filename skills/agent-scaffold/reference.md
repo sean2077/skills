@@ -14,6 +14,7 @@ Deep material for the `agent-scaffold` skill. Read on demand; `SKILL.md` is the 
 - [10. Coexistence with `npx skills`](#10-coexistence-with-npx-skills)
 - [11. Troubleshooting](#11-troubleshooting)
 - [12. End-to-end test recipe](#12-end-to-end-test-recipe)
+- [13. Retrofitting an in-flight project (migration & adoption)](#13-retrofitting-an-in-flight-project-migration--adoption)
 
 ---
 
@@ -161,7 +162,8 @@ the `<!-- agent-scaffold:start … end -->` markers.
 - **Subagents**: `generate-subagents.mjs` projects each source into both host formats (YAML
   frontmatter + body for CC; TOML with `developer_instructions` for Codex). **Never hand-edit**
   the generated files — they carry a "do not edit" banner. `--check` exits 1 on drift; wire it
-  into pre-commit / CI (`npm run check:agents`).
+  into pre-commit / CI (`npm run check:agents`). `--import` does the reverse — adopt hand-authored
+  host agents into sources ([§13](#13-retrofitting-an-in-flight-project-migration--adoption)).
 - **Drift guard**: on a Node project the installer adds `node tools/agent/generate-subagents.mjs --check`
   to `.husky/pre-commit` and the `gen:subagents` / `check:agents` npm scripts. Activate husky with
   `npm install -D husky && npm run prepare` if it is not installed yet. If the project uses a
@@ -185,6 +187,10 @@ block:
 
 Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade`
 refreshes everything between them.
+
+When the contract lives in a **real `CLAUDE.md`** with no `AGENTS.md` yet, retrofit adopts that
+prose as the `AGENTS.md` SSOT and replaces `CLAUDE.md` with the symlink — see
+[§13](#13-retrofitting-an-in-flight-project-migration--adoption).
 
 ### Generating the nested AGENTS.md tree
 
@@ -331,4 +337,62 @@ test -L .claude/skills/proj-skill && test -d .claude/skills/vendor-skill && ! te
 
 # verify mode (read-only) reports OK on a clean install
 bash "$H" verify
+
+# plan is read-only; retrofit adopts a real CLAUDE.md as the AGENTS.md SSOT
+rm -rf /tmp/scratch2 && mkdir -p /tmp/scratch2 && cd /tmp/scratch2
+git init -q -b main && git config user.email t@t.t && git config user.name tester
+git commit --allow-empty -qm init
+printf '# Legacy\n\nrules\n' > CLAUDE.md && git add -A && git commit -qm legacy
+bash "$H" plan | grep -q migrate                                             # plan flags the migration
+bash "$H" retrofit
+test -L CLAUDE.md && [ "$(readlink CLAUDE.md)" = AGENTS.md ] && grep -q rules AGENTS.md
+
+# adopt a hand-authored subagent into the SSOT (Node)
+echo '{"name":"s","version":"1.0.0"}' > package.json
+printf -- '---\nname: rev\ndescription: hand-authored\ntools: Read\n---\n\nReview.\n' > .claude/agents/rev.md
+bash "$H" upgrade
+test -f .agents/subagents/rev/metadata.json && node tools/agent/generate-subagents.mjs --check
 ```
+
+## 13. Retrofitting an in-flight project (migration & adoption)
+
+`init` and `retrofit` share one code path; what makes `retrofit` safe on a project already
+mid-development is that it **adopts** existing assets into the SSOT instead of ignoring or
+clobbering them. Preview any of it with `plan` (read-only).
+
+### plan — preview before you write
+
+`bash <skill-dir>/harness-init.sh plan` reports, per concern, whether the run would **create**,
+**merge**, **migrate**, or leave something for you (**needs you**), and writes nothing. Use it to
+see — before touching the repo — what an existing `CLAUDE.md`, hook config, or hand-authored
+subagent will turn into.
+
+### Adopting a real CLAUDE.md
+
+Many live projects already carry a hand-written `CLAUDE.md`. Retrofit treats `AGENTS.md` as the
+SSOT and `CLAUDE.md` as its symlink, so:
+
+- **real `CLAUDE.md`, no `AGENTS.md`** → the prose is copied into `AGENTS.md`, the harness block is
+  appended (or refreshed if the prose already carried the markers), and the real `CLAUDE.md` is
+  replaced with the `CLAUDE.md → AGENTS.md` symlink. Nothing is lost — the content moves, it is not
+  deleted.
+- **real `CLAUDE.md` *and* real `AGENTS.md`** → ambiguous (two authored files); the installer keeps
+  both and tells you to merge `CLAUDE.md` into `AGENTS.md` by hand, then symlink.
+- **already a symlink** → left as-is (warned if it points somewhere other than `AGENTS.md`).
+
+### Adopting hand-authored subagents (`--import`, Node)
+
+A project may already have hand-written `.claude/agents/*.md` or `.codex/agents/*.toml`. On a Node
+project the installer runs `generate-subagents.mjs --import` before projecting:
+
+1. For each host agent file with **no** `.agents/subagents/<name>/` source and **no** generated
+   banner, it parses the frontmatter / TOML (name, description, tools/model, Codex knobs, body) and
+   writes a `.agents/subagents/<name>/{metadata.json, instructions.md}` source. The `.claude` and
+   `.codex` sides of the same name merge into one source.
+2. It then projects every source back, so the adopted agent reappears as a generated file carrying
+   the do-not-edit banner.
+
+Adoption is idempotent (a name that already has a source is skipped) and **never destructive**: the
+projection step that finds a sourceless, banner-less file **keeps** it and tells you to `--import`
+it, rather than pruning it as an orphan. On a non-Node project the installer cannot parse agents, so
+it flags any hand-authored ones and points you at adding a `package.json` + `upgrade`.

@@ -126,6 +126,142 @@ function orphans(subagents) {
 
 const rel = (p) => p.slice(ROOT.length + 1);
 
+const BANNER = 'do not edit by hand';
+
+// --- Adoption (--import): turn hand-authored host agent files into SSOT sources ---
+
+// Parse a Claude Code agent markdown (YAML frontmatter + body). Returns null when it
+// has no frontmatter. Only the keys this generator emits are understood
+// (name / description / tools / model); anything else is ignored.
+function parseClaudeAgent(text) {
+  const m = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) return null;
+  const [, fm, rawBody] = m;
+  const meta = {};
+  for (const line of fm.split('\n')) {
+    const kv = line.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (!kv) continue;
+    let v = kv[2].trim();
+    if (v.startsWith('"') && v.endsWith('"')) {
+      try {
+        v = JSON.parse(v);
+      } catch {
+        v = v.slice(1, -1);
+      }
+    } else if (v.startsWith("'") && v.endsWith("'")) {
+      v = v.slice(1, -1);
+    }
+    meta[kv[1]] = v;
+  }
+  const tools = meta.tools
+    ? meta.tools
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  return {
+    name: meta.name,
+    description: meta.description || '',
+    tools,
+    model: meta.model,
+    body: rawBody.replace(/^\n+/, ''),
+  };
+}
+
+// Parse a Codex agent TOML (only the keys this generator emits).
+function parseCodexAgent(text) {
+  const scalar = (key) => {
+    const m = text.match(new RegExp('^' + key + '\\s*=\\s*(.+)$', 'm'));
+    if (!m) return undefined;
+    const raw = m[1].trim();
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw.replace(/^["']|["']$/g, '');
+    }
+  };
+  let nicks;
+  const nm = text.match(/^nickname_candidates\s*=\s*\[(.*)\]\s*$/m);
+  if (nm) {
+    try {
+      nicks = JSON.parse('[' + nm[1] + ']');
+    } catch {
+      nicks = undefined;
+    }
+  }
+  const di = text.match(/developer_instructions\s*=\s*'''\n([\s\S]*?)'''/);
+  return {
+    name: scalar('name'),
+    description: scalar('description') || '',
+    model: scalar('model'),
+    model_reasoning_effort: scalar('model_reasoning_effort'),
+    sandbox_mode: scalar('sandbox_mode'),
+    nickname_candidates: nicks,
+    instructions: di ? di[1] : '',
+  };
+}
+
+// Collect hand-authored host agent files (no SSOT source yet, no generated banner),
+// keyed by subagent name, merging the Claude (.md) and Codex (.toml) sides.
+function collectAdoptable() {
+  const byName = new Map();
+  const consider = (dir, ext, kind) => {
+    if (!isDir(dir)) return;
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith(ext)) continue;
+      const name = f.slice(0, -ext.length);
+      if (isDir(join(SOURCE_DIR, name))) continue; // already an SSOT source
+      const text = readFileSync(join(dir, f), 'utf8');
+      if (text.includes(BANNER)) continue; // a generated projection, not hand-authored
+      const e = byName.get(name) || { name };
+      e[kind] = kind === 'claude' ? parseClaudeAgent(text) : parseCodexAgent(text);
+      byName.set(name, e);
+    }
+  };
+  consider(CLAUDE_DIR, '.md', 'claude');
+  consider(CODEX_DIR, '.toml', 'codex');
+  return byName;
+}
+
+// Write each adoptable host agent back as a .agents/subagents/<name>/ source.
+function importHandAuthored() {
+  let imported = 0;
+  for (const [name, e] of collectAdoptable()) {
+    const cc = e.claude;
+    const cx = e.codex;
+    if (!cc && !cx) continue;
+    const meta = { name, description: (cc && cc.description) || (cx && cx.description) || '' };
+    const claude = {};
+    if (cc && cc.tools && cc.tools.length) claude.tools = cc.tools;
+    if (cc && cc.model) claude.model = cc.model;
+    if (Object.keys(claude).length) meta.claude = claude;
+    const codex = {};
+    if (cx) {
+      if (cx.model) codex.model = cx.model;
+      if (cx.model_reasoning_effort) codex.model_reasoning_effort = cx.model_reasoning_effort;
+      if (cx.sandbox_mode) codex.sandbox_mode = cx.sandbox_mode;
+      if (cx.nickname_candidates && cx.nickname_candidates.length)
+        codex.nickname_candidates = cx.nickname_candidates;
+    }
+    if (Object.keys(codex).length) meta.codex = codex;
+    let instructions = cc && cc.body && cc.body.trim() ? cc.body : cx ? cx.instructions : '';
+    if (!instructions.endsWith('\n')) instructions += '\n';
+    const dir = join(SOURCE_DIR, name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'metadata.json'), JSON.stringify(meta, null, 2) + '\n');
+    writeFileSync(join(dir, 'instructions.md'), instructions);
+    const from = [cc && '.claude/agents', cx && '.codex/agents'].filter(Boolean).join(' + ');
+    console.log(`adopted ${name} → ${rel(dir)} (from ${from})`);
+    imported++;
+  }
+  console.log(
+    imported
+      ? `--import: adopted ${imported} hand-authored subagent(s) into ${rel(SOURCE_DIR)}`
+      : '--import: no hand-authored subagents to adopt'
+  );
+  return imported;
+}
+
 function main() {
   if (process.argv.includes('-h') || process.argv.includes('--help')) {
     console.log(
@@ -135,6 +271,7 @@ function main() {
         'Usage:',
         '  node generate-subagents.mjs           write .claude/agents/*.md + .codex/agents/*.toml',
         '  node generate-subagents.mjs --check   exit 1 on drift (CI / pre-commit); writes nothing',
+        '  node generate-subagents.mjs --import  adopt hand-authored .claude/agents + .codex/agents into .agents/subagents/, then project',
         '  node generate-subagents.mjs -h|--help  show this help',
         '',
         'Source per subagent: .agents/subagents/<name>/{metadata.json, instructions.md}.',
@@ -143,6 +280,7 @@ function main() {
     return;
   }
   const check = process.argv.includes('--check');
+  if (process.argv.includes('--import') && !check) importHandAuthored();
   const subagents = loadSubagents();
   const wanted = projections(subagents);
   const stale = orphans(subagents);
@@ -152,7 +290,10 @@ function main() {
     for (const { path, content } of wanted) {
       if (!existsSync(path) || readFileSync(path, 'utf8') !== content) drift.push(rel(path));
     }
-    for (const p of stale) drift.push(`${rel(p)} (orphan — no source)`);
+    for (const p of stale) {
+      const hand = !readFileSync(p, 'utf8').includes(BANNER);
+      drift.push(`${rel(p)} (orphan — ${hand ? 'hand-authored; run --import to adopt' : 'no source'})`);
+    }
     if (drift.length) {
       console.error(`generate-subagents --check: DRIFT in ${drift.length} file(s):`);
       for (const d of drift) console.error(`  - ${d}`);
@@ -173,12 +314,20 @@ function main() {
       wrote++;
     }
   }
+  let pruned = 0;
   for (const p of stale) {
-    rmSync(p);
-    console.log(`pruned orphan ${rel(p)}`);
+    if (readFileSync(p, 'utf8').includes(BANNER)) {
+      rmSync(p);
+      pruned++;
+      console.log(`pruned orphan ${rel(p)}`);
+    } else {
+      console.error(
+        `kept ${rel(p)} — hand-authored (no generated banner). Run --import to adopt it, or delete it by hand.`
+      );
+    }
   }
   console.log(
-    `generate-subagents: ${subagents.length} subagent(s) · ${wrote} file(s) written · ${wanted.length - wrote} unchanged · ${stale.length} pruned`
+    `generate-subagents: ${subagents.length} subagent(s) · ${wrote} file(s) written · ${wanted.length - wrote} unchanged · ${pruned} pruned`
   );
 }
 
