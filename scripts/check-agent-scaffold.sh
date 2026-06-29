@@ -56,9 +56,11 @@ if [ -d "$repo/tools/agent" ]; then
     "format_on_edit.sh:tools/agent/hooks/format_on_edit.sh" \
     "relink-skills.sh:.agents/relink-skills.sh"; do
     inst="$repo/${pair##*:}"
-    [ -f "$inst" ] || continue
-    cmp -s "$sk/templates/${pair%%:*}" "$inst" ||
+    if [ ! -f "$inst" ]; then
+      fail "dogfood harness file missing: ${pair##*:} (run: agent-scaffold upgrade)"
+    elif ! cmp -s "$sk/templates/${pair%%:*}" "$inst"; then
       fail "dogfood drift: ${pair##*:} differs from its skill template (run: agent-scaffold upgrade)"
+    fi
   done
 fi
 
