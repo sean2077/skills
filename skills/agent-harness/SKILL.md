@@ -56,7 +56,7 @@ creates what is missing and merges into what exists.
 
 1. **Detect intent + state.** From the user's words pick the mode; confirm the target repo with `git rev-parse --show-toplevel` and note whether `.claude/`, `.codex/`, `AGENTS.md`, and `package.json` already exist. If ambiguous between init and retrofit, run `retrofit`.
 2. **Run the installer** for that mode (table above). Useful flags: `--trunk <branch>` (default `main`), `--no-format-hook`, `--no-husky`, `--no-example-subagent`, `--force-scripts` (implied by `upgrade`). See `harness-init.sh --help`.
-3. **Finish the contract.** For `init`, fill the `AGENTS.md` TODO sections (project overview / commands / architecture) — keep it an entry point; link depth into `docs/`. For nested directories that deserve their own contract, drop in `templates/AGENTS.nested.md` and fill it (keep `<!-- Parent: ../AGENTS.md -->`).
+3. **Finish the contract.** For `init`, fill the `AGENTS.md` TODO sections (project overview / commands / architecture) — keep it an entry point; link depth into `docs/`. For nested directories that deserve their own contract, drop in `templates/AGENTS.nested.md` and fill it (keep `<!-- Parent: ../AGENTS.md -->`). For a multi-directory codebase, generate a full parent-linked tree — see `reference.md` → *Generating the nested AGENTS.md tree*.
 4. **Report** what was installed, what was merged vs created, what was skipped (e.g. subagents on a non-Node project), and the **Codex trust** reminder the installer prints.
 5. **Verify** with `verify` mode (or the recipe in `reference.md`) before handing back.
 
