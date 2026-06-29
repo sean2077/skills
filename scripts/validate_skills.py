@@ -3,10 +3,11 @@
 
 Catches the drift classes that have actually bitten this repo: a skill missing
 from the README, a deleted install path still advertised, frontmatter that lost
-its `name`/`description`, a `name` that no longer matches its directory, the
-`{{ARGUMENTS}}` moustache placeholder (Claude Code substitutes `$ARGUMENTS`), and
-a `reference.md` link with no shipped file. Warnings flag softer hygiene: missing
-or over-broad (`Bash`, `Bash(bash:*)`) `allowed-tools`, and an over-long description.
+its `name`/`description`, YAML frontmatter that `npx skills` cannot parse, a
+`name` that no longer matches its directory, the `{{ARGUMENTS}}` moustache
+placeholder (Claude Code substitutes `$ARGUMENTS`), and a `reference.md` link
+with no shipped file. Warnings flag softer hygiene: missing or over-broad
+(`Bash`, `Bash(bash:*)`) `allowed-tools`, and an over-long description.
 
 No third-party dependencies. Exit 0 = clean, 1 = errors. Warnings never fail.
 
@@ -49,6 +50,26 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
     return None  # never closed
 
 
+def plain_scalar_hazards(text: str) -> list[str]:
+    """Find single-line values that are not valid YAML plain scalars."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return []
+    hazards: list[str] = []
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        m = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
+        if not m:
+            continue
+        key, raw_value = m.group(1), m.group(2).strip()
+        if not raw_value or raw_value[0] in {"'", '"', "|", ">"}:
+            continue
+        if re.search(r":\s", raw_value):
+            hazards.append(f"`{key}` is an unquoted YAML scalar containing `: `; quote it so `npx skills` can parse the frontmatter")
+    return hazards
+
+
 def main() -> int:
     if not SKILLS_DIR.is_dir():
         errors.append(f"no skills/ directory at {SKILLS_DIR}")
@@ -74,6 +95,9 @@ def main() -> int:
         if fm is None:
             errors.append(f"{dir_name}: SKILL.md has no valid `---` frontmatter block")
             continue
+
+        for hazard in plain_scalar_hazards(text):
+            errors.append(f"{dir_name}: {hazard}")
 
         # The minimal parser reads single-line scalars only; reject YAML block scalars
         # explicitly rather than silently treating `|` / `>` as the field value.
