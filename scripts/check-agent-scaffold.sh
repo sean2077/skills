@@ -46,6 +46,22 @@ for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.mjs; do
   [ -x "$f" ] || fail "not executable (commit the +x bit): ${f#"$repo"/}"
 done
 
+# 5. dogfood drift: if this repo installed the harness (tools/agent/ exists), the
+#    installed copies must stay byte-identical to the skill templates they came from.
+if [ -d "$repo/tools/agent" ]; then
+  for pair in \
+    "worktree.sh:tools/agent/worktree.sh" \
+    "trunk_edit_guard.sh:tools/agent/hooks/trunk_edit_guard.sh" \
+    "authority_doc_budget.sh:tools/agent/hooks/authority_doc_budget.sh" \
+    "format_on_edit.sh:tools/agent/hooks/format_on_edit.sh" \
+    "relink-skills.sh:.agents/relink-skills.sh"; do
+    inst="$repo/${pair##*:}"
+    [ -f "$inst" ] || continue
+    cmp -s "$sk/templates/${pair%%:*}" "$inst" ||
+      fail "dogfood drift: ${pair##*:} differs from its skill template (run: agent-scaffold upgrade)"
+  done
+fi
+
 if [ "$fails" -eq 0 ]; then
   echo "OK: agent-scaffold checks passed"
   exit 0
