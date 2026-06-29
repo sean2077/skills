@@ -13,6 +13,13 @@ jobs:
         with:
           python-version: "3.11"
       # Local equivalent: python3 scripts/validate_skills.py
-      - run: python3 scripts/validate_skills.py
+      - name: Validate skills catalog
+        run: python3 scripts/validate_skills.py
       # Local equivalent: bash scripts/check-agent-harness.sh
-      - run: bash scripts/check-agent-harness.sh
+      - name: Check agent-harness invariants
+        if: always() # run even if the catalog check failed — one run surfaces every failure
+        run: bash scripts/check-agent-harness.sh
+      # Local equivalent: shellcheck $(find scripts skills -type f -name '*.sh')  — shellcheck is preinstalled on ubuntu-latest
+      - name: Shellcheck bundled scripts
+        if: always()
+        run: shellcheck $(find scripts skills -type f -name '*.sh')
