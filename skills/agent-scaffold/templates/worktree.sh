@@ -112,7 +112,7 @@ cmd_new() {
 cmd_release() {
     local REF="${1:-}"; [[ -n "$REF" ]] || die "usage: release <ref>"
     git -C "$ROOT" rev-parse -q --verify "$REF^{commit}" >/dev/null 2>&1 || die "no such ref: $REF"
-    local WTDIR="$WT_BASE/release-$REF"
+    local WTDIR="$WT_BASE/release-${REF//\//-}"
     [[ ! -e "$WTDIR" ]] || die "already exists: $WTDIR"
     ensure_worktrees_ignored
     git -C "$ROOT" worktree add --detach "$WTDIR" "$REF"

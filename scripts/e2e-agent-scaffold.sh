@@ -172,6 +172,45 @@ else
   echo "  (jq absent - only the python3 merge path runs; cross-check skipped)"
 fi
 
+echo "== hardening: deep-review regression fixes =="
+# PY_MERGE: retrofit over an existing config whose "hooks" is null must not crash on
+# the python path (jq coped via // {}) and must preserve the user's other keys.
+HN="$work/hooksnull"; mkdir -p "$HN/.claude"
+git -C "$HN" init -q -b main
+git -C "$HN" config user.email t@t.t; git -C "$HN" config user.name tester
+git -C "$HN" commit -q --allow-empty -m init
+printf '{"hooks": null, "model": "opus"}' > "$HN/.claude/settings.json"
+( cd "$HN" && HARNESS_NO_JQ=1 bash "$H" retrofit --no-husky ) >/dev/null 2>&1; rc=$?
+check "retrofit over hooks:null (python path) exits 0"   test "$rc" = 0
+check "hooks:null retrofit preserves user's other keys"  grep -q '"model"' "$HN/.claude/settings.json"
+check "hooks:null retrofit wires the trunk guard"        grep -q trunk_edit_guard "$HN/.claude/settings.json"
+
+# M3: a hand-authored agent whose PROSE contains the phrase "do not edit by hand"
+# must still be adopted by --import (the banner test keys on "Generated from
+# .agents/subagents/", not the loose phrase). Reuses the adopt repo $A.
+printf -- '---\nname: phrase-rev\ndescription: mentions the banner phrase\n---\n\nRule: do not edit by hand-written config.\n' > "$A/.claude/agents/phrase-rev.md"
+( cd "$A" && python3 tools/agent/generate-subagents.py --import ) >/dev/null 2>&1
+check "hand-authored agent w/ banner phrase in prose still adopted (M3)" test -f "$A/.agents/subagents/phrase-rev/metadata.json"
+
+# M1: metadata.json without a non-empty description must fail fast, not emit "None".
+DN="$work/nodesc"; mkdir -p "$DN/.agents/subagents/x" "$DN/tools/agent"
+cp "$repo/tools/agent/generate-subagents.py" "$DN/tools/agent/generate-subagents.py"
+printf '{"name":"x"}' > "$DN/.agents/subagents/x/metadata.json"
+printf 'body\n' > "$DN/.agents/subagents/x/instructions.md"
+( cd "$DN" && python3 tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
+check "metadata without description fails fast (M1)"     test "$rc" != 0
+
+# m1: malformed metadata.json gives a friendly, named error — no raw python traceback.
+MJ="$work/badjson"; mkdir -p "$MJ/.agents/subagents/y" "$MJ/tools/agent"
+cp "$repo/tools/agent/generate-subagents.py" "$MJ/tools/agent/generate-subagents.py"
+printf '{not json' > "$MJ/.agents/subagents/y/metadata.json"
+printf 'body\n' > "$MJ/.agents/subagents/y/instructions.md"
+( cd "$MJ" && python3 tools/agent/generate-subagents.py ) >"$work/badjson.out" 2>&1; rc=$?
+check "malformed metadata.json exits nonzero (m1)"       test "$rc" != 0
+check "malformed metadata.json names subagent + reason (m1)" grep -qF "subagent 'y': metadata.json is not valid JSON" "$work/badjson.out"
+# shellcheck disable=SC2016  # $1 is sh -c's own positional; the outer shell must NOT expand it
+check "malformed metadata.json prints no python traceback (m1)" sh -c '! grep -q Traceback "$1"' _ "$work/badjson.out"
+
 echo
 if [ "$fails" -eq 0 ]; then echo "OK: agent-scaffold e2e passed"; exit 0; fi
 echo "FAIL: $fails agent-scaffold e2e assertion(s) failed"; exit 1

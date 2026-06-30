@@ -88,7 +88,10 @@ import json, os
 ex = os.environ.get("HARNESS_EXISTING") or ""
 existing = json.load(open(ex)) if ex and os.path.exists(ex) else {}
 add = json.load(open(os.environ["HARNESS_ADD"]))
-existing.setdefault("hooks", {})
+# Coerce a null/non-object "hooks" to {} — mirrors the jq path .hooks = (.hooks // {}).
+# Without this, an existing {"hooks": null} crashes the merge (None.get) while jq copes.
+if not isinstance(existing.get("hooks"), dict):
+    existing["hooks"] = {}
 def union(a, b):
     out = list(a or [])
     seen = {h.get("command") for h in out}
@@ -446,7 +449,7 @@ do_plan() {
       base="$(basename "$af")"; base="${base%.*}"
       if [[ -n "${seen[$base]:-}" ]]; then continue; fi
       if [[ -d "$TARGET/.agents/subagents/$base" ]]; then continue; fi
-      if grep -q 'do not edit by hand' "$af" 2>/dev/null; then continue; fi
+      if grep -qF 'Generated from .agents/subagents/' "$af" 2>/dev/null; then continue; fi
       seen[$base]=1; any=1
       printf '  %s subagent %s → adopt hand-authored agent into .agents/subagents/%s\n' "$MIG" "$base" "$base"
     done
