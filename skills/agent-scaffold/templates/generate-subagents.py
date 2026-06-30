@@ -24,7 +24,11 @@ DO_NOT_EDIT = (
     "Generated from .agents/subagents/%s; do not edit by hand. "
     "Run: python3 tools/agent/generate-subagents.py"
 )
-BANNER = "do not edit by hand"
+# Marker that identifies a generated projection. Use the full "Generated from
+# .agents/subagents/" lead-in, NOT a loose "do not edit by hand": the latter can
+# occur in a genuinely hand-authored agent's prose, which would misclassify it as
+# generated -> wrongly skipped by --import and wrongly pruned as a stale orphan.
+BANNER = "Generated from .agents/subagents/"
 
 
 def is_dir(p):
@@ -40,8 +44,14 @@ def read_text(p):
 
 
 def write_text(p, content):
-    with open(p, "w", encoding="utf-8") as f:
+    # newline="\n": never let text mode translate to CRLF on Windows. The repo is
+    # LF-only (.gitattributes + CI CRLF check) and read_text() normalizes CRLF->LF
+    # before --check compares, so a CRLF write would be a silent false-green.
+    # tmp + os.replace makes the write atomic (no half-file on a crash mid-write).
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         f.write(content)
+    os.replace(tmp, p)
 
 
 def rel(p):
@@ -68,11 +78,16 @@ def load_subagents():
         instr_path = os.path.join(d, "instructions.md")
         if not os.path.exists(meta_path) or not os.path.exists(instr_path):
             raise SystemExit("subagent '%s' is missing metadata.json or instructions.md" % name)
-        meta = json.loads(read_text(meta_path))
+        try:
+            meta = json.loads(read_text(meta_path))
+        except ValueError as e:
+            raise SystemExit("subagent '%s': metadata.json is not valid JSON: %s" % (name, e))
         if meta.get("name") != name:
             raise SystemExit(
                 "subagent '%s': metadata.name='%s' must match directory name" % (name, meta.get("name"))
             )
+        if not str(meta.get("description") or "").strip():
+            raise SystemExit("subagent '%s': metadata.json needs a non-empty description" % name)
         instructions = read_text(instr_path)
         if not instructions.endswith("\n"):
             instructions += "\n"
@@ -254,6 +269,11 @@ def import_hand_authored():
         cx = e.get("codex")
         if not cc and not cx:
             continue
+        if cc and cx and cc["description"] and cx["description"] and cc["description"] != cx["description"]:
+            print(
+                "warn: %s has different descriptions in .claude vs .codex — keeping the Claude one" % name,
+                file=sys.stderr,
+            )
         meta = {"name": name, "description": (cc and cc["description"]) or (cx and cx["description"]) or ""}
         claude = {}
         if cc and cc.get("tools"):
