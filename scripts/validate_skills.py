@@ -17,6 +17,7 @@ No third-party dependencies. Exit 0 = clean, 1 = errors. Warnings never fail.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -26,6 +27,7 @@ REPO = Path(os.environ.get("SKILLS_REPO", Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO / "skills"
 README = REPO / "README.md"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
+GROUPING_MANIFEST = REPO / ".claude-plugin" / "plugin.json"
 
 errors: list[str] = []
 warnings: list[str] = []
@@ -82,6 +84,8 @@ def main() -> int:
     skill_dirs = sorted(p for p in SKILLS_DIR.iterdir() if p.is_dir())
     if not skill_dirs:
         errors.append("no skill directories under skills/")
+
+    validate_grouping_manifest(skill_dirs)
 
     for d in skill_dirs:
         dir_name = d.name
@@ -154,6 +158,29 @@ def main() -> int:
         errors.append("README references `.claude-plugin/marketplace.json` which does not exist")
 
     return report()
+
+
+def validate_grouping_manifest(skill_dirs: list[Path]) -> None:
+    """Keep npx skills grouping metadata aligned with the catalog."""
+    if not GROUPING_MANIFEST.exists():
+        errors.append("missing `.claude-plugin/plugin.json` grouping manifest")
+        return
+
+    try:
+        manifest = json.loads(GROUPING_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"invalid `.claude-plugin/plugin.json`: {exc}")
+        return
+
+    if manifest.get("name") != "sean2077-skills":
+        errors.append("`.claude-plugin/plugin.json` name must be `sean2077-skills`")
+
+    expected = [f"./skills/{skill_dir.name}" for skill_dir in skill_dirs]
+    if manifest.get("skills") != expected:
+        errors.append(
+            "`.claude-plugin/plugin.json` skills must exactly match the sorted "
+            f"skills/ catalog: expected {expected}"
+        )
 
 
 def report() -> int:

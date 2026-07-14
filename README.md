@@ -4,6 +4,8 @@ Reusable agent skills for development, ops, and productivity — battle-tested p
 
 Uses the universal [SKILL.md](https://github.com/anthropics/skills) format. Compatible with Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, Windsurf, and other agents supporting the Agent Skills spec.
 
+The minimal [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) is installer compatibility metadata: `npx skills` uses it to group the installed skills under **Sean2077 Skills** for every target agent.
+
 ## Install
 
 ```bash
@@ -22,6 +24,8 @@ npx skills add sean2077/skills --skill agent-scaffold -a codex
 # From a local checkout, keep the leading ./ so it is parsed as a path
 npx skills add ./skills/agent-scaffold -a codex
 ```
+
+If the skills were installed before the compatibility manifest existed, rerun the original `add` command once in the same project/global scope so `npx skills` records the group in its lockfile.
 
 ## Skills
 
@@ -45,6 +49,8 @@ scripts/
 ├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 └── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
+.claude-plugin/
+└── plugin.json             # npx skills grouping metadata, kept in sync by the validator
 .github/workflows/
 └── validate.yml            # Runs the checks on push / PR
 ```

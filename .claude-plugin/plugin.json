@@ -1,0 +1,11 @@
+{
+  "name": "sean2077-skills",
+  "description": "Reusable agent skills for development, ops, and productivity.",
+  "skills": [
+    "./skills/agent-scaffold",
+    "./skills/conventional-commit",
+    "./skills/project-docs-organizer",
+    "./skills/semver-release",
+    "./skills/tooling-conventions"
+  ]
+}
