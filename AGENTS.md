@@ -17,7 +17,7 @@ Agent-Skills hosts). It ships 5 skills: `conventional-commit`, `semver-release`,
 The CI gates must stay green — `.github/workflows/validate.yml` runs them on push/PR:
 
 ```bash
-python3 scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
+python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 bash scripts/e2e-agent-scaffold.sh      # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell script stays clean
@@ -36,7 +36,7 @@ shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell s
 - **Cross-platform (design goal)** — skills + bundled scripts target macOS / Linux / Windows
   (**Git Bash only**): keep them POSIX-bash + GNU-coreutils compatible, **LF** line endings
   (enforced by `.gitattributes` + a CI CRLF check), and **symlink-degradation-aware** (never
-  silently copy when the OS lacks symlink support). Subagents/hook-JSON use `python3`.
+  silently copy when the OS lacks symlink support). Subagents/hook-JSON use `python`.
 
 ## Catalog Maintenance Gotchas
 
@@ -92,7 +92,7 @@ files carry `<!-- Parent: ../AGENTS.md -->` and stay subordinate to the root.
 | `.claude/allow-trunk-edit`, `.claude/settings.local.json` | escape hatch / personal overrides | ❌ ignored |
 
 - **Add a skill**: edit `.agents/skills/` → run `./.agents/relink-skills.sh` → commit source + symlink.
-- **Add a subagent** (needs python3): edit `.agents/subagents/` → run `python3 tools/agent/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
+- **Add a subagent** (needs python): edit `.agents/subagents/` → run `python tools/agent/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
 - **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
 
 **Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a

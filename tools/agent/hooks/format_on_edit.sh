@@ -29,8 +29,8 @@ proj="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/de
 input="$(cat || true)"
 
 extract_paths() {
-    if command -v python3 >/dev/null 2>&1; then
-        HOOK_INPUT="$input" python3 - <<'PY'
+    if command -v python >/dev/null 2>&1; then
+        HOOK_INPUT="$input" python - <<'PY'
 import json, os, re, sys
 raw = os.environ.get("HOOK_INPUT", "")
 try:

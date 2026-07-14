@@ -56,8 +56,8 @@ while IFS=$'\t' read -r -a F || ((${#F[@]})); do
     if [[ ! -e "$f" ]]; then fail "manifest row → missing file: $p"; continue; fi
     case "$p" in
         *.sh) bash -n "$f" 2>/dev/null || fail "shell syntax error: $p" ;;
-        *.py) command -v python3 >/dev/null 2>&1 &&
-            { python3 -m py_compile "$f" 2>/dev/null || fail "python compile error: $p"; } ;;
+        *.py) command -v python >/dev/null 2>&1 &&
+            { python -m py_compile "$f" 2>/dev/null || fail "python compile error: $p"; } ;;
     esac
     case "$s" in
         public | installed)

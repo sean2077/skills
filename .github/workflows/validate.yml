@@ -12,9 +12,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      # Local equivalent: python3 scripts/validate_skills.py
+      # Local equivalent: python scripts/validate_skills.py
       - name: Validate skills catalog
-        run: python3 scripts/validate_skills.py
+        run: python scripts/validate_skills.py
       # Local equivalent: bash scripts/check-agent-scaffold.sh
       - name: Check agent-scaffold invariants
         if: always() # run even if the catalog check failed — one run surfaces every failure
