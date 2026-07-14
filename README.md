@@ -25,7 +25,7 @@ npx skills add sean2077/skills --skill agent-scaffold -a codex
 npx skills add ./skills/agent-scaffold -a codex
 ```
 
-If the skills were installed before the compatibility manifest existed, rerun the original `add` command once in the same project/global scope so `npx skills` records the group in its lockfile.
+If the skills were installed before the compatibility manifest existed, rerun the catalog-root `add` command once in the same project/global scope so `npx skills` records the group in its lockfile. For a local checkout, use `npx skills add . --skill agent-scaffold -a codex`; installing `./skills/agent-scaffold` directly bypasses the root manifest and therefore remains ungrouped.
 
 ## Skills
 
@@ -35,7 +35,7 @@ If the skills were installed before the compatibility manifest existed, rerun th
 | [semver-release](skills/semver-release/) | Cut a semver release from conventional commits: infer the bump, update CHANGELOG + version file, tag, then hand off to tag-triggered release CI (or publish a GitHub/GitLab release directly). | Git, Release |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [tooling-conventions](skills/tooling-conventions/) | Govern a project's `tools/`/`scripts/` directory at scale: surface taxonomy, failure-domain aggregation, placement tree, script contract, and a reconciliation-checked surface manifest. Ships `manifest-check.sh`. | Shell, Governance |
-| [agent-scaffold](skills/agent-scaffold/) | Install or retrofit the full dual-host (Claude Code + Codex) agent harness into a project: `.agents/` single-source-of-truth layout, worktree-per-change flow + trunk-edit guard, AGENTS.md line-budget + format-on-edit hooks, `CLAUDE.md`→`AGENTS.md` contract + a parent-linked nested AGENTS.md tree, and (Node) a subagent generator + pre-commit drift guard. One idempotent, merge-aware installer (`harness-init.sh`); coexists with `npx skills` for third-party skills. | Shell, Node, Governance |
+| [agent-scaffold](skills/agent-scaffold/) | Install or retrofit the full dual-host (Claude Code + Codex) agent harness into a project: `.agents/` single-source-of-truth layout, worktree-per-change flow + trunk-edit guard, AGENTS.md line-budget + format-on-edit hooks, `CLAUDE.md`→`AGENTS.md` contract + a parent-linked nested AGENTS.md tree, and a Python subagent generator + pre-commit drift guard. One idempotent, merge-aware installer (`harness-init.sh`); coexists with `npx skills` for third-party skills. | Shell, Python, Governance |
 
 ## Structure
 
