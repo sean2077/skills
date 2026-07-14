@@ -65,7 +65,7 @@ log "target repo: $TARGET   mode: $MODE"
 
 TMPDIR_H="$(mktemp -d)"; trap 'rm -rf "$TMPDIR_H"' EXIT
 
-# ---- json merge (jq → python3 → paste-block) -------------------------------
+# ---- json merge (jq → python → paste-block) -------------------------------
 # shellcheck disable=SC2016  # $a/$b/$g/$h below are jq variables, not shell expansions
 JQ_PROG='
 def unionByCommand($a; $b):
@@ -120,12 +120,12 @@ with open(os.environ["HARNESS_OUT"], "w") as f:
 merge_hooks() {
   local existing="$1" add="$2" out="$3"
   if [[ ! -f "$existing" ]]; then cp "$add" "$out"; return 0; fi
-  # HARNESS_NO_JQ forces the python3 path (lets the e2e test prove both paths agree).
+  # HARNESS_NO_JQ forces the python path (lets the e2e test prove both paths agree).
   if [[ -z "${HARNESS_NO_JQ:-}" ]] && command -v jq >/dev/null 2>&1; then
     jq --slurpfile add "$add" "$JQ_PROG" "$existing" > "$out" && return 0
   fi
-  if command -v python3 >/dev/null 2>&1; then
-    HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" python3 -c "$PY_MERGE" && return 0
+  if command -v python >/dev/null 2>&1; then
+    HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" python -c "$PY_MERGE" && return 0
   fi
   return 1
 }
@@ -149,7 +149,7 @@ write_hook_config() {  # <host-label> <existing-file> <addition-file>
       mkdir -p "$(dirname "$existing")"; mv "$out" "$existing"; ok "$label hooks wired → ${existing#"$TARGET"/}"
     fi
   else
-    warn "$label: no jq or python3 to merge JSON safely. Add this block to ${existing#"$TARGET"/} by hand:"
+    warn "$label: no jq or python to merge JSON safely. Add this block to ${existing#"$TARGET"/} by hand:"
     sed 's/^/    /' "$add" >&2
     HARNESS_MERGE_DEFERRED=1
   fi
@@ -244,10 +244,10 @@ ensure_claude_md_symlink() {
 }
 
 # ---- subagent wiring: pre-commit drift guard + (Node projects) package.json scripts ----
-# The generator itself is python3 (needs no package.json). package.json scripts are a
+# The generator itself is python (needs no package.json). package.json scripts are a
 # convenience added only when the project already has one; husky is npm-based, so its
 # path is likewise gated on package.json. Everything else just advises the one line to wire.
-GEN_CHECK='python3 tools/agent/generate-subagents.py --check'
+GEN_CHECK='python tools/agent/generate-subagents.py --check'
 PKG_MERGE_PY='
 import json, os, sys
 p = os.environ["HARNESS_PKG"]
@@ -256,8 +256,8 @@ with open(p) as f:
 j.setdefault("scripts", {})
 changed = False
 want = {
-    "gen:subagents": "python3 tools/agent/generate-subagents.py",
-    "check:agents": "python3 tools/agent/generate-subagents.py --check",
+    "gen:subagents": "python tools/agent/generate-subagents.py",
+    "check:agents": "python tools/agent/generate-subagents.py --check",
 }
 for k, v in want.items():
     if k not in j["scripts"]:
@@ -306,7 +306,7 @@ wire_subagents() {
 
   # package.json convenience scripts — only when the project actually has a package.json
   if [[ -f "$pkg" ]]; then
-    if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" python3 -c "$PKG_MERGE_PY" >/dev/null; then
+    if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" python -c "$PKG_MERGE_PY" >/dev/null; then
       log "package.json: ensured gen:subagents / check:agents scripts"
     else
       warn "could not update package.json scripts"
@@ -365,7 +365,7 @@ do_install() {
       cp "$TPL/subagent.metadata.json"   "$TARGET/.agents/subagents/code-reviewer/metadata.json"
       cp "$TPL/subagent.instructions.md" "$TARGET/.agents/subagents/code-reviewer/instructions.md"
       ok "seeded example subagent .agents/subagents/code-reviewer (delete it once you add your own)"
-      command -v python3 >/dev/null 2>&1 || log "  (install python3, then run upgrade to project it into .claude/ + .codex/)"
+      command -v python >/dev/null 2>&1 || log "  (install python, then run upgrade to project it into .claude/ + .codex/)"
     fi
   fi
   [[ "$EXAMPLE_SUBAGENT" == 1 ]] || touch "$TARGET/.agents/subagents/.gitkeep"
@@ -373,20 +373,20 @@ do_install() {
   # 6. relink skills (idempotent)
   bash "$TARGET/.agents/relink-skills.sh" || warn "relink-skills.sh returned nonzero"
 
-  # 7. python3-gated: subagent generator + drift guard
-  if command -v python3 >/dev/null 2>&1; then
+  # 7. python-gated: subagent generator + drift guard
+  if command -v python >/dev/null 2>&1; then
     copy_script "$TPL/generate-subagents.py" "$TARGET/tools/agent/generate-subagents.py"
     wire_subagents
     # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
     # into the .agents/ SSOT (no-op when there are none / a source already exists), then it
     # projects everything back. Importing first also stops the projection step from pruning a
     # hand-authored agent as a sourceless "orphan".
-    python3 "$TARGET/tools/agent/generate-subagents.py" --import || warn "generate-subagents.py --import returned nonzero"
+    python "$TARGET/tools/agent/generate-subagents.py" --import || warn "generate-subagents.py --import returned nonzero"
   else
-    log "no python3 → skipping subagent generator + drift guard (rest of the bash harness is installed)."
-    log "  to enable subagents later: install python3, then re-run 'agent-scaffold upgrade'."
+    log "no python → skipping subagent generator + drift guard (rest of the bash harness is installed)."
+    log "  to enable subagents later: install python, then re-run 'agent-scaffold upgrade'."
     if find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
-      warn "hand-authored .claude/agents or .codex/agents found but python3 is unavailable — cannot adopt them into .agents/ SSOT. Install python3, then: agent-scaffold upgrade"
+      warn "hand-authored .claude/agents or .codex/agents found but python is unavailable — cannot adopt them into .agents/ SSOT. Install python, then: agent-scaffold upgrade"
     fi
   fi
 
@@ -442,7 +442,7 @@ do_plan() {
   echo
 
   echo "Subagents:"
-  if command -v python3 >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1; then
     local -A seen=(); local any=0 af base
     for af in "$TARGET/.claude/agents"/*.md "$TARGET/.codex/agents"/*.toml; do
       [[ -e "$af" ]] || continue
@@ -457,9 +457,9 @@ do_plan() {
       printf '  %s no hand-authored subagents to adopt; generator projects .agents/subagents/\n' "$SKP"
     fi
   elif find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
-    printf '  %s hand-authored subagents found, but python3 is unavailable — install python3 to adopt them\n' "$MAN"
+    printf '  %s hand-authored subagents found, but python is unavailable — install python to adopt them\n' "$MAN"
   else
-    printf '  %s python3 unavailable — subagent generator skipped\n' "$SKP"
+    printf '  %s python unavailable — subagent generator skipped\n' "$SKP"
   fi
   echo
 
@@ -532,14 +532,14 @@ do_verify() {
   done
   [[ "$drift" == 0 ]] && printf '%s installed scripts match the skill templates\n' "$pass" || printf '%s %d script(s) drifted — run: agent-scaffold upgrade\n' "$info" "$drift"
 
-  if [[ -f "$TARGET/tools/agent/generate-subagents.py" ]] && command -v python3 >/dev/null 2>&1; then
-    if python3 "$TARGET/tools/agent/generate-subagents.py" --check >/dev/null 2>&1; then
+  if [[ -f "$TARGET/tools/agent/generate-subagents.py" ]] && command -v python >/dev/null 2>&1; then
+    if python "$TARGET/tools/agent/generate-subagents.py" --check >/dev/null 2>&1; then
       printf '%s subagent projections in sync\n' "$pass"
     else
-      printf '%s subagent projections drifted — run: python3 tools/agent/generate-subagents.py\n' "$fail"; fails=$((fails+1))
+      printf '%s subagent projections drifted — run: python tools/agent/generate-subagents.py\n' "$fail"; fails=$((fails+1))
     fi
   else
-    printf '%s no subagent generator (python3 unavailable or not installed)\n' "$info"
+    printf '%s no subagent generator (python unavailable or not installed)\n' "$info"
   fi
 
   echo

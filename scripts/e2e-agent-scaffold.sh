@@ -8,7 +8,7 @@
 # Mirrors skills/agent-scaffold/reference.md section 12. All writes stay in a mktemp dir.
 #
 # Usage: bash scripts/e2e-agent-scaffold.sh [-h|--help]
-# Exit 0 = all assertions passed, 1 = a failure. Needs git + python3.
+# Exit 0 = all assertions passed, 1 = a failure. Needs git + python.
 set -uo pipefail
 
 usage() { sed -n '2,11p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
@@ -18,17 +18,17 @@ repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 H="$repo/skills/agent-scaffold/harness-init.sh"
 [ -f "$H" ] || { echo "installer not found: $H" >&2; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "git required" >&2; exit 1; }
-command -v python3 >/dev/null 2>&1 || { echo "python3 required" >&2; exit 1; }
+command -v python >/dev/null 2>&1 || { echo "python required" >&2; exit 1; }
 
 fails=0
 ok()  { printf '  \033[1;32mPASS\033[0m %s\n' "$*"; }
 bad() { printf '  \033[1;31mFAIL\033[0m %s\n' "$*" >&2; fails=$((fails + 1)); }
 check() { local d="$1"; shift; if "$@"; then ok "$d"; else bad "$d"; fi; }
-# JSON assertions via python3 (portable; avoids a jq dependency in CI).
+# JSON assertions via python (portable; avoids a jq dependency in CI).
 # shellcheck disable=SC2317  # jmatch/jcount run indirectly through check() "$@"
-jmatch() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d["hooks"][sys.argv[2]][0]["matcher"]==sys.argv[3] else 1)' "$@"; }
+jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d["hooks"][sys.argv[2]][0]["matcher"]==sys.argv[3] else 1)' "$@"; }
 # shellcheck disable=SC2317
-jcount() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
+jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317  # run indirectly through check() "$@"
 is_real_dir() { [ -d "$1" ] && [ ! -L "$1" ]; }
 
@@ -55,7 +55,7 @@ check "retrofit re-run exits 0"              test "$rc" = 0
 check "PostToolUse stays 2 hooks (no dup)"   jcount "$S/.claude/settings.json" PostToolUse 2
 
 echo "== retrofit-merge preserves a pre-existing user hook =="
-python3 - "$S/.claude/settings.json" <<'PY'
+python - "$S/.claude/settings.json" <<'PY'
 import json, sys
 p = sys.argv[1]; d = json.load(open(p))
 d["hooks"]["PreToolUse"][0]["hooks"].append({"type": "command", "command": "user-custom.sh"})
@@ -131,7 +131,7 @@ check "AGENTS.md keeps the original prose"    grep -q "Hand-written agent rules 
 check "AGENTS.md gains the harness block"     grep -qF "<!-- agent-scaffold:start" "$M/AGENTS.md"
 check "CLAUDE.md is now a symlink to AGENTS.md" test "$(readlink "$M/CLAUDE.md")" = AGENTS.md
 
-echo "== retrofit adopts hand-authored subagents into the SSOT (python3, no package.json) =="
+echo "== retrofit adopts hand-authored subagents into the SSOT (python, no package.json) =="
 A="$work/adopt"; mkdir -p "$A/.claude/agents"
 git -C "$A" init -q -b main
 git -C "$A" config user.email t@t.t; git -C "$A" config user.name tester
@@ -145,16 +145,16 @@ check "hand-authored agent adopted into SSOT"     test -f "$A/.agents/subagents/
 check "adopted metadata keeps the tools"          grep -q Read "$A/.agents/subagents/custom-rev/metadata.json"
 check "CC projection regenerated with banner"     grep -q "do not edit by hand" "$A/.claude/agents/custom-rev.md"
 check "Codex projection generated"                test -f "$A/.codex/agents/custom-rev.toml"
-( cd "$A" && python3 tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$A" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "subagent projections in sync after adopt"  test "$rc" = 0
 printf -- '---\nname: ghost\ndescription: no source\n---\n\nbody\n' > "$A/.claude/agents/ghost.md"
-( cd "$A" && python3 tools/agent/generate-subagents.py ) >/dev/null 2>&1
+( cd "$A" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1
 check "sourceless hand-authored projection not pruned" test -f "$A/.claude/agents/ghost.md"
 
-echo "== jq and python3 hook-merge paths agree =="
+echo "== jq and python hook-merge paths agree =="
 if command -v jq >/dev/null 2>&1; then
   # shellcheck disable=SC2317  # jq_py_agree runs indirectly through check() "$@"
-  jq_py_agree() { python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))==json.load(open(sys.argv[2])) else 1)' "$1" "$2"; }
+  jq_py_agree() { python -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))==json.load(open(sys.argv[2])) else 1)' "$1" "$2"; }
   for variant in jq py; do
     d="$work/merge-$variant"; mkdir -p "$d"
     git -C "$d" init -q -b main
@@ -166,10 +166,10 @@ if command -v jq >/dev/null 2>&1; then
   done
   ( cd "$work/merge-jq" && bash "$H" retrofit ) >/dev/null 2>&1
   ( cd "$work/merge-py" && HARNESS_NO_JQ=1 bash "$H" retrofit ) >/dev/null 2>&1
-  check "jq and python3 merges agree (CC)"    jq_py_agree "$work/merge-jq/.claude/settings.json" "$work/merge-py/.claude/settings.json"
-  check "jq and python3 merges agree (Codex)" jq_py_agree "$work/merge-jq/.codex/hooks.json"     "$work/merge-py/.codex/hooks.json"
+  check "jq and python merges agree (CC)"    jq_py_agree "$work/merge-jq/.claude/settings.json" "$work/merge-py/.claude/settings.json"
+  check "jq and python merges agree (Codex)" jq_py_agree "$work/merge-jq/.codex/hooks.json"     "$work/merge-py/.codex/hooks.json"
 else
-  echo "  (jq absent - only the python3 merge path runs; cross-check skipped)"
+  echo "  (jq absent - only the python merge path runs; cross-check skipped)"
 fi
 
 echo "== hardening: deep-review regression fixes =="
@@ -189,7 +189,7 @@ check "hooks:null retrofit wires the trunk guard"        grep -q trunk_edit_guar
 # must still be adopted by --import (the banner test keys on "Generated from
 # .agents/subagents/", not the loose phrase). Reuses the adopt repo $A.
 printf -- '---\nname: phrase-rev\ndescription: mentions the banner phrase\n---\n\nRule: do not edit by hand-written config.\n' > "$A/.claude/agents/phrase-rev.md"
-( cd "$A" && python3 tools/agent/generate-subagents.py --import ) >/dev/null 2>&1
+( cd "$A" && python tools/agent/generate-subagents.py --import ) >/dev/null 2>&1
 check "hand-authored agent w/ banner phrase in prose still adopted (M3)" test -f "$A/.agents/subagents/phrase-rev/metadata.json"
 
 # M1: metadata.json without a non-empty description must fail fast, not emit "None".
@@ -197,7 +197,7 @@ DN="$work/nodesc"; mkdir -p "$DN/.agents/subagents/x" "$DN/tools/agent"
 cp "$repo/tools/agent/generate-subagents.py" "$DN/tools/agent/generate-subagents.py"
 printf '{"name":"x"}' > "$DN/.agents/subagents/x/metadata.json"
 printf 'body\n' > "$DN/.agents/subagents/x/instructions.md"
-( cd "$DN" && python3 tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
+( cd "$DN" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
 check "metadata without description fails fast (M1)"     test "$rc" != 0
 
 # m1: malformed metadata.json gives a friendly, named error — no raw python traceback.
@@ -205,7 +205,7 @@ MJ="$work/badjson"; mkdir -p "$MJ/.agents/subagents/y" "$MJ/tools/agent"
 cp "$repo/tools/agent/generate-subagents.py" "$MJ/tools/agent/generate-subagents.py"
 printf '{not json' > "$MJ/.agents/subagents/y/metadata.json"
 printf 'body\n' > "$MJ/.agents/subagents/y/instructions.md"
-( cd "$MJ" && python3 tools/agent/generate-subagents.py ) >"$work/badjson.out" 2>&1; rc=$?
+( cd "$MJ" && python tools/agent/generate-subagents.py ) >"$work/badjson.out" 2>&1; rc=$?
 check "malformed metadata.json exits nonzero (m1)"       test "$rc" != 0
 check "malformed metadata.json names subagent + reason (m1)" grep -qF "subagent 'y': metadata.json is not valid JSON" "$work/badjson.out"
 # shellcheck disable=SC2016  # $1 is sh -c's own positional; the outer shell must NOT expand it

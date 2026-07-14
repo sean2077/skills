@@ -67,7 +67,7 @@ External state (a wiki, an issue tracker, agent memory) is not a commit-blocking
 
 ```bash
 bash -n <script.sh>                 # shell syntax
-python3 -m py_compile <script.py>   # python syntax
+python -m py_compile <script.py>   # python syntax
 <script> --help                     # exit 0 + usage
 <script> --dry-run ...              # dangerous scripts: prove the no-op path
 bash manifest-check.sh <manifest>   # reconcile manifest vs disk (this skill's checker)

@@ -33,11 +33,11 @@ input="$(cat || true)"
 
 # Pull every file path the tool call would touch out of the hook JSON on stdin.
 # Handles Edit/Write/NotebookEdit (file_path/notebook_path/path) and apply_patch
-# style payloads (*** Add|Update|Delete File: …). python3 preferred, jq fallback;
+# style payloads (*** Add|Update|Delete File: …). python preferred, jq fallback;
 # with neither, fail open rather than block blindly.
 extract_paths() {
-    if command -v python3 >/dev/null 2>&1; then
-        HOOK_INPUT="$input" python3 - "$proj" <<'PY'
+    if command -v python >/dev/null 2>&1; then
+        HOOK_INPUT="$input" python - "$proj" <<'PY'
 import json, os, re, sys
 raw = os.environ.get("HOOK_INPUT", "")
 try:
@@ -70,7 +70,7 @@ PY
     elif command -v jq >/dev/null 2>&1; then
         jq -r '.tool_input.file_path // .tool_input.notebook_path // .tool_input.path // empty' <<<"$input" 2>/dev/null
     else
-        echo "trunk_edit_guard: neither python3 nor jq available — cannot parse hook input, allowing" >&2
+        echo "trunk_edit_guard: neither python nor jq available — cannot parse hook input, allowing" >&2
     fi
 }
 

@@ -1,16 +1,16 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Generate Claude Code (.claude/agents/*.md) and Codex (.codex/agents/*.toml)
 # subagent files from the authoritative source in .agents/subagents/.
 #
-#   python3 tools/agent/generate-subagents.py           # write projections
-#   python3 tools/agent/generate-subagents.py --check   # exit 1 on drift (CI / pre-commit)
-#   python3 tools/agent/generate-subagents.py --import  # adopt hand-authored host agents into sources
+#   python tools/agent/generate-subagents.py           # write projections
+#   python tools/agent/generate-subagents.py --check   # exit 1 on drift (CI / pre-commit)
+#   python tools/agent/generate-subagents.py --import  # adopt hand-authored host agents into sources
 #
 # Source per subagent: .agents/subagents/<name>/{metadata.json, instructions.md}.
 # Generated files are marked "do not edit by hand" — edit the source and re-run.
 #
 # Standard-library Python 3 only (no pip installs). The bash harness already assumes
-# python3, so subagents work anywhere the rest of the harness does — no Node / package.json.
+# python, so subagents work anywhere the rest of the harness does — no Node / package.json.
 import json
 import os
 import re
@@ -22,7 +22,7 @@ CLAUDE_DIR = os.path.join(ROOT, ".claude", "agents")
 CODEX_DIR = os.path.join(ROOT, ".codex", "agents")
 DO_NOT_EDIT = (
     "Generated from .agents/subagents/%s; do not edit by hand. "
-    "Run: python3 tools/agent/generate-subagents.py"
+    "Run: python tools/agent/generate-subagents.py"
 )
 # Marker that identifies a generated projection. Use the full "Generated from
 # .agents/subagents/" lead-in, NOT a loose "do not edit by hand": the latter can
@@ -320,10 +320,10 @@ def main(argv):
                     "generate-subagents.py — project .agents/subagents/ into Claude Code + Codex agent files.",
                     "",
                     "Usage:",
-                    "  python3 generate-subagents.py           write .claude/agents/*.md + .codex/agents/*.toml",
-                    "  python3 generate-subagents.py --check   exit 1 on drift (CI / pre-commit); writes nothing",
-                    "  python3 generate-subagents.py --import  adopt hand-authored .claude/agents + .codex/agents into .agents/subagents/, then project",
-                    "  python3 generate-subagents.py -h|--help show this help",
+                    "  python generate-subagents.py           write .claude/agents/*.md + .codex/agents/*.toml",
+                    "  python generate-subagents.py --check   exit 1 on drift (CI / pre-commit); writes nothing",
+                    "  python generate-subagents.py --import  adopt hand-authored .claude/agents + .codex/agents into .agents/subagents/, then project",
+                    "  python generate-subagents.py -h|--help show this help",
                     "",
                     "Source per subagent: .agents/subagents/<name>/{metadata.json, instructions.md}.",
                 ]
@@ -351,7 +351,7 @@ def main(argv):
             print("generate-subagents --check: DRIFT in %d file(s):" % len(drift), file=sys.stderr)
             for d in drift:
                 print("  - %s" % d, file=sys.stderr)
-            print("Run: python3 tools/agent/generate-subagents.py", file=sys.stderr)
+            print("Run: python tools/agent/generate-subagents.py", file=sys.stderr)
             return 1
         print(
             "generate-subagents --check: %d file(s) in sync (%d subagent(s))" % (len(wanted), len(subagents))

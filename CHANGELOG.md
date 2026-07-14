@@ -30,7 +30,7 @@ Agent-Skills hosts).
 - **`agent-scaffold`** — install or retrofit the dual-host (Claude Code + Codex) agent
   harness into a project: the `.agents/` single-source-of-truth layout, worktree-per-change
   flow with a trunk-edit guard, `AGENTS.md` budget + format-on-edit hooks, the
-  `CLAUDE.md`→`AGENTS.md` contract, skill symlinks, and a python3 subagent generator with a
+  `CLAUDE.md`→`AGENTS.md` contract, skill symlinks, and a python subagent generator with a
   drift guard. One idempotent, merge-aware installer with `init`, `retrofit`, `plan`,
   `verify`, and `upgrade` modes.
 

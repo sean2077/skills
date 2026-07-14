@@ -1,2 +1,2 @@
 # agent-scaffold: keep the dual-host subagent projections in sync with their source
-python3 tools/agent/generate-subagents.py --check
+python tools/agent/generate-subagents.py --check

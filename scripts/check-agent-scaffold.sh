@@ -7,7 +7,7 @@
 # makes them dual-host-correct: Codex has no $CLAUDE_PROJECT_DIR, so a shallower
 # CC-only resolver would silently break the Codex side. Do not flatten it.
 #
-# Exit 0 clean, 1 on failure. No third-party deps (bash; python3 only if present).
+# Exit 0 clean, 1 on failure. No third-party deps (bash; python only if present).
 set -uo pipefail
 
 usage() { sed -n '2,10p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
@@ -26,9 +26,9 @@ for f in "$sk/harness-init.sh" "$sk"/templates/*.sh; do
   bash -n "$f" 2>/dev/null || fail "bash syntax error: ${f#"$repo"/}"
 done
 
-# 2. python syntax on the generator (when python3 is available)
-if command -v python3 >/dev/null 2>&1 && [ -f "$sk/templates/generate-subagents.py" ]; then
-  python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$sk/templates/generate-subagents.py" 2>/dev/null \
+# 2. python syntax on the generator (when python is available)
+if command -v python >/dev/null 2>&1 && [ -f "$sk/templates/generate-subagents.py" ]; then
+  python -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$sk/templates/generate-subagents.py" 2>/dev/null \
     || fail "python syntax error: generate-subagents.py"
 fi
 
@@ -75,9 +75,9 @@ fi
 
 # 6. subagent projection drift: this repo dogfoods the generator, so CI stands in for the
 #    pre-commit --check guard (no package.json/husky here). No sources -> clean exit 0.
-if [ -f "$repo/tools/agent/generate-subagents.py" ] && command -v python3 >/dev/null 2>&1; then
-  ( cd "$repo" && python3 tools/agent/generate-subagents.py --check >/dev/null 2>&1 ) \
-    || fail "subagent projection drift (run: python3 tools/agent/generate-subagents.py)"
+if [ -f "$repo/tools/agent/generate-subagents.py" ] && command -v python >/dev/null 2>&1; then
+  ( cd "$repo" && python tools/agent/generate-subagents.py --check >/dev/null 2>&1 ) \
+    || fail "subagent projection drift (run: python tools/agent/generate-subagents.py)"
 fi
 
 if [ "$fails" -eq 0 ]; then

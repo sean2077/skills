@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Validate the skills catalog.
 
 Catches the drift classes that have actually bitten this repo: a skill missing
@@ -11,8 +11,8 @@ with no shipped file. Warnings flag softer hygiene: missing or over-broad
 
 No third-party dependencies. Exit 0 = clean, 1 = errors. Warnings never fail.
 
-    python3 scripts/validate_skills.py            # validate this repo
-    SKILLS_REPO=/path/to/repo python3 scripts/validate_skills.py
+    python scripts/validate_skills.py            # validate this repo
+    SKILLS_REPO=/path/to/repo python scripts/validate_skills.py
 """
 
 from __future__ import annotations
