@@ -107,12 +107,12 @@ jobs:
           fi
           printf '%s\n' '#!/usr/bin/env bash' 'if then' > "$fixture/tools/bad.sh"
           printf '%s\n' 'if True print("broken")' > "$fixture/tools/bad.py"
-          printf 'audit_level\tpath\tsurface\n' > "$fixture/tools/warn-manifest.tsv"
-          printf 'enforce\ttool.sh\tpublic\n' >> "$fixture/tools/warn-manifest.tsv"
-          printf 'warn\tvendor/missing-warn-tool\tvendor\n' >> "$fixture/tools/warn-manifest.tsv"
-          printf 'warn\tmissing-warn-package/\tpackage\n' >> "$fixture/tools/warn-manifest.tsv"
-          printf 'warn\tbad.sh\thelper\n' >> "$fixture/tools/warn-manifest.tsv"
-          printf 'warn\tbad.py\thelper\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'path\tsurface\tdomain\tentry_for\taudit_level\n' > "$fixture/tools/warn-manifest.tsv"
+          printf 'tool.sh\tpublic\tfixture\t\tenforce\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'vendor/missing-warn-tool\tvendor\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'missing-warn-package/\tpackage\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'bad.sh\thelper\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'bad.py\thelper\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
           if ! warn_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/warn-manifest.tsv" 2>&1)"; then
             echo "expected audit_level=warn rows to remain advisory" >&2
             printf '%s\n' "$warn_output" >&2
