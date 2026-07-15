@@ -232,12 +232,18 @@ for path in sys.argv[1:]:
                 hook for hook in group.get("hooks", [])
                 if "format_on_edit" not in str(hook.get("command", ""))
             ]
+    data["hooks"]["PostToolUse"][0]["hooks"].append({
+        "type": "command",
+        "command": "python scripts/check_format_on_edit_custom.py",
+    })
     with open(path, "w", encoding="utf-8") as target:
         json.dump(data, target, indent=2, ensure_ascii=False)
         target.write("\n")
 PY
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
-check "verify rejects missing format hook" test "$rc" != 0
+check "verify rejects missing format hook despite lookalike" test "$rc" != 0
+( cd "$S" && bash "$H" verify --no-format-hook ) >/dev/null 2>&1; rc=$?
+check "disabled format profile ignores user lookalike" test "$rc" = 0
 mv "$work/claude-settings.clean.json" "$S/.claude/settings.json"
 mv "$work/codex-hooks.clean.json" "$S/.codex/hooks.json"
 cp "$S/tools/agent/hooks/format_on_edit.sh" "$work/format-on-edit.clean.sh"
@@ -245,6 +251,15 @@ printf '\n# drift fixture\n' >> "$S/tools/agent/hooks/format_on_edit.sh"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "verify rejects active script drift" test "$rc" != 0
 mv "$work/format-on-edit.clean.sh" "$S/tools/agent/hooks/format_on_edit.sh"
+cp "$S/tools/agent/generate-subagents.py" "$work/generate-subagents.clean.py"
+printf '\n# generator drift fixture\n' >> "$S/tools/agent/generate-subagents.py"
+( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+check "verify rejects generator byte drift" test "$rc" != 0
+mv "$work/generate-subagents.clean.py" "$S/tools/agent/generate-subagents.py"
+mv "$S/tools/agent/generate-subagents.py" "$work/generate-subagents.missing.py"
+( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+check "verify rejects missing generator" test "$rc" != 0
+mv "$work/generate-subagents.missing.py" "$S/tools/agent/generate-subagents.py"
 
 echo "== lightweight profile: --no-worktree omits the complete worktree policy =="
 L="$work/lightweight"; mkdir -p "$L"
