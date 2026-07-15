@@ -47,6 +47,13 @@ no_partial_harness() {
     [ ! -e "$root/$path" ] && [ ! -L "$root/$path" ] || return 1
   done
 }
+# shellcheck disable=SC2317,SC2329
+no_generated_harness() {
+  local root="$1" path
+  for path in CLAUDE.md .agents .claude .codex tools; do
+    [ ! -e "$root/$path" ] && [ ! -L "$root/$path" ] || return 1
+  done
+}
 
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 S="$work/scratch space-雪"; mkdir -p "$S"
@@ -76,6 +83,23 @@ check "no-worktree plan exits 0"                   test "$rc" = 0
 check "no-worktree plan makes no change"           test "$before" = "$after"
 check "no-worktree plan reports disabled flow"     grep -qF "disabled by --no-worktree" "$work/no-worktree-plan.out"
 check "no-worktree plan keeps flag in apply command" grep -qF "retrofit --no-worktree" "$work/no-worktree-plan.out"
+
+echo "== malformed AGENTS markers: fail before mutation =="
+B="$work/bad-agents-markers"; mkdir -p "$B"
+git -C "$B" init -q -b main
+git -C "$B" config user.email t@t.t; git -C "$B" config user.name tester
+git -C "$B" config core.symlinks true
+printf '# Project contract\n\n<!-- agent-scaffold:start -->\nKEEP-THIS-USER-TAIL\n' > "$B/AGENTS.md"
+git -C "$B" add AGENTS.md && git -C "$B" commit -q -m "malformed contract fixture"
+agents_before="$(git hash-object "$B/AGENTS.md")"
+( cd "$B" && bash "$H" plan ) >"$work/bad-markers-plan.out" 2>&1; rc=$?
+check "plan rejects malformed managed markers"       test "$rc" = 2
+check "plan explains the malformed marker conflict"  grep -qF "malformed agent-scaffold markers" "$work/bad-markers-plan.out"
+check "plan leaves malformed AGENTS.md byte-identical" test "$(git hash-object "$B/AGENTS.md")" = "$agents_before"
+( cd "$B" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" upgrade ) >"$work/bad-markers-upgrade.out" 2>&1; rc=$?
+check "upgrade rejects malformed markers before doctor" grep -qF "malformed agent-scaffold markers" "$work/bad-markers-upgrade.out"
+check "failed upgrade leaves AGENTS.md byte-identical" test "$(git hash-object "$B/AGENTS.md")" = "$agents_before"
+check "failed upgrade leaves no partial harness"      no_generated_harness "$B"
 
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then

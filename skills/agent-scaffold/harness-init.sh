@@ -216,9 +216,39 @@ render_agents_template() {
   ' "$TPL/AGENTS.root.md"
 }
 
+validate_agents_markers() {
+  local agents="$TARGET/AGENTS.md"
+  [[ -f "$agents" ]] || return 0
+  if awk '
+    {
+      starts_here = gsub(/<!-- agent-scaffold:start/, "&")
+      ends_here = gsub(/<!-- agent-scaffold:end/, "&")
+      if (starts_here) {
+        starts += starts_here
+        if (active || ended || starts_here != 1 || ends_here) invalid=1
+        active=1
+      }
+      if (ends_here) {
+        ends += ends_here
+        if (!active || ends_here != 1 || starts_here) invalid=1
+        active=0
+        ended=1
+      }
+    }
+    END {
+      if (starts == 0 && ends == 0) exit 0
+      exit !(starts == 1 && ends == 1 && ended && !active && !invalid)
+    }
+  ' "$agents"; then
+    return 0
+  fi
+  die "AGENTS.md has malformed agent-scaffold markers (expected exactly one ordered start/end pair); repair them manually before $MODE"
+}
+
 # ---- AGENTS.md (init writes template; retrofit injects the marked block) ----
 ensure_agents_md() {
   local agents="$TARGET/AGENTS.md" block="$TMPDIR_H/block.md" rendered="$TMPDIR_H/AGENTS.root.md"
+  validate_agents_markers
   render_agents_template > "$rendered"
   awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$rendered" > "$block"
   if [[ ! -e "$agents" ]]; then
@@ -597,11 +627,12 @@ do_verify() {
 
 case "$MODE" in
   init|retrofit|upgrade)
-    # Capability preflight is deliberately before the first target write.
+    # Contract and capability preflights are deliberately before the first target write.
+    validate_agents_markers
     run_python "$TPL/symlink-manager.py" doctor --repo "$TARGET" >/dev/null
     do_install
     ;;
-  plan) do_plan ;;
+  plan) validate_agents_markers; do_plan ;;
   doctor) run_python "$TPL/symlink-manager.py" doctor --repo "$TARGET" ;;
-  verify) do_verify ;;
+  verify) validate_agents_markers; do_verify ;;
 esac

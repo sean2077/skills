@@ -194,6 +194,8 @@ block:
 - No `AGENTS.md` → write `AGENTS.root.md` (stub project sections + the harness block).
 - `AGENTS.md` with the markers → replace **only** the block, preserving surrounding prose.
 - `AGENTS.md` without the markers → append the block (review placement).
+- Unbalanced, duplicated, or reversed markers → abort before target mutation; repair the marker
+  pair manually, then rerun `plan` or the requested install/upgrade command.
 
 Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade`
 refreshes everything between them. The template's inner worktree boundary is installer-owned:
