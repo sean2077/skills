@@ -361,12 +361,13 @@ expect_empty_claude_field() {
 }
 
 expect_empty_codex_field() {
-  local slug="$1" field="$2" root="$work/$1"
+  local slug="$1" field="$2" field_line root="$work/$1"
+  field_line="${3:-$field = \"\"}"
   mkdir -p "$root/.codex/agents" "$root/tools/agent"
   printf '%s\n' \
     "name = \"$slug\"" \
     'description = "explicit empty Codex option"' \
-    "$field = \"\"" \
+    "$field_line" \
     "developer_instructions = 'EMPTY_CODEX_OPTION_SENTINEL'" > "$root/.codex/agents/$slug.toml"
   cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
   ( cd "$root" && python tools/agent/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
@@ -377,8 +378,11 @@ expect_empty_codex_field() {
 
 expect_empty_claude_field empty-claude-tools tools 'tools: ""'
 expect_empty_claude_field empty-claude-tools-commas tools 'tools: ", ,"'
+expect_empty_claude_field empty-claude-tools-tail tools 'tools: "Read, "'
 expect_empty_claude_field empty-claude-model model 'model: ""'
+expect_empty_claude_field empty-claude-model-single model "model: ''"
 expect_empty_codex_field empty-codex-model model
+expect_empty_codex_field empty-codex-model-literal model "model = ''"
 expect_empty_codex_field empty-codex-reasoning model_reasoning_effort
 expect_empty_codex_field empty-codex-sandbox sandbox_mode
 
@@ -468,6 +472,22 @@ check "escaped DEL source generates"                 test "$rc" = 0
 check "escaped DEL projections stay escaped"        python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; sys.exit(0 if all(b"\x7f" not in d and b"\\u007f" in d for d in data) else 1)' "$Y/.claude/agents/escaped-del.md" "$Y/.codex/agents/escaped-del.toml"
 ( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "escaped DEL projections are in sync"          test "$rc" = 0
+
+Y="$work/host-escaped-del"; mkdir -p "$Y/.claude/agents" "$Y/.codex/agents" "$Y/tools/agent"
+printf -- '---\nname: escaped-del-import\ndescription: "a\\u007fb"\n---\n\nESCAPED_DEL_IMPORT_SENTINEL\n' > "$Y/.claude/agents/escaped-del-import.md"
+printf '%s\n' \
+  'name = "escaped-del-import"' \
+  'description = "a\u007Fb"' \
+  "developer_instructions = '''" \
+  'ESCAPED_DEL_IMPORT_SENTINEL' \
+  "'''" > "$Y/.codex/agents/escaped-del-import.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/host-escaped-del.out" 2>&1; rc=$?
+check "escaped DEL host import succeeds"             test "$rc" = 0
+check "escaped DEL host import stays semantic"       python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); sys.exit(0 if d["description"] == "a\x7fb" else 1)' "$Y/.agents/subagents/escaped-del-import/metadata.json"
+check "escaped DEL host projections stay escaped"   python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; sys.exit(0 if all(b"\x7f" not in d and b"\\u007f" in d for d in data) else 1)' "$Y/.claude/agents/escaped-del-import.md" "$Y/.codex/agents/escaped-del-import.toml"
+( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "escaped DEL host projections are in sync"     test "$rc" = 0
 
 Y="$work/claude-invalid-plain-colon"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
 printf -- '---\nname: invalid-plain-colon\ndescription: value: changes YAML structure\n---\n\nINVALID_PLAIN_COLON_SENTINEL\n' > "$Y/.claude/agents/invalid-plain-colon.md"
@@ -672,12 +692,14 @@ check "write creates no parallel lowercase file"    python -c 'import os,sys; na
 
 P="$work/hidden-host-agent"; mkdir -p "$P/.claude/agents"
 printf -- '---\nname: hidden\ndescription: hidden host filename\n---\n\nHIDDEN_HOST_SENTINEL\n' > "$P/.claude/agents/.hidden.md"
+printf -- '---\nname: double-hidden\ndescription: double hidden host filename\n---\n\nDOUBLE_HIDDEN_HOST_SENTINEL\n' > "$P/.claude/agents/..double-hidden.md"
 git -C "$P" init -q -b main
 git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
 git -C "$P" commit -q --allow-empty -m init
 ( cd "$P" && bash "$H" plan ) >"$work/hidden-host-plan.out" 2>&1; rc=$?
 check "hidden host plan exits 0"                     test "$rc" = 0
 check "hidden host plan explains filename"          grep -qF "non-portable host filename .hidden.md" "$work/hidden-host-plan.out"
+check "double-hidden host plan explains filename"   grep -qF "non-portable host filename ..double-hidden.md" "$work/hidden-host-plan.out"
 
 expect_invalid_metadata() {
   local slug="$1" json="$2" needle="$3" root="$work/source-metadata-$1"
