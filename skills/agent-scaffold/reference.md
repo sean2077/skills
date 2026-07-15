@@ -420,10 +420,12 @@ SSOT and `CLAUDE.md` as its symlink, so:
 A project may already have hand-written `.claude/agents/*.md` or `.codex/agents/*.toml`. Python is
 a harness prerequisite, and the installer runs `generate-subagents.py --import` before projecting:
 
-1. For each host agent file with **no** `.agents/subagents/<name>/` source and **no** generated
-   banner, it parses the frontmatter / TOML (name, description, tools/model, Codex knobs, body) and
-   writes a `.agents/subagents/<name>/{metadata.json, instructions.md}` source. The `.claude` and
-   `.codex` sides of the same name merge into one source.
+1. For each host agent file with **no** `.agents/subagents/<name>/` source and **no** canonical,
+   name-matched generated marker at the host format's expected position, it parses the frontmatter /
+   TOML (name, description, tools/model, Codex knobs, body) and writes a
+   `.agents/subagents/<name>/{metadata.json, instructions.md}` source. Mentioning the generated source
+   path in ordinary prose does not claim ownership. The `.claude` and `.codex` sides of the same name
+   merge into one source.
 2. It then projects every source back, so the adopted agent reappears as a generated file carrying
    the do-not-edit banner.
 

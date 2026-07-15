@@ -351,6 +351,30 @@ if changed:
 sys.stdout.write("updated" if changed else "unchanged")
 '
 
+is_generated_agent_projection() {  # <path> <name>
+  local path="$1" name="$2" marker first
+  marker="Generated from .agents/subagents/$name; do not edit by hand. Run: python tools/agent/generate-subagents.py"
+  case "$path" in
+    *.toml)
+      IFS= read -r first < "$path" || return 1
+      [[ "$first" == "# $marker" ]]
+      ;;
+    *.md)
+      awk -v marker="<!-- $marker -->" '
+        NR == 1 { if ($0 != "---") exit 1; next }
+        $0 == "---" {
+          if ((getline blank) <= 0 || blank != "") exit 1
+          if ((getline owner) <= 0 || owner != marker) exit 1
+          found=1
+          exit
+        }
+        END { if (!found) exit 1 }
+      ' "$path"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
 wire_subagents() {
   local pkg="$TARGET/package.json"
   local manager="" prepare=0
@@ -548,7 +572,7 @@ do_plan() {
     base="$(basename "$af")"; base="${base%.*}"
     if grep -qxF "$base" "$seen_file" 2>/dev/null; then continue; fi
     if [[ -d "$TARGET/.agents/subagents/$base" ]]; then continue; fi
-    if grep -qF 'Generated from .agents/subagents/' "$af" 2>/dev/null; then continue; fi
+    if is_generated_agent_projection "$af" "$base"; then continue; fi
     printf '%s\n' "$base" >> "$seen_file"; any=1
     printf '  %s subagent %s → adopt hand-authored agent into .agents/subagents/%s\n' "$MIG" "$base" "$base"
   done

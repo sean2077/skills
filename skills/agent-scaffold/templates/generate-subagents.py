@@ -24,13 +24,6 @@ DO_NOT_EDIT = (
     "Generated from .agents/subagents/%s; do not edit by hand. "
     "Run: python tools/agent/generate-subagents.py"
 )
-# Marker that identifies a generated projection. Use the full "Generated from
-# .agents/subagents/" lead-in, NOT a loose "do not edit by hand": the latter can
-# occur in a genuinely hand-authored agent's prose, which would misclassify it as
-# generated -> wrongly skipped by --import and wrongly pruned as a stale orphan.
-BANNER = "Generated from .agents/subagents/"
-
-
 def is_dir(p):
     return os.path.isdir(p)
 
@@ -56,6 +49,18 @@ def write_text(p, content):
 
 def rel(p):
     return p[len(ROOT) + 1:]
+
+
+def is_generated_projection(path, text):
+    """Recognize only this file's canonical, position-bound ownership marker."""
+    name, ext = os.path.splitext(os.path.basename(path))
+    marker = DO_NOT_EDIT.replace("%s", name)
+    if ext == ".toml":
+        return text.startswith("# %s\n" % marker)
+    if ext == ".md":
+        pattern = r"\A---\n[\s\S]*?\n---\n\n<!-- %s -->\n" % re.escape(marker)
+        return re.match(pattern, text) is not None
+    return False
 
 
 # JSON string encoding doubles as a valid YAML double-quoted scalar / TOML basic
@@ -249,8 +254,9 @@ def collect_adoptable():
             name = f[: -len(ext)]
             if is_dir(os.path.join(SOURCE_DIR, name)):
                 continue  # already an SSOT source
-            text = read_text(os.path.join(d, f))
-            if BANNER in text:
+            path = os.path.join(d, f)
+            text = read_text(path)
+            if is_generated_projection(path, text):
                 continue  # a generated projection, not hand-authored
             e = by_name.get(name) or {"name": name}
             e[kind] = parse_claude_agent(text) if kind == "claude" else parse_codex_agent(text)
@@ -344,7 +350,7 @@ def main(argv):
             if not os.path.exists(w["path"]) or read_text(w["path"]) != w["content"]:
                 drift.append(rel(w["path"]))
         for p in stale:
-            hand = BANNER not in read_text(p)
+            hand = not is_generated_projection(p, read_text(p))
             note = "hand-authored; run --import to adopt" if hand else "no source"
             drift.append("%s (orphan -- %s)" % (rel(p), note))
         if drift:
@@ -367,7 +373,7 @@ def main(argv):
             wrote += 1
     pruned = 0
     for p in stale:
-        if BANNER in read_text(p):
+        if is_generated_projection(p, read_text(p)):
             os.remove(p)
             pruned += 1
             print("pruned orphan %s" % rel(p))
