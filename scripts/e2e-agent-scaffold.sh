@@ -155,13 +155,16 @@ import sys
 fixtures = (
     (sys.argv[1], b".claude/settings.local.json\n", b".claude/settings.local.json\r\n"),
     (sys.argv[2], b"tools/agent/*.sh text eol=lf\n", b"tools/agent/*.sh text eol=lf\r\n"),
-    (sys.argv[3], b"python tools/agent/generate-subagents.py --check\n", b"python tools/agent/generate-subagents.py --check\r"),
 )
 for name, old, new in fixtures:
     path = Path(name)
     data = path.read_bytes()
     assert data.count(old) == 1
     path.write_bytes(data.replace(old, new, 1))
+hook = Path(sys.argv[3])
+hook_data = hook.read_bytes()
+assert b"python tools/agent/generate-subagents.py --check\n" in hook_data
+hook.write_bytes(hook_data.replace(b"\n", b"\r"))
 PY
 ( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
 check "retrofit re-run exits 0"              test "$rc" = 0
