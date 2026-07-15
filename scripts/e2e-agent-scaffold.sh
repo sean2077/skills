@@ -150,6 +150,28 @@ PY
 check "CRLF provenance plan exits 0"               test "$rc" = 0
 check "plan recognizes canonical CRLF projections" no_fixed_text "$work/provenance-crlf-plan.out" "subagent phrase-"
 
+echo "== divergent dual-host instructions fail before adoption =="
+D="$work/divergent-hosts"; mkdir -p "$D/.claude/agents" "$D/.codex/agents" "$D/tools/agent"
+printf -- '---\nname: alpha\ndescription: Claude-only control\n---\n\nALPHA_INSTRUCTIONS\n' > "$D/.claude/agents/alpha.md"
+printf -- '---\nname: dual\ndescription: shared description\n---\n\nCLAUDE_ONLY_INSTRUCTIONS\n' > "$D/.claude/agents/dual.md"
+printf '%s\n' \
+  'name = "dual"' \
+  'description = "shared description"' \
+  "developer_instructions = '''" \
+  'CODEX_ONLY_INSTRUCTIONS' \
+  "'''" > "$D/.codex/agents/dual.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$D/tools/agent/generate-subagents.py"
+alpha_before="$(git hash-object "$D/.claude/agents/alpha.md")"
+claude_before="$(git hash-object "$D/.claude/agents/dual.md")"
+codex_before="$(git hash-object "$D/.codex/agents/dual.toml")"
+( cd "$D" && python tools/agent/generate-subagents.py --import ) >"$work/divergent-import.out" 2>&1; rc=$?
+check "divergent import exits nonzero"             test "$rc" != 0
+check "divergent import explains the conflict"     grep -qF "subagent 'dual': .claude/agents/dual.md and .codex/agents/dual.toml have different instructions" "$work/divergent-import.out"
+check "conflict preserves earlier Claude input"    test "$(git hash-object "$D/.claude/agents/alpha.md")" = "$alpha_before"
+check "conflict preserves dual Claude input"       test "$(git hash-object "$D/.claude/agents/dual.md")" = "$claude_before"
+check "conflict preserves dual Codex input"        test "$(git hash-object "$D/.codex/agents/dual.toml")" = "$codex_before"
+check "conflict writes no SSOT sources"            test ! -e "$D/.agents"
+
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
   if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
