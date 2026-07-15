@@ -1,6 +1,6 @@
 ---
 name: tooling-conventions
-description: Govern a project's tools/ or scripts/ directory at scale. Classify each script by surface (public / installed / helper / break-glass / paused / legacy / package / native / template / vendor), aggregate commands by failure-domain rather than noun-domain, place new scripts via a decision tree, enforce a script contract (-h/--help + exit codes, secrets hygiene, atomic + idempotent writes), and keep a machine-readable surface manifest in sync via a reconciliation check. Use when adding, moving, or removing a tool/CLI script, auditing tooling sprawl, or setting up tooling governance for a large or growing repo. Ships manifest-check.sh and a lean manifest schema.
+description: 'Use when adding, moving, renaming, splitting, or removing committed tool/CLI commands under tools/, scripts/, or bin/; auditing tooling sprawl; or setting up tooling governance. Covers surface classification (including installed and break-glass), failure-domain grouping, placement, script contracts, and manifest-check.sh reconciliation. Not for application source layout, documentation systems (use project-docs-organizer), or uncommitted throwaway scripts.'
 compatibility: Bundled checks require Bash 3.2 or newer plus awk, grep, and find; Python checks run when python is available.
 ---
 
