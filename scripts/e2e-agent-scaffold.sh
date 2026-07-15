@@ -1067,6 +1067,66 @@ expect_invalid_metadata source-unicode-scalar \
   '{"name":"source-unicode-scalar","description":"\ud800"}' \
   "metadata.description contains an invalid Unicode scalar value"
 
+echo "== worktree push rejection: retain a retryable feature worktree =="
+R="$work/worktree-push-origin.git"
+P="$work/worktree-push-primary"
+Q="$work/worktree-push-peer"
+D="$P/.worktrees/develop-trunk"
+W="$P/.worktrees/push-retry"
+WT_HELPER="$repo/tools/agent/worktree.sh"
+git init --bare -q "$R"
+git init -q -b main "$P"
+git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
+printf 'base\n' > "$P/base.txt"
+git -C "$P" add base.txt && git -C "$P" commit -q -m "base"
+git -C "$P" remote add origin "$R"
+git -C "$P" push -q -u origin main
+main_oid="$(git -C "$P" rev-parse main)"
+git -C "$P" branch develop
+git -C "$P" push -q -u origin develop
+git -C "$P" worktree add -q "$D" develop
+git clone -q -b develop "$R" "$Q"
+git -C "$Q" config user.email t@t.t; git -C "$Q" config user.name tester
+(
+  cd "$P" || exit 1
+  bash "$WT_HELPER" new push-retry --type fix --trunk develop
+) >"$work/worktree-push-new.out" 2>&1
+printf 'feature\n' > "$W/feature.txt"
+git -C "$W" add feature.txt && git -C "$W" commit -q -m "feature change"
+feature_oid="$(git -C "$W" rev-parse HEAD)"
+printf 'peer\n' > "$Q/peer.txt"
+git -C "$Q" add peer.txt && git -C "$Q" commit -q -m "peer change"
+git -C "$Q" push -q origin develop
+(
+  cd "$W" || exit 1
+  bash "$WT_HELPER" done --trunk develop --keep-branch
+) >"$work/worktree-push-first.out" 2>&1; first_rc=$?
+check "concurrent remote advance rejects the first push" test "$first_rc" = 2
+check "feature commit remains on local develop" git -C "$P" merge-base --is-ancestor "$feature_oid" develop
+check "failed target push leaves main untouched" test "$(git -C "$P" rev-parse main)" = "$main_oid"
+check "failed push keeps feature worktree" test -d "$W"
+check "failed push keeps feature branch" git -C "$P" show-ref --verify -q refs/heads/fix/push-retry
+check "failed push explains retained retry state" \
+  grep -qF "worktree and branch kept" "$work/worktree-push-first.out"
+check "retry command preserves trunk and cleanup policy" \
+  grep -qF -- '--trunk "develop" --keep-branch' "$work/worktree-push-first.out"
+git -C "$D" fetch -q origin
+git -C "$D" merge --no-edit origin/develop >"$work/worktree-push-recover.out" 2>&1; recover_rc=$?
+check "trunk can merge the concurrent remote advance" test "$recover_rc" = 0
+(
+  cd "$W" || exit 1
+  bash "$WT_HELPER" done --trunk develop --keep-branch
+) >"$work/worktree-push-retry.out" 2>&1; retry_rc=$?
+check "retained worktree can retry done" test "$retry_rc" = 0
+check "successful retry removes feature worktree" test ! -d "$W"
+check "successful retry preserves requested feature branch" \
+  git -C "$P" show-ref --verify -q refs/heads/fix/push-retry
+git -C "$P" fetch -q origin
+check "successful retry pushes the resolved develop" \
+  test "$(git -C "$P" rev-parse develop)" = "$(git -C "$P" rev-parse origin/develop)"
+check "successful retry still leaves origin main untouched" \
+  test "$(git -C "$P" rev-parse origin/main)" = "$main_oid"
+
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
   if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
