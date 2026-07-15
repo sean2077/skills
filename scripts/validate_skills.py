@@ -133,6 +133,7 @@ def main() -> int:
         if readme and f"(skills/{dir_name}/)" not in readme:
             errors.append(f"{dir_name}: not linked from the README skills table (expected a `(skills/{dir_name}/)` link)")
 
+    validate_agent_scaffold_contract()
     validate_conventional_commit_contract()
     validate_semver_release_contract()
 
@@ -149,6 +150,29 @@ def main() -> int:
         errors.append("README references `.claude-plugin/marketplace.json` which does not exist")
 
     return report()
+
+
+def validate_agent_scaffold_contract() -> None:
+    """Keep Python 3.8+ a hard prerequisite throughout the selected router."""
+    skill = SKILLS_DIR / "agent-scaffold" / "SKILL.md"
+    if not skill.exists():
+        return
+    skill_text = skill.read_text(encoding="utf-8")
+    stale_optional_python = {
+        "retrofit fallback": r"without\s+python\s+the installer flags them instead",
+        "workflow skip": r"subagents when python is unavailable",
+        "conditional generator install": r"when\s+python\s+is\s+available\s+—\s+installs",
+    }
+    found = [
+        label
+        for label, pattern in stale_optional_python.items()
+        if re.search(pattern, skill_text, flags=re.IGNORECASE)
+    ]
+    if found:
+        errors.append(
+            "agent-scaffold/SKILL.md: Python 3.8+ is a hard prerequisite; "
+            f"optional-Python guidance remains: {found}"
+        )
 
 
 def validate_conventional_commit_contract() -> None:
