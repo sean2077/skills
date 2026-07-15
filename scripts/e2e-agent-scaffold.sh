@@ -33,7 +33,7 @@ jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(
 # shellcheck disable=SC2317,SC2329
 jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
-jcommand_count() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); n=sum(str(h.get("command", "")).count(sys.argv[2]) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
+jcommand_count() { python -c 'import json,re,sys; d=json.load(open(sys.argv[1])); p=re.compile(r"(?:^|/)tools/agent/hooks/"+re.escape(sys.argv[2])+r"\.sh(?=$|[\s\"'\'';])"); n=sum(bool(p.search(str(h.get("command", "")).replace("\\", "/"))) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329  # run indirectly through check() "$@"
 is_real_dir() { [ -d "$1" ] && [ ! -L "$1" ]; }
 # shellcheck disable=SC2317,SC2329
@@ -342,6 +342,9 @@ import json, sys
 for path, matcher, user in ((sys.argv[1], "Edit", "user-extra.sh"), (sys.argv[2], "apply_patch", "user-cx.sh")):
     value = {"model": "keep-me", "hooks": {"PreToolUse": [{"matcher": matcher, "hooks": [
         {"type": "command", "command": user},
+        {"type": "command", "command": "python scripts/check_authority_doc_budget_custom.py"},
+        {"type": "command", "command": "bash tools/custom/trunk_edit_guard_backup.sh"},
+        {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh.backup"},
         {"type": "command", "command": "old/tools/agent/hooks/trunk_edit_guard.sh"},
     ]}], "PostToolUse": [{"matcher": matcher, "hooks": [
         {"type": "command", "command": "old/tools/agent/hooks/format_on_edit.sh"},
@@ -354,6 +357,9 @@ PY
 check "upgrade without jq exits 0"             test "$rc" = 0
 check "upgrade preserves Claude user hook"     grep -q user-extra "$U/.claude/settings.json"
 check "upgrade preserves Codex user hook"      grep -q user-cx "$U/.codex/hooks.json"
+check "upgrade preserves authority lookalikes" sh -c 'grep -qF check_authority_doc_budget_custom.py "$1" && grep -qF check_authority_doc_budget_custom.py "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves guard lookalikes"     sh -c 'grep -qF trunk_edit_guard_backup.sh "$1" && grep -qF trunk_edit_guard_backup.sh "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves suffix lookalikes"    sh -c 'grep -qF format_on_edit.sh.backup "$1" && grep -qF format_on_edit.sh.backup "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves unrelated config"     grep -q keep-me "$U/.claude/settings.json"
 # shellcheck disable=SC2016
 check "--no-format-hook removes managed format" sh -c '! grep -q format_on_edit "$1" && ! grep -q format_on_edit "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
