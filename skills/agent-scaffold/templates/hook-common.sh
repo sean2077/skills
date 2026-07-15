@@ -21,7 +21,7 @@ hook_resolve_python() {
 
 hook_python() {
     [[ ${#HOOK_PYTHON[@]} -gt 0 ]] || hook_resolve_python || return 127
-    "${HOOK_PYTHON[@]}" "$@"
+    PYTHONUTF8=1 "${HOOK_PYTHON[@]}" "$@"
 }
 
 hook_posix_path() {

@@ -7,6 +7,10 @@ on:
 jobs:
   validate:
     name: validate (${{ matrix.os }})
+    env:
+      # Windows otherwise defaults Path.read_text() and redirected stdout to a
+      # legacy code page, which breaks UTF-8 skill files and non-ASCII repo paths.
+      PYTHONUTF8: "1"
     strategy:
       fail-fast: false
       matrix:

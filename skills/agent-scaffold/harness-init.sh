@@ -85,7 +85,7 @@ resolve_python() {
     return 1
   fi
 }
-run_python() { "${PYTHON_CMD[@]}" "$@"; }
+run_python() { PYTHONUTF8=1 "${PYTHON_CMD[@]}" "$@"; }
 resolve_python || die "python is required (set PYTHON_BIN, or install python/python3/py -3)"
 
 # ---- owned-hook reconciliation (python; no jq dependency) -----------------
@@ -218,16 +218,9 @@ render_agents_template() {
 
 # ---- AGENTS.md (init writes template; retrofit injects the marked block) ----
 ensure_agents_md() {
-  local migrated="${1:-0}"
-  local agents="$TARGET/AGENTS.md" cm="$TARGET/CLAUDE.md" block="$TMPDIR_H/block.md" rendered="$TMPDIR_H/AGENTS.root.md"
+  local agents="$TARGET/AGENTS.md" block="$TMPDIR_H/block.md" rendered="$TMPDIR_H/AGENTS.root.md"
   render_agents_template > "$rendered"
   awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$rendered" > "$block"
-  # Retrofit a project whose contract already lives in a REAL CLAUDE.md (no AGENTS.md
-  # yet): adopt that prose as the AGENTS.md SSOT; CLAUDE.md becomes a symlink below.
-  if [[ "$migrated" == 1 && ! -e "$agents" ]]; then
-    cp "$cm" "$agents"
-    ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
-  fi
   if [[ ! -e "$agents" ]]; then
     cp "$rendered" "$agents"; ok "AGENTS.md created from template (fill the TODO sections)"
   elif grep -qF '<!-- agent-scaffold:start' "$agents"; then
@@ -245,10 +238,6 @@ ensure_agents_md() {
 }
 
 ensure_claude_md_symlink() {
-  local migrated="${1:-0}"
-  # `migrated` is consumed by ensure_agents_md; the manager independently accepts
-  # only a target-text placeholder or a byte-identical legacy copy here.
-  [[ "$migrated" == 0 || "$migrated" == 1 ]] || die "internal migration state is invalid"
   run_python "$TPL/symlink-manager.py" ensure-contract --repo "$TARGET"
 }
 
@@ -354,11 +343,17 @@ do_install() {
   copy_if_missing "$TPL/codex.config.toml" "$TARGET/.codex/config.toml"
 
   # 4. contracts + ignore
-  # CLAUDE.md -> AGENTS.md adoption: decide once here, pass to both steps (no shared global).
+  # A legacy real CLAUDE.md must become a symlink while it is still byte-identical
+  # to the freshly adopted AGENTS.md. Only then may the managed block change AGENTS.md.
   local migrated=0
   if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then migrated=1; fi
-  ensure_agents_md "$migrated"
-  ensure_claude_md_symlink "$migrated"
+  if [[ "$migrated" == 1 ]]; then
+    cp "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
+    ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
+    ensure_claude_md_symlink
+  fi
+  ensure_agents_md
+  [[ "$migrated" == 1 ]] || ensure_claude_md_symlink
   local gi="$TARGET/.gitignore"
   ensure_line "$gi" ".claude/settings.local.json"
   if [[ "$WORKTREE_FLOW" == 1 ]]; then

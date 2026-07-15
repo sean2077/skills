@@ -32,4 +32,4 @@ else
   exit 2
 fi
 
-exec "${PYTHON_CMD[@]}" "$manager" sync-skills --repo "$repo_root"
+exec env PYTHONUTF8=1 "${PYTHON_CMD[@]}" "$manager" sync-skills --repo "$repo_root"

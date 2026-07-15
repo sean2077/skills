@@ -28,19 +28,19 @@ ok()  { printf '  \033[1;32mPASS\033[0m %s\n' "$*"; }
 bad() { printf '  \033[1;31mFAIL\033[0m %s\n' "$*" >&2; fails=$((fails + 1)); }
 check() { local d="$1"; shift; if "$@"; then ok "$d"; else bad "$d"; fi; }
 # JSON assertions via python (portable; avoids a jq dependency in CI).
-# shellcheck disable=SC2329  # jmatch/jcount run indirectly through check() "$@"
+# shellcheck disable=SC2317,SC2329  # run indirectly through check() "$@"; code varies by ShellCheck version
 jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d["hooks"][sys.argv[2]][0]["matcher"]==sys.argv[3] else 1)' "$@"; }
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 jcommand_count() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); n=sum(str(h.get("command", "")).count(sys.argv[2]) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
-# shellcheck disable=SC2329  # run indirectly through check() "$@"
+# shellcheck disable=SC2317,SC2329  # run indirectly through check() "$@"
 is_real_dir() { [ -d "$1" ] && [ ! -L "$1" ]; }
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 no_fixed_text() { ! grep -qF "$2" "$1"; }
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 no_exact_line() { ! grep -qxF "$2" "$1"; }
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 no_partial_harness() {
   local root="$1" path
   for path in AGENTS.md CLAUDE.md .agents .claude .codex tools; do
@@ -134,17 +134,17 @@ check "merge commit landed on main"          test "$rc" = 0
 
 echo "== trunk guard: block on main + escape hatch =="
 g="$S/tools/agent/hooks/trunk_edit_guard.sh"
-printf '{"tool_input":{"file_path":"%s/README.md"}}' "$S" | CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
+printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "blocks a tracked main edit (exit 2)"  test "$rc" = 2
-printf '{"tool_input":{"file_path":"%s/README.md"}}' "$S" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
+printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "escape hatch allows (exit 0)"         test "$rc" = 0
-python -c 'import json,sys; print(json.dumps({"cwd": sys.argv[1], "tool_input": {"file_path": "README.md"}}))' "$S" \
+python -c 'import json,sys; print(json.dumps({"cwd": sys.argv[1], "tool_input": {"file_path": "AGENTS.md"}}))' "$S" \
   | CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "relative hook path uses payload cwd" test "$rc" = 2
 case "$(uname -s)" in
   MINGW* | MSYS*)
     native_root="$(cygpath -w "$S")"
-    native_file="$(cygpath -w "$S/README.md")"
+    native_file="$(cygpath -w "$S/AGENTS.md")"
     python -c 'import json,sys; print(json.dumps({"cwd": sys.argv[1], "tool_input": {"file_path": sys.argv[2]}}))' "$native_root" "$native_file" \
       | CLAUDE_PROJECT_DIR="$native_root" bash "$g" >/dev/null 2>&1; rc=$?
     check "native Windows paths remain guarded" test "$rc" = 2

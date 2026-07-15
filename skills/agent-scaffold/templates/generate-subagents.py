@@ -271,7 +271,7 @@ def import_hand_authored():
             continue
         if cc and cx and cc["description"] and cx["description"] and cc["description"] != cx["description"]:
             print(
-                "warn: %s has different descriptions in .claude vs .codex — keeping the Claude one" % name,
+                "warn: %s has different descriptions in .claude vs .codex -- keeping the Claude one" % name,
                 file=sys.stderr,
             )
         meta = {"name": name, "description": (cc and cc["description"]) or (cx and cx["description"]) or ""}
@@ -302,7 +302,7 @@ def import_hand_authored():
         write_text(os.path.join(d, "metadata.json"), json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
         write_text(os.path.join(d, "instructions.md"), instructions)
         frm = " + ".join(x for x in [cc and ".claude/agents", cx and ".codex/agents"] if x)
-        print("adopted %s → %s (from %s)" % (name, rel(d), frm))
+        print("adopted %s -> %s (from %s)" % (name, rel(d), frm))
         imported += 1
     print(
         "--import: adopted %d hand-authored subagent(s) into %s" % (imported, rel(SOURCE_DIR))
@@ -317,7 +317,7 @@ def main(argv):
         print(
             "\n".join(
                 [
-                    "generate-subagents.py — project .agents/subagents/ into Claude Code + Codex agent files.",
+                    "generate-subagents.py -- project .agents/subagents/ into Claude Code + Codex agent files.",
                     "",
                     "Usage:",
                     "  python generate-subagents.py           write .claude/agents/*.md + .codex/agents/*.toml",
@@ -346,7 +346,7 @@ def main(argv):
         for p in stale:
             hand = BANNER not in read_text(p)
             note = "hand-authored; run --import to adopt" if hand else "no source"
-            drift.append("%s (orphan — %s)" % (rel(p), note))
+            drift.append("%s (orphan -- %s)" % (rel(p), note))
         if drift:
             print("generate-subagents --check: DRIFT in %d file(s):" % len(drift), file=sys.stderr)
             for d in drift:
@@ -373,12 +373,12 @@ def main(argv):
             print("pruned orphan %s" % rel(p))
         else:
             print(
-                "kept %s — hand-authored (no generated banner). Run --import to adopt it, or delete it by hand."
+                "kept %s -- hand-authored (no generated banner). Run --import to adopt it, or delete it by hand."
                 % rel(p),
                 file=sys.stderr,
             )
     print(
-        "generate-subagents: %d subagent(s) · %d file(s) written · %d unchanged · %d pruned"
+        "generate-subagents: %d subagent(s); %d file(s) written; %d unchanged; %d pruned"
         % (len(subagents), wrote, len(wanted) - wrote, pruned)
     )
     return 0
