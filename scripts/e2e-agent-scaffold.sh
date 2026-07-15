@@ -129,8 +129,8 @@ check "worktree .worktrees/demo created"     test -d "$S/.worktrees/demo"
 ( cd "$S/.worktrees/demo" && echo hi > note.txt && git add -A && git commit -q -m "feat: note" \
   && bash tools/agent/worktree.sh "done" --no-push ) >/dev/null 2>&1
 check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
-git -C "$S" log --oneline | grep -q "Merge branch 'chore/demo'"; rc=$?
-check "merge commit landed on main"          test "$rc" = 0
+merge_subject="$(git -C "$S" log -1 --format=%s)"
+check "merge commit landed on main"          test "$merge_subject" = "Merge branch 'chore/demo'"
 
 echo "== trunk guard: block on main + escape hatch =="
 g="$S/tools/agent/hooks/trunk_edit_guard.sh"
@@ -182,7 +182,10 @@ check "tracked project skill mode is 120000" sh -c '[ "$(git -C "$1" ls-files -s
 echo "== verify mode (read-only) =="
 ( cd "$S" && bash "$H" doctor ) >/dev/null 2>&1; rc=$?
 check "doctor reports real link capability (exit 0)" test "$rc" = 0
-( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+( cd "$S" && bash "$H" verify ) >"$work/verify.out" 2>&1; rc=$?
+if [ "$rc" != 0 ]; then
+  sed 's/^/  verify> /' "$work/verify.out" >&2
+fi
 check "verify reports harness OK (exit 0)"   test "$rc" = 0
 
 echo "== lightweight profile: --no-worktree omits the complete worktree policy =="
