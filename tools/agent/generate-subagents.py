@@ -16,7 +16,10 @@ import os
 import re
 import sys
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+ROOT = os.path.abspath(
+    (os.environ.get("AGENT_SCAFFOLD_PREFLIGHT_REPO") if "--preflight-import" in sys.argv[1:] else None)
+    or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+)
 SOURCE_DIR = os.path.join(ROOT, ".agents", "subagents")
 CLAUDE_DIR = os.path.join(ROOT, ".claude", "agents")
 CODEX_DIR = os.path.join(ROOT, ".codex", "agents")
@@ -809,7 +812,8 @@ def main(argv):
         return 0
 
     check = "--check" in argv
-    importing = "--import" in argv and not check
+    preflight_import = "--preflight-import" in argv and not check
+    importing = ("--import" in argv or preflight_import) and not check
     existing = load_subagents()
     prepared = prepare_hand_authored() if importing else []
     adopted_paths = {
@@ -851,6 +855,10 @@ def main(argv):
     if importing:
         preflight_import_sources(prepared)
     preflight_projection_targets(wanted, adopted_paths)
+
+    if preflight_import:
+        print("--preflight-import: deterministic subagent conflicts checked; no files written")
+        return 0
 
     for d in (CLAUDE_DIR, CODEX_DIR):
         os.makedirs(d, exist_ok=True)

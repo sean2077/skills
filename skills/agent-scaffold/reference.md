@@ -259,7 +259,9 @@ the trust reminder rather than asserting trust.
 `generate-subagents.py`, `symlink-manager.py`, and `hook-paths.py` use only the Python standard
 library — no Node or `package.json`. Resolve Python by executing a 3.8+ probe on `PYTHON_BIN`,
 `python`, `python3`, then Windows `py -3`; an unusable or older candidate falls through to the
-next one. Node remains an optional convenience surface only.
+next one. Before the first target write, the installer reuses the symlink manager and generator in
+read-only preflight modes so deterministic contract, skill-projection, and subagent-import conflicts
+leave the repository unchanged. Node remains an optional convenience surface only.
 
 ## 9. format_on_edit genericization
 

@@ -1127,18 +1127,6 @@ check "successful retry pushes the resolved develop" \
 check "successful retry still leaves origin main untouched" \
   test "$(git -C "$P" rev-parse origin/main)" = "$main_oid"
 
-python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
-if [ "$symlink_rc" != 0 ]; then
-  if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
-    bad "real file/directory symlink capability is required for this run"
-  else
-    echo "  SKIP positive suite: this host lacks real symlink privilege (run harness-init.sh doctor for remediation)"
-  fi
-  echo
-  if [ "$fails" -eq 0 ]; then echo "OK: agent-scaffold negative e2e passed (positive suite skipped)"; exit 0; fi
-  echo "FAIL: $fails agent-scaffold e2e assertion(s) failed"; exit 1
-fi
-
 echo "== deterministic conflicts stop before the first target write =="
 K="$work/preflight-contract-conflict"; mkdir -p "$K"
 git -C "$K" init -q -b main
@@ -1192,6 +1180,18 @@ git -C "$K" add -A && git -C "$K" commit -q -m "skill conflict fixture"
 check "skill projection conflict exits 2" test "$rc" = 2
 check "skill projection conflict is explicit" grep -qF "projection conflict" "$work/preflight-skill-conflict.out"
 check "skill projection conflict leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
+
+python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
+if [ "$symlink_rc" != 0 ]; then
+  if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
+    bad "real file/directory symlink capability is required for this run"
+  else
+    echo "  SKIP positive suite: this host lacks real symlink privilege (run harness-init.sh doctor for remediation)"
+  fi
+  echo
+  if [ "$fails" -eq 0 ]; then echo "OK: agent-scaffold negative e2e passed (positive suite skipped)"; exit 0; fi
+  echo "FAIL: $fails agent-scaffold e2e assertion(s) failed"; exit 1
+fi
 
 echo "== symlinked hook configs: reject before capability probe or mutation =="
 K="$work/symlinked-hook-config"; mkdir -p "$K/.claude" "$K/shared"

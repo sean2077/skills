@@ -872,6 +872,9 @@ case "$MODE" in
     # Contract and capability preflights are deliberately before the first target write.
     validate_agents_markers
     validate_existing_hook_configs
+    run_python "$TPL/symlink-manager.py" preflight-install --repo "$TARGET" >/dev/null
+    env AGENT_SCAFFOLD_PREFLIGHT_REPO="$TARGET" PYTHONUTF8=1 "${PYTHON_CMD[@]}" \
+      "$TPL/generate-subagents.py" --preflight-import >/dev/null
     run_python "$TPL/symlink-manager.py" doctor --repo "$TARGET" >/dev/null
     do_install
     ;;

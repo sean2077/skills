@@ -86,10 +86,10 @@ create / merge / migrate decision without writing anything.
 
 ## The installer at a glance
 
-`harness-init.sh` resolves Python 3.8+ before every mode. For mutating modes it then runs the real-link
-doctor, copies the selected vendored scripts into `tools/agent/` + `.agents/`, and **reconciles only
-owned hook entries** in
-`.claude/settings.json` and `.codex/hooks.json` (Python; user hooks remain), creates the
+`harness-init.sh` resolves Python 3.8+ before every mode. In mutating modes it rejects deterministic
+contract, skill-projection, and subagent-import conflicts before the real-link doctor or any target write.
+It then copies the selected vendored scripts into `tools/agent/` + `.agents/`, **reconciles only owned hook
+entries** in `.claude/settings.json` and `.codex/hooks.json` (Python; user hooks remain), creates the
 `CLAUDE.md → AGENTS.md` symlink, seeds `.agents/{skills,subagents}/`
 and the root `AGENTS.md`, appends the selected `.gitignore` lines, runs `relink-skills.sh`, installs
 and runs the subagent generator. When drift-hook wiring is enabled, eligible Husky projects are

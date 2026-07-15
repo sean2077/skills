@@ -207,6 +207,50 @@ def skill_sources(repo: Path) -> list[Path]:
     return sorted(path for path in source.iterdir() if path.is_dir() and not path.name.startswith("_"))
 
 
+def preflight_install(repo: Path) -> None:
+    """Reject deterministic contract and skill-projection conflicts without writing."""
+    agents = within_repo(repo, "AGENTS.md")
+    link = within_repo(repo, "CLAUDE.md")
+    if os.path.lexists(agents) and not agents.is_file():
+        raise ContractError("AGENTS.md exists but is not a regular file")
+    if link.is_symlink():
+        current = read_symlink_target(link)
+        if current != "AGENTS.md":
+            raise ContractError(
+                f"projection conflict: {link} is a symlink to {current!r}, expected 'AGENTS.md'"
+            )
+    elif os.path.lexists(link):
+        if not link.is_file():
+            raise ContractError(f"projection conflict: {link} exists but is not a regular file")
+        if os.path.lexists(agents):
+            raise ContractError(
+                "projection conflict: real CLAUDE.md exists beside AGENTS.md; "
+                "merge it into AGENTS.md manually before installing"
+            )
+
+    source_root = within_repo(repo, ".agents/skills")
+    for directory in (within_repo(repo, ".agents"), source_root):
+        if os.path.lexists(directory) and not directory.is_dir():
+            raise ContractError(f"{directory} exists but is not a directory")
+    if not source_root.is_dir():
+        return
+
+    vendor = within_repo(repo, ".claude/skills")
+    for directory in (within_repo(repo, ".claude"), vendor):
+        if os.path.lexists(directory) and not directory.is_dir():
+            raise ContractError(f"{directory} exists but is not a directory")
+    for source in sorted(
+        path for path in source_root.iterdir() if path.is_dir() and not path.name.startswith("_")
+    ):
+        target = f"../../.agents/skills/{source.name}"
+        validate_destination(
+            vendor / source.name,
+            source,
+            target,
+            replace_managed_link=True,
+        )
+
+
 def sync_skills(repo: Path) -> None:
     doctor(repo)
     sources = skill_sources(repo)
@@ -306,7 +350,10 @@ def verify(repo: Path) -> int:
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
-    result.add_argument("command", choices=("doctor", "ensure-contract", "sync-skills", "verify"))
+    result.add_argument(
+        "command",
+        choices=("doctor", "preflight-install", "ensure-contract", "sync-skills", "verify"),
+    )
     result.add_argument("--repo", required=True, type=Path)
     return result
 
@@ -323,6 +370,10 @@ def main() -> int:
         if origin:
             config += f" ({origin})"
         print(f"OK: file and directory symlink probes passed{config}")
+        return 0
+    if args.command == "preflight-install":
+        preflight_install(repo)
+        print("OK: deterministic contract and skill projection preflight passed")
         return 0
     if args.command == "ensure-contract":
         ensure_contract(repo)
