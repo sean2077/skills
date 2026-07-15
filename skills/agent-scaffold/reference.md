@@ -65,7 +65,8 @@ worktree section in `AGENTS.md`, and new worktree-specific ignore lines. A defau
 removes only the managed guard/policy; existing script copies and unmarked `.gitignore` lines are
 preserved as dormant/user-owned content. The option is per-invocation: repeat it for `plan`,
 `retrofit`/`upgrade`, and `verify`. Omitting it on a later upgrade selects the default profile and
-re-enables worktree governance.
+re-enables worktree governance. `verify` fails on wiring mismatches or script drift in the selected
+profile; dormant worktree scripts left by a default→light transition are outside that comparison.
 
 ## 2. Hook semantics
 

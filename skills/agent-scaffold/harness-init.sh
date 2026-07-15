@@ -553,10 +553,14 @@ do_verify() {
       local miss=0
       local managed_hooks="authority_doc_budget"
       [[ "$WORKTREE_FLOW" == 1 ]] && managed_hooks="trunk_edit_guard $managed_hooks"
+      [[ "$FORMAT_HOOK" == 1 ]] && managed_hooks="$managed_hooks format_on_edit"
       for h in $managed_hooks; do
         grep -q "$h" "$TARGET/$cfg" || miss=1
       done
       if [[ "$WORKTREE_FLOW" != 1 ]] && grep -q trunk_edit_guard "$TARGET/$cfg"; then
+        miss=1
+      fi
+      if [[ "$FORMAT_HOOK" != 1 ]] && grep -q format_on_edit "$TARGET/$cfg"; then
         miss=1
       fi
       if [[ "$miss" == 0 ]]; then printf '%s %s wiring present\n' "$pass" "$label"; else printf '%s %s wiring incomplete (%s)\n' "$fail" "$label" "$cfg"; fails=$((fails+1)); fi
@@ -607,9 +611,17 @@ do_verify() {
               "relink-skills.sh:.agents/relink-skills.sh" \
               "symlink-manager.py:.agents/symlink-manager.py"; do
     local t="${pair%%:*}" inst="$TARGET/${pair##*:}"
-    [[ -f "$inst" ]] && ! cmp -s "$TPL/$t" "$inst" && { printf '%s drift: %s differs from the skill template\n' "$info" "${pair##*:}"; drift=$((drift+1)); }
+    case "$t" in
+      worktree.sh|trunk_edit_guard.sh) [[ "$WORKTREE_FLOW" == 1 ]] || continue ;;
+    esac
+    [[ -f "$inst" ]] && ! cmp -s "$TPL/$t" "$inst" && { printf '%s drift: %s differs from the skill template\n' "$fail" "${pair##*:}"; drift=$((drift+1)); }
   done
-  [[ "$drift" == 0 ]] && printf '%s installed scripts match the skill templates\n' "$pass" || printf '%s %d script(s) drifted — run: agent-scaffold upgrade\n' "$info" "$drift"
+  if [[ "$drift" == 0 ]]; then
+    printf '%s active-profile scripts match the skill templates\n' "$pass"
+  else
+    printf '%s %d active-profile script(s) drifted — run: agent-scaffold upgrade\n' "$fail" "$drift"
+    fails=$((fails + drift))
+  fi
 
   if [[ -f "$TARGET/tools/agent/generate-subagents.py" ]]; then
     if run_python "$TARGET/tools/agent/generate-subagents.py" --check >/dev/null 2>&1; then
