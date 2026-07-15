@@ -328,6 +328,21 @@ for host in claude codex; do
   check "$host invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
 done
 
+J="$work/invalid-nested-hooks"; mkdir -p "$J/.claude"
+git -C "$J" init -q -b main
+git -C "$J" config user.email t@t.t; git -C "$J" config user.name tester
+git -C "$J" config core.symlinks true
+printf '%s\n' '{"hooks":{"PreToolUse":[{"matcher":"x","hooks":"bad"}]}}' > "$J/.claude/settings.json"
+git -C "$J" add .claude/settings.json && git -C "$J" commit -q -m "invalid nested hook fixture"
+(
+  cd "$J" || exit 1
+  AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit --no-husky
+) >"$work/invalid-nested-hooks.out" 2>&1; rc=$?
+check "nested invalid hook config exits 2"              test "$rc" = 2
+check "nested invalid hook config names the field"      grep -qF ".claude/settings.json: hooks.PreToolUse[0].hooks must be an array" "$work/invalid-nested-hooks.out"
+check "nested invalid hook config prints no traceback"  sh -c '! grep -q Traceback "$1"' _ "$work/invalid-nested-hooks.out"
+check "nested invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
+
 echo "== generated ownership requires the canonical marker, not prose =="
 P="$work/provenance-phrase"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/tools/agent"
 git -C "$P" init -q -b main
