@@ -105,6 +105,16 @@ jobs:
             echo "missing explicit enforce-level diagnostic" >&2
             negative_fails=$((negative_fails + 1))
           fi
+          printf 'path\tsurface\taudit_level\tnotes\n' > "$fixture/tools/blank-audit-manifest.tsv"
+          printf 'tool.sh\tpublic\tenforce\tfixture\n' >> "$fixture/tools/blank-audit-manifest.tsv"
+          printf 'vendor/missing-blank-audit-tool\tvendor\t\twarn\n' >> "$fixture/tools/blank-audit-manifest.tsv"
+          if blank_audit_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/blank-audit-manifest.tsv" 2>&1)"; then
+            echo "expected a blank audit_level to default to enforce" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: manifest row → missing file: vendor/missing-blank-audit-tool' <<<"$blank_audit_output"; then
+            echo "later TSV fields shifted into a blank audit_level" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
           printf '%s\n' '#!/usr/bin/env bash' 'if then' > "$fixture/tools/bad.sh"
           printf '%s\n' 'if True print("broken")' > "$fixture/tools/bad.py"
           printf 'path\tsurface\tdomain\tentry_for\taudit_level\n' > "$fixture/tools/warn-manifest.tsv"
