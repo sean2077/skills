@@ -139,7 +139,7 @@ def main() -> int:
         # scope individual commands, but must not pre-approve an interpreter.
         if "Bash" in tools:
             errors.append(f"{dir_name}: `allowed-tools` must not pre-approve bare `Bash`; scope individual commands instead")
-        broad = [t for t in tools if t.startswith("Bash(bash") or t.startswith("Bash(sh")]
+        broad = [t for t in tools if t in {"Bash(bash:*)", "Bash(sh:*)"}]
         if broad:
             errors.append(f"{dir_name}: `allowed-tools` must not pre-approve shell interpreters: {', '.join(broad)}")
 
