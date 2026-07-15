@@ -1139,6 +1139,60 @@ if [ "$symlink_rc" != 0 ]; then
   echo "FAIL: $fails agent-scaffold e2e assertion(s) failed"; exit 1
 fi
 
+echo "== deterministic conflicts stop before the first target write =="
+K="$work/preflight-contract-conflict"; mkdir -p "$K"
+git -C "$K" init -q -b main
+git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
+git -C "$K" config core.symlinks true
+printf '# Canonical contract\n' > "$K/AGENTS.md"
+printf '# Divergent Claude contract\n' > "$K/CLAUDE.md"
+git -C "$K" add -A && git -C "$K" commit -q -m "contract conflict fixture"
+agents_before="$(git hash-object "$K/AGENTS.md")"
+claude_before="$(git hash-object "$K/CLAUDE.md")"
+(
+  cd "$K" || exit 1
+  bash "$H" retrofit --no-husky --no-example-subagent
+) >"$work/preflight-contract-conflict.out" 2>&1; rc=$?
+check "contract conflict exits 2" test "$rc" = 2
+check "contract conflict is explicit" grep -qF "projection conflict" "$work/preflight-contract-conflict.out"
+check "contract conflict preserves AGENTS.md" test "$(git hash-object "$K/AGENTS.md")" = "$agents_before"
+check "contract conflict preserves CLAUDE.md" test "$(git hash-object "$K/CLAUDE.md")" = "$claude_before"
+check "contract conflict leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
+
+K="$work/preflight-subagent-conflict"; mkdir -p "$K/.claude/agents" "$K/.codex/agents"
+git -C "$K" init -q -b main
+git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
+git -C "$K" config core.symlinks true
+printf -- '---\nname: dual\ndescription: shared description\n---\n\nCLAUDE_ONLY_INSTRUCTIONS\n' > "$K/.claude/agents/dual.md"
+printf '%s\n' \
+  'name = "dual"' \
+  'description = "shared description"' \
+  "developer_instructions = 'CODEX_ONLY_INSTRUCTIONS'" > "$K/.codex/agents/dual.toml"
+git -C "$K" add -A && git -C "$K" commit -q -m "subagent conflict fixture"
+(
+  cd "$K" || exit 1
+  bash "$H" retrofit --no-husky --no-example-subagent
+) >"$work/preflight-subagent-conflict.out" 2>&1; rc=$?
+check "subagent conflict exits nonzero" test "$rc" != 0
+check "subagent conflict is explicit" \
+  grep -qF "have different instructions; resolve the conflict before --import" "$work/preflight-subagent-conflict.out"
+check "subagent conflict leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
+
+K="$work/preflight-skill-conflict"; mkdir -p "$K/.agents/skills/dual" "$K/.claude/skills/dual"
+git -C "$K" init -q -b main
+git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
+git -C "$K" config core.symlinks true
+printf -- '---\nname: dual\n---\n\nAUTHORITATIVE\n' > "$K/.agents/skills/dual/SKILL.md"
+printf -- '---\nname: dual\n---\n\nCONFLICTING\n' > "$K/.claude/skills/dual/SKILL.md"
+git -C "$K" add -A && git -C "$K" commit -q -m "skill conflict fixture"
+(
+  cd "$K" || exit 1
+  bash "$H" retrofit --no-husky --no-example-subagent
+) >"$work/preflight-skill-conflict.out" 2>&1; rc=$?
+check "skill projection conflict exits 2" test "$rc" = 2
+check "skill projection conflict is explicit" grep -qF "projection conflict" "$work/preflight-skill-conflict.out"
+check "skill projection conflict leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
+
 echo "== symlinked hook configs: reject before capability probe or mutation =="
 K="$work/symlinked-hook-config"; mkdir -p "$K/.claude" "$K/shared"
 git -C "$K" init -q -b main
