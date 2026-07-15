@@ -171,7 +171,12 @@ def validate_npx_discovery_contract() -> None:
             r"output=.*NO_COLOR=1\s+DISABLE_TELEMETRY=1\s+"
             r"npx --yes skills@1\.5\.17 add \. -l.*2>&1"
         ),
-        "extract discovered skill names": r"actual=.*sed -n",
+        "preserve CLI failure status": (
+            r"status=\$\?[\s\S]*if \[ [\"']?\$status[\"']? -ne 0 \]; then"
+        ),
+        "extract names independently of the UI border": (
+            r"actual=.*sed -n [\"']s/\^\.\*    "
+        ),
         "derive expected names from skills/": r"expected=.*python -c.*Path",
         "compare the two sets exactly": (
             r"if \[ [\"']?\$actual[\"']? != [\"']?\$expected[\"']? \]; then"

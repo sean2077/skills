@@ -203,7 +203,22 @@ jobs:
 
       - name: Smoke-test real npx skills discovery
         if: always()
-        run: npx --yes skills@1.5.17 add . -l
+        run: |
+          set +e
+          output="$(NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add . -l 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            printf 'npx discovery command failed with status %s\n' "$status" >&2
+            exit "$status"
+          fi
+          actual="$(printf '%s\n' "$output" | tr -d '\r' | sed -n 's/^.*    \([a-z0-9][a-z0-9-]*\)$/\1/p' | sort)"
+          expected="$(python -c 'from pathlib import Path; print("\n".join(sorted(path.name for path in Path("skills").iterdir() if path.is_dir())))' | tr -d '\r')"
+          if [ "$actual" != "$expected" ]; then
+            printf 'npx discovery mismatch\nexpected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2
+            exit 1
+          fi
 
       - name: Shellcheck bundled scripts and extensionless Husky hook
         if: always() && runner.os == 'Linux'
