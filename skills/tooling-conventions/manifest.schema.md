@@ -37,7 +37,7 @@ Keep the column set small. Add a column only when the audit or a reviewer actual
 path	surface	domain	audience	entry_for	hazard	verify	notes
 build.sh	public	build	dev	build the project	none	bash -n; --help	domain headline
 release.sh	public	release	release	cut + publish a release	med(tags/pushes)	dry-run	headline; calls release/changelog.py
-release/changelog.py	helper	release	release		none	py_compile	called_by release.sh
+release/changelog.py	helper	release	release		none	in-memory compile	called_by release.sh
 deploy.sh	public	deploy	operator	deploy a build to a target	high(rollback)	smoke + health check	goes through the upgrade path only
 recover.sh	break-glass	provision	operator	sole identity-recovery path	high	manual	trigger: device shows wrong-machine
 provision/	package	provision	dev		none	-	python provisioning package (modules not registered individually)

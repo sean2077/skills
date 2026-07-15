@@ -104,4 +104,4 @@ Moving/renaming/deleting a script syncs every mechanical reference **in the same
 2. **Add** → classify the surface (§1), run the placement tree (§3), apply the Mandatory contract (§4), and register it in the manifest (§5).
 3. **Move/delete** → run the move checklist (§6) and update the manifest in the same commit.
 4. **Audit** → run `manifest-check.sh`; for sprawl, report each top-level script's surface and whether it should sink into a domain dir or merge into an existing headline (§2–§3). Report candidates; don't mass-move without confirmation.
-5. Verify with the minimal set (`bash -n` / `py_compile` / `--help` / `--dry-run` / domain tests / `manifest-check.sh` / grep for stale references) — see `reference.md`.
+5. Verify with the minimal set (`bash -n` / in-memory Python compile / `--help` / `--dry-run` / domain tests / `manifest-check.sh` / grep for stale references) — see `reference.md`.

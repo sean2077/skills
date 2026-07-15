@@ -8,7 +8,7 @@
 # Checks (row FAIL findings honor `audit_level=warn`; global failures stay blocking):
 #   FAIL  a manifest row points at a missing file
 #   FAIL  a command file on disk (.sh, or executable .py) has no manifest row
-#   FAIL  shell syntax error (bash -n) / python compile error (py_compile)
+#   FAIL  shell syntax error (bash -n) / python compile error (in-memory compile)
 #   warn  a public/installed entry has no detectable -h/--help handler
 #
 # Usage:
@@ -85,7 +85,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     case "$p" in
         *.sh) bash -n "$f" 2>/dev/null || row_issue "$a" "shell syntax error: $p" ;;
         *.py) command -v python >/dev/null 2>&1 &&
-            { python -m py_compile "$f" 2>/dev/null || row_issue "$a" "python compile error: $p"; } ;;
+            { python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")' "$f" 2>/dev/null || row_issue "$a" "python compile error: $p"; } ;;
     esac
     case "$s" in
         public | installed)
