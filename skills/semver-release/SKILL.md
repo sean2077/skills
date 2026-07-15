@@ -84,7 +84,7 @@ Confirm the computed next version with the user when it is ambiguous or when the
 ### 3. Write release files
 
 - **`CHANGELOG.md`** — insert a new `## [vX.Y.Z] — YYYY-MM-DD` section, conventional-commit grouped (Added / Fixed / Changed / Docs / Chore, breaking changes called out on top). Format + write strategy: `reference.md`. Edit in place; never overwrite the whole file.
-- **Version file(s)** — write the ecosystem-canonical release value, including prerelease identity where the ecosystem supports it. Update coupled lockfiles (`package-lock.json`, `Cargo.lock`) through the ecosystem tool when applicable. If the project pins its version in more than one place (a code constant, manifest + lockfile, docs badge), update **all** of them — `git grep -F <old-version>` to find them. The exact mapping and promote-to-final behavior are in `reference.md` → *Version-file sync*.
+- **Version file(s)** — write the ecosystem-canonical release value, including prerelease identity where the ecosystem supports it. Update coupled lockfiles (`package-lock.json`, `Cargo.lock`) through the ecosystem tool when applicable. Ecosystem synchronization must not create the release commit, tag, or push, or refresh unrelated dependencies. If the project pins its version in more than one place (a code constant, manifest + lockfile, docs badge), update **all** of them — `git grep -F <old-version>` to find them. The exact mapping and promote-to-final behavior are in `reference.md` → *Version-file sync*.
 - Optionally a per-release notes doc if the project keeps one.
 
 Get the date from the environment (`date +%F`); do not guess it.
