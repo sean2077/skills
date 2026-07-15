@@ -81,6 +81,7 @@ def main() -> int:
         errors.append("no skill directories under skills/")
 
     validate_grouping_manifest(skill_dirs)
+    validate_npx_discovery_contract()
 
     for d in skill_dirs:
         dir_name = d.name
@@ -151,6 +152,37 @@ def main() -> int:
         errors.append("README references `.claude-plugin/marketplace.json` which does not exist")
 
     return report()
+
+
+def validate_npx_discovery_contract() -> None:
+    """Require CI to compare pinned npx discovery with the catalog exactly."""
+    workflow = REPO / ".github" / "workflows" / "validate.yml"
+    if not workflow.exists():
+        return
+    workflow_text = workflow.read_text(encoding="utf-8")
+    match = re.search(
+        r"(?ms)^\s*- name: Smoke-test real npx skills discovery\s*$"
+        r"(.*?)(?=^\s*- name:|\Z)",
+        workflow_text,
+    )
+    discovery_step = match.group(1) if match else ""
+    required = {
+        "capture pinned CLI output": (
+            r"output=.*NO_COLOR=1\s+DISABLE_TELEMETRY=1\s+"
+            r"npx --yes skills@1\.5\.17 add \. -l.*2>&1"
+        ),
+        "extract discovered skill names": r"actual=.*sed -n",
+        "derive expected names from skills/": r"expected=.*python -c.*Path",
+        "compare the two sets exactly": (
+            r"if \[ [\"']?\$actual[\"']? != [\"']?\$expected[\"']? \]; then"
+        ),
+    }
+    missing = [label for label, pattern in required.items() if not re.search(pattern, discovery_step)]
+    if missing:
+        errors.append(
+            "CI npx discovery must assert that the pinned CLI returns the exact catalog skill set; "
+            f"missing={missing}"
+        )
 
 
 def validate_agent_scaffold_contract() -> None:
