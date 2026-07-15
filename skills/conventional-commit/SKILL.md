@@ -160,7 +160,7 @@ Guidelines:
 4. Infer the dominant change and choose the best `type`.
 5. Draft one Conventional Commits subject in the selected language.
 6. In message-only mode, output only the subject unless the user asked for rationale, then stop.
-7. In commit mode, stage the intended files.
+7. In commit mode, run `git symbolic-ref --quiet --short HEAD`. On exit status 1, stop before staging and report that commit mode requires an attached branch because HEAD is detached. On any other nonzero status, stop before staging and report the Git preflight error. This preflight is mandatory even when the **Context-First Rule** skips other discovery. Then stage the intended files.
 8. Run `git commit` with the subject. Prefer a safe message path such as `git commit -F -` when a body/trailers are needed or shell quoting would be fragile. Do not inject untrusted or complex commit text directly into a shell command.
 9. Verify with:
    - `git status --short`
