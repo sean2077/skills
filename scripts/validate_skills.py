@@ -329,6 +329,32 @@ def validate_semver_release_contract() -> None:
     missing = [value for value in required if value not in combined]
     if missing:
         errors.append(f"semver-release: prerelease ecosystem contract lost fixtures: {missing}")
+    python_boundary_skill = (
+        "explicit repository-defined Python mapping",
+        "stop before writing release files, committing, tagging, or pushing",
+    )
+    missing_python_skill = [value for value in python_boundary_skill if value not in skill_text]
+    if missing_python_skill:
+        errors.append(
+            "semver-release/SKILL.md: Python prerelease mapping boundary lost fixtures: "
+            f"{missing_python_skill}"
+        )
+    python_boundary_reference = (
+        "`alpha.N` → `aN`",
+        "`beta.N` → `bN`",
+        "`rc.N` → `rcN`",
+        "`v1.2.0-canary.1` remains a valid SemVer tag",
+        "historical base selection",
+        "non-Python ecosystems",
+    )
+    missing_python_reference = [
+        value for value in python_boundary_reference if value not in reference_text
+    ]
+    if missing_python_reference:
+        errors.append(
+            "semver-release/reference.md: Python prerelease mapping boundary lost fixtures: "
+            f"{missing_python_reference}"
+        )
     shared_base_contract = (
         "HEAD-reachable",
         "SemVer 2.0.0 precedence",
