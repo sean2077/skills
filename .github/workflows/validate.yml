@@ -77,6 +77,19 @@ jobs:
           printf 'tool.sh\tpublic\n' >> "$fixture/tools/tools-manifest.tsv"
           printf '%s\n' '#!/usr/bin/env bash' 'case "${1:-}" in -h|--help) exit 0;; esac' > "$fixture/tools/tool.sh"
           bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"
+          negative_fails=0
+          if TOOLS_DIR="$fixture/missing" bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"; then
+            echo "expected a missing scan root to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          mkdir -p "$fixture/bin"
+          printf '%s\n' '#!/usr/bin/env bash' 'echo "injected find failure" >&2' 'exit 37' > "$fixture/bin/find"
+          chmod +x "$fixture/bin/find"
+          if PATH="$fixture/bin:$PATH" bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"; then
+            echo "expected a reverse-scan failure to propagate" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          test "$negative_fails" = 0
 
       - name: E2E installer test with mandatory real links
         if: always()
