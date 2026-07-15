@@ -509,10 +509,10 @@ do_install() {
   copy_script "$TPL/generate-subagents.py" "$TARGET/tools/agent/generate-subagents.py"
   wire_subagents
   # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
-  # into the .agents/ SSOT (no-op when there are none / a source already exists), then it
-  # projects everything back. Importing first also stops the projection step from pruning a
-  # hand-authored agent as a sourceless "orphan".
-  run_python "$TARGET/tools/agent/generate-subagents.py" --import || warn "generate-subagents.py --import returned nonzero"
+  # into the .agents/ SSOT (no-op when there are none), then project everything back.
+  # Importing first also stops the projection step from pruning a hand-authored agent as a
+  # sourceless "orphan"; any ownership or parse conflict propagates and aborts the install.
+  run_python "$TARGET/tools/agent/generate-subagents.py" --import
 
   # 8. closing notes
   echo
