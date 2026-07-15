@@ -248,7 +248,11 @@ copy_if_missing() {  # <src> <dst>
 ensure_line() {  # <file> <line>
   local file="$1" line="$2"
   mkdir -p "$(dirname "$file")"; touch "$file"
-  grep -qxF "$line" "$file" 2>/dev/null || printf '%s\n' "$line" >> "$file"
+  grep -qxF "$line" "$file" 2>/dev/null && return
+  if [[ -s "$file" && -n "$(tail -c 1 "$file")" ]]; then
+    printf '\n' >> "$file"
+  fi
+  printf '%s\n' "$line" >> "$file"
 }
 render_agents_template() {
   awk -v include_worktree="$WORKTREE_FLOW" '
