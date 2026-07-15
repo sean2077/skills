@@ -12,8 +12,9 @@
 #       Branch <type>/<name> + worktree .worktrees/<name> cut from the trunk tip.
 #   done [--dir <wt>] [--trunk <branch>] [--message <msg>] [--no-push] [--keep-branch]
 #       Merge the current (or --dir) worktree's branch back into its local trunk
-#       (--no-ff), remove the worktree + branch, prune, then ff-only push trunk.
-#       A branch with zero new commits skips the merge and is just cleaned up.
+#       (--no-ff), ff-only push trunk, then remove the worktree + branch and prune.
+#       A rejected push keeps retry state; --no-push explicitly cleans up locally.
+#       A branch with zero new commits skips the merge.
 #   release <ref>
 #       Detached ref/tag-pinned worktree .worktrees/release-<ref> for packaging.
 #   list
@@ -157,18 +158,23 @@ $(git -C "$WT" status --short | head -10)"
         git merge --no-ff "$BRANCH" -m "${MSG:-Merge branch '$BRANCH'}"
         log "merged → $TRUNK @ $(git rev-parse --short HEAD)"
     fi
-    git worktree remove "$WT" 2>/dev/null || git worktree remove --force "$WT"
-    [[ $KEEP -eq 1 ]] || git branch -d "$BRANCH" 2>/dev/null \
-        || log "WARN: branch $BRANCH not fully merged into $TRUNK - kept; delete: git branch -D $BRANCH"
-    git worktree prune
+    local RETRY_KEEP=""
+    [[ $KEEP -eq 1 ]] && RETRY_KEEP=" --keep-branch"
     if [[ $PUSH -eq 1 ]]; then
-        git push origin "$TRUNK" || die "push rejected (remote moved?): run
-  git fetch origin && git merge --ff-only origin/$TRUNK
-then re-push. Never force-push from here — that is the user's call."
+        git push origin "$TRUNK" || die "push rejected (remote moved?); worktree and branch kept.
+Resolve origin/$TRUNK in the trunk worktree, then retry:
+  git -C \"$PD\" fetch origin
+  git -C \"$PD\" merge origin/$TRUNK
+  bash \"$PD/tools/agent/worktree.sh\" done --dir \"$WT\" --trunk \"$TRUNK\"$RETRY_KEEP
+Never force-push from here — that is the user's call."
         log "pushed $TRUNK → origin"
     else
         log "not pushed (--no-push); remember to push $TRUNK later"
     fi
+    git worktree remove "$WT" 2>/dev/null || git worktree remove --force "$WT"
+    [[ $KEEP -eq 1 ]] || git branch -d "$BRANCH" 2>/dev/null \
+        || log "WARN: branch $BRANCH not fully merged into $TRUNK - kept; delete: git branch -D $BRANCH"
+    git worktree prune
     log "done. (if your shell is still in the removed dir, run: cd $PD)"
 }
 
