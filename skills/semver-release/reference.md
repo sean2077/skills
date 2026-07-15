@@ -65,9 +65,26 @@ manifest that says `0.5.0` can occupy or mislabel the final version.
 |---|---|---|---|
 | Node | `package.json` version `1.2.0-beta.1` | `1.2.0` | update the package lock with the repository's package manager |
 | Rust | `Cargo.toml` version `1.2.0-beta.1` | `1.2.0` | let Cargo update `Cargo.lock` when the package is represented there |
-| Python | PEP 440 `1.2.0b1` (`alpha.1` → `a1`, `rc.1` → `rc1`) | `1.2.0` | update the authoritative static version field; respect dynamic-version tooling |
+| Python | PEP 440 `1.2.0b1` (`alpha.N` → `aN`, `beta.N` → `bN`, `rc.N` → `rcN`) | `1.2.0` | update the authoritative static version field; respect dynamic-version tooling |
 | C/C++ (CMake) | keep `project(... VERSION 1.2.0)` numeric and update the repo's separate suffix field to `beta.1` | clear the suffix | stop and ask if the project has no defined suffix mechanism but ships prerelease artifacts |
 | generic `VERSION` | follow the repo's documented format; default to `1.2.0-beta.1` when it is package-facing | `1.2.0` | update any generated mirrors through their authoritative command |
+
+### Python prerelease mapping boundary
+
+[SemVer 2.0.0](https://semver.org/spec/v2.0.0.html) permits arbitrary valid prerelease
+identifiers, while the [Python packaging version
+scheme](https://packaging.python.org/en/latest/specifications/version-specifiers/) defines
+`a`, `b`, and `rc` as its prerelease phases and gives `.devN` separate ordering semantics.
+Therefore `v1.2.0-canary.1` remains a valid SemVer tag for historical base selection and
+non-Python ecosystems, but it has no built-in Python mapping here.
+
+For a Python version field, map only the lowercase numbered forms shown in the table by
+default. If the repository documents another mapping in its packaging or dynamic-version
+tooling, follow that rule and verify the resulting package identity. Otherwise stop before
+writing release files, committing, tagging, or pushing. Never silently reinterpret an unknown
+label as `.devN`, a local version, or the final release; those forms have different identity or
+ordering semantics. This boundary does not narrow full-SemVer historical tag validation or the
+values used by Node, Rust, and generic version files.
 
 ### Bounded coupled-file updates
 

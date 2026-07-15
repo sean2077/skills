@@ -27,7 +27,7 @@ Do not use this skill for:
 ## Invariants
 
 - **Tags this skill creates** use `vX.Y.Z` or `vX.Y.Z-<pre>.N` (e.g. `v1.2.0`, `v0.3.0-beta.1`, `v1.0.0-rc.2`). Reject `v1.0`, `0.1.0`, underscores, and build-metadata suffixes on new tags; historical base tags are validated against full SemVer 2.0.0 in step 2.
-- **Version file stays semantically in sync with the tag.** Node and Rust manifests use the full SemVer value (`1.2.0-beta.1`); Python uses the equivalent PEP 440 value (`1.2.0b1` / `1.2.0rc1`); CMake's `project(... VERSION ...)` stays numeric and any project-defined prerelease suffix is updated separately. Never publish a prerelease package whose manifest still identifies it as the final release.
+- **Version file stays semantically in sync with the tag.** Node and Rust manifests use the full SemVer value (`1.2.0-beta.1`); Python uses the equivalent PEP 440 value (`1.2.0b1` / `1.2.0rc1`) only for the built-in `alpha.N` / `beta.N` / `rc.N` mappings. Any other label requires an explicit repository-defined Python mapping; without one, stop before writing release files, committing, tagging, or pushing. CMake's `project(... VERSION ...)` stays numeric and any project-defined prerelease suffix is updated separately. Never publish a prerelease package whose manifest still identifies it as the final release.
 - **A tag push is not the finish line.** A tag-triggered release CI (if the repo has one) turns the push into the release; verify the forge release actually appeared and the release commit is on the trunk.
 - **Build/publish from a clean trunk**, not a dirty working tree. Refuse a detached HEAD.
 - **Never move or overwrite an existing tag.** If the target tag exists, stop and report.
