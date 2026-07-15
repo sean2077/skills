@@ -95,6 +95,26 @@ jobs:
               fi
             done
           fi
+          printf 'path\tsurface\taudit_level\n' > "$fixture/tools/warn-manifest.tsv"
+          printf 'tool.sh\tpublic\tenforce\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'vendor/missing-warn-tool\tvendor\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'missing-warn-package/\tpackage\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          if ! warn_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/warn-manifest.tsv" 2>&1)"; then
+            echo "expected audit_level=warn rows to remain advisory" >&2
+            printf '%s\n' "$warn_output" >&2
+            negative_fails=$((negative_fails + 1))
+          else
+            for missing in vendor/missing-warn-tool missing-warn-package/; do
+              if ! grep -qF "warn: manifest row → missing file: $missing" <<<"$warn_output"; then
+                echo "missing warn-level forward-drift diagnostic for: $missing" >&2
+                negative_fails=$((negative_fails + 1))
+              fi
+            done
+            if ! grep -qF 'RESULT: OK (2 warn)' <<<"$warn_output"; then
+              echo "warn-level forward drift did not remain non-blocking" >&2
+              negative_fails=$((negative_fails + 1))
+            fi
+          fi
           mv "$fixture/base-manifest.tsv" "$fixture/tools/tools-manifest.tsv"
           if TOOLS_DIR="$fixture/missing" bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"; then
             echo "expected a missing scan root to fail" >&2
