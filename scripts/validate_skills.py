@@ -6,8 +6,9 @@ from the README, a deleted install path still advertised, frontmatter that lost
 its `name`/`description`, YAML frontmatter that `npx skills` cannot parse, a
 `name` that no longer matches its directory, the `{{ARGUMENTS}}` moustache
 placeholder (Claude Code substitutes `$ARGUMENTS`), and a `reference.md` link
-with no shipped file. Warnings flag softer hygiene: missing or over-broad
-(`Bash`, `Bash(bash:*)`) `allowed-tools`, and an over-long description.
+with no shipped file. Errors reject `allowed-tools` entries that pre-approve an
+unrestricted shell; warnings flag softer hygiene such as a missing field or an
+over-long description.
 
 Install the pinned validation dependency first. Exit 0 = clean, 1 = errors.
 Warnings never fail.
@@ -133,12 +134,14 @@ def main() -> int:
         tools = allowed.split()
         if "allowed-tools" not in fm:
             warnings.append(f"{dir_name}: no `allowed-tools` in frontmatter — every tool call prompts; declare a scoped space-separated set when pre-approval is intended")
-        # Bare `Bash` pre-approves arbitrary shell; `Bash(bash:*)`/`Bash(sh:*)` are nearly as broad.
+        # A bare shell or a shell-interpreter wildcard can execute arbitrary
+        # command text without another permission boundary. Catalog skills may
+        # scope individual commands, but must not pre-approve an interpreter.
         if "Bash" in tools:
-            warnings.append(f"{dir_name}: `allowed-tools` pre-approves bare `Bash` (arbitrary shell, no prompt) — scope it (e.g. `Bash(git *)`) or drop it unless arbitrary shell is intended")
+            errors.append(f"{dir_name}: `allowed-tools` must not pre-approve bare `Bash`; scope individual commands instead")
         broad = [t for t in tools if t.startswith("Bash(bash") or t.startswith("Bash(sh")]
         if broad:
-            warnings.append(f"{dir_name}: `allowed-tools` pre-approves {', '.join(broad)} (a shell interpreter — nearly as broad as bare `Bash`); intended only when the skill runs bundled scripts")
+            errors.append(f"{dir_name}: `allowed-tools` must not pre-approve shell interpreters: {', '.join(broad)}")
 
         # README coverage
         if readme and f"(skills/{dir_name}/)" not in readme:
