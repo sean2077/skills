@@ -162,6 +162,32 @@ with open(os.environ["HARNESS_OUT"], "w") as f:
     f.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 '
 
+PY_VERIFY_HOOKS='
+import json, os, sys
+def load(name):
+    with open(os.environ[name], encoding="utf-8") as source:
+        return json.load(source)
+def hook_tuples(data):
+    found = set()
+    for event, groups in data.get("hooks", {}).items():
+        for group in groups or []:
+            if not isinstance(group, dict):
+                continue
+            matcher = group.get("matcher")
+            for hook in group.get("hooks") or []:
+                if isinstance(hook, dict) and "command" in hook:
+                    found.add((event, matcher, str(hook["command"])))
+    return found
+try:
+    actual = hook_tuples(load("HARNESS_EXISTING"))
+    expected = hook_tuples(load("HARNESS_EXPECTED"))
+    managed_commands = {command for _, _, command in hook_tuples(load("HARNESS_MANAGED"))}
+except (OSError, ValueError, TypeError):
+    raise SystemExit(1)
+managed_actual = {item for item in actual if item[2] in managed_commands}
+raise SystemExit(0 if expected <= actual and managed_actual <= expected else 1)
+'
+
 # merge_hooks <existing-or-empty> <addition-file> <out>
 merge_hooks() {
   local existing="$1" add="$2" out="$3"
@@ -175,6 +201,11 @@ prepare_hook_addition() {
   HARNESS_ADD="$src" HARNESS_OUT="$out" \
     HARNESS_ENABLE_WORKTREE="$WORKTREE_FLOW" HARNESS_ENABLE_FORMAT="$FORMAT_HOOK" \
     run_python -c "$PY_FILTER_HOOKS"
+}
+
+verify_hook_config() {  # <existing> <expected-profile-addition> <full-managed-template>
+  HARNESS_EXISTING="$1" HARNESS_EXPECTED="$2" HARNESS_MANAGED="$3" \
+    run_python -c "$PY_VERIFY_HOOKS"
 }
 
 write_hook_config() {  # <host-label> <existing-file> <addition-file>
@@ -533,7 +564,7 @@ do_plan() {
 
 # ---- verify (read-only) ----------------------------------------------------
 do_verify() {
-  local fails=0 pass="  ${c_green}✓${c_off}" fail="  ${c_red}✗${c_off}" info="  ${c_yellow}•${c_off}"
+  local fails=0 pass="  ${c_green}✓${c_off}" fail="  ${c_red}✗${c_off}"
   log "verifying harness in $TARGET"
 
   local required="tools/agent/hooks/authority_doc_budget.sh tools/agent/hooks/format_on_edit.sh \
@@ -547,23 +578,25 @@ do_verify() {
     if [[ -f "$TARGET/$f" ]]; then printf '%s %s\n' "$pass" "$f"; else printf '%s %s (missing)\n' "$fail" "$f"; fails=$((fails+1)); fi
   done
 
-  for pair in ".claude/settings.json:Claude Code" ".codex/hooks.json:Codex"; do
-    local cfg="${pair%%:*}" label="${pair##*:}"
+  local cc_expected="$TMPDIR_H/verify-cc-add.json" cx_expected="$TMPDIR_H/verify-cx-add.json"
+  prepare_hook_addition "$TPL/claude.settings.json" "$cc_expected"
+  prepare_hook_addition "$TPL/codex.hooks.json"     "$cx_expected"
+  local host cfg label expected managed
+  for host in claude codex; do
+    if [[ "$host" == claude ]]; then
+      cfg=".claude/settings.json"; label="Claude Code"
+      expected="$cc_expected"; managed="$TPL/claude.settings.json"
+    else
+      cfg=".codex/hooks.json"; label="Codex"
+      expected="$cx_expected"; managed="$TPL/codex.hooks.json"
+    fi
     if [[ -f "$TARGET/$cfg" ]]; then
-      local miss=0
-      local managed_hooks="authority_doc_budget"
-      [[ "$WORKTREE_FLOW" == 1 ]] && managed_hooks="trunk_edit_guard $managed_hooks"
-      [[ "$FORMAT_HOOK" == 1 ]] && managed_hooks="$managed_hooks format_on_edit"
-      for h in $managed_hooks; do
-        grep -q "$h" "$TARGET/$cfg" || miss=1
-      done
-      if [[ "$WORKTREE_FLOW" != 1 ]] && grep -q trunk_edit_guard "$TARGET/$cfg"; then
-        miss=1
+      if verify_hook_config "$TARGET/$cfg" "$expected" "$managed"; then
+        printf '%s %s wiring matches the selected profile\n' "$pass" "$label"
+      else
+        printf '%s %s wiring does not match the selected profile (%s)\n' "$fail" "$label" "$cfg"
+        fails=$((fails+1))
       fi
-      if [[ "$FORMAT_HOOK" != 1 ]] && grep -q format_on_edit "$TARGET/$cfg"; then
-        miss=1
-      fi
-      if [[ "$miss" == 0 ]]; then printf '%s %s wiring present\n' "$pass" "$label"; else printf '%s %s wiring incomplete (%s)\n' "$fail" "$label" "$cfg"; fails=$((fails+1)); fi
     else
       printf '%s %s config missing (%s)\n' "$fail" "$label" "$cfg"; fails=$((fails+1))
     fi
@@ -609,7 +642,8 @@ do_verify() {
               "hook-common.sh:tools/agent/hooks/hook-common.sh" \
               "hook-paths.py:tools/agent/hooks/hook-paths.py" \
               "relink-skills.sh:.agents/relink-skills.sh" \
-              "symlink-manager.py:.agents/symlink-manager.py"; do
+              "symlink-manager.py:.agents/symlink-manager.py" \
+              "generate-subagents.py:tools/agent/generate-subagents.py"; do
     local t="${pair%%:*}" inst="$TARGET/${pair##*:}"
     case "$t" in
       worktree.sh|trunk_edit_guard.sh) [[ "$WORKTREE_FLOW" == 1 ]] || continue ;;
@@ -630,7 +664,7 @@ do_verify() {
       printf '%s subagent projections drifted — run: python tools/agent/generate-subagents.py\n' "$fail"; fails=$((fails+1))
     fi
   else
-    printf '%s no subagent generator installed\n' "$info"
+    printf '%s subagent generator missing\n' "$fail"; fails=$((fails+1))
   fi
 
   echo
