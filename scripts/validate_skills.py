@@ -6,8 +6,8 @@ from the README, a deleted install path still advertised, frontmatter that lost
 its `name`/`description`, YAML frontmatter that `npx skills` cannot parse, a
 `name` that no longer matches its directory, the `{{ARGUMENTS}}` moustache
 placeholder (Claude Code substitutes `$ARGUMENTS`), and a `reference.md` link
-with no shipped file. Errors reject `allowed-tools` entries that pre-approve an
-unrestricted shell; warnings flag softer hygiene such as a missing field or an
+with no shipped file. Catalog skills must leave tool approval to the host rather
+than declaring `allowed-tools`; warnings flag softer hygiene such as an
 over-long description.
 
 Install the pinned validation dependency first. Exit 0 = clean, 1 = errors.
@@ -67,44 +67,7 @@ def parse_frontmatter(text: str) -> dict[str, object]:
     return parsed
 
 
-_BROAD_SHELL_RULE = re.compile(
-    r"(?<!\S)(?P<rule>"
-    r"(?:Bash|PowerShell)(?:\(\*\))?"
-    r"|(?:Bash|PowerShell)\((?i:(?:ba|da|z|k)?sh|fish|pwsh|powershell(?:\.exe)?|cmd(?:\.exe)?)"
-    r"(?::\*| \*|\*)\)"
-    r")(?!\S)"
-)
-
-
-def broad_shell_preapprovals(allowed: str) -> list[str]:
-    """Return permission rules that grant an unrestricted shell."""
-    return [match.group("rule") for match in _BROAD_SHELL_RULE.finditer(allowed)]
-
-
-def validate_shell_preapproval_classifier() -> None:
-    """Pin host-equivalent unsafe rules without rejecting scoped commands."""
-    unsafe = (
-        "Bash",
-        "Bash(*)",
-        "Bash(bash:*)",
-        "Bash(bash *)",
-        "Bash(sh:*)",
-        "Bash(sh *)",
-        "PowerShell",
-        "PowerShell(*)",
-    )
-    safe = ("Bash(git:*)", "Bash(shellcheck:*)", "Bash(shasum:*)", "Bash(bashtop:*)")
-    missed = [rule for rule in unsafe if not broad_shell_preapprovals(rule)]
-    rejected = [rule for rule in safe if broad_shell_preapprovals(rule)]
-    if missed or rejected:
-        errors.append(
-            "allowed-tools shell classifier drifted"
-            f"; missed unsafe fixtures: {missed}; rejected scoped fixtures: {rejected}"
-        )
-
-
 def main() -> int:
-    validate_shell_preapproval_classifier()
     if not SKILLS_DIR.is_dir():
         errors.append(f"no skills/ directory at {SKILLS_DIR}")
         return report()
@@ -161,21 +124,10 @@ def main() -> int:
         if "reference.md" in text and not (d / "reference.md").exists():
             errors.append(f"{dir_name}: SKILL.md links `reference.md` but {dir_name}/reference.md does not exist")
 
-        # `allowed-tools` pre-approves (suppresses prompts) for the listed tools.
-        allowed = fm.get("allowed-tools", "")
-        if allowed and not isinstance(allowed, str):
-            errors.append(f"{dir_name}: `allowed-tools` must be a space-separated string")
-            allowed = ""
-        if "," in allowed:
-            errors.append(f"{dir_name}: `allowed-tools` must be space-separated, not comma-separated")
-        if "allowed-tools" not in fm:
-            warnings.append(f"{dir_name}: no `allowed-tools` in frontmatter — every tool call prompts; declare a scoped space-separated set when pre-approval is intended")
-        # A broad shell rule can execute arbitrary command text without another
-        # permission boundary. Catalog skills may scope individual commands,
-        # but must not pre-approve a shell or its interpreter.
-        broad = broad_shell_preapprovals(allowed)
-        if broad:
-            errors.append(f"{dir_name}: `allowed-tools` must not pre-approve unrestricted shells: {', '.join(broad)}")
+        if "allowed-tools" in fm:
+            errors.append(
+                f"{dir_name}: catalog skills must not declare `allowed-tools`; defer approvals to the host"
+            )
 
         # README coverage
         if readme and f"(skills/{dir_name}/)" not in readme:
