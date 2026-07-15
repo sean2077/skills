@@ -47,6 +47,8 @@ no_fixed_text() { ! grep -qF "$2" "$1"; }
 # shellcheck disable=SC2317,SC2329
 no_exact_line() { ! grep -qxF "$2" "$1"; }
 # shellcheck disable=SC2317,SC2329
+both_absent() { [ ! -e "$1" ] && [ ! -e "$2" ]; }
+# shellcheck disable=SC2317,SC2329
 no_partial_harness() {
   local root="$1" path
   for path in AGENTS.md CLAUDE.md .agents .claude .codex tools; do
@@ -346,6 +348,40 @@ check "empty optional YAML value exits nonzero"       test "$rc" != 0
 check "empty optional YAML value is typed"            grep -qF "implicit non-string YAML value for field 'model'" "$work/empty-optional-import.out"
 check "empty optional YAML value writes no SSOT"      test ! -e "$Y/.agents"
 
+expect_empty_claude_field() {
+  local slug="$1" field="$2" field_line="$3" root="$work/$1"
+  mkdir -p "$root/.claude/agents" "$root/tools/agent"
+  printf -- '---\nname: %s\ndescription: explicit empty Claude option\n%s\n---\n\nEMPTY_CLAUDE_OPTION_SENTINEL\n' \
+    "$slug" "$field_line" > "$root/.claude/agents/$slug.md"
+  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
+  ( cd "$root" && python tools/agent/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
+  check "$slug exits nonzero"                         test "$rc" != 0
+  check "$slug names the empty field"                grep -qF "Claude field '$field' must not be empty" "$work/$slug.out"
+  check "$slug writes no SSOT"                       test ! -e "$root/.agents"
+}
+
+expect_empty_codex_field() {
+  local slug="$1" field="$2" root="$work/$1"
+  mkdir -p "$root/.codex/agents" "$root/tools/agent"
+  printf '%s\n' \
+    "name = \"$slug\"" \
+    'description = "explicit empty Codex option"' \
+    "$field = \"\"" \
+    "developer_instructions = 'EMPTY_CODEX_OPTION_SENTINEL'" > "$root/.codex/agents/$slug.toml"
+  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
+  ( cd "$root" && python tools/agent/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
+  check "$slug exits nonzero"                         test "$rc" != 0
+  check "$slug names the empty field"                grep -qF "Codex field '$field' must not be empty" "$work/$slug.out"
+  check "$slug writes no SSOT"                       test ! -e "$root/.agents"
+}
+
+expect_empty_claude_field empty-claude-tools tools 'tools: ""'
+expect_empty_claude_field empty-claude-tools-commas tools 'tools: ", ,"'
+expect_empty_claude_field empty-claude-model model 'model: ""'
+expect_empty_codex_field empty-codex-model model
+expect_empty_codex_field empty-codex-reasoning model_reasoning_effort
+expect_empty_codex_field empty-codex-sandbox sandbox_mode
+
 Y="$work/claude-value-comment"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
 printf -- '---\nname: value-comment\ndescription: # KEEP_COMMENT\n---\n\nVALUE_COMMENT_SENTINEL\n' > "$Y/.claude/agents/value-comment.md"
 cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
@@ -397,6 +433,41 @@ cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.
 check "invalid TOML Unicode scalar exits nonzero"    test "$rc" != 0
 check "invalid TOML Unicode scalar names the field" grep -qF "unsupported Codex value for field 'description'" "$work/invalid-unicode-scalar.out"
 check "invalid TOML Unicode scalar writes no SSOT"  test ! -e "$Y/.agents"
+
+Y="$work/codex-raw-del"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf 'name = "raw-del"\ndescription = "a\177b"\ndeveloper_instructions = "RAW_DEL_SENTINEL"\n' > "$Y/.codex/agents/raw-del.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/codex-raw-del.out" 2>&1; rc=$?
+check "raw TOML DEL exits nonzero"                   test "$rc" != 0
+check "raw TOML DEL names the field"                grep -qF "unsupported Codex value for field 'description'" "$work/codex-raw-del.out"
+check "raw TOML DEL writes no SSOT"                 test ! -e "$Y/.agents"
+
+Y="$work/claude-raw-del"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf -- '---\nname: raw-del\ndescription: "a\177b"\n---\n\nRAW_DEL_SENTINEL\n' > "$Y/.claude/agents/raw-del.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/claude-raw-del.out" 2>&1; rc=$?
+check "raw YAML DEL exits nonzero"                   test "$rc" != 0
+check "raw YAML DEL names the field"                grep -qF "unsupported Claude value for field 'description'" "$work/claude-raw-del.out"
+check "raw YAML DEL writes no SSOT"                 test ! -e "$Y/.agents"
+
+Y="$work/codex-raw-tab"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf 'name = "raw-tab"\ndescription = "a\tb"\ndeveloper_instructions = "RAW_TAB_SENTINEL"\n' > "$Y/.codex/agents/raw-tab.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/codex-raw-tab.out" 2>&1; rc=$?
+check "raw TOML TAB imports"                         test "$rc" = 0
+check "raw TOML TAB stays semantic"                 python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); sys.exit(0 if d["description"] == "a\tb" else 1)' "$Y/.agents/subagents/raw-tab/metadata.json"
+( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "raw TOML TAB projection is in sync"           test "$rc" = 0
+
+Y="$work/source-escaped-del"; mkdir -p "$Y/.agents/subagents/escaped-del" "$Y/tools/agent"
+printf '%s\n' '{"name":"escaped-del","description":"a\u007fb"}' > "$Y/.agents/subagents/escaped-del/metadata.json"
+printf 'ESCAPED_DEL_SOURCE\n' > "$Y/.agents/subagents/escaped-del/instructions.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py ) >"$work/source-escaped-del.out" 2>&1; rc=$?
+check "escaped DEL source generates"                 test "$rc" = 0
+check "escaped DEL projections stay escaped"        python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; sys.exit(0 if all(b"\x7f" not in d and b"\\u007f" in d for d in data) else 1)' "$Y/.claude/agents/escaped-del.md" "$Y/.codex/agents/escaped-del.toml"
+( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "escaped DEL projections are in sync"          test "$rc" = 0
 
 Y="$work/claude-invalid-plain-colon"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
 printf -- '---\nname: invalid-plain-colon\ndescription: value: changes YAML structure\n---\n\nINVALID_PLAIN_COLON_SENTINEL\n' > "$Y/.claude/agents/invalid-plain-colon.md"
@@ -599,6 +670,15 @@ check "check explains noncanonical basename"        grep -qF "agent name 'Foo' i
 check "write rejects noncanonical basename"         test "$rc" != 0
 check "write creates no parallel lowercase file"    python -c 'import os,sys; names=os.listdir(sys.argv[1]); sys.exit(0 if "Foo.md" in names and "foo.md" not in names else 1)' "$P/.claude/agents"
 
+P="$work/hidden-host-agent"; mkdir -p "$P/.claude/agents"
+printf -- '---\nname: hidden\ndescription: hidden host filename\n---\n\nHIDDEN_HOST_SENTINEL\n' > "$P/.claude/agents/.hidden.md"
+git -C "$P" init -q -b main
+git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
+git -C "$P" commit -q --allow-empty -m init
+( cd "$P" && bash "$H" plan ) >"$work/hidden-host-plan.out" 2>&1; rc=$?
+check "hidden host plan exits 0"                     test "$rc" = 0
+check "hidden host plan explains filename"          grep -qF "non-portable host filename .hidden.md" "$work/hidden-host-plan.out"
+
 expect_invalid_metadata() {
   local slug="$1" json="$2" needle="$3" root="$work/source-metadata-$1"
   mkdir -p "$root/.agents/subagents/$slug" "$root/tools/agent"
@@ -608,7 +688,7 @@ expect_invalid_metadata() {
   ( cd "$root" && python tools/agent/generate-subagents.py ) >"$work/source-metadata-$slug.out" 2>&1; rc=$?
   check "$slug metadata exits nonzero"              test "$rc" != 0
   check "$slug metadata explains type"             grep -qF "$needle" "$work/source-metadata-$slug.out"
-  check "$slug metadata writes no projections"     sh -c '[ ! -e "$1" ] && [ ! -e "$2" ]' _ "$root/.claude/agents/$slug.md" "$root/.codex/agents/$slug.toml"
+  check "$slug metadata writes no projections"     both_absent "$root/.claude/agents/$slug.md" "$root/.codex/agents/$slug.toml"
 }
 
 expect_invalid_metadata description-type \
