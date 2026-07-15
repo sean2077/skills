@@ -134,6 +134,7 @@ def main() -> int:
             errors.append(f"{dir_name}: not linked from the README skills table (expected a `(skills/{dir_name}/)` link)")
 
     validate_agent_scaffold_contract()
+    validate_tooling_conventions_contract()
     validate_conventional_commit_contract()
     validate_semver_release_contract()
 
@@ -185,6 +186,46 @@ def validate_agent_scaffold_contract() -> None:
         errors.append(
             "agent-scaffold/SKILL.md: Python 3.8+ is a hard prerequisite; "
             f"missing={missing}, stale_optional={found}"
+        )
+
+
+def validate_tooling_conventions_contract() -> None:
+    """Keep Python syntax checks compile-accurate without bytecode residue."""
+    skill_dir = SKILLS_DIR / "tooling-conventions"
+    paths = {
+        "SKILL.md": skill_dir / "SKILL.md",
+        "reference.md": skill_dir / "reference.md",
+        "manifest.schema.md": skill_dir / "manifest.schema.md",
+        "manifest-check.sh": skill_dir / "manifest-check.sh",
+    }
+    if any(not path.exists() for path in paths.values()):
+        return
+    texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
+    memory_compile = (
+        "python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), "
+        "sys.argv[1], \"exec\")'"
+    )
+    for label in ("reference.md", "manifest-check.sh"):
+        if memory_compile not in texts[label]:
+            errors.append(f"tooling-conventions/{label}: in-memory Python compile command is missing")
+    if "in-memory Python compile" not in texts["SKILL.md"]:
+        errors.append("tooling-conventions/SKILL.md: no-bytecode Python verification route is missing")
+    stale = [label for label, value in texts.items() if "py_compile" in value]
+    if stale:
+        errors.append(f"tooling-conventions: py_compile bytecode-producing guidance remains in {stale}")
+
+    workflow = REPO / ".github" / "workflows" / "validate.yml"
+    workflow_text = workflow.read_text(encoding="utf-8") if workflow.exists() else ""
+    fixture_contract = (
+        "valid path-雪.py",
+        "manifest check left Python bytecode residue",
+        "return 1",
+    )
+    missing_fixture = [value for value in fixture_contract if value not in workflow_text]
+    if missing_fixture:
+        errors.append(
+            "tooling-conventions: bytecode-residue CI fixture is incomplete: "
+            f"{missing_fixture}"
         )
 
 
