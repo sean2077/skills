@@ -100,9 +100,9 @@ add = json.load(open(os.environ["HARNESS_ADD"]))
 if not isinstance(existing.get("hooks"), dict):
     existing["hooks"] = {}
 managed_path = re.compile(
-    r"(?<![A-Za-z0-9_.-])tools/agent/hooks/"
+    r"(?:^|[/\s\"\x27;&|()<>])tools/agent/hooks/"
     r"(?:trunk_edit_guard|authority_doc_budget|format_on_edit)\.sh"
-    r"(?=$|[^A-Za-z0-9_.-])"
+    r"(?=$|[\s\"\x27;&|()<>])"
 )
 def is_managed(command):
     return bool(managed_path.search(str(command or "").replace("\\", "/")))
