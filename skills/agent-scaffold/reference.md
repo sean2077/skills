@@ -149,7 +149,8 @@ N-1 strings. The Python reconciler parses JSON, removes only commands that invok
 paths under `tools/agent/hooks/` (`trunk_edit_guard.sh`, `authority_doc_budget.sh`, or
 `format_on_edit.sh`), then merges the current templates by event + matcher and deduplicates exact
 commands. Legacy launchers and path prefixes still reconcile; basename lookalikes elsewhere remain
-user-owned. `--no-worktree` and
+user-owned. Case-equivalent spellings reconcile only when the target filesystem resolves them to
+the same installed hook; case-distinct paths remain user-owned. `--no-worktree` and
 `--no-format-hook` omit their current managed commands and remove older managed entries while
 leaving every user command and unrelated config key intact. Empty managed events are removed
 rather than written as empty matcher groups. Python is a harness prerequisite, so this path has no

@@ -99,10 +99,18 @@ existing = json.load(open(ex)) if ex and os.path.exists(ex) else {}
 add = json.load(open(os.environ["HARNESS_ADD"]))
 if not isinstance(existing.get("hooks"), dict):
     existing["hooks"] = {}
+root = os.environ.get("HARNESS_TARGET", "")
+canonical_probe = os.path.join(root, "tools", "agent", "hooks", "format_on_edit.sh")
+case_probe = os.path.join(root, "ToOlS", "AgEnT", "HoOkS", "FoRmAt_On_EdIt.Sh")
+try:
+    case_insensitive_paths = os.path.samefile(canonical_probe, case_probe)
+except OSError:
+    case_insensitive_paths = False
 managed_path = re.compile(
     r"(?:^|[/\s\"\x27;&|()<>])tools/agent/hooks/"
     r"(?:trunk_edit_guard|authority_doc_budget|format_on_edit)\.sh"
-    r"(?=$|[\s\"\x27;&|()<>])"
+    r"(?=$|[\s\"\x27;&|()<>])",
+    re.IGNORECASE if case_insensitive_paths else 0,
 )
 def is_managed(command):
     return bool(managed_path.search(str(command or "").replace("\\", "/")))
@@ -197,7 +205,8 @@ raise SystemExit(0 if expected <= actual and managed_actual <= expected else 1)
 # merge_hooks <existing-or-empty> <addition-file> <out>
 merge_hooks() {
   local existing="$1" add="$2" out="$3"
-  HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" run_python -c "$PY_MERGE"
+  HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" HARNESS_TARGET="$TARGET" \
+    run_python -c "$PY_MERGE"
 }
 
 # Prepare a canonical hook addition for the selected optional features. The
