@@ -218,9 +218,11 @@ def validate_semver_release_contract() -> None:
         if peel_commit not in text:
             errors.append(f"semver-release/{label}: annotated-tag commit resolution is missing")
     skill_base_contract = (
+        "git rev-parse --is-shallow-repository",
         "git tag --merged HEAD --list 'v[0-9]*'",
         "git merge-base --is-ancestor <base> HEAD",
         "do not sort or truncate before validation",
+        "stop before base selection",
     )
     missing_skill_base = [value for value in skill_base_contract if value not in skill_text]
     if missing_skill_base:
@@ -231,6 +233,7 @@ def validate_semver_release_contract() -> None:
         "build metadata does not affect precedence",
         "Git's `version:refname` order is not SemVer precedence",
         "previous HEAD-reachable stable release, or repo root if none exists",
+        "shallow repository",
     )
     missing_reference_base = [value for value in reference_base_contract if value not in reference_text]
     if missing_reference_base:
