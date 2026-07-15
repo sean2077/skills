@@ -24,6 +24,7 @@ case "${1:-}" in -h | --help) sed -n '2,19p' "$0" | sed 's/^# \?//'; exit 0 ;; e
 MANIFEST="${1:-tools/tools-manifest.tsv}"
 [[ -f "$MANIFEST" ]] || { echo "manifest not found: $MANIFEST" >&2; exit 2; }
 SCAN_DIR="${TOOLS_DIR:-$(dirname "$MANIFEST")}"
+[[ -d "$SCAN_DIR" ]] || { echo "scan directory not found: $SCAN_DIR" >&2; exit 2; }
 SKIP_RE="${MANIFEST_CHECK_SKIP:-(^|/)(internal|vendor|tests?|legacy)/|(^|/)[._]}"
 
 fails=0 warns=0
@@ -44,7 +45,8 @@ ip="$(col_any path)"; is="$(col_any surface surface_current)"
 [[ -n "$ip" && -n "$is" ]] || { echo "manifest must have a 'path' and a 'surface' (or 'surface_current') column" >&2; exit 2; }
 
 SEEN_FILE="$(mktemp)"
-trap 'rm -f "$SEEN_FILE"' EXIT
+INVENTORY_FILE="$(mktemp)"
+trap 'rm -f "$SEEN_FILE" "$INVENTORY_FILE"' EXIT
 seen_count=0
 
 # Forward drift + per-file contract/syntax. Build the SEEN set of registered paths.
@@ -81,12 +83,16 @@ is_python_cli() { # <path>
     [[ -x "$file" ]]
 }
 
+if ! find "$SCAN_DIR" -type f \( -name '*.sh' -o -name '*.py' \) | sort > "$INVENTORY_FILE"; then
+    echo "reverse scan failed: $SCAN_DIR" >&2
+    exit 2
+fi
 while IFS= read -r f; do
     rel="${f#"$SCAN_DIR"/}"
     [[ "$rel" =~ $SKIP_RE ]] && continue
     [[ "$f" == *.py ]] && ! is_python_cli "$f" && continue # index-aware on core.filemode=false
     grep -qxF "$rel" "$SEEN_FILE" 2>/dev/null || fail "unregistered command surface (no manifest row): $rel"
-done < <(find "$SCAN_DIR" -type f \( -name '*.sh' -o -name '*.py' \) | sort)
+done < "$INVENTORY_FILE"
 
 echo "---"
 echo "manifest: $MANIFEST   scan: $SCAN_DIR   registered rows: $seen_count"
