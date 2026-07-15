@@ -209,11 +209,14 @@ def validate_semver_release_contract() -> None:
             errors.append(f"semver-release/{label}: base-selection contract lost fixtures: {missing_base}")
     equal_precedence = (
         "When highest-precedence tags differ only by build metadata, use their shared commit as "
-        "<base> only if they all resolve to that commit; otherwise stop and report the ambiguity."
+        "`<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity."
     )
+    peel_commit = "git rev-parse '<tag>^{commit}'"
     for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
         if equal_precedence not in text:
             errors.append(f"semver-release/{label}: equal-precedence base rule is missing")
+        if peel_commit not in text:
+            errors.append(f"semver-release/{label}: annotated-tag commit resolution is missing")
     skill_base_contract = (
         "git tag --merged HEAD --list 'v[0-9]*'",
         "git merge-base --is-ancestor <base> HEAD",
