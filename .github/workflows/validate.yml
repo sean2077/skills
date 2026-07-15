@@ -115,6 +115,17 @@ jobs:
             echo "later TSV fields shifted into a blank audit_level" >&2
             negative_fails=$((negative_fails + 1))
           fi
+          printf 'path\taudit_level\tsurface\r\n' > "$fixture/tools/crlf-manifest.tsv"
+          printf 'tool.sh\tenforce\tpublic\r\n' >> "$fixture/tools/crlf-manifest.tsv"
+          printf 'vendor/missing-crlf-tool\twarn\tvendor\r\n' >> "$fixture/tools/crlf-manifest.tsv"
+          if ! crlf_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/crlf-manifest.tsv" 2>&1)"; then
+            echo "expected CRLF manifest rows to preserve named columns and warn levels" >&2
+            printf '%s\n' "$crlf_output" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'warn: manifest row → missing file: vendor/missing-crlf-tool' <<<"$crlf_output"; then
+            echo "missing CRLF warn-level diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
           printf '%s\n' '#!/usr/bin/env bash' 'if then' > "$fixture/tools/bad.sh"
           printf '%s\n' 'if True print("broken")' > "$fixture/tools/bad.py"
           printf 'path\tsurface\tdomain\tentry_for\taudit_level\n' > "$fixture/tools/warn-manifest.tsv"
