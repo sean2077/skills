@@ -26,7 +26,7 @@ Do not use this skill for:
 
 ## Invariants
 
-- **Tag format** is `vX.Y.Z` or `vX.Y.Z-<pre>.N` (e.g. `v1.2.0`, `v0.3.0-beta.1`, `v1.0.0-rc.2`). Reject `v1.0`, `0.1.0`, underscores.
+- **Tags this skill creates** use `vX.Y.Z` or `vX.Y.Z-<pre>.N` (e.g. `v1.2.0`, `v0.3.0-beta.1`, `v1.0.0-rc.2`). Reject `v1.0`, `0.1.0`, underscores, and build-metadata suffixes on new tags; historical base tags are validated against full SemVer 2.0.0 in step 2.
 - **Version file stays semantically in sync with the tag.** Node and Rust manifests use the full SemVer value (`1.2.0-beta.1`); Python uses the equivalent PEP 440 value (`1.2.0b1` / `1.2.0rc1`); CMake's `project(... VERSION ...)` stays numeric and any project-defined prerelease suffix is updated separately. Never publish a prerelease package whose manifest still identifies it as the final release.
 - **A tag push is not the finish line.** A tag-triggered release CI (if the repo has one) turns the push into the release; verify the forge release actually appeared and the release commit is on the trunk.
 - **Build/publish from a clean trunk**, not a dirty working tree. Refuse a detached HEAD.
@@ -40,17 +40,28 @@ Do not use this skill for:
 git status --porcelain          # must be empty
 git rev-parse --abbrev-ref HEAD # refuse detached HEAD
 git fetch --tags origin
+git rev-parse --is-shallow-repository
 ```
 
-If the branch is not the trunk (`main`/`master`) or a `release/*` line, call that out before continuing.
+If the branch is not the trunk (`main`/`master`) or a `release/*` line, call that out before continuing. If the shallow-repository check prints `true`, list apparent roots with `git rev-list --max-parents=0 HEAD` and inspect each raw commit with `git cat-file -p <root>`. A true root has no parent header; stop before base selection only if an apparent HEAD root has a raw `parent` header. A repository can remain shallow because of an unrelated ref, so the repository-level flag alone must not block the release.
 
 ### 2. Choose base and version
 
-List existing semver tags and find the base (latest `vX.Y.Z`, including prereleases; ignore non-semver tags):
+List every `v`-prefixed candidate whose tag commit is HEAD-reachable:
 
 ```bash
-git tag --list 'v[0-9]*' --sort=-v:refname | head -10
+git tag --merged HEAD --list 'v[0-9]*'
 ```
+
+Strip exactly one leading `v`, validate every candidate as strict SemVer 2.0.0, then rank all valid candidates by SemVer 2.0.0 precedence. Collect the full set and do not sort or truncate before validation. Git's version sort is configurable and is not a SemVer selector. Peel tied tag objects with `git rev-parse '<tag>^{commit}'`. When highest-precedence tags differ only by build metadata, use their shared commit as `<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity.
+
+Defensively confirm the selected base before collecting commits:
+
+```bash
+git merge-base --is-ancestor <base> HEAD
+```
+
+Exit status 1 means the selected base is not actually HEAD-reachable; any other nonzero status is a Git error. Stop in either case.
 
 Collect commits since the base, subjects **and** bodies, to infer the bump:
 
@@ -68,7 +79,7 @@ Infer the bump (highest match wins):
 
 Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
 
-Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. First-ever release with no `v*` tag → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease and promote-to-final mechanics: `reference.md`.
+Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. A first-ever release has no HEAD-reachable valid SemVer base → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease and promote-to-final mechanics: `reference.md`.
 
 ### 3. Write release files
 
