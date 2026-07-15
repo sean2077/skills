@@ -302,6 +302,32 @@ check "upgrade rejects malformed markers before doctor" grep -qF "malformed agen
 check "failed upgrade leaves AGENTS.md byte-identical" test "$(git hash-object "$B/AGENTS.md")" = "$agents_before"
 check "failed upgrade leaves no partial harness"      no_generated_harness "$B"
 
+echo "== invalid hook configs: fail before capability probe or mutation =="
+for host in claude codex; do
+  J="$work/invalid-$host-hooks"; mkdir -p "$J"
+  git -C "$J" init -q -b main
+  git -C "$J" config user.email t@t.t; git -C "$J" config user.name tester
+  git -C "$J" config core.symlinks true
+  if [[ "$host" == claude ]]; then
+    rel=.claude/settings.json
+    expected="$rel: invalid JSON"
+    mkdir -p "$J/.claude"; printf '{"hooks":' > "$J/$rel"
+  else
+    rel=.codex/hooks.json
+    expected="$rel: top level must be a JSON object"
+    mkdir -p "$J/.codex"; printf '[]\n' > "$J/$rel"
+  fi
+  git -C "$J" add "$rel" && git -C "$J" commit -q -m "invalid $host hook fixture"
+  (
+    cd "$J" || exit 1
+    AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit --no-husky
+  ) >"$work/invalid-$host-hooks.out" 2>&1; rc=$?
+  check "$host invalid hook config exits 2"              test "$rc" = 2
+  check "$host invalid hook config names the error"      grep -qF "$expected" "$work/invalid-$host-hooks.out"
+  check "$host invalid hook config prints no traceback"  sh -c '! grep -q Traceback "$1"' _ "$work/invalid-$host-hooks.out"
+  check "$host invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
+done
+
 echo "== generated ownership requires the canonical marker, not prose =="
 P="$work/provenance-phrase"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/tools/agent"
 git -C "$P" init -q -b main
