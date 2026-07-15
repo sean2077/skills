@@ -6,6 +6,7 @@
 # header name — so it works with any superset schema (see manifest.schema.md).
 #
 # Checks (row FAIL findings honor `audit_level=warn`; global failures stay blocking):
+#   FAIL  duplicate manifest paths or an invalid surface label
 #   FAIL  a manifest row points at a missing file
 #   FAIL  a command file on disk (.sh, or executable .py) has no manifest row
 #   FAIL  shell syntax error (bash -n) / python compile error (in-memory compile)
@@ -74,10 +75,19 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     a="enforce"
     if [[ -n "$ia" ]]; then tsv_field "$line" "$ia"; a="${REPLY:-enforce}"; fi
     [[ -z "$p" || "$p" == "path" ]] && continue
-    if ! grep -qxF "$p" "$SEEN_FILE" 2>/dev/null; then
+    duplicate=0
+    if grep -qxF "$p" "$SEEN_FILE" 2>/dev/null; then
+        fail "duplicate manifest path: $p"
+        duplicate=1
+    else
         printf '%s\n' "$p" >> "$SEEN_FILE"
         seen_count=$((seen_count + 1))
     fi
+    case "$s" in
+        public | installed | helper | break-glass | paused | legacy | package | native | template | vendor) : ;;
+        *) fail "invalid manifest surface for $p: ${s:-<empty>}"; continue ;;
+    esac
+    if ((duplicate)); then continue; fi
     f="$SCAN_DIR/$p"
     if [[ ! -e "$f" ]]; then row_issue "$a" "manifest row → missing file: $p"; continue; fi
     [[ "$p" == */ ]] && continue                       # package/native directory row
