@@ -135,6 +135,20 @@ check "Claude projection keeps prose"             grep -qF CLAUDE_PROSE_SENTINEL
 check "Codex projection keeps prose"              grep -qF CODEX_PROSE_SENTINEL "$P/.codex/agents/phrase-codex.toml"
 ( cd "$P" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "provenance projections are in sync"        test "$rc" = 0
+rm -rf "$P/.agents"
+python - "$P/.claude/agents/phrase-claude.md" "$P/.codex/agents/phrase-codex.toml" <<'PY'
+from pathlib import Path
+import sys
+
+for name in sys.argv[1:]:
+    path = Path(name)
+    data = path.read_bytes()
+    assert b"\r" not in data
+    path.write_bytes(data.replace(b"\n", b"\r\n"))
+PY
+( cd "$P" && bash "$H" plan ) >"$work/provenance-crlf-plan.out" 2>&1; rc=$?
+check "CRLF provenance plan exits 0"               test "$rc" = 0
+check "plan recognizes canonical CRLF projections" no_fixed_text "$work/provenance-crlf-plan.out" "subagent phrase-"
 
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
