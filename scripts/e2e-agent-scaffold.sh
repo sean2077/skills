@@ -92,6 +92,199 @@ check "no-worktree plan makes no change"           test "$before" = "$after"
 check "no-worktree plan reports disabled flow"     grep -qF "disabled by --no-worktree" "$work/no-worktree-plan.out"
 check "no-worktree plan keeps flag in apply command" grep -qF "retrofit --no-worktree" "$work/no-worktree-plan.out"
 
+echo "== Python 3.8+ runtime candidates are probed before selection =="
+real_python="$(command -v python)"
+resolver_bin="$work/python resolver bin"; mkdir -p "$resolver_bin"
+cat > "$resolver_bin/python-shim" <<'SH'
+#!/usr/bin/env bash
+candidate="${0##*/}"
+case "$candidate" in
+  explicit-python|"explicit python") mode="${RESOLVER_EXPLICIT_MODE:-py38}" ;;
+  python)                              mode="${RESOLVER_PYTHON_MODE:-py38}" ;;
+  python3)                             mode="${RESOLVER_PYTHON3_MODE:-py38}" ;;
+  py)                                  mode="${RESOLVER_PY_MODE:-py38}" ;;
+  *)                                   exit 99 ;;
+esac
+if [[ "$candidate" == py ]]; then
+  [[ "${1:-}" == -3 ]] || exit 71
+  shift
+fi
+kind=exec
+if [[ "${1:-}" == -c && "${2:-}" == *version_info* ]]; then
+  kind=probe
+fi
+printf '%s:%s\n' "$candidate" "$kind" >> "${PYTHON_RESOLVER_LOG:?}"
+case "$mode" in
+  py37|py38)
+    if [[ "${1:-}" == -c ]]; then
+      code="${2:-}"; shift 2
+      [[ "$mode" == py37 ]] && minor=7 || minor=8
+      exec "${REAL_PYTHON:?}" -c '
+import collections
+import sys
+
+major = int(sys.argv.pop(1))
+minor = int(sys.argv.pop(1))
+code = sys.argv.pop(1)
+version_info = collections.namedtuple(
+    "version_info", "major minor micro releaselevel serial"
+)
+sys.version_info = version_info(major, minor, 0, "final", 0)
+exec(compile(code, "<resolver-shim>", "exec"))
+' 3 "$minor" "$code" "$@"
+    fi
+    exec "${REAL_PYTHON:?}" "$@"
+    ;;
+  broken) exit 70 ;;
+  *)      exit 98 ;;
+esac
+SH
+for candidate in explicit-python "explicit python" python python3 py; do
+  cp "$resolver_bin/python-shim" "$resolver_bin/$candidate"
+  chmod +x "$resolver_bin/$candidate"
+done
+resolver_path="$resolver_bin:$PATH"
+
+resolver_log="$work/python-version-fixture.log"; : > "$resolver_log"
+PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+  RESOLVER_PYTHON_MODE=py37 python -c \
+  'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 7) else 1)'; rc=$?
+check "resolver fixture simulates Python 3.7" test "$rc" = 0
+PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+  RESOLVER_PYTHON3_MODE=py38 python3 -c \
+  'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 8) else 1)'; rc=$?
+check "resolver fixture simulates the supported Python 3.8 boundary" test "$rc" = 0
+
+resolver_log="$work/harness-python3-fallback.log"; : > "$resolver_log"
+(
+  cd "$N" || exit 1
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
+    RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=py38 RESOLVER_PY_MODE=broken \
+    bash "$H" verify --no-worktree
+) >/dev/null 2>&1; rc=$?
+check "harness falls through broken and old candidates" test "$rc" = 1
+check "harness probes candidates in documented order" test \
+  "$(sed -n '1,3p' "$resolver_log")" = \
+  "$(printf '%s\n' explicit-python:probe python:probe python3:probe)"
+check "harness executes the selected python3" grep -qxF python3:exec "$resolver_log"
+
+resolver_log="$work/harness-swapped-python3-fallback.log"; : > "$resolver_log"
+(
+  cd "$N" || exit 1
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=py37 \
+    RESOLVER_PYTHON_MODE=broken RESOLVER_PYTHON3_MODE=py38 RESOLVER_PY_MODE=broken \
+    bash "$H" verify --no-worktree
+) >/dev/null 2>&1; rc=$?
+check "harness falls through old and broken candidates" test "$rc" = 1
+check "harness probes swapped failures in documented order" test \
+  "$(sed -n '1,3p' "$resolver_log")" = \
+  "$(printf '%s\n' explicit-python:probe python:probe python3:probe)"
+check "harness executes python3 after swapped failures" grep -qxF python3:exec "$resolver_log"
+
+resolver_log="$work/harness-py-fallback.log"; : > "$resolver_log"
+(
+  cd "$N" || exit 1
+  unset PYTHON_BIN
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=broken RESOLVER_PY_MODE=py38 \
+    bash "$H" verify --no-worktree
+) >/dev/null 2>&1; rc=$?
+check "harness reaches the Windows launcher candidate" test "$rc" = 1
+check "harness preserves the py -3 candidate order" test \
+  "$(sed -n '1,3p' "$resolver_log")" = "$(printf '%s\n' python:probe python3:probe py:probe)"
+check "harness executes the selected py -3 launcher" grep -qxF py:exec "$resolver_log"
+
+resolver_log="$work/harness-explicit-precedence.log"; : > "$resolver_log"
+(
+  cd "$N" || exit 1
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit python" RESOLVER_EXPLICIT_MODE=py38 \
+    RESOLVER_PYTHON_MODE=broken RESOLVER_PYTHON3_MODE=broken RESOLVER_PY_MODE=broken \
+    bash "$H" verify --no-worktree
+) >/dev/null 2>&1; rc=$?
+check "compatible explicit interpreter keeps precedence" test "$rc" = 1
+check "explicit interpreter path with spaces is probed" grep -qxF "explicit python:probe" "$resolver_log"
+check "explicit interpreter path with spaces is executed" grep -qxF "explicit python:exec" "$resolver_log"
+check "lower-priority candidates stay untouched" test -z "$(grep -v '^explicit python:' "$resolver_log" || true)"
+
+resolver_log="$work/harness-no-python.log"; : > "$resolver_log"
+(
+  cd "$N" || exit 1
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
+    RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=broken RESOLVER_PY_MODE=py37 \
+    bash "$H" plan --no-worktree
+) >"$work/harness-no-python.out" 2>&1; rc=$?
+check "harness rejects an entirely incompatible candidate set" test "$rc" = 2
+check "harness names its Python version prerequisite" grep -qF "python 3.8+ is required" "$work/harness-no-python.out"
+
+R="$work/relink-python-fallback"; mkdir -p "$R/.agents"
+cp "$repo/skills/agent-scaffold/templates/relink-skills.sh" "$R/.agents/relink-skills.sh"
+printf '%s\n' \
+  'from pathlib import Path' \
+  'Path(__file__).with_name("manager-ran").write_text("ok", encoding="utf-8")' \
+  > "$R/.agents/symlink-manager.py"
+resolver_log="$work/relink-python3-fallback.log"; : > "$resolver_log"
+(
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
+    RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=py38 RESOLVER_PY_MODE=broken \
+    bash "$R/.agents/relink-skills.sh"
+) >"$work/relink-python3-fallback.out" 2>&1; rc=$?
+check "relink falls through to a compatible python3" test "$rc" = 0
+check "relink probes candidates in documented order" test \
+  "$(sed -n '1,3p' "$resolver_log")" = \
+  "$(printf '%s\n' explicit-python:probe python:probe python3:probe)"
+check "relink runs its manager through python3" grep -qxF python3:exec "$resolver_log"
+check "relink manager reaches its entry point" test -f "$R/.agents/manager-ran"
+
+resolver_log="$work/relink-no-python.log"; : > "$resolver_log"
+(
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
+    RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=broken RESOLVER_PY_MODE=py37 \
+    bash "$R/.agents/relink-skills.sh"
+) >"$work/relink-no-python.out" 2>&1; rc=$?
+check "relink rejects an entirely incompatible candidate set" test "$rc" = 2
+check "relink names its Python version prerequisite" grep -qF "python 3.8+ is required" "$work/relink-no-python.out"
+
+resolver_log="$work/hook-python3-fallback.log"; : > "$resolver_log"
+# shellcheck disable=SC2016  # bash -c expands its own positional parameters
+hook_python="$({
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
+    RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=py38 RESOLVER_PY_MODE=broken \
+    bash -c 'source "$1"; hook_resolve_python; printf "%s\n" "${HOOK_PYTHON[*]}"' \
+      _ "$repo/skills/agent-scaffold/templates/hook-common.sh"
+} 2>/dev/null)"; rc=$?
+check "hook resolver falls through to python3" test "$rc" = 0
+check "hook resolver selects python3" test "$hook_python" = python3
+check "hook resolver probes candidates in documented order" test \
+  "$(sed -n '1,3p' "$resolver_log")" = \
+  "$(printf '%s\n' explicit-python:probe python:probe python3:probe)"
+
+cat > "$resolver_bin/jq" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' jq >> "${PYTHON_RESOLVER_LOG:?}"
+printf '/fixture/AGENTS.md\n'
+SH
+chmod +x "$resolver_bin/jq"
+resolver_log="$work/hook-jq-fallback.log"; : > "$resolver_log"
+# shellcheck disable=SC2016  # bash -c expands its own positional parameters
+hook_paths="$({
+  PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+    PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
+    RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=broken RESOLVER_PY_MODE=py37 \
+    bash -c 'source "$1"; hook_extract_paths "$2"' _ \
+      "$repo/skills/agent-scaffold/templates/hook-common.sh" \
+      '{"tool_input":{"file_path":"ignored"}}'
+} 2>/dev/null)"; rc=$?
+check "hook path extraction remains fail-open" test "$rc" = 0
+check "hook uses jq when every Python candidate is incompatible" grep -qxF jq "$resolver_log"
+check "jq fallback returns the extracted path" test "$hook_paths" = /fixture/AGENTS.md
+
 echo "== malformed AGENTS markers: fail before mutation =="
 B="$work/bad-agents-markers"; mkdir -p "$B"
 git -C "$B" init -q -b main
