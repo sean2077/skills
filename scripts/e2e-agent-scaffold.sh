@@ -1275,10 +1275,10 @@ for fixture in target-text identical-copy; do
   check "$fixture contract keeps original prose" grep -qxF '# Canonical contract' "$K/AGENTS.md"
   check "$fixture contract has one managed block" \
     test "$(grep -cF '<!-- agent-scaffold:start' "$K/AGENTS.md")" = 1
+  git -C "$K" add -A
   (cd "$K" && bash "$H" verify --no-worktree --no-husky --no-example-subagent) \
     >"$work/positive-contract-$fixture-verify.out" 2>&1; rc=$?
   check "$fixture contract verifies" test "$rc" = 0
-  git -C "$K" add -A
   mode="$(git -C "$K" ls-files -s -- CLAUDE.md | awk '{print $1}')"
   check "$fixture contract stages as a symlink" test "$mode" = 120000
   git -C "$K" commit -q -m "$fixture contract installed"
