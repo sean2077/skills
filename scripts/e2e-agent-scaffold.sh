@@ -286,6 +286,69 @@ check "description conflict exits nonzero"          test "$rc" != 0
 check "description conflict explains the mismatch" grep -qF "different descriptions; resolve the conflict before --import" "$work/description-conflict-import.out"
 check "description conflict writes no SSOT"        test ! -e "$V/.agents"
 
+I="$work/inline-multiline-strings"; mkdir -p "$I/.codex/agents" "$I/tools/agent"
+printf '%s\n' \
+  'name = "basic-inline"' \
+  'description = "inline basic multiline"' \
+  'developer_instructions = """INLINE_BASIC_SENTINEL"""' > "$I/.codex/agents/basic-inline.toml"
+printf '%s\n' \
+  'name = "literal-inline"' \
+  'description = "inline literal multiline"' \
+  "developer_instructions = '''INLINE_LITERAL_SENTINEL'''" > "$I/.codex/agents/literal-inline.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$I/tools/agent/generate-subagents.py"
+( cd "$I" && python tools/agent/generate-subagents.py --import ) >"$work/inline-multiline-import.out" 2>&1; rc=$?
+check "inline TOML multiline forms import"           test "$rc" = 0
+check "inline basic prompt is exact"                 grep -qxF INLINE_BASIC_SENTINEL "$I/.agents/subagents/basic-inline/instructions.md"
+check "inline literal prompt is exact"               grep -qxF INLINE_LITERAL_SENTINEL "$I/.agents/subagents/literal-inline/instructions.md"
+
+Y="$work/claude-comment-boundary"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf -- '---\nname: quoted-hash\ndescription: "Review #123"\nmodel: "false"\n---\n\nQUOTED_HASH_SENTINEL\n' > "$Y/.claude/agents/quoted-hash.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/quoted-hash-import.out" 2>&1; rc=$?
+check "quoted hash Claude metadata imports"          test "$rc" = 0
+check "quoted hash description stays quoted"        grep -qxF 'description: "Review #123"' "$Y/.claude/agents/quoted-hash.md"
+check "bool-looking model stays quoted"              grep -qxF 'model: "false"' "$Y/.claude/agents/quoted-hash.md"
+
+Y="$work/claude-value-comment"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf -- '---\nname: value-comment\ndescription: # KEEP_COMMENT\n---\n\nVALUE_COMMENT_SENTINEL\n' > "$Y/.claude/agents/value-comment.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/value-comment-import.out" 2>&1; rc=$?
+check "Claude value comment exits nonzero"           test "$rc" != 0
+check "Claude value comment writes no SSOT"          test ! -e "$Y/.agents"
+
+Y="$work/codex-closing-comment"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf '%s\n' \
+  'name = "closing-comment"' \
+  'description = "closing delimiter comment"' \
+  'developer_instructions = """' \
+  'CLOSING_COMMENT_SENTINEL' \
+  '""" # KEEP_COMMENT' > "$Y/.codex/agents/closing-comment.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/closing-comment-import.out" 2>&1; rc=$?
+check "Codex closing comment exits nonzero"          test "$rc" != 0
+check "Codex closing comment writes no SSOT"         test ! -e "$Y/.agents"
+
+C="$work/source-projection-collision"; mkdir -p "$C/.agents/subagents/sourced" "$C/.claude/agents" "$C/tools/agent"
+printf '%s\n' '{"name":"sourced","description":"existing source"}' > "$C/.agents/subagents/sourced/metadata.json"
+printf 'SOURCE_INSTRUCTIONS\n' > "$C/.agents/subagents/sourced/instructions.md"
+printf -- '---\nname: sourced\ndescription: hand-authored projection\n---\n\nHAND_PROJECTION_SENTINEL\n' > "$C/.claude/agents/sourced.md"
+cp "$repo/tools/agent/generate-subagents.py" "$C/tools/agent/generate-subagents.py"
+git -C "$C" init -q -b main
+git -C "$C" config user.email t@t.t; git -C "$C" config user.name tester
+git -C "$C" commit -q --allow-empty -m init
+collision_before="$(git hash-object "$C/.claude/agents/sourced.md")"
+( cd "$C" && bash "$H" plan ) >"$work/source-collision-plan.out" 2>&1; rc=$?
+check "source collision plan exits 0"                test "$rc" = 0
+check "source collision plan requires resolution"    grep -qF "hand-authored projection conflicts with existing .agents/subagents/sourced" "$work/source-collision-plan.out"
+( cd "$C" && python tools/agent/generate-subagents.py --import ) >"$work/source-collision-import.out" 2>&1; rc=$?
+check "source collision import exits nonzero"        test "$rc" != 0
+check "source collision import explains conflict"   grep -qF "hand-authored projection conflicts with existing .agents/subagents/sourced" "$work/source-collision-import.out"
+check "source collision import preserves projection" test "$(git hash-object "$C/.claude/agents/sourced.md")" = "$collision_before"
+printf -- '---\nname: sourced\ndescription: hand-authored projection\n---\n\nHAND_PROJECTION_SENTINEL\n' > "$C/.claude/agents/sourced.md"
+( cd "$C" && python tools/agent/generate-subagents.py ) >"$work/source-collision-project.out" 2>&1; rc=$?
+check "default projection collision exits nonzero"  test "$rc" != 0
+check "default collision preserves projection"      test "$(git hash-object "$C/.claude/agents/sourced.md")" = "$collision_before"
+
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
   if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
