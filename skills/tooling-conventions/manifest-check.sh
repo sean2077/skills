@@ -57,10 +57,10 @@ while IFS=$'\t' read -r -a F || ((${#F[@]})); do
         printf '%s\n' "$p" >> "$SEEN_FILE"
         seen_count=$((seen_count + 1))
     fi
-    [[ "$p" == */ ]] && continue                       # package/native directory row
-    case "$p" in *.sh | *.py) : ;; *) continue ;; esac # only command files are existence-checked
     f="$SCAN_DIR/$p"
     if [[ ! -e "$f" ]]; then fail "manifest row → missing file: $p"; continue; fi
+    [[ "$p" == */ ]] && continue                       # package/native directory row
+    case "$p" in *.sh | *.py) : ;; *) continue ;; esac # syntax/help apply only to command files
     case "$p" in
         *.sh) bash -n "$f" 2>/dev/null || fail "shell syntax error: $p" ;;
         *.py) command -v python >/dev/null 2>&1 &&
