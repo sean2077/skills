@@ -347,7 +347,7 @@ for fixture in claude-syntax codex-root codex-hooks claude-command codex-constan
   ) >"$work/invalid-$fixture-hooks.out" 2>&1; rc=$?
   check "$fixture invalid hook config exits 2"              test "$rc" = 2
   check "$fixture invalid hook config names the error"      grep -qF "$expected" "$work/invalid-$fixture-hooks.out"
-  check "$fixture invalid hook config prints no traceback"  sh -c '! grep -q Traceback "$1"' _ "$work/invalid-$fixture-hooks.out"
+  check "$fixture invalid hook config prints no traceback"  no_fixed_text "$work/invalid-$fixture-hooks.out" "Traceback"
   check "$fixture invalid hook config stops before doctor"  no_fixed_text "$work/invalid-$fixture-hooks.out" "symlink capability denied by the test fixture"
   check "$fixture invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
 done
@@ -364,7 +364,7 @@ git -C "$J" add .claude/settings.json && git -C "$J" commit -q -m "invalid neste
 ) >"$work/invalid-nested-hooks.out" 2>&1; rc=$?
 check "nested invalid hook config exits 2"              test "$rc" = 2
 check "nested invalid hook config names the field"      grep -qF ".claude/settings.json: hooks.PreToolUse[0].hooks must be an array" "$work/invalid-nested-hooks.out"
-check "nested invalid hook config prints no traceback"  sh -c '! grep -q Traceback "$1"' _ "$work/invalid-nested-hooks.out"
+check "nested invalid hook config prints no traceback"  no_fixed_text "$work/invalid-nested-hooks.out" "Traceback"
 check "nested invalid hook config stops before doctor"  no_fixed_text "$work/invalid-nested-hooks.out" "symlink capability denied by the test fixture"
 check "nested invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
 
