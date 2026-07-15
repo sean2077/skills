@@ -70,10 +70,10 @@ create / merge / migrate decision without writing anything.
 - **A real `CLAUDE.md` and no `AGENTS.md`** → its prose is adopted as the `AGENTS.md` SSOT and
   `CLAUDE.md` is replaced with the symlink. A real `CLAUDE.md` *beside* a real `AGENTS.md` is left
   for you to merge by hand (the installer says which).
-- **Hand-authored `.claude/agents/*.md` / `.codex/agents/*.toml`** (python) → reverse-generated into
+- **Hand-authored `.claude/agents/*.md` / `.codex/agents/*.toml`** → reverse-generated into
   `.agents/subagents/<name>/` sources (`generate-subagents.py --import`), then re-projected with
-  the do-not-edit banner. A sourceless hand-authored projection is never silently pruned; without
-  python the installer flags them instead (install python, then `upgrade`).
+  the do-not-edit banner. A sourceless hand-authored projection is never silently pruned; import
+  conflicts stop before projection writes.
 - **Everything else** (hook configs, `.gitignore`, `package.json` scripts) is merged, never clobbered.
 
 ## Workflow
@@ -81,17 +81,19 @@ create / merge / migrate decision without writing anything.
 1. **Detect intent + state.** From the user's words pick the mode; confirm the target repo with `git rev-parse --show-toplevel` and note whether `.claude/`, `.codex/`, and `AGENTS.md` already exist. If ambiguous between init and retrofit, run `retrofit`.
 2. **Run the installer** for that mode (table above). Useful flags: `--no-worktree`, `--no-format-hook`, `--no-husky`, `--no-example-subagent`, `--force-scripts` (implied by `upgrade`). See `harness-init.sh --help`. When enabled, the worktree flow's trunk is chosen per-call (`WORKTREE_TRUNK=… ` or `worktree.sh … --trunk <branch>`), not at install time.
 3. **Finish the contract.** For `init`, fill the `AGENTS.md` TODO sections (project overview / commands / architecture) — keep it an entry point; link depth into `docs/`. For nested directories that deserve their own contract, drop in `templates/AGENTS.nested.md` and fill it (keep `<!-- Parent: ../AGENTS.md -->`). For a multi-directory codebase, generate a full parent-linked tree — see `reference.md` → *Generating the nested AGENTS.md tree*.
-4. **Report** what was installed, what was merged vs created, what was skipped (e.g. subagents when python is unavailable), and the **Codex trust** reminder the installer prints.
+4. **Report** what was installed, what was merged vs created, any preflight stop, and the **Codex trust** reminder the installer prints.
 5. **Verify** with `verify` mode (or the recipe in `reference.md`) before handing back.
 
 ## The installer at a glance
 
-`harness-init.sh` first runs the real-link doctor, then copies the selected vendored scripts into
-`tools/agent/` + `.agents/`, **reconciles only its owned hook entries** in
+`harness-init.sh` resolves Python 3.8+ before every mode. For mutating modes it then runs the real-link
+doctor, copies the selected vendored scripts into `tools/agent/` + `.agents/`, and **reconciles only
+owned hook entries** in
 `.claude/settings.json` and `.codex/hooks.json` (Python; user hooks remain), creates the
 `CLAUDE.md → AGENTS.md` symlink, seeds `.agents/{skills,subagents}/`
-and the root `AGENTS.md`, appends the selected `.gitignore` lines, runs `relink-skills.sh`, and — when
-python is available — installs the subagent generator + the pre-commit drift guard. Every step is
+and the root `AGENTS.md`, appends the selected `.gitignore` lines, runs `relink-skills.sh`, installs
+and runs the subagent generator. When drift-hook wiring is enabled, eligible Husky projects are
+updated automatically; alternate managers or no-package projects receive manual guidance. Every step is
 "create if missing, merge if present, skip if already done."
 
 ## Dual-host wiring (at a glance)

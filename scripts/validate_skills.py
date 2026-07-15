@@ -163,15 +163,28 @@ def validate_agent_scaffold_contract() -> None:
         "workflow skip": r"subagents when python is unavailable",
         "conditional generator install": r"when\s+python\s+is\s+available\s+—\s+installs",
     }
+    required_python_contract = {
+        "hard prerequisite": (
+            r"The harness requires\s+\*\*git, Python 3\.8\+, and Bash 3\.2\+\*\*\."
+        ),
+        "unconditional generator install": (
+            r"installs\s+and\s+runs\s+the\s+subagent\s+generator"
+        ),
+    }
     found = [
         label
         for label, pattern in stale_optional_python.items()
         if re.search(pattern, skill_text, flags=re.IGNORECASE)
     ]
-    if found:
+    missing = [
+        label
+        for label, pattern in required_python_contract.items()
+        if not re.search(pattern, skill_text)
+    ]
+    if found or missing:
         errors.append(
             "agent-scaffold/SKILL.md: Python 3.8+ is a hard prerequisite; "
-            f"optional-Python guidance remains: {found}"
+            f"missing={missing}, stale_optional={found}"
         )
 
 
