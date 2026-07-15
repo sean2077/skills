@@ -303,29 +303,53 @@ check "failed upgrade leaves AGENTS.md byte-identical" test "$(git hash-object "
 check "failed upgrade leaves no partial harness"      no_generated_harness "$B"
 
 echo "== invalid hook configs: fail before capability probe or mutation =="
-for host in claude codex; do
-  J="$work/invalid-$host-hooks"; mkdir -p "$J"
+for fixture in claude-syntax codex-root codex-hooks claude-command codex-constant codex-overflow claude-surrogate; do
+  J="$work/invalid-$fixture-hooks"; mkdir -p "$J"
   git -C "$J" init -q -b main
   git -C "$J" config user.email t@t.t; git -C "$J" config user.name tester
   git -C "$J" config core.symlinks true
-  if [[ "$host" == claude ]]; then
-    rel=.claude/settings.json
-    expected="$rel: invalid JSON"
-    mkdir -p "$J/.claude"; printf '{"hooks":' > "$J/$rel"
-  else
-    rel=.codex/hooks.json
-    expected="$rel: top level must be a JSON object"
-    mkdir -p "$J/.codex"; printf '[]\n' > "$J/$rel"
-  fi
-  git -C "$J" add "$rel" && git -C "$J" commit -q -m "invalid $host hook fixture"
+  case "$fixture" in
+    claude-syntax)
+      rel=.claude/settings.json; expected="$rel: invalid JSON"
+      mkdir -p "$J/.claude"; printf '{"hooks":' > "$J/$rel"
+      ;;
+    codex-root)
+      rel=.codex/hooks.json; expected="$rel: top level must be a JSON object"
+      mkdir -p "$J/.codex"; printf '[]\n' > "$J/$rel"
+      ;;
+    codex-hooks)
+      rel=.codex/hooks.json; expected="$rel: hooks must be a JSON object or null"
+      mkdir -p "$J/.codex"; printf '{"hooks":[]}\n' > "$J/$rel"
+      ;;
+    claude-command)
+      rel=.claude/settings.json
+      expected="$rel: hooks.PreToolUse[0].hooks[0].command must be a string"
+      mkdir -p "$J/.claude"
+      printf '%s\n' '{"hooks":{"PreToolUse":[{"matcher":"Edit|MultiEdit|Write|NotebookEdit","hooks":[{"type":"command","command":[]}]}]}}' > "$J/$rel"
+      ;;
+    codex-constant)
+      rel=.codex/hooks.json; expected="$rel: invalid JSON"
+      mkdir -p "$J/.codex"; printf '{"model":NaN}\n' > "$J/$rel"
+      ;;
+    codex-overflow)
+      rel=.codex/hooks.json; expected="$rel: invalid JSON"
+      mkdir -p "$J/.codex"; printf '{"model":1e9999}\n' > "$J/$rel"
+      ;;
+    claude-surrogate)
+      rel=.claude/settings.json; expected="$rel: invalid JSON"
+      mkdir -p "$J/.claude"; printf '%s\n' '{"label":"\ud800"}' > "$J/$rel"
+      ;;
+  esac
+  git -C "$J" add "$rel" && git -C "$J" commit -q -m "invalid $fixture hook fixture"
   (
     cd "$J" || exit 1
     AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit --no-husky
-  ) >"$work/invalid-$host-hooks.out" 2>&1; rc=$?
-  check "$host invalid hook config exits 2"              test "$rc" = 2
-  check "$host invalid hook config names the error"      grep -qF "$expected" "$work/invalid-$host-hooks.out"
-  check "$host invalid hook config prints no traceback"  sh -c '! grep -q Traceback "$1"' _ "$work/invalid-$host-hooks.out"
-  check "$host invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
+  ) >"$work/invalid-$fixture-hooks.out" 2>&1; rc=$?
+  check "$fixture invalid hook config exits 2"              test "$rc" = 2
+  check "$fixture invalid hook config names the error"      grep -qF "$expected" "$work/invalid-$fixture-hooks.out"
+  check "$fixture invalid hook config prints no traceback"  sh -c '! grep -q Traceback "$1"' _ "$work/invalid-$fixture-hooks.out"
+  check "$fixture invalid hook config stops before doctor"  no_fixed_text "$work/invalid-$fixture-hooks.out" "symlink capability denied by the test fixture"
+  check "$fixture invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
 done
 
 J="$work/invalid-nested-hooks"; mkdir -p "$J/.claude"
@@ -341,7 +365,23 @@ git -C "$J" add .claude/settings.json && git -C "$J" commit -q -m "invalid neste
 check "nested invalid hook config exits 2"              test "$rc" = 2
 check "nested invalid hook config names the field"      grep -qF ".claude/settings.json: hooks.PreToolUse[0].hooks must be an array" "$work/invalid-nested-hooks.out"
 check "nested invalid hook config prints no traceback"  sh -c '! grep -q Traceback "$1"' _ "$work/invalid-nested-hooks.out"
+check "nested invalid hook config stops before doctor"  no_fixed_text "$work/invalid-nested-hooks.out" "symlink capability denied by the test fixture"
 check "nested invalid hook config leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
+
+J="$work/valid-unicode-hooks"; mkdir -p "$J/.claude"
+git -C "$J" init -q -b main
+git -C "$J" config user.email t@t.t; git -C "$J" config user.name tester
+git -C "$J" config core.symlinks true
+printf '%s\n' '{"label":"\ud83d\ude00","hooks":null}' > "$J/.claude/settings.json"
+git -C "$J" add .claude/settings.json && git -C "$J" commit -q -m "valid Unicode hook fixture"
+(
+  cd "$J" || exit 1
+  AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit --no-husky
+) >"$work/valid-unicode-hooks.out" 2>&1; rc=$?
+check "valid Unicode pair reaches capability probe" test "$rc" = 2
+check "valid Unicode pair is not rejected as JSON" no_fixed_text "$work/valid-unicode-hooks.out" "invalid JSON"
+check "valid Unicode pair preserves hooks:null compatibility" grep -qF "symlink capability denied by the test fixture" "$work/valid-unicode-hooks.out"
+check "valid Unicode fixture leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
 
 echo "== generated ownership requires the canonical marker, not prose =="
 P="$work/provenance-phrase"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/tools/agent"
