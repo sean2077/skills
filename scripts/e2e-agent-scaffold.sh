@@ -859,6 +859,28 @@ check "CRLF gitignore target stays singular" logical_line_count "$S/.gitignore" 
 check "CRLF attributes target stays singular" logical_line_count "$S/.gitattributes" "tools/agent/*.sh text eol=lf" 1
 check "CR-only Husky target stays singular" logical_line_count "$S/.husky/pre-commit" "python tools/agent/generate-subagents.py --check" 1
 
+echo "== retrofit propagates subagent import rejection =="
+printf -- '---\nname: import-propagation\ndescription: propagation fixture\n---\n\nCLAUDE_IMPORT_BODY\n' \
+  > "$S/.claude/agents/import-propagation.md"
+printf '%s\n' \
+  'name = "import-propagation"' \
+  'description = "propagation fixture"' \
+  "developer_instructions = '''" \
+  'CODEX_IMPORT_BODY' \
+  "'''" > "$S/.codex/agents/import-propagation.toml"
+import_cc_before="$(git hash-object "$S/.claude/agents/import-propagation.md")"
+import_cx_before="$(git hash-object "$S/.codex/agents/import-propagation.toml")"
+import_out="$work/import-propagation-retrofit.out"
+( cd "$S" && bash "$H" retrofit ) >"$import_out" 2>&1; rc=$?
+check "retrofit propagates import rejection"         test "$rc" != 0
+check "retrofit surfaces divergent instructions"     grep -qF "have different instructions; resolve the conflict before --import" "$import_out"
+check "retrofit does not downgrade import rejection" no_fixed_text "$import_out" "generate-subagents.py --import returned nonzero"
+check "failed retrofit omits completion banner"      no_fixed_text "$import_out" "harness retrofit complete."
+check "failed retrofit preserves Claude input"       test "$(git hash-object "$S/.claude/agents/import-propagation.md")" = "$import_cc_before"
+check "failed retrofit preserves Codex input"        test "$(git hash-object "$S/.codex/agents/import-propagation.toml")" = "$import_cx_before"
+check "failed retrofit writes no partial SSOT"       test ! -e "$S/.agents/subagents/import-propagation"
+rm -f "$S/.claude/agents/import-propagation.md" "$S/.codex/agents/import-propagation.toml"
+
 echo "== retrofit-merge preserves a pre-existing user hook =="
 python - "$S/.claude/settings.json" <<'PY'
 import json, sys
