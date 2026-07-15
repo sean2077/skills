@@ -67,12 +67,18 @@ def parse_frontmatter(text: str) -> dict[str, object]:
     return parsed
 
 
+_BROAD_SHELL_RULE = re.compile(
+    r"(?<!\S)(?P<rule>"
+    r"(?:Bash|PowerShell)(?:\(\*\))?"
+    r"|(?:Bash|PowerShell)\((?i:(?:ba|da|z|k)?sh|fish|pwsh|powershell(?:\.exe)?|cmd(?:\.exe)?)"
+    r"(?::\*| \*|\*)\)"
+    r")(?!\S)"
+)
+
+
 def broad_shell_preapprovals(allowed: str) -> list[str]:
     """Return permission rules that grant an unrestricted shell."""
-    tools = allowed.split()
-    broad = [tool for tool in tools if tool == "Bash"]
-    broad.extend(tool for tool in tools if tool in {"Bash(bash:*)", "Bash(sh:*)"})
-    return broad
+    return [match.group("rule") for match in _BROAD_SHELL_RULE.finditer(allowed)]
 
 
 def validate_shell_preapproval_classifier() -> None:
