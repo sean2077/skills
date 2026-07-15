@@ -246,9 +246,27 @@ def validate_semver_release_contract() -> None:
         errors.append(
             f"semver-release/reference.md: SemVer precedence contract lost fixtures: {missing_reference_base}"
         )
+    release_stage_contract = (
+        "git add -- CHANGELOG.md <all-version-files> <all-coupled-lockfiles> [release-notes]",
+        "git diff --cached --check",
+        "every file changed for the release must be staged",
+        'git commit -m "release: vX.Y.Z"',
+        "git status --porcelain # must be empty before tagging",
+        'git tag -a vX.Y.Z -m "Release vX.Y.Z"',
+    )
+    missing_stage = [value for value in release_stage_contract if value not in skill_text]
+    stage_ordered = not missing_stage and [skill_text.index(value) for value in release_stage_contract] == sorted(
+        skill_text.index(value) for value in release_stage_contract
+    )
+    if missing_stage or not stage_ordered:
+        errors.append(
+            "semver-release/SKILL.md: complete release snapshot must be staged and clean before tagging"
+        )
     stale_selector = "git tag --list 'v[0-9]*' --sort=-v:refname | head -10"
     if stale_selector in combined:
         errors.append("semver-release: stale Git version-sort base selector remains")
+    if "git add CHANGELOG.md <version-file> [release-notes]" in skill_text:
+        errors.append("semver-release/SKILL.md: partial release staging command remains")
     if "Prerelease suffixes generally do **not** go into the version file" in combined:
         errors.append("semver-release: stale tag-only prerelease guidance remains")
 
