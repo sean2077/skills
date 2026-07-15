@@ -349,6 +349,30 @@ printf -- '---\nname: sourced\ndescription: hand-authored projection\n---\n\nHAN
 check "default projection collision exits nonzero"  test "$rc" != 0
 check "default collision preserves projection"      test "$(git hash-object "$C/.claude/agents/sourced.md")" = "$collision_before"
 
+C="$work/source-codex-collision"; mkdir -p "$C/.agents/subagents/sourced-codex" "$C/.codex/agents" "$C/tools/agent"
+printf '%s\n' '{"name":"sourced-codex","description":"existing source"}' > "$C/.agents/subagents/sourced-codex/metadata.json"
+printf 'SOURCE_INSTRUCTIONS\n' > "$C/.agents/subagents/sourced-codex/instructions.md"
+printf '%s\n' \
+  'name = "sourced-codex"' \
+  'description = "hand-authored Codex projection"' \
+  "developer_instructions = '''HAND_CODEX_PROJECTION_SENTINEL'''" > "$C/.codex/agents/sourced-codex.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$C/tools/agent/generate-subagents.py"
+git -C "$C" init -q -b main
+git -C "$C" config user.email t@t.t; git -C "$C" config user.name tester
+git -C "$C" commit -q --allow-empty -m init
+codex_collision_before="$(git hash-object "$C/.codex/agents/sourced-codex.toml")"
+( cd "$C" && bash "$H" plan ) >"$work/source-codex-collision-plan.out" 2>&1; rc=$?
+check "Codex source collision plan exits 0"          test "$rc" = 0
+check "Codex source collision plan needs resolution" grep -qF "hand-authored projection conflicts with existing .agents/subagents/sourced-codex" "$work/source-codex-collision-plan.out"
+( cd "$C" && python tools/agent/generate-subagents.py --import ) >"$work/source-codex-collision-import.out" 2>&1; rc=$?
+check "Codex source collision import exits nonzero"  test "$rc" != 0
+check "Codex collision import preserves projection" test "$(git hash-object "$C/.codex/agents/sourced-codex.toml")" = "$codex_collision_before"
+check "Codex import conflict writes no Claude side"  test ! -e "$C/.claude/agents/sourced-codex.md"
+( cd "$C" && python tools/agent/generate-subagents.py ) >"$work/source-codex-collision-project.out" 2>&1; rc=$?
+check "Codex default collision exits nonzero"        test "$rc" != 0
+check "Codex default preserves projection"           test "$(git hash-object "$C/.codex/agents/sourced-codex.toml")" = "$codex_collision_before"
+check "Codex default conflict writes no Claude side" test ! -e "$C/.claude/agents/sourced-codex.md"
+
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
   if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
