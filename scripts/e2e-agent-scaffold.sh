@@ -376,6 +376,44 @@ check "invalid TOML literal exits nonzero"            test "$rc" != 0
 check "invalid TOML literal names the field"         grep -qF "unsupported Codex value for field 'description'" "$work/literal-quote-import.out"
 check "invalid TOML literal writes no SSOT"           test ! -e "$Y/.agents"
 
+Y="$work/codex-invalid-basic-escape"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf '%s\n' \
+  'name = "invalid-basic-escape"' \
+  'description = "a\/b"' \
+  "developer_instructions = 'INVALID_BASIC_ESCAPE_SENTINEL'" > "$Y/.codex/agents/invalid-basic-escape.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-basic-escape.out" 2>&1; rc=$?
+check "invalid TOML basic escape exits nonzero"       test "$rc" != 0
+check "invalid TOML basic escape names the field"    grep -qF "unsupported Codex value for field 'description'" "$work/invalid-basic-escape.out"
+check "invalid TOML basic escape writes no SSOT"     test ! -e "$Y/.agents"
+
+Y="$work/codex-invalid-unicode-scalar"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf '%s\n' \
+  'name = "invalid-unicode-scalar"' \
+  'description = "\uD800"' \
+  "developer_instructions = 'INVALID_UNICODE_SENTINEL'" > "$Y/.codex/agents/invalid-unicode-scalar.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-unicode-scalar.out" 2>&1; rc=$?
+check "invalid TOML Unicode scalar exits nonzero"    test "$rc" != 0
+check "invalid TOML Unicode scalar names the field" grep -qF "unsupported Codex value for field 'description'" "$work/invalid-unicode-scalar.out"
+check "invalid TOML Unicode scalar writes no SSOT"  test ! -e "$Y/.agents"
+
+Y="$work/claude-invalid-plain-colon"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf -- '---\nname: invalid-plain-colon\ndescription: value: changes YAML structure\n---\n\nINVALID_PLAIN_COLON_SENTINEL\n' > "$Y/.claude/agents/invalid-plain-colon.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-plain-colon.out" 2>&1; rc=$?
+check "invalid YAML plain colon exits nonzero"        test "$rc" != 0
+check "invalid YAML plain colon names the field"     grep -qF "unsupported Claude value for field 'description'" "$work/invalid-plain-colon.out"
+check "invalid YAML plain colon writes no SSOT"      test ! -e "$Y/.agents"
+
+Y="$work/claude-invalid-plain-dash"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf -- '---\nname: invalid-plain-dash\ndescription: - changes YAML structure\n---\n\nINVALID_PLAIN_DASH_SENTINEL\n' > "$Y/.claude/agents/invalid-plain-dash.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-plain-dash.out" 2>&1; rc=$?
+check "invalid YAML plain dash exits nonzero"         test "$rc" != 0
+check "invalid YAML plain dash names the field"      grep -qF "unsupported Claude value for field 'description'" "$work/invalid-plain-dash.out"
+check "invalid YAML plain dash writes no SSOT"       test ! -e "$Y/.agents"
+
 Y="$work/codex-duplicate-nicknames"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
 printf '%s\n' \
   'name = "duplicate-nicknames"' \
@@ -493,7 +531,13 @@ printf '%s\n' \
   'description = "Codex alias candidate"' \
   "developer_instructions = 'UPPERCASE_EXTENSION_SENTINEL'" > "$P/.codex/agents/alias.toml"
 cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+git -C "$P" init -q -b main
+git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
+git -C "$P" commit -q --allow-empty -m init
 alias_before="$(git hash-object "$P/.claude/agents/alias.MD")"
+( cd "$P" && bash "$H" plan ) >"$work/noncanonical-extension-plan.out" 2>&1; rc=$?
+check "noncanonical extension plan exits 0"          test "$rc" = 0
+check "noncanonical extension plan explains case"   grep -qF "host agent extension must be lowercase .md" "$work/noncanonical-extension-plan.out"
 ( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/noncanonical-extension.out" 2>&1; rc=$?
 check "noncanonical host extension exits nonzero"     test "$rc" != 0
 check "noncanonical extension explains lowercase"    grep -qF "host agent extension must be lowercase .md" "$work/noncanonical-extension.out"
@@ -519,6 +563,69 @@ check "stale path conflict exits nonzero"             test "$rc" != 0
 check "stale path conflict names the path"           grep -qF ".claude/agents/orphan.md: expected a regular file" "$work/stale-path-conflict.out"
 check "stale conflict writes no wanted projection"   test ! -e "$P/.claude/agents/alpha.md"
 check "stale conflict writes no Codex projection"    test ! -e "$P/.codex/agents/alpha.toml"
+
+P="$work/check-projection-root-file"; mkdir -p "$P/.claude" "$P/tools/agent"
+printf 'NOT_A_DIRECTORY\n' > "$P/.claude/agents"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+( cd "$P" && python tools/agent/generate-subagents.py --check ) >"$work/check-projection-root-file.out" 2>&1; rc=$?
+check "check rejects projection root file"           test "$rc" != 0
+check "check names malformed projection root"       grep -qF ".claude/agents: expected a directory" "$work/check-projection-root-file.out"
+
+P="$work/noncanonical-host-basename"; mkdir -p "$P/.agents/subagents/foo" "$P/tools/agent"
+printf '%s\n' '{"name":"foo","description":"case-only host basename"}' > "$P/.agents/subagents/foo/metadata.json"
+printf 'NONCANONICAL_BASENAME_SENTINEL\n' > "$P/.agents/subagents/foo/instructions.md"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+( cd "$P" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
+check "basename fixture setup exits 0"               test "$rc" = 0
+python - "$P/.claude/agents/foo.md" "$P/.claude/agents/Foo.md" <<'PY'
+import os
+import sys
+
+source, target = sys.argv[1:]
+hop = source + ".case-hop"
+os.replace(source, hop)
+os.replace(hop, target)
+PY
+git -C "$P" init -q -b main
+git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
+git -C "$P" commit -q --allow-empty -m init
+( cd "$P" && bash "$H" plan ) >"$work/noncanonical-basename-plan.out" 2>&1; rc=$?
+check "noncanonical basename plan exits 0"           test "$rc" = 0
+check "noncanonical basename plan explains name"    grep -qF "non-portable host filename Foo.md" "$work/noncanonical-basename-plan.out"
+( cd "$P" && python tools/agent/generate-subagents.py --check ) >"$work/noncanonical-basename-check.out" 2>&1; rc=$?
+check "check rejects noncanonical basename"         test "$rc" != 0
+check "check explains noncanonical basename"        grep -qF "agent name 'Foo' is not dual-host compatible" "$work/noncanonical-basename-check.out"
+( cd "$P" && python tools/agent/generate-subagents.py ) >"$work/noncanonical-basename-write.out" 2>&1; rc=$?
+check "write rejects noncanonical basename"         test "$rc" != 0
+check "write creates no parallel lowercase file"    python -c 'import os,sys; names=os.listdir(sys.argv[1]); sys.exit(0 if "Foo.md" in names and "foo.md" not in names else 1)' "$P/.claude/agents"
+
+expect_invalid_metadata() {
+  local slug="$1" json="$2" needle="$3" root="$work/source-metadata-$1"
+  mkdir -p "$root/.agents/subagents/$slug" "$root/tools/agent"
+  printf '%s\n' "$json" > "$root/.agents/subagents/$slug/metadata.json"
+  printf 'INVALID_SOURCE_METADATA_SENTINEL\n' > "$root/.agents/subagents/$slug/instructions.md"
+  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
+  ( cd "$root" && python tools/agent/generate-subagents.py ) >"$work/source-metadata-$slug.out" 2>&1; rc=$?
+  check "$slug metadata exits nonzero"              test "$rc" != 0
+  check "$slug metadata explains type"             grep -qF "$needle" "$work/source-metadata-$slug.out"
+  check "$slug metadata writes no projections"     sh -c '[ ! -e "$1" ] && [ ! -e "$2" ]' _ "$root/.claude/agents/$slug.md" "$root/.codex/agents/$slug.toml"
+}
+
+expect_invalid_metadata description-type \
+  '{"name":"description-type","description":["not","a","string"]}' \
+  "metadata.description must be a non-empty string"
+expect_invalid_metadata claude-tools-type \
+  '{"name":"claude-tools-type","description":"bad tools","claude":{"tools":"Read"}}' \
+  "metadata.claude.tools must be a non-empty list of strings"
+expect_invalid_metadata codex-model-type \
+  '{"name":"codex-model-type","description":"bad model","codex":{"model":{"unexpected":true}}}' \
+  "metadata.codex.model must be a non-empty string"
+expect_invalid_metadata codex-sandbox-type \
+  '{"name":"codex-sandbox-type","description":"bad sandbox","codex":{"sandbox_mode":false}}' \
+  "metadata.codex.sandbox_mode must be a non-empty string"
+expect_invalid_metadata source-unicode-scalar \
+  '{"name":"source-unicode-scalar","description":"\ud800"}' \
+  "metadata.description contains an invalid Unicode scalar value"
 
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
