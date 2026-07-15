@@ -198,6 +198,37 @@ def validate_semver_release_contract() -> None:
     missing = [value for value in required if value not in combined]
     if missing:
         errors.append(f"semver-release: prerelease ecosystem contract lost fixtures: {missing}")
+    shared_base_contract = (
+        "HEAD-reachable",
+        "SemVer 2.0.0 precedence",
+        "no HEAD-reachable valid SemVer base",
+    )
+    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+        missing_base = [value for value in shared_base_contract if value not in text]
+        if missing_base:
+            errors.append(f"semver-release/{label}: base-selection contract lost fixtures: {missing_base}")
+    skill_base_contract = (
+        "git tag --merged HEAD --list 'v[0-9]*'",
+        "git merge-base --is-ancestor <base> HEAD",
+        "do not sort or truncate before validation",
+    )
+    missing_skill_base = [value for value in skill_base_contract if value not in skill_text]
+    if missing_skill_base:
+        errors.append(f"semver-release/SKILL.md: base-selection workflow lost fixtures: {missing_skill_base}")
+    reference_base_contract = (
+        "`v01.2.3` and `v1.2.3-rc.01` are invalid",
+        "`v1.1.0-rc.1 < v1.1.0`",
+        "build metadata does not affect precedence",
+        "Git's `version:refname` order is not SemVer precedence",
+    )
+    missing_reference_base = [value for value in reference_base_contract if value not in reference_text]
+    if missing_reference_base:
+        errors.append(
+            f"semver-release/reference.md: SemVer precedence contract lost fixtures: {missing_reference_base}"
+        )
+    stale_selector = "git tag --list 'v[0-9]*' --sort=-v:refname | head -10"
+    if stale_selector in combined:
+        errors.append("semver-release: stale Git version-sort base selector remains")
     if "Prerelease suffixes generally do **not** go into the version file" in combined:
         errors.append("semver-release: stale tag-only prerelease guidance remains")
 
