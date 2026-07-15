@@ -95,10 +95,24 @@ jobs:
               fi
             done
           fi
-          printf 'path\tsurface\taudit_level\n' > "$fixture/tools/warn-manifest.tsv"
-          printf 'tool.sh\tpublic\tenforce\n' >> "$fixture/tools/warn-manifest.tsv"
-          printf 'vendor/missing-warn-tool\tvendor\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
-          printf 'missing-warn-package/\tpackage\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'audit_level\tpath\tsurface\n' > "$fixture/tools/enforce-manifest.tsv"
+          printf 'enforce\ttool.sh\tpublic\n' >> "$fixture/tools/enforce-manifest.tsv"
+          printf 'enforce\tvendor/missing-enforce-tool\tvendor\n' >> "$fixture/tools/enforce-manifest.tsv"
+          if enforce_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/enforce-manifest.tsv" 2>&1)"; then
+            echo "expected explicit audit_level=enforce to remain blocking" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: manifest row → missing file: vendor/missing-enforce-tool' <<<"$enforce_output"; then
+            echo "missing explicit enforce-level diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf '%s\n' '#!/usr/bin/env bash' 'if then' > "$fixture/tools/bad.sh"
+          printf '%s\n' 'if True print("broken")' > "$fixture/tools/bad.py"
+          printf 'audit_level\tpath\tsurface\n' > "$fixture/tools/warn-manifest.tsv"
+          printf 'enforce\ttool.sh\tpublic\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'warn\tvendor/missing-warn-tool\tvendor\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'warn\tmissing-warn-package/\tpackage\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'warn\tbad.sh\thelper\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'warn\tbad.py\thelper\n' >> "$fixture/tools/warn-manifest.tsv"
           if ! warn_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/warn-manifest.tsv" 2>&1)"; then
             echo "expected audit_level=warn rows to remain advisory" >&2
             printf '%s\n' "$warn_output" >&2
@@ -110,7 +124,13 @@ jobs:
                 negative_fails=$((negative_fails + 1))
               fi
             done
-            if ! grep -qF 'RESULT: OK (2 warn)' <<<"$warn_output"; then
+            for syntax in 'shell syntax error: bad.sh' 'python compile error: bad.py'; do
+              if ! grep -qF "warn: $syntax" <<<"$warn_output"; then
+                echo "missing warn-level syntax diagnostic for: $syntax" >&2
+                negative_fails=$((negative_fails + 1))
+              fi
+            done
+            if ! grep -qF 'RESULT: OK (4 warn)' <<<"$warn_output"; then
               echo "warn-level forward drift did not remain non-blocking" >&2
               negative_fails=$((negative_fails + 1))
             fi
