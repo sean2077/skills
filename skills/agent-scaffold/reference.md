@@ -421,13 +421,20 @@ A project may already have hand-written `.claude/agents/*.md` or `.codex/agents/
 a harness prerequisite, and the installer runs `generate-subagents.py --import` before projecting:
 
 1. For each host agent file with **no** `.agents/subagents/<name>/` source and **no** canonical,
-   name-matched generated marker at the host format's expected position, it parses the frontmatter /
-   TOML (name, description, tools/model, Codex knobs, body) and writes a
-   `.agents/subagents/<name>/{metadata.json, instructions.md}` source. Mentioning the generated source
-   path in ordinary prose does not claim ownership. The `.claude` and `.codex` sides of the same name
-   merge into one source.
-2. It then projects every source back, so the adopted agent reappears as a generated file carrying
-   the do-not-edit banner.
+   name-matched generated marker at the host format's expected position, it preflights the
+   losslessly representable subset: simple Claude frontmatter (`name`, one-line `description`,
+   comma-separated `tools`, `model`, plus the Markdown body) or the Codex fields emitted by this
+   harness. Codex `developer_instructions` accepts both TOML multiline literal (`'''`) and basic
+   (`"""`) strings. Mentioning the generated source path in ordinary prose does not claim ownership.
+2. The filename must match the declared host `name`. A same-name Claude/Codex pair must have equal
+   descriptions and instructions (an absent final newline is normalized). A parse failure, complex
+   YAML/TOML, or any host field this harness cannot project back — such as Claude `memory` or Codex
+   `mcp_servers` / `skills.config` — exits nonzero with the file/field named. Resolve, remove, or
+   manually model that configuration in the SSOT before retrying; import never silently chooses a
+   side or drops a field.
+3. Only after **every** candidate and prospective projection passes preflight does import write
+   `.agents/subagents/<name>/{metadata.json,instructions.md}` sources. It then projects every source
+   back, so each adopted agent reappears as a generated file carrying the do-not-edit banner.
 
 Adoption is idempotent (a name that already has a source is skipped) and **never destructive**: the
 projection step that finds a sourceless, banner-less file **keeps** it and tells you to `--import`

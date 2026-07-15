@@ -48,7 +48,7 @@ def write_text(p, content):
 
 
 def rel(p):
-    return p[len(ROOT) + 1:]
+    return p[len(ROOT) + 1:].replace(os.sep, "/")
 
 
 def is_generated_projection(path, text):
@@ -61,6 +61,20 @@ def is_generated_projection(path, text):
         pattern = r"\A---\n[\s\S]*?\n---\n\n<!-- %s -->\n" % re.escape(marker)
         return re.match(pattern, text) is not None
     return False
+
+
+def normalize_instructions(instructions):
+    return instructions if instructions.endswith("\n") else instructions + "\n"
+
+
+def validate_source(name, meta, instructions):
+    if meta.get("name") != name:
+        raise SystemExit(
+            "subagent '%s': metadata.name='%s' must match directory name" % (name, meta.get("name"))
+        )
+    if not str(meta.get("description") or "").strip():
+        raise SystemExit("subagent '%s': metadata.json needs a non-empty description" % name)
+    return normalize_instructions(instructions)
 
 
 # JSON string encoding doubles as a valid YAML double-quoted scalar / TOML basic
@@ -87,15 +101,7 @@ def load_subagents():
             meta = json.loads(read_text(meta_path))
         except ValueError as e:
             raise SystemExit("subagent '%s': metadata.json is not valid JSON: %s" % (name, e))
-        if meta.get("name") != name:
-            raise SystemExit(
-                "subagent '%s': metadata.name='%s' must match directory name" % (name, meta.get("name"))
-            )
-        if not str(meta.get("description") or "").strip():
-            raise SystemExit("subagent '%s': metadata.json needs a non-empty description" % name)
-        instructions = read_text(instr_path)
-        if not instructions.endswith("\n"):
-            instructions += "\n"
+        instructions = validate_source(name, meta, read_text(instr_path))
         out.append({"name": name, "meta": meta, "instructions": instructions})
     return out
 
@@ -176,28 +182,46 @@ def orphans(subagents):
 
 # --- Adoption (--import): turn hand-authored host agent files into SSOT sources ---
 
-# Parse a Claude Code agent markdown (YAML frontmatter + body). Returns None when it
-# has no frontmatter. Only the keys this generator emits are understood
-# (name / description / tools / model); anything else is ignored.
+# Parse the losslessly representable Claude subset (simple frontmatter + body).
+# Unsupported fields/structures fail closed instead of disappearing on projection.
 def parse_claude_agent(text):
     m = re.match(r"^---\n([\s\S]*?)\n---\n?([\s\S]*)$", text)
     if not m:
         return None
     fm, raw_body = m.group(1), m.group(2)
     meta = {}
+    allowed = {"name", "description", "tools", "model"}
     for line in fm.split("\n"):
+        if not line.strip():
+            continue
+        if line.lstrip().startswith("#"):
+            raise ValueError("unsupported Claude frontmatter comment")
         kv = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)
         if not kv:
-            continue
-        v = kv.group(2).strip()
-        if v.startswith('"') and v.endswith('"'):
+            raise ValueError("unsupported Claude YAML structure")
+        key, raw = kv.group(1), kv.group(2).strip()
+        if key not in allowed:
+            raise ValueError("unsupported Claude field '%s'" % key)
+        if key in meta:
+            raise ValueError("duplicate Claude field '%s'" % key)
+        if re.search(r"\s#", raw) or raw.startswith(("[", "{", "|", ">", "&", "*", "!")):
+            raise ValueError("unsupported Claude value for field '%s'" % key)
+        if raw.startswith('"'):
+            if not raw.endswith('"'):
+                raise ValueError("unsupported Claude value for field '%s'" % key)
             try:
-                v = json.loads(v)
-            except Exception:
-                v = v[1:-1]
-        elif v.startswith("'") and v.endswith("'"):
-            v = v[1:-1]
-        meta[kv.group(1)] = v
+                value = json.loads(raw)
+            except ValueError:
+                raise ValueError("unsupported Claude value for field '%s'" % key)
+            if not isinstance(value, str):
+                raise ValueError("unsupported Claude value for field '%s'" % key)
+        elif raw.startswith("'"):
+            if not raw.endswith("'"):
+                raise ValueError("unsupported Claude value for field '%s'" % key)
+            value = raw[1:-1].replace("''", "'")
+        else:
+            value = raw
+        meta[key] = value
     tools = [s.strip() for s in meta["tools"].split(",")] if meta.get("tools") else []
     tools = [s for s in tools if s]
     return {
@@ -209,26 +233,78 @@ def parse_claude_agent(text):
     }
 
 
-# Parse a Codex agent TOML (only the keys this generator emits).
+# Parse the losslessly representable Codex subset. Both TOML multiline string
+# forms are accepted; other session-config fields fail closed before adoption.
 def parse_codex_agent(text):
+    multiline = re.search(
+        r"(?m)^developer_instructions\s*=\s*(?P<quote>'''|\"\"\")\n"
+        r"(?P<body>[\s\S]*?)(?P=quote)\s*(?:#.*)?$",
+        text,
+    )
+    instructions = None
+    scanned = text
+    if multiline:
+        instructions = multiline.group("body")
+        if multiline.group("quote") == '"""' and "\\" in instructions:
+            raise ValueError("unsupported Codex escape in basic multiline developer_instructions")
+        scanned = text[: multiline.start()] + 'developer_instructions = ""' + text[multiline.end() :]
+
+    allowed = {
+        "name",
+        "description",
+        "model",
+        "model_reasoning_effort",
+        "sandbox_mode",
+        "nickname_candidates",
+        "developer_instructions",
+    }
+    values = {}
+    for line in scanned.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            raise ValueError("unsupported Codex comment outside developer_instructions")
+        table = re.match(r"^\[\[?\s*([^\]]+?)\s*\]\]?\s*(?:#.*)?$", stripped)
+        if table:
+            raise ValueError("unsupported Codex field '%s'" % table.group(1))
+        kv = re.match(r"^([A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(.*?)\s*$", stripped)
+        if not kv:
+            raise ValueError("unsupported Codex TOML structure")
+        key, raw = kv.group(1), kv.group(2)
+        if key not in allowed:
+            raise ValueError("unsupported Codex field '%s'" % key)
+        if key in values:
+            raise ValueError("duplicate Codex field '%s'" % key)
+        values[key] = raw
+
     def scalar(key):
-        m = re.search(r"^" + key + r"\s*=\s*(.+)$", text, re.MULTILINE)
-        if not m:
+        raw = values.get(key)
+        if raw is None:
             return None
-        raw = m.group(1).strip()
         try:
-            return json.loads(raw)
-        except Exception:
-            return re.sub(r"""^["']|["']$""", "", raw)
+            value = json.loads(raw)
+        except ValueError:
+            if len(raw) >= 2 and raw.startswith("'") and raw.endswith("'"):
+                value = raw[1:-1].replace("''", "'")
+            else:
+                raise ValueError("unsupported Codex value for field '%s'" % key)
+        if not isinstance(value, str):
+            raise ValueError("unsupported Codex value for field '%s'" % key)
+        return value
 
     nicks = None
-    nm = re.search(r"^nickname_candidates\s*=\s*\[(.*)\]\s*$", text, re.MULTILINE)
-    if nm:
+    if "nickname_candidates" in values:
         try:
-            nicks = json.loads("[" + nm.group(1) + "]")
-        except Exception:
-            nicks = None
-    di = re.search(r"developer_instructions\s*=\s*'''\n([\s\S]*?)'''", text)
+            nicks = json.loads(values["nickname_candidates"])
+        except ValueError:
+            raise ValueError("unsupported Codex value for field 'nickname_candidates'")
+        if not isinstance(nicks, list) or not nicks or any(not isinstance(n, str) for n in nicks):
+            raise ValueError("unsupported Codex value for field 'nickname_candidates'")
+    if "developer_instructions" not in values:
+        raise ValueError("missing required Codex field 'developer_instructions'")
+    if instructions is None:
+        instructions = scalar("developer_instructions")
     return {
         "name": scalar("name"),
         "description": scalar("description") or "",
@@ -236,7 +312,7 @@ def parse_codex_agent(text):
         "model_reasoning_effort": scalar("model_reasoning_effort"),
         "sandbox_mode": scalar("sandbox_mode"),
         "nickname_candidates": nicks,
-        "instructions": di.group(1) if di else "",
+        "instructions": instructions,
     }
 
 
@@ -258,8 +334,15 @@ def collect_adoptable():
             text = read_text(path)
             if is_generated_projection(path, text):
                 continue  # a generated projection, not hand-authored
+            try:
+                parsed = parse_claude_agent(text) if kind == "claude" else parse_codex_agent(text)
+            except ValueError as error:
+                raise SystemExit("%s: %s" % (rel(path), error))
+            if parsed is None:
+                label = "Claude" if kind == "claude" else "Codex"
+                raise SystemExit("cannot parse %s as a %s agent" % (rel(path), label))
             e = by_name.get(name) or {"name": name}
-            e[kind] = parse_claude_agent(text) if kind == "claude" else parse_codex_agent(text)
+            e[kind] = parsed
             by_name[name] = e
 
     consider(CLAUDE_DIR, ".md", "claude")
@@ -269,37 +352,42 @@ def collect_adoptable():
 
 # Write each adoptable host agent back as a .agents/subagents/<name>/ source.
 def import_hand_authored():
+    # Validate existing sources and every host candidate before the first write.
+    projections(load_subagents())
     adoptable = collect_adoptable()
-
-    # Preflight every dual-host pair before creating any SSOT source. There is no
-    # safe implicit winner when both hosts carry distinct user instructions.
-    for name, e in adoptable.items():
-        cc = e.get("claude")
-        cx = e.get("codex")
-        if cc and cx:
-            claude_instructions = cc.get("body") or ""
-            codex_instructions = cx.get("instructions") or ""
-            if not claude_instructions.endswith("\n"):
-                claude_instructions += "\n"
-            if not codex_instructions.endswith("\n"):
-                codex_instructions += "\n"
-            if claude_instructions != codex_instructions:
-                raise SystemExit(
-                    "subagent '%s': .claude/agents/%s.md and .codex/agents/%s.toml have different "
-                    "instructions; resolve the conflict before --import" % (name, name, name)
-                )
-
-    imported = 0
+    prepared = []
     for name, e in adoptable.items():
         cc = e.get("claude")
         cx = e.get("codex")
         if not cc and not cx:
             continue
-        if cc and cx and cc["description"] and cx["description"] and cc["description"] != cx["description"]:
-            print(
-                "warn: %s has different descriptions in .claude vs .codex -- keeping the Claude one" % name,
-                file=sys.stderr,
-            )
+        for kind, parsed, ext in (("Claude", cc, ".md"), ("Codex", cx, ".toml")):
+            if not parsed:
+                continue
+            path = os.path.join(CLAUDE_DIR if kind == "Claude" else CODEX_DIR, name + ext)
+            declared = parsed.get("name")
+            if not declared:
+                raise SystemExit("%s is missing required %s field 'name'" % (rel(path), kind))
+            if declared != name:
+                raise SystemExit(
+                    "%s declares name '%s'; rename it to %s%s before --import"
+                    % (rel(path), declared, name, ext)
+                )
+            if not str(parsed.get("description") or "").strip():
+                raise SystemExit("subagent '%s': metadata.json needs a non-empty description" % name)
+        if cc and cx:
+            if cc["description"] != cx["description"]:
+                raise SystemExit(
+                    "subagent '%s': .claude/agents/%s.md and .codex/agents/%s.toml have different "
+                    "descriptions; resolve the conflict before --import" % (name, name, name)
+                )
+            claude_instructions = normalize_instructions(cc.get("body") or "")
+            codex_instructions = normalize_instructions(cx.get("instructions") or "")
+            if claude_instructions != codex_instructions:
+                raise SystemExit(
+                    "subagent '%s': .claude/agents/%s.md and .codex/agents/%s.toml have different "
+                    "instructions; resolve the conflict before --import" % (name, name, name)
+                )
         meta = {"name": name, "description": (cc and cc["description"]) or (cx and cx["description"]) or ""}
         claude = {}
         if cc and cc.get("tools"):
@@ -320,14 +408,23 @@ def import_hand_authored():
                 codex["nickname_candidates"] = cx["nickname_candidates"]
         if codex:
             meta["codex"] = codex
-        instructions = cc["body"] if (cc and cc.get("body") and cc["body"].strip()) else (cx["instructions"] if cx else "")
-        if not instructions.endswith("\n"):
-            instructions += "\n"
+        instructions = validate_source(
+            name,
+            meta,
+            cc["body"] if (cc and cc.get("body") and cc["body"].strip()) else (cx["instructions"] if cx else ""),
+        )
+        candidate = {"name": name, "meta": meta, "instructions": instructions}
+        render_claude(candidate)
+        render_codex(candidate)
+        frm = " + ".join(x for x in [cc and ".claude/agents", cx and ".codex/agents"] if x)
+        prepared.append((name, meta, instructions, frm))
+
+    imported = 0
+    for name, meta, instructions, frm in prepared:
         d = os.path.join(SOURCE_DIR, name)
         os.makedirs(d, exist_ok=True)
         write_text(os.path.join(d, "metadata.json"), json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
         write_text(os.path.join(d, "instructions.md"), instructions)
-        frm = " + ".join(x for x in [cc and ".claude/agents", cx and ".codex/agents"] if x)
         print("adopted %s -> %s (from %s)" % (name, rel(d), frm))
         imported += 1
     print(
