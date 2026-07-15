@@ -187,6 +187,105 @@ check "matching dual-host import creates SSOT"      grep -qF MATCHING_INSTRUCTIO
 ( cd "$Q" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "matching dual-host projections are in sync" test "$rc" = 0
 
+echo "== hand-authored import is lossless or fails before writing =="
+U="$work/unparseable-host"; mkdir -p "$U/.claude/agents" "$U/.codex/agents" "$U/tools/agent"
+printf -- '---\nname: alpha\ndescription: valid earlier candidate\n---\n\nALPHA_BEFORE_PARSE_FAILURE\n' > "$U/.claude/agents/alpha.md"
+printf 'BROKEN_CLAUDE_SENTINEL\n' > "$U/.claude/agents/broken.md"
+printf '%s\n' \
+  'name = "broken"' \
+  'description = "valid Codex counterpart"' \
+  'developer_instructions = """' \
+  'CODEX_COUNTERPART_SENTINEL' \
+  '"""' > "$U/.codex/agents/broken.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$U/tools/agent/generate-subagents.py"
+broken_claude_before="$(git hash-object "$U/.claude/agents/broken.md")"
+broken_codex_before="$(git hash-object "$U/.codex/agents/broken.toml")"
+( cd "$U" && python tools/agent/generate-subagents.py --import ) >"$work/unparseable-import.out" 2>&1; rc=$?
+check "unparseable host import exits nonzero"       test "$rc" != 0
+check "unparseable host names the rejected file"    grep -qF "cannot parse .claude/agents/broken.md as a Claude agent" "$work/unparseable-import.out"
+check "unparseable Claude input stays byte-identical" test "$(git hash-object "$U/.claude/agents/broken.md")" = "$broken_claude_before"
+check "unparseable Codex input stays byte-identical" test "$(git hash-object "$U/.codex/agents/broken.toml")" = "$broken_codex_before"
+check "parse failure writes no SSOT sources"        test ! -e "$U/.agents"
+
+M="$work/missing-import-metadata"; mkdir -p "$M/.claude/agents" "$M/.codex/agents" "$M/tools/agent"
+printf -- '---\nname: alpha\ndescription: valid earlier candidate\n---\n\nALPHA_BEFORE_METADATA_FAILURE\n' > "$M/.claude/agents/alpha.md"
+printf -- '---\nname: meta\ndescription:\n---\n\nMATCHING_METADATA_INSTRUCTIONS\n' > "$M/.claude/agents/meta.md"
+printf '%s\n' \
+  'name = "meta"' \
+  'description = ""' \
+  'developer_instructions = """' \
+  'MATCHING_METADATA_INSTRUCTIONS' \
+  '"""' > "$M/.codex/agents/meta.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$M/tools/agent/generate-subagents.py"
+( cd "$M" && python tools/agent/generate-subagents.py --import ) >"$work/missing-import-metadata.out" 2>&1; rc=$?
+check "missing import metadata exits nonzero"       test "$rc" != 0
+check "missing import metadata explains the field" grep -qF "subagent 'meta': metadata.json needs a non-empty description" "$work/missing-import-metadata.out"
+check "metadata failure writes no SSOT sources"     test ! -e "$M/.agents"
+
+T="$work/codex-basic-multiline"; mkdir -p "$T/.codex/agents" "$T/tools/agent"
+printf '%s\n' \
+  'name = "basic-multiline"' \
+  'description = "official basic multiline form"' \
+  'developer_instructions = """' \
+  'CODEX_BASIC_MULTILINE_SENTINEL' \
+  '"""' > "$T/.codex/agents/basic-multiline.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$T/tools/agent/generate-subagents.py"
+( cd "$T" && python tools/agent/generate-subagents.py --import ) >"$work/basic-multiline-import.out" 2>&1; rc=$?
+check "Codex basic multiline import exits 0"        test "$rc" = 0
+check "Codex basic multiline prompt is preserved"  grep -qF CODEX_BASIC_MULTILINE_SENTINEL "$T/.agents/subagents/basic-multiline/instructions.md"
+( cd "$T" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "Codex basic multiline projection is in sync" test "$rc" = 0
+
+F="$work/unsupported-host-fields"; mkdir -p "$F/.claude/agents" "$F/tools/agent"
+printf -- '---\nname: rich-claude\ndescription: unsupported Claude metadata\nmemory: project\n---\n\nRICH_CLAUDE_SENTINEL\n' > "$F/.claude/agents/rich-claude.md"
+cp "$repo/tools/agent/generate-subagents.py" "$F/tools/agent/generate-subagents.py"
+( cd "$F" && python tools/agent/generate-subagents.py --import ) >"$work/unsupported-claude-import.out" 2>&1; rc=$?
+check "unsupported Claude metadata exits nonzero"   test "$rc" != 0
+check "unsupported Claude metadata names the field" grep -qF "unsupported Claude field 'memory'" "$work/unsupported-claude-import.out"
+check "unsupported Claude metadata writes no SSOT" test ! -e "$F/.agents"
+
+F="$work/unsupported-codex-fields"; mkdir -p "$F/.codex/agents" "$F/tools/agent"
+printf '%s\n' \
+  'name = "rich-codex"' \
+  'description = "unsupported Codex metadata"' \
+  'developer_instructions = """' \
+  'RICH_CODEX_SENTINEL' \
+  '"""' \
+  '[mcp_servers.docs]' \
+  'command = "docs-server"' > "$F/.codex/agents/rich-codex.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$F/tools/agent/generate-subagents.py"
+( cd "$F" && python tools/agent/generate-subagents.py --import ) >"$work/unsupported-codex-import.out" 2>&1; rc=$?
+check "unsupported Codex metadata exits nonzero"    test "$rc" != 0
+check "unsupported Codex metadata names the field" grep -qF "unsupported Codex field 'mcp_servers.docs'" "$work/unsupported-codex-import.out"
+check "unsupported Codex metadata writes no SSOT"  test ! -e "$F/.agents"
+
+N="$work/host-identity-conflict"; mkdir -p "$N/.codex/agents" "$N/tools/agent"
+printf '%s\n' \
+  'name = "declared-name"' \
+  'description = "name differs from the filename"' \
+  "developer_instructions = '''" \
+  'NAME_CONFLICT_SENTINEL' \
+  "'''" > "$N/.codex/agents/filename-name.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
+( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/identity-conflict-import.out" 2>&1; rc=$?
+check "host identity conflict exits nonzero"        test "$rc" != 0
+check "host identity conflict explains the mismatch" grep -qF "declares name 'declared-name'; rename it to filename-name.toml before --import" "$work/identity-conflict-import.out"
+check "host identity conflict writes no SSOT"       test ! -e "$N/.agents"
+
+V="$work/description-conflict"; mkdir -p "$V/.claude/agents" "$V/.codex/agents" "$V/tools/agent"
+printf -- '---\nname: description-conflict\ndescription: Claude description\n---\n\nSHARED_DESCRIPTION_INSTRUCTIONS\n' > "$V/.claude/agents/description-conflict.md"
+printf '%s\n' \
+  'name = "description-conflict"' \
+  'description = "Codex description"' \
+  "developer_instructions = '''" \
+  'SHARED_DESCRIPTION_INSTRUCTIONS' \
+  "'''" > "$V/.codex/agents/description-conflict.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$V/tools/agent/generate-subagents.py"
+( cd "$V" && python tools/agent/generate-subagents.py --import ) >"$work/description-conflict-import.out" 2>&1; rc=$?
+check "description conflict exits nonzero"          test "$rc" != 0
+check "description conflict explains the mismatch" grep -qF "different descriptions; resolve the conflict before --import" "$work/description-conflict-import.out"
+check "description conflict writes no SSOT"        test ! -e "$V/.agents"
+
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
   if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
