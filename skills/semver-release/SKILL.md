@@ -62,9 +62,11 @@ Infer the bump (highest match wins):
 
 | Trigger in any commit | Bump |
 |---|---|
-| `!:` in the subject (e.g. `feat!:`) or `BREAKING CHANGE:` in the body | **MAJOR** |
+| `!` before the subject colon (e.g. `feat!:`) or an uppercase `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | **MAJOR** |
 | any `feat:` / `feat(scope):` | **MINOR** |
 | only `fix:` / `perf:` / `refactor:` / `docs:` / `chore:` / `test:` / `build:` / `style:` / `ci:` | **PATCH** |
+
+Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
 
 Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. First-ever release with no `v*` tag → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease and promote-to-final mechanics: `reference.md`.
 

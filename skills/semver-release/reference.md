@@ -10,9 +10,11 @@ Read subjects **and** bodies (`git log <base>..HEAD --pretty='%h %s%n%b%n---'`):
 
 | Trigger | Bump | Example |
 |---|---|---|
-| `!:` in subject (`feat!:`, `fix!:`) or `BREAKING CHANGE:` in body | MAJOR | `0.4.2 → 1.0.0` |
+| `!` before the subject colon (`feat!:`, `fix!:`) or an uppercase `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | MAJOR | `0.4.2 → 1.0.0` |
 | any `feat:` / `feat(scope):` | MINOR | `0.4.2 → 0.5.0` |
 | only `fix:` / `perf:` / `refactor:` / `docs:` / `chore:` / `test:` / `build:` / `style:` / `ci:` | PATCH | `0.4.2 → 0.4.3` |
+
+Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
 
 Pre-1.0 caution: many projects treat a breaking change before `1.0.0` as a MINOR bump rather than jumping to `1.0.0`. When the repo is still `0.y.z`, confirm with the user before auto-promoting a breaking change to `1.0.0`.
 
