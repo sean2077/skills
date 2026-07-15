@@ -2,10 +2,9 @@
 # check-agent-scaffold.sh — quality gate for the agent-scaffold skill.
 #
 # Asserts the bundled scripts are syntactically valid and that the three hook
-# scripts keep the `tools/agent/hooks/` install-depth resolver — `proj` three
-# levels up plus a `git rev-parse --show-toplevel` fallback. That resolver is what
-# makes them dual-host-correct: Codex has no $CLAUDE_PROJECT_DIR, so a shallower
-# CC-only resolver would silently break the Codex side. Do not flatten it.
+# scripts share the `tools/agent/hooks/` install-depth resolver — `proj` three
+# levels up plus a `git rev-parse --show-toplevel` fallback — and keep the
+# Bash-3.2/real-symlink cross-platform contract.
 #
 # Exit 0 clean, 1 on failure. No third-party deps (bash; python only if present).
 set -uo pipefail
@@ -26,25 +25,35 @@ for f in "$sk/harness-init.sh" "$sk"/templates/*.sh; do
   bash -n "$f" 2>/dev/null || fail "bash syntax error: ${f#"$repo"/}"
 done
 
-# 2. python syntax on the generator (when python is available)
-if command -v python >/dev/null 2>&1 && [ -f "$sk/templates/generate-subagents.py" ]; then
-  python -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$sk/templates/generate-subagents.py" 2>/dev/null \
-    || fail "python syntax error: generate-subagents.py"
+# 2. python syntax on every shipped helper (python is a harness prerequisite)
+if command -v python >/dev/null 2>&1; then
+  for f in "$sk"/templates/*.py; do
+    [ -f "$f" ] || continue
+    python -c 'import ast,sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())' "$f" 2>/dev/null \
+      || fail "python syntax error: ${f#"$sk/templates/"}"
+  done
+else
+  fail "python unavailable (required by agent-scaffold)"
 fi
 
-# 3. install-depth invariant on the three hooks (3 levels up + git fallback)
+# 3. hooks must source the shared runtime; it owns the 3-level + git fallback
 for h in trunk_edit_guard authority_doc_budget format_on_edit; do
   f="$sk/templates/$h.sh"
   [ -f "$f" ] || { fail "missing hook template: $h.sh"; continue; }
-  if ! grep -qF '/../../..' "$f" || ! grep -qF 'rev-parse --show-toplevel' "$f"; then
-    fail "$h.sh lost the tools/agent/hooks/ install-depth resolver (3 levels up + git fallback)"
-  fi
+  grep -qF 'hook-common.sh' "$f" || fail "$h.sh does not source hook-common.sh"
 done
+common="$sk/templates/hook-common.sh"
+grep -qF '/../../..' "$common" || fail "hook-common.sh lost the 3-level install fallback"
+grep -qF 'rev-parse --show-toplevel' "$common" || fail "hook-common.sh lost the git-root fallback"
+grep -qF 'cygpath -u' "$common" || fail "hook-common.sh lost native Windows/MSYS path conversion"
 
-# 4. shipped scripts are executable
+# 4. shipped command/helper scripts must be committed executable. Inspect the
+# index rather than `[ -x ]`, which is unreliable with Windows core.filemode=false.
 for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.py; do
   [ -f "$f" ] || continue
-  [ -x "$f" ] || fail "not executable (commit the +x bit): ${f#"$repo"/}"
+  rel="${f#"$repo"/}"
+  mode="$(git -C "$repo" ls-files -s -- "$rel" | awk 'NR==1{print $1}')"
+  [ "$mode" = 100755 ] || fail "git mode is ${mode:-untracked}, expected 100755: $rel"
 done
 
 # 4b. shipped scripts must be LF-only — CRLF breaks bash under Windows/Git Bash, and
@@ -54,6 +63,24 @@ for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.py "$sk/te
   [ -n "$(tr -dc '\015' < "$f")" ] && fail "CRLF line endings — must be LF (Windows/Git Bash): ${f#"$repo"/}"
 done
 
+# 4c. macOS ships Bash 3.2: ban the known Bash-4-only constructs from shipped
+# scripts. (Indexed arrays and process substitution remain valid in 3.2.)
+if grep -En '(^|[^[:alnum:]_])(declare|local)[[:space:]]+-A|(^|[^[:alnum:]_])(mapfile|readarray)([^[:alnum:]_]|$)' \
+    "$sk/harness-init.sh" "$sk"/templates/*.sh >/dev/null 2>&1; then
+  fail "Bash 4-only construct found in agent-scaffold shell scripts"
+fi
+
+# Hook configs must invoke shell helpers through bash, never via executable-bit
+# dispatch (Windows commonly checks files out with core.filemode=false).
+for cfg in claude.settings.json codex.hooks.json; do
+  grep -q '"command": "bash ' "$sk/templates/$cfg" || fail "$cfg does not invoke hooks via bash"
+done
+grep -q -- '--no-worktree' "$sk/harness-init.sh" || fail "harness-init.sh lost the lightweight profile flag"
+grep -qF '<!-- agent-scaffold:worktree:start -->' "$sk/templates/AGENTS.root.md" \
+  || fail "AGENTS.root.md lost the optional worktree policy boundary"
+grep -qF 'HARNESS_ENABLE_WORKTREE' "$sk/harness-init.sh" \
+  || fail "hook reconciliation no longer filters the optional trunk guard"
+
 # 5. dogfood drift: if this repo installed the harness (tools/agent/ exists), the
 #    installed copies must stay byte-identical to the skill templates they came from.
 if [ -d "$repo/tools/agent" ]; then
@@ -62,7 +89,10 @@ if [ -d "$repo/tools/agent" ]; then
     "trunk_edit_guard.sh:tools/agent/hooks/trunk_edit_guard.sh" \
     "authority_doc_budget.sh:tools/agent/hooks/authority_doc_budget.sh" \
     "format_on_edit.sh:tools/agent/hooks/format_on_edit.sh" \
+    "hook-common.sh:tools/agent/hooks/hook-common.sh" \
+    "hook-paths.py:tools/agent/hooks/hook-paths.py" \
     "relink-skills.sh:.agents/relink-skills.sh" \
+    "symlink-manager.py:.agents/symlink-manager.py" \
     "generate-subagents.py:tools/agent/generate-subagents.py"; do
     inst="$repo/${pair##*:}"
     if [ ! -f "$inst" ]; then
@@ -70,6 +100,13 @@ if [ -d "$repo/tools/agent" ]; then
     elif ! cmp -s "$sk/templates/${pair%%:*}" "$inst"; then
       fail "dogfood drift: ${pair##*:} differs from its skill template (run: agent-scaffold upgrade)"
     fi
+    case "$inst" in
+      *.sh | *.py)
+        rel="${inst#"$repo"/}"
+        mode="$(git -C "$repo" ls-files -s -- "$rel" | awk 'NR==1{print $1}')"
+        [ "$mode" = 100755 ] || fail "dogfood git mode is ${mode:-untracked}, expected 100755: $rel"
+        ;;
+    esac
   done
 fi
 

@@ -25,53 +25,22 @@ set -uo pipefail
 [[ "${WORKTREE_ALLOW_TRUNK_EDIT:-0}" == "1" ]] && exit 0
 
 hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Location-independent project root: $CLAUDE_PROJECT_DIR (Claude Code) if set,
-# else the git toplevel of the hook's own dir (works for Codex and any layout).
-proj="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/dev/null || (cd "$hook_dir/../../.." && pwd))}"
-wt_cmd="${WORKTREE_GUARD_CMD:-tools/agent/worktree.sh}"
+common="$hook_dir/hook-common.sh"
+[[ -f "$common" ]] || { echo "trunk_edit_guard: missing hook-common.sh, allowing" >&2; exit 0; }
+# shellcheck source=hook-common.sh
+# shellcheck disable=SC1091
+source "$common"
+proj="$(hook_project_root 2>/dev/null || true)"
+[[ -n "$proj" ]] || { echo "trunk_edit_guard: cannot resolve project root, allowing" >&2; exit 0; }
+wt_cmd="${WORKTREE_GUARD_CMD:-bash tools/agent/worktree.sh}"
 input="$(cat || true)"
 
 # Pull every file path the tool call would touch out of the hook JSON on stdin.
 # Handles Edit/Write/NotebookEdit (file_path/notebook_path/path) and apply_patch
-# style payloads (*** Add|Update|Delete File: …). python preferred, jq fallback;
-# with neither, fail open rather than block blindly.
+# style payloads (*** Add|Update|Delete File: …). The shared helper uses python
+# only for JSON parsing, then Git Bash/cygpath normalizes native Windows paths.
 extract_paths() {
-    if command -v python >/dev/null 2>&1; then
-        HOOK_INPUT="$input" python - "$proj" <<'PY'
-import json, os, re, sys
-raw = os.environ.get("HOOK_INPUT", "")
-try:
-    data = json.loads(raw) if raw.strip() else {}
-except Exception:
-    sys.exit(0)
-tool_input = data.get("tool_input") or {}
-if not isinstance(tool_input, dict):
-    tool_input = {"input": str(tool_input)}
-cwd = data.get("cwd") or os.environ.get("PWD") or os.getcwd()
-paths = []
-for key in ("file_path", "notebook_path", "path"):
-    value = tool_input.get(key)
-    if isinstance(value, str) and value:
-        paths.append(value)
-patch = tool_input.get("patch") or tool_input.get("input") or data.get("input")
-if isinstance(patch, str):
-    for line in patch.splitlines():
-        m = re.match(r"^\*\*\* (?:Add|Update|Delete) File: (.+)$", line)
-        if m:
-            paths.append(m.group(1).strip())
-seen = set()
-for path in paths:
-    if not os.path.isabs(path):
-        path = os.path.abspath(os.path.join(cwd, path))
-    if path not in seen:
-        seen.add(path)
-        print(path)
-PY
-    elif command -v jq >/dev/null 2>&1; then
-        jq -r '.tool_input.file_path // .tool_input.notebook_path // .tool_input.path // empty' <<<"$input" 2>/dev/null
-    else
-        echo "trunk_edit_guard: neither python nor jq available — cannot parse hook input, allowing" >&2
-    fi
+    hook_extract_paths "$input"
 }
 
 check_path() {

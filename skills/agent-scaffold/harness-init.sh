@@ -4,22 +4,25 @@
 # config, and re-running it changes nothing.
 #
 # Usage:
-#   bash harness-init.sh <init|retrofit|plan|verify|upgrade> [flags]
+#   bash harness-init.sh <init|retrofit|plan|doctor|verify|upgrade> [flags]
 #
 # Modes:
 #   init       greenfield — lay down the full harness (seeds an example subagent)
 #   retrofit   merge into a project that already has some .claude/.codex/AGENTS.md
 #   plan       read-only — preview what init/retrofit would create/merge/migrate
+#   doctor     read-only — verify git + real file/directory symlink capability
 #   verify     read-only — report harness presence / drift / parity
 #   upgrade    retrofit + re-copy the vendored scripts over the installed ones
 #
 # Flags:
-#   --no-format-hook        do not wire format_on_edit.sh (still copied; does not unwire an existing one)
+#   --no-worktree          omit the worktree lifecycle, trunk-edit guard, and managed worktree policy
+#   --no-format-hook        do not wire format_on_edit.sh; remove an older managed entry (script still copied)
 #   --no-husky              do not set up the .husky/pre-commit drift guard
 #   --no-example-subagent   do not seed the example code-reviewer subagent (init)
 #   --example-subagent      seed it even on retrofit/upgrade
 #   --force-scripts         overwrite already-installed vendored scripts (implied by upgrade)
 #   -h, --help              this help
+# Optional-profile flags are per invocation; repeat them on later upgrade/verify runs.
 #
 # Run it from anywhere inside the TARGET project; it resolves the repo via git.
 # ---8<--- help ends here
@@ -38,12 +41,13 @@ usage() { sed -n '2,/^# ---8<---/p' "$0" | sed '/^# ---8<---/d; s/^# \?//'; exit
 # ---- args ------------------------------------------------------------------
 [[ $# -ge 1 ]] || usage 1
 MODE="$1"; shift
-case "$MODE" in init|retrofit|plan|verify|upgrade) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|plan|verify|upgrade)";; esac
+case "$MODE" in init|retrofit|plan|doctor|verify|upgrade) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|plan|doctor|verify|upgrade)";; esac
 
-FORMAT_HOOK=1; HUSKY=1; FORCE_SCRIPTS=0
+WORKTREE_FLOW=1; FORMAT_HOOK=1; HUSKY=1; FORCE_SCRIPTS=0
 EXAMPLE_SUBAGENT="auto"   # auto → on for init, off otherwise
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --no-worktree) WORKTREE_FLOW=0 ;;
     --no-format-hook) FORMAT_HOOK=0 ;;
     --no-husky) HUSKY=0 ;;
     --no-example-subagent) EXAMPLE_SUBAGENT=0 ;;
@@ -65,33 +69,56 @@ log "target repo: $TARGET   mode: $MODE"
 
 TMPDIR_H="$(mktemp -d)"; trap 'rm -rf "$TMPDIR_H"' EXIT
 
-# ---- json merge (jq → python → paste-block) -------------------------------
-# shellcheck disable=SC2016  # $a/$b/$g/$h below are jq variables, not shell expansions
-JQ_PROG='
-def unionByCommand($a; $b):
-  reduce $b[] as $h ($a; if (map(.command) | index($h.command)) then . else . + [$h] end);
-def mergeEvent($cur; $add):
-  reduce $add[] as $g ($cur;
-    (map(.matcher == $g.matcher) | index(true)) as $i
-    | if $i == null then . + [$g]
-      else .[$i].hooks = unionByCommand((.[$i].hooks // []); ($g.hooks // []))
-      end);
-($add[0]) as $a
-| (. // {})
-| .hooks = (.hooks // {})
-| .hooks.PreToolUse  = mergeEvent((.hooks.PreToolUse  // []); ($a.hooks.PreToolUse  // []))
-| .hooks.PostToolUse = mergeEvent((.hooks.PostToolUse // []); ($a.hooks.PostToolUse // []))
-'
+# ---- python runtime --------------------------------------------------------
+PYTHON_CMD=()
+python_compatible() {
+  PYTHONUTF8=1 "$@" -c \
+    'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)' \
+    >/dev/null 2>&1
+}
+resolve_python() {
+  PYTHON_CMD=()
+  if [[ -n "${PYTHON_BIN:-}" ]] && python_compatible "$PYTHON_BIN"; then
+    PYTHON_CMD=("$PYTHON_BIN")
+  elif python_compatible python; then
+    PYTHON_CMD=(python)
+  elif python_compatible python3; then
+    PYTHON_CMD=(python3)
+  elif python_compatible py -3; then
+    PYTHON_CMD=(py -3)
+  else
+    return 1
+  fi
+}
+run_python() { PYTHONUTF8=1 "${PYTHON_CMD[@]}" "$@"; }
+resolve_python || die "python 3.8+ is required (set PYTHON_BIN, or install python/python3/py -3)"
+
+# ---- owned-hook reconciliation (python; no jq dependency) -----------------
+# Upgrade removes only agent-scaffold-owned commands before merging the current
+# canonical additions. User hooks and unrelated config keys remain untouched.
 
 PY_MERGE='
-import json, os
+import json, os, re
 ex = os.environ.get("HARNESS_EXISTING") or ""
 existing = json.load(open(ex)) if ex and os.path.exists(ex) else {}
 add = json.load(open(os.environ["HARNESS_ADD"]))
-# Coerce a null/non-object "hooks" to {} — mirrors the jq path .hooks = (.hooks // {}).
-# Without this, an existing {"hooks": null} crashes the merge (None.get) while jq copes.
 if not isinstance(existing.get("hooks"), dict):
     existing["hooks"] = {}
+root = os.environ.get("HARNESS_TARGET", "")
+canonical_probe = os.path.join(root, "tools", "agent", "hooks", "format_on_edit.sh")
+case_probe = os.path.join(root, "ToOlS", "AgEnT", "HoOkS", "FoRmAt_On_EdIt.Sh")
+try:
+    case_insensitive_paths = os.path.samefile(canonical_probe, case_probe)
+except OSError:
+    case_insensitive_paths = False
+managed_path = re.compile(
+    r"(?:^|[/\s\"\x27;&|()<>])tools/agent/hooks/"
+    r"(?:trunk_edit_guard|authority_doc_budget|format_on_edit)\.sh"
+    r"(?=$|[\s\"\x27;&|()<>])",
+    re.IGNORECASE if case_insensitive_paths else 0,
+)
+def is_managed(command):
+    return bool(managed_path.search(str(command or "").replace("\\", "/")))
 def union(a, b):
     out = list(a or [])
     seen = {h.get("command") for h in out}
@@ -101,57 +128,204 @@ def union(a, b):
             seen.add(h.get("command"))
     return out
 def merge_event(cur, add_arr):
-    cur = cur or []
+    cleaned = []
+    for group in cur or []:
+        if not isinstance(group, dict):
+            cleaned.append(group)
+            continue
+        group = dict(group)
+        hooks = group.get("hooks") or []
+        group["hooks"] = [h for h in hooks if not is_managed(h.get("command", ""))]
+        if group["hooks"] or any(k not in {"matcher", "hooks"} for k in group):
+            cleaned.append(group)
+    cur = cleaned
     for g in add_arr:
-        i = next((k for k, x in enumerate(cur) if x.get("matcher") == g.get("matcher")), -1)
+        i = next((k for k, x in enumerate(cur) if isinstance(x, dict) and x.get("matcher") == g.get("matcher")), -1)
         if i < 0:
             cur.append(g)
         else:
             cur[i]["hooks"] = union(cur[i].get("hooks"), g.get("hooks"))
     return cur
 for ev in ("PreToolUse", "PostToolUse"):
-    if add["hooks"].get(ev):
-        existing["hooks"][ev] = merge_event(existing["hooks"].get(ev), add["hooks"][ev])
+    if ev in add.get("hooks", {}):
+        merged = merge_event(existing["hooks"].get(ev), add["hooks"].get(ev) or [])
+        if merged:
+            existing["hooks"][ev] = merged
+        else:
+            existing["hooks"].pop(ev, None)
 with open(os.environ["HARNESS_OUT"], "w") as f:
     f.write(json.dumps(existing, indent=2, ensure_ascii=False) + "\n")
 '
 
-# merge_hooks <existing-or-empty> <addition-file> <out>  → 0 merged, 1 needs paste
+PY_FILTER_HOOKS='
+import json, os
+with open(os.environ["HARNESS_ADD"]) as f:
+    data = json.load(f)
+disabled = []
+if os.environ.get("HARNESS_ENABLE_WORKTREE") != "1":
+    disabled.append("trunk_edit_guard")
+if os.environ.get("HARNESS_ENABLE_FORMAT") != "1":
+    disabled.append("format_on_edit")
+for event, groups in list(data.get("hooks", {}).items()):
+    kept = []
+    for group in groups or []:
+        group = dict(group)
+        group["hooks"] = [
+            hook for hook in group.get("hooks", [])
+            if not any(name in str(hook.get("command", "")) for name in disabled)
+        ]
+        if group["hooks"] or any(key not in {"matcher", "hooks"} for key in group):
+            kept.append(group)
+    data["hooks"][event] = kept
+with open(os.environ["HARNESS_OUT"], "w") as f:
+    f.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+'
+
+PY_VALIDATE_HOOK_CONFIG='
+import json, math, os, sys
+path = os.environ["HARNESS_EXISTING"]
+name = os.environ["HARNESS_CONFIG_NAME"]
+def reject_constant(value):
+    raise ValueError(f"non-standard constant {value}")
+def validate_json_value(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("non-finite number")
+    if isinstance(value, str) and any(0xD800 <= ord(char) <= 0xDFFF for char in value):
+        raise ValueError("unpaired Unicode surrogate")
+    if isinstance(value, list):
+        for item in value:
+            validate_json_value(item)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            validate_json_value(key)
+            validate_json_value(item)
+try:
+    with open(path, encoding="utf-8") as source:
+        data = json.load(source, parse_constant=reject_constant)
+    validate_json_value(data)
+except json.JSONDecodeError as exc:
+    print(
+        f"[harness] ABORT: {name}: invalid JSON "
+        f"({exc.msg}, line {exc.lineno}, column {exc.colno})",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+except (OSError, UnicodeError) as exc:
+    print(f"[harness] ABORT: {name}: cannot read UTF-8 JSON ({exc})", file=sys.stderr)
+    raise SystemExit(2)
+except (ValueError, RecursionError) as exc:
+    print(f"[harness] ABORT: {name}: invalid JSON ({exc})", file=sys.stderr)
+    raise SystemExit(2)
+if not isinstance(data, dict):
+    print(f"[harness] ABORT: {name}: top level must be a JSON object", file=sys.stderr)
+    raise SystemExit(2)
+hooks = data.get("hooks")
+if hooks is not None and not isinstance(hooks, dict):
+    print(f"[harness] ABORT: {name}: hooks must be a JSON object or null", file=sys.stderr)
+    raise SystemExit(2)
+for event in ("PreToolUse", "PostToolUse"):
+    groups = (hooks or {}).get(event)
+    if groups is None:
+        continue
+    if not isinstance(groups, list):
+        print(f"[harness] ABORT: {name}: hooks.{event} must be an array or null", file=sys.stderr)
+        raise SystemExit(2)
+    for group_index, group in enumerate(groups):
+        field = f"hooks.{event}[{group_index}]"
+        if not isinstance(group, dict):
+            print(f"[harness] ABORT: {name}: {field} must be a JSON object", file=sys.stderr)
+            raise SystemExit(2)
+        entries = group.get("hooks")
+        if entries is None:
+            continue
+        if not isinstance(entries, list):
+            print(f"[harness] ABORT: {name}: {field}.hooks must be an array or null", file=sys.stderr)
+            raise SystemExit(2)
+        for hook_index, hook in enumerate(entries):
+            if not isinstance(hook, dict):
+                print(
+                    f"[harness] ABORT: {name}: {field}.hooks[{hook_index}] "
+                    "must be a JSON object",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
+            if "command" in hook and not isinstance(hook["command"], str):
+                print(
+                    f"[harness] ABORT: {name}: {field}.hooks[{hook_index}].command "
+                    "must be a string",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
+'
+
+PY_VERIFY_HOOKS='
+import json, os, sys
+def load(name):
+    with open(os.environ[name], encoding="utf-8") as source:
+        return json.load(source)
+def hook_tuples(data):
+    found = set()
+    for event, groups in data.get("hooks", {}).items():
+        for group in groups or []:
+            if not isinstance(group, dict):
+                continue
+            matcher = group.get("matcher")
+            for hook in group.get("hooks") or []:
+                if isinstance(hook, dict) and "command" in hook:
+                    found.add((event, matcher, str(hook["command"])))
+    return found
+try:
+    actual = hook_tuples(load("HARNESS_EXISTING"))
+    expected = hook_tuples(load("HARNESS_EXPECTED"))
+    managed_commands = {command for _, _, command in hook_tuples(load("HARNESS_MANAGED"))}
+except (OSError, ValueError, TypeError):
+    raise SystemExit(1)
+managed_actual = {item for item in actual if item[2] in managed_commands}
+raise SystemExit(0 if expected <= actual and managed_actual <= expected else 1)
+'
+
+# merge_hooks <existing-or-empty> <addition-file> <out>
 merge_hooks() {
   local existing="$1" add="$2" out="$3"
-  if [[ ! -f "$existing" ]]; then cp "$add" "$out"; return 0; fi
-  # HARNESS_NO_JQ forces the python path (lets the e2e test prove both paths agree).
-  if [[ -z "${HARNESS_NO_JQ:-}" ]] && command -v jq >/dev/null 2>&1; then
-    jq --slurpfile add "$add" "$JQ_PROG" "$existing" > "$out" && return 0
-  fi
-  if command -v python >/dev/null 2>&1; then
-    HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" python -c "$PY_MERGE" && return 0
-  fi
-  return 1
+  HARNESS_EXISTING="$existing" HARNESS_ADD="$add" HARNESS_OUT="$out" HARNESS_TARGET="$TARGET" \
+    run_python -c "$PY_MERGE"
 }
 
-# strip the format_on_edit hook from a settings/hooks addition file (when --no-format-hook)
-strip_format_hook() {
+# Prepare a canonical hook addition for the selected optional features. The
+# merge step then removes stale managed commands before adding this filtered set.
+prepare_hook_addition() {
   local src="$1" out="$2"
-  if command -v jq >/dev/null 2>&1; then
-    jq '(.hooks.PostToolUse[]?.hooks) |= map(select((.command // "") | test("format_on_edit") | not))' "$src" > "$out" && return 0
-  fi
-  # no jq: cannot filter; wire it anyway (the hook self-skips at runtime without a formatter)
-  cp "$src" "$out"; warn "no jq to filter format_on_edit out — wiring it anyway (it self-skips when no formatter is configured)"
+  HARNESS_ADD="$src" HARNESS_OUT="$out" \
+    HARNESS_ENABLE_WORKTREE="$WORKTREE_FLOW" HARNESS_ENABLE_FORMAT="$FORMAT_HOOK" \
+    run_python -c "$PY_FILTER_HOOKS"
+}
+
+validate_existing_hook_config() {  # <existing-file> <repo-relative-name>
+  local existing="$1" name="$2"
+  [[ -L "$existing" ]] && \
+    die "$name: symlinked hook configs are unsupported; replace it with a regular file before installing"
+  [[ -e "$existing" ]] || return 0
+  HARNESS_EXISTING="$existing" HARNESS_CONFIG_NAME="$name" \
+    run_python -c "$PY_VALIDATE_HOOK_CONFIG"
+}
+
+validate_existing_hook_configs() {
+  validate_existing_hook_config "$TARGET/.claude/settings.json" ".claude/settings.json"
+  validate_existing_hook_config "$TARGET/.codex/hooks.json" ".codex/hooks.json"
+}
+
+verify_hook_config() {  # <existing> <expected-profile-addition> <full-managed-template>
+  HARNESS_EXISTING="$1" HARNESS_EXPECTED="$2" HARNESS_MANAGED="$3" \
+    run_python -c "$PY_VERIFY_HOOKS"
 }
 
 write_hook_config() {  # <host-label> <existing-file> <addition-file>
   local label="$1" existing="$2" add="$3" out="$TMPDIR_H/merged.json"
-  if merge_hooks "$existing" "$add" "$out"; then
-    if [[ -f "$existing" ]] && cmp -s "$existing" "$out"; then
-      log "$label hooks already wired (no change)"
-    else
-      mkdir -p "$(dirname "$existing")"; mv "$out" "$existing"; ok "$label hooks wired → ${existing#"$TARGET"/}"
-    fi
+  merge_hooks "$existing" "$add" "$out"
+  if [[ -f "$existing" ]] && cmp -s "$existing" "$out"; then
+    log "$label hooks already wired (no change)"
   else
-    warn "$label: no jq or python to merge JSON safely. Add this block to ${existing#"$TARGET"/} by hand:"
-    sed 's/^/    /' "$add" >&2
-    HARNESS_MERGE_DEFERRED=1
+    mkdir -p "$(dirname "$existing")"; mv "$out" "$existing"; ok "$label hooks wired → ${existing#"$TARGET"/}"
   fi
 }
 
@@ -168,24 +342,64 @@ copy_if_missing() {  # <src> <dst>
   [[ -e "$dst" ]] || cp "$src" "$dst"
 }
 ensure_line() {  # <file> <line>
-  local file="$1" line="$2"
+  local file="$1" line="$2" matches
   mkdir -p "$(dirname "$file")"; touch "$file"
-  grep -qxF "$line" "$file" 2>/dev/null || printf '%s\n' "$line" >> "$file"
+  matches="$(tr '\r' '\n' < "$file" | grep -cxF "$line" || true)"
+  [[ "$matches" -gt 0 ]] && return
+  if [[ -s "$file" && -n "$(tail -c 1 "$file")" ]]; then
+    printf '\n' >> "$file"
+  fi
+  printf '%s\n' "$line" >> "$file"
+}
+render_agents_template() {
+  awk -v include_worktree="$WORKTREE_FLOW" '
+    /<!-- agent-scaffold:worktree:start -->/ { if (!include_worktree) skip=1; next }
+    /<!-- agent-scaffold:worktree:end -->/   { skip=0; next }
+    !include_worktree && /<!-- agent-scaffold:worktree-only -->/ { next }
+    !skip {
+      gsub(/[[:space:]]*<!-- agent-scaffold:worktree-only -->[[:space:]]*/, "")
+      print
+    }
+  ' "$TPL/AGENTS.root.md"
+}
+
+validate_agents_markers() {
+  local agents="$TARGET/AGENTS.md"
+  [[ -f "$agents" ]] || return 0
+  if awk '
+    {
+      starts_here = gsub(/<!-- agent-scaffold:start/, "&")
+      ends_here = gsub(/<!-- agent-scaffold:end/, "&")
+      if (starts_here) {
+        starts += starts_here
+        if (active || ended || starts_here != 1 || ends_here) invalid=1
+        active=1
+      }
+      if (ends_here) {
+        ends += ends_here
+        if (!active || ends_here != 1 || starts_here) invalid=1
+        active=0
+        ended=1
+      }
+    }
+    END {
+      if (starts == 0 && ends == 0) exit 0
+      exit !(starts == 1 && ends == 1 && ended && !active && !invalid)
+    }
+  ' "$agents"; then
+    return 0
+  fi
+  die "AGENTS.md has malformed agent-scaffold markers (expected exactly one ordered start/end pair); repair them manually before $MODE"
 }
 
 # ---- AGENTS.md (init writes template; retrofit injects the marked block) ----
 ensure_agents_md() {
-  local migrated="${1:-0}"
-  local agents="$TARGET/AGENTS.md" cm="$TARGET/CLAUDE.md" block="$TMPDIR_H/block.md"
-  awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$TPL/AGENTS.root.md" > "$block"
-  # Retrofit a project whose contract already lives in a REAL CLAUDE.md (no AGENTS.md
-  # yet): adopt that prose as the AGENTS.md SSOT; CLAUDE.md becomes a symlink below.
-  if [[ "$migrated" == 1 && ! -e "$agents" ]]; then
-    cp "$cm" "$agents"
-    ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
-  fi
+  local agents="$TARGET/AGENTS.md" block="$TMPDIR_H/block.md" rendered="$TMPDIR_H/AGENTS.root.md"
+  validate_agents_markers
+  render_agents_template > "$rendered"
+  awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$rendered" > "$block"
   if [[ ! -e "$agents" ]]; then
-    cp "$TPL/AGENTS.root.md" "$agents"; ok "AGENTS.md created from template (fill the TODO sections)"
+    cp "$rendered" "$agents"; ok "AGENTS.md created from template (fill the TODO sections)"
   elif grep -qF '<!-- agent-scaffold:start' "$agents"; then
     awk -v bf="$block" '
       BEGIN { while ((getline l < bf) > 0) blk = blk l "\n" }
@@ -200,47 +414,8 @@ ensure_agents_md() {
   fi
 }
 
-# Windows/Git Bash without symlink support makes `ln -s` SILENTLY COPY instead of
-# link; this is the one-line fix we point users at.
-SYMLINK_HELP='Windows/Git Bash copied instead of linking — enable real symlinks with: git config core.symlinks true; export MSYS=winsymlinks:nativestrict; + Developer Mode (or admin), then re-run.'
-
-# make_symlink <target> <linkname> — create the link inside $TARGET. Returns 0 only
-# when a REAL symlink results; on the Git-Bash copy case it removes the bogus copy
-# and returns 1 so the caller can fall back + warn.
-make_symlink() {
-  ( cd "$TARGET" && ln -s "$1" "$2" ) 2>/dev/null || true
-  [[ -L "$TARGET/$2" ]] && return 0
-  [[ -e "$TARGET/$2" && ! -L "$TARGET/$2" ]] && rm -rf "${TARGET:?}/$2"
-  return 1
-}
-
 ensure_claude_md_symlink() {
-  local migrated="${1:-0}"
-  local cm="$TARGET/CLAUDE.md" agents="$TARGET/AGENTS.md"
-  if [[ -L "$cm" ]]; then
-    [[ "$(readlink "$cm")" == "AGENTS.md" ]] || warn "CLAUDE.md symlink points at $(readlink "$cm"), not AGENTS.md"
-    return 0
-  fi
-  # Decide whether an existing real CLAUDE.md is safe to retire for the symlink:
-  #   - nothing there yet, or
-  #   - just-migrated prose (already copied into AGENTS.md), or
-  #   - a prior copy-fallback still byte-identical to AGENTS.md (idempotent re-run).
-  local retire=0
-  if [[ ! -e "$cm" ]]; then retire=1
-  elif [[ -f "$cm" && "$migrated" == 1 ]]; then retire=1
-  elif [[ -f "$cm" && -f "$agents" ]] && cmp -s "$cm" "$agents"; then retire=1
-  fi
-  if [[ "$retire" != 1 ]]; then
-    warn "CLAUDE.md and AGENTS.md are both real files — merge CLAUDE.md into AGENTS.md, then: ln -sf AGENTS.md CLAUDE.md"
-    return 0
-  fi
-  rm -f "$cm"
-  if make_symlink AGENTS.md CLAUDE.md; then
-    ok "CLAUDE.md → AGENTS.md symlink created"
-  else
-    cp "$agents" "$cm"
-    warn "CLAUDE.md → AGENTS.md: $SYMLINK_HELP Left a drift-prone COPY for now."
-  fi
+  run_python "$TPL/symlink-manager.py" ensure-contract --repo "$TARGET"
 }
 
 # ---- subagent wiring: pre-commit drift guard + (Node projects) package.json scripts ----
@@ -271,6 +446,42 @@ if changed:
         f.write(json.dumps(j, indent=2, ensure_ascii=False) + "\n")
 sys.stdout.write("updated" if changed else "unchanged")
 '
+
+is_generated_agent_projection() {  # <path> <name>
+  local path="$1" name="$2" marker first
+  marker="Generated from .agents/subagents/$name; do not edit by hand. Run: python tools/agent/generate-subagents.py"
+  case "$path" in
+    *.toml)
+      IFS= read -r first < "$path" || return 1
+      first="${first%$'\r'}"
+      [[ "$first" == "# $marker" ]]
+      ;;
+    *.md)
+      awk -v marker="<!-- $marker -->" '
+        { sub(/\r$/, "", $0) }
+        NR == 1 { if ($0 != "---") exit 1; next }
+        $0 == "---" {
+          if ((getline blank) <= 0) exit 1
+          sub(/\r$/, "", blank)
+          if (blank != "") exit 1
+          if ((getline owner) <= 0) exit 1
+          sub(/\r$/, "", owner)
+          if (owner != marker) exit 1
+          found=1
+          exit
+        }
+        END { if (!found) exit 1 }
+      ' "$path"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+is_portable_subagent_name() {
+  [[ "$1" =~ ^[a-z]+(-[a-z]+)*$ ]] || return 1
+  case "$1" in con | prn | aux | nul) return 1 ;; esac
+  return 0
+}
 
 wire_subagents() {
   local pkg="$TARGET/package.json"
@@ -306,7 +517,7 @@ wire_subagents() {
 
   # package.json convenience scripts — only when the project actually has a package.json
   if [[ -f "$pkg" ]]; then
-    if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" python -c "$PKG_MERGE_PY" >/dev/null; then
+    if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" run_python -c "$PKG_MERGE_PY" >/dev/null; then
       log "package.json: ensured gen:subagents / check:agents scripts"
     else
       warn "could not update package.json scripts"
@@ -316,47 +527,69 @@ wire_subagents() {
 
 # ---- the install path (shared by init / retrofit / upgrade) ----------------
 do_install() {
-  # 1. vendored scripts
-  copy_script "$TPL/worktree.sh"            "$TARGET/tools/agent/worktree.sh"
-  copy_script "$TPL/trunk_edit_guard.sh"    "$TARGET/tools/agent/hooks/trunk_edit_guard.sh"
+  # 1. contract convergence
+  # A real CLAUDE.md must become a symlink while it is still byte-identical to
+  # AGENTS.md. Only then may the managed block or any other target file change.
+  local contract_linked=0
+  if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then
+    cp "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
+    ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
+  fi
+  if [[ -e "$TARGET/AGENTS.md" ]]; then
+    ensure_claude_md_symlink
+    contract_linked=1
+  fi
+  ensure_agents_md
+  [[ "$contract_linked" == 1 ]] || ensure_claude_md_symlink
+
+  # 2. vendored scripts
+  if [[ "$WORKTREE_FLOW" == 1 ]]; then
+    copy_script "$TPL/worktree.sh"            "$TARGET/tools/agent/worktree.sh"
+    copy_script "$TPL/trunk_edit_guard.sh"    "$TARGET/tools/agent/hooks/trunk_edit_guard.sh"
+  else
+    log "worktree flow disabled — lifecycle script and trunk guard are not installed or refreshed"
+  fi
   copy_script "$TPL/authority_doc_budget.sh" "$TARGET/tools/agent/hooks/authority_doc_budget.sh"
   copy_script "$TPL/format_on_edit.sh"      "$TARGET/tools/agent/hooks/format_on_edit.sh"
+  copy_script "$TPL/hook-common.sh"         "$TARGET/tools/agent/hooks/hook-common.sh"
+  copy_script "$TPL/hook-paths.py"          "$TARGET/tools/agent/hooks/hook-paths.py"
   copy_script "$TPL/relink-skills.sh"       "$TARGET/.agents/relink-skills.sh"
-  log "vendored scripts in place under tools/agent/ + .agents/"
+  copy_script "$TPL/symlink-manager.py"     "$TARGET/.agents/symlink-manager.py"
+  log "selected vendored scripts in place under tools/agent/ + .agents/"
 
-  # 2. .agents/ SSOT scaffolding
+  # 3. .agents/ SSOT scaffolding
   copy_if_missing "$TPL/agents-skills.README.md"    "$TARGET/.agents/skills/README.md"
   copy_if_missing "$TPL/agents-subagents.README.md" "$TARGET/.agents/subagents/README.md"
   touch "$TARGET/.agents/skills/.gitkeep"
 
-  # 3. dual-host hook wiring (merge, never clobber)
-  local cc_add="$TPL/claude.settings.json" cx_add="$TPL/codex.hooks.json"
-  if [[ "$FORMAT_HOOK" != 1 ]]; then
-    strip_format_hook "$TPL/claude.settings.json" "$TMPDIR_H/cc_add.json"; cc_add="$TMPDIR_H/cc_add.json"
-    strip_format_hook "$TPL/codex.hooks.json"     "$TMPDIR_H/cx_add.json"; cx_add="$TMPDIR_H/cx_add.json"
-  fi
+  # 4. dual-host hook wiring (merge, never clobber)
+  local cc_add="$TMPDIR_H/cc_add.json" cx_add="$TMPDIR_H/cx_add.json"
+  prepare_hook_addition "$TPL/claude.settings.json" "$cc_add"
+  prepare_hook_addition "$TPL/codex.hooks.json"     "$cx_add"
   write_hook_config "Claude Code" "$TARGET/.claude/settings.json" "$cc_add"
   write_hook_config "Codex"       "$TARGET/.codex/hooks.json"     "$cx_add"
   copy_if_missing "$TPL/codex.config.toml" "$TARGET/.codex/config.toml"
 
-  # 4. contracts + ignore
-  # CLAUDE.md -> AGENTS.md adoption: decide once here, pass to both steps (no shared global).
-  local migrated=0
-  if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then migrated=1; fi
-  ensure_agents_md "$migrated"
-  ensure_claude_md_symlink "$migrated"
+  # 5. ignore + attributes
   local gi="$TARGET/.gitignore"
-  ensure_line "$gi" ".worktrees/"
   ensure_line "$gi" ".claude/settings.local.json"
-  ensure_line "$gi" ".claude/allow-trunk-edit"
+  if [[ "$WORKTREE_FLOW" == 1 ]]; then
+    ensure_line "$gi" ".worktrees/"
+    ensure_line "$gi" ".claude/allow-trunk-edit"
+  else
+    log "worktree flow disabled — existing ignore entries, if any, are preserved as user-owned content"
+  fi
   # keep the vendored scripts LF so they run under Windows/Git Bash (CRLF breaks bash)
   local ga="$TARGET/.gitattributes"
   ensure_line "$ga" "tools/agent/*.sh text eol=lf"
   ensure_line "$ga" "tools/agent/hooks/*.sh text eol=lf"
   ensure_line "$ga" "tools/agent/*.py text eol=lf"
+  ensure_line "$ga" "tools/agent/hooks/*.py text eol=lf"
   ensure_line "$ga" ".agents/relink-skills.sh text eol=lf"
+  ensure_line "$ga" ".agents/*.py text eol=lf"
+  ensure_line "$ga" ".husky/pre-commit text eol=lf"
 
-  # 5. example subagent (so the source → projection round-trip is demonstrable)
+  # 6. example subagent (so the source → projection round-trip is demonstrable)
   if [[ "$EXAMPLE_SUBAGENT" == 1 ]]; then
     if find "$TARGET/.agents/subagents" -mindepth 1 -maxdepth 1 -type d ! -name '_*' 2>/dev/null | grep -q .; then
       log "subagents already exist — skipping example seed"
@@ -365,40 +598,34 @@ do_install() {
       cp "$TPL/subagent.metadata.json"   "$TARGET/.agents/subagents/code-reviewer/metadata.json"
       cp "$TPL/subagent.instructions.md" "$TARGET/.agents/subagents/code-reviewer/instructions.md"
       ok "seeded example subagent .agents/subagents/code-reviewer (delete it once you add your own)"
-      command -v python >/dev/null 2>&1 || log "  (install python, then run upgrade to project it into .claude/ + .codex/)"
     fi
   fi
   [[ "$EXAMPLE_SUBAGENT" == 1 ]] || touch "$TARGET/.agents/subagents/.gitkeep"
 
-  # 6. relink skills (idempotent)
-  bash "$TARGET/.agents/relink-skills.sh" || warn "relink-skills.sh returned nonzero"
+  # 7. relink skills (idempotent)
+  bash "$TARGET/.agents/relink-skills.sh"
 
-  # 7. python-gated: subagent generator + drift guard
-  if command -v python >/dev/null 2>&1; then
-    copy_script "$TPL/generate-subagents.py" "$TARGET/tools/agent/generate-subagents.py"
-    wire_subagents
-    # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
-    # into the .agents/ SSOT (no-op when there are none / a source already exists), then it
-    # projects everything back. Importing first also stops the projection step from pruning a
-    # hand-authored agent as a sourceless "orphan".
-    python "$TARGET/tools/agent/generate-subagents.py" --import || warn "generate-subagents.py --import returned nonzero"
-  else
-    log "no python → skipping subagent generator + drift guard (rest of the bash harness is installed)."
-    log "  to enable subagents later: install python, then re-run 'agent-scaffold upgrade'."
-    if find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
-      warn "hand-authored .claude/agents or .codex/agents found but python is unavailable — cannot adopt them into .agents/ SSOT. Install python, then: agent-scaffold upgrade"
-    fi
-  fi
+  # 8. subagent generator + drift guard (python is a harness prerequisite)
+  copy_script "$TPL/generate-subagents.py" "$TARGET/tools/agent/generate-subagents.py"
+  wire_subagents
+  # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
+  # into the .agents/ SSOT (no-op when there are none), then project everything back.
+  # Importing first also stops the projection step from pruning a hand-authored agent as a
+  # sourceless "orphan"; any ownership or parse conflict propagates and aborts the install.
+  run_python "$TARGET/tools/agent/generate-subagents.py" --import
 
-  # 8. closing notes
+  # 9. closing notes
   echo
   ok "harness $MODE complete."
   log "Codex trust: project-level .codex/ only loads for a TRUSTED project. Trust once:"
   log "  run 'codex' in $TARGET and accept, or add to ~/.codex/config.toml:"
   log "    [projects.\"$TARGET\"]"
   log "    trust_level = \"trusted\""
-  [[ "${HARNESS_MERGE_DEFERRED:-0}" == 1 ]] && warn "one or more hook configs need a manual merge (see above)."
-  log "next: fill the AGENTS.md TODO sections; start changes with tools/agent/worktree.sh new <name>."
+  if [[ "$WORKTREE_FLOW" == 1 ]]; then
+    log "next: fill the AGENTS.md TODO sections; start changes with bash tools/agent/worktree.sh new <name>."
+  else
+    log "next: fill the AGENTS.md TODO sections; use the project's existing branch/change workflow."
+  fi
 }
 
 # ---- plan (read-only preview of what init/retrofit would do) ---------------
@@ -432,6 +659,14 @@ do_plan() {
   fi
   echo
 
+  echo "Worktree workflow:"
+  if [[ "$WORKTREE_FLOW" == 1 ]]; then
+    printf '  %s install/refresh worktree.sh, wire the trunk guard, and publish the managed hard rule\n' "$MRG"
+  else
+    printf '  %s disabled by --no-worktree; do not add lifecycle/guard/ignore config or the managed policy\n' "$SKP"
+  fi
+  echo
+
   echo "Hook wiring (merged into existing config, never clobbered):"
   local cfg label
   for pair in ".claude/settings.json:Claude Code" ".codex/hooks.json:Codex"; do
@@ -442,24 +677,63 @@ do_plan() {
   echo
 
   echo "Subagents:"
-  if command -v python >/dev/null 2>&1; then
-    local -A seen=(); local any=0 af base
-    for af in "$TARGET/.claude/agents"/*.md "$TARGET/.codex/agents"/*.toml; do
-      [[ -e "$af" ]] || continue
-      base="$(basename "$af")"; base="${base%.*}"
-      if [[ -n "${seen[$base]:-}" ]]; then continue; fi
-      if [[ -d "$TARGET/.agents/subagents/$base" ]]; then continue; fi
-      if grep -qF 'Generated from .agents/subagents/' "$af" 2>/dev/null; then continue; fi
-      seen[$base]=1; any=1
-      printf '  %s subagent %s → adopt hand-authored agent into .agents/subagents/%s\n' "$MIG" "$base" "$base"
-    done
-    if [[ "$any" == 0 ]]; then
-      printf '  %s no hand-authored subagents to adopt; generator projects .agents/subagents/\n' "$SKP"
+  local any=0 af base filename lower expected_ext agent_dir seen_file="$TMPDIR_H/seen-subagents"
+  : > "$seen_file"
+  for agent_dir in "$TARGET/.claude/agents" "$TARGET/.codex/agents"; do
+    if [[ ! -d "$agent_dir" ]] && [[ -e "$agent_dir" || -L "$agent_dir" ]]; then
+      printf '  %s %s: expected a directory\n' "$MAN" "${agent_dir#"$TARGET"/}"
+      any=1
     fi
-  elif find "$TARGET/.claude/agents" "$TARGET/.codex/agents" -maxdepth 1 -type f 2>/dev/null | grep -q .; then
-    printf '  %s hand-authored subagents found, but python is unavailable — install python to adopt them\n' "$MAN"
-  else
-    printf '  %s python unavailable — subagent generator skipped\n' "$SKP"
+  done
+  for af in \
+    "$TARGET/.claude/agents"/* \
+    "$TARGET/.claude/agents"/.[!.]* \
+    "$TARGET/.claude/agents"/..?* \
+    "$TARGET/.codex/agents"/* \
+    "$TARGET/.codex/agents"/.[!.]* \
+    "$TARGET/.codex/agents"/..?*; do
+    [[ -e "$af" || -L "$af" ]] || continue
+    filename="$(basename "$af")"
+    case "$af" in
+      "$TARGET/.claude/agents/"*) expected_ext=.md ;;
+      *) expected_ext=.toml ;;
+    esac
+    lower="$(printf '%s' "$filename" | tr '[:upper:]' '[:lower:]')"
+    case "$filename" in
+      *"$expected_ext") ;;
+      *)
+        case "$lower" in
+          *"$expected_ext")
+            base="${filename%.*}"
+            printf '%s\n' "$base" >> "$seen_file"; any=1
+            printf '  %s %s: host agent extension must be lowercase %s\n' "$MAN" "${af#"$TARGET"/}" "$expected_ext"
+            ;;
+        esac
+        continue
+        ;;
+    esac
+    if [[ ! -f "$af" ]]; then
+      printf '  %s %s: expected a regular file\n' "$MAN" "${af#"$TARGET"/}"
+      any=1
+      continue
+    fi
+    base="${filename%.*}"
+    if grep -qxF "$base" "$seen_file" 2>/dev/null; then continue; fi
+    if ! is_portable_subagent_name "$base"; then
+      printf '%s\n' "$base" >> "$seen_file"; any=1
+      printf '  %s subagent non-portable host filename %s — use lowercase letter groups separated by hyphens\n' "$MAN" "$filename"
+      continue
+    fi
+    if is_generated_agent_projection "$af" "$base"; then continue; fi
+    printf '%s\n' "$base" >> "$seen_file"; any=1
+    if [[ -d "$TARGET/.agents/subagents/$base" ]]; then
+      printf '  %s subagent %s hand-authored projection conflicts with existing .agents/subagents/%s — resolve it before retrofit\n' "$MAN" "$base" "$base"
+    else
+      printf '  %s subagent %s → adopt hand-authored agent into .agents/subagents/%s\n' "$MIG" "$base" "$base"
+    fi
+  done
+  if [[ "$any" == 0 ]]; then
+    printf '  %s no hand-authored subagents to adopt; generator projects .agents/subagents/\n' "$SKP"
   fi
   echo
 
@@ -480,29 +754,49 @@ do_plan() {
   fi
   echo
 
-  log "to apply: bash <skill-dir>/harness-init.sh retrofit"
+  if [[ "$WORKTREE_FLOW" == 1 ]]; then
+    log "to apply: bash <skill-dir>/harness-init.sh retrofit"
+  else
+    log "to apply: bash <skill-dir>/harness-init.sh retrofit --no-worktree"
+  fi
   log "Codex trust: project-level .codex/ loads only for a TRUSTED project (reference.md §7)."
 }
 
 # ---- verify (read-only) ----------------------------------------------------
 do_verify() {
-  local fails=0 pass="  ${c_green}✓${c_off}" fail="  ${c_red}✗${c_off}" info="  ${c_yellow}•${c_off}"
+  local fails=0 pass="  ${c_green}✓${c_off}" fail="  ${c_red}✗${c_off}"
   log "verifying harness in $TARGET"
 
-  for f in tools/agent/worktree.sh tools/agent/hooks/trunk_edit_guard.sh \
-           tools/agent/hooks/authority_doc_budget.sh tools/agent/hooks/format_on_edit.sh \
-           .agents/relink-skills.sh; do
-    if [[ -x "$TARGET/$f" ]]; then printf '%s %s\n' "$pass" "$f"; else printf '%s %s (missing or not executable)\n' "$fail" "$f"; fails=$((fails+1)); fi
+  local required="tools/agent/hooks/authority_doc_budget.sh tools/agent/hooks/format_on_edit.sh \
+           tools/agent/hooks/hook-common.sh tools/agent/hooks/hook-paths.py \
+           .agents/relink-skills.sh .agents/symlink-manager.py"
+  if [[ "$WORKTREE_FLOW" == 1 ]]; then
+    required="tools/agent/worktree.sh tools/agent/hooks/trunk_edit_guard.sh $required"
+  fi
+  local f
+  for f in $required; do
+    if [[ -f "$TARGET/$f" ]]; then printf '%s %s\n' "$pass" "$f"; else printf '%s %s (missing)\n' "$fail" "$f"; fails=$((fails+1)); fi
   done
 
-  for pair in ".claude/settings.json:Claude Code" ".codex/hooks.json:Codex"; do
-    local cfg="${pair%%:*}" label="${pair##*:}"
+  local cc_expected="$TMPDIR_H/verify-cc-add.json" cx_expected="$TMPDIR_H/verify-cx-add.json"
+  prepare_hook_addition "$TPL/claude.settings.json" "$cc_expected"
+  prepare_hook_addition "$TPL/codex.hooks.json"     "$cx_expected"
+  local host cfg label expected managed
+  for host in claude codex; do
+    if [[ "$host" == claude ]]; then
+      cfg=".claude/settings.json"; label="Claude Code"
+      expected="$cc_expected"; managed="$TPL/claude.settings.json"
+    else
+      cfg=".codex/hooks.json"; label="Codex"
+      expected="$cx_expected"; managed="$TPL/codex.hooks.json"
+    fi
     if [[ -f "$TARGET/$cfg" ]]; then
-      local miss=0
-      for h in trunk_edit_guard authority_doc_budget; do
-        grep -q "$h" "$TARGET/$cfg" || miss=1
-      done
-      if [[ "$miss" == 0 ]]; then printf '%s %s wiring present\n' "$pass" "$label"; else printf '%s %s wiring incomplete (%s)\n' "$fail" "$label" "$cfg"; fails=$((fails+1)); fi
+      if verify_hook_config "$TARGET/$cfg" "$expected" "$managed"; then
+        printf '%s %s wiring matches the selected profile\n' "$pass" "$label"
+      else
+        printf '%s %s wiring does not match the selected profile (%s)\n' "$fail" "$label" "$cfg"
+        fails=$((fails+1))
+      fi
     else
       printf '%s %s config missing (%s)\n' "$fail" "$label" "$cfg"; fails=$((fails+1))
     fi
@@ -514,10 +808,29 @@ do_verify() {
     printf '%s CLAUDE.md is not a symlink to AGENTS.md\n' "$fail"; fails=$((fails+1))
   fi
 
+  if run_python "$TPL/symlink-manager.py" verify --repo "$TARGET" >/dev/null; then
+    printf '%s real symlink projections and tracked git modes are valid\n' "$pass"
+  else
+    printf '%s real symlink projection verification failed\n' "$fail"; fails=$((fails+1))
+  fi
+
   if [[ -f "$TARGET/AGENTS.md" ]] && grep -qF '<!-- agent-scaffold:start' "$TARGET/AGENTS.md"; then
     printf '%s AGENTS.md carries the harness block\n' "$pass"
   else
     printf '%s AGENTS.md missing the harness block\n' "$fail"; fails=$((fails+1))
+  fi
+  local managed_block="$TMPDIR_H/verify-managed-block.md"
+  awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$TARGET/AGENTS.md" > "$managed_block" 2>/dev/null || true
+  if [[ "$WORKTREE_FLOW" == 1 ]]; then
+    if grep -qF '### Worktree-per-change (hard rule)' "$managed_block"; then
+      printf '%s AGENTS.md publishes the worktree policy\n' "$pass"
+    else
+      printf '%s AGENTS.md worktree policy missing\n' "$fail"; fails=$((fails+1))
+    fi
+  elif grep -qF '### Worktree-per-change (hard rule)' "$managed_block"; then
+    printf '%s AGENTS.md still publishes the worktree policy under --no-worktree\n' "$fail"; fails=$((fails+1))
+  else
+    printf '%s AGENTS.md omits the optional worktree policy\n' "$pass"
   fi
 
   # script drift vs the skill's vendored templates
@@ -526,20 +839,32 @@ do_verify() {
               "trunk_edit_guard.sh:tools/agent/hooks/trunk_edit_guard.sh" \
               "authority_doc_budget.sh:tools/agent/hooks/authority_doc_budget.sh" \
               "format_on_edit.sh:tools/agent/hooks/format_on_edit.sh" \
-              "relink-skills.sh:.agents/relink-skills.sh"; do
+              "hook-common.sh:tools/agent/hooks/hook-common.sh" \
+              "hook-paths.py:tools/agent/hooks/hook-paths.py" \
+              "relink-skills.sh:.agents/relink-skills.sh" \
+              "symlink-manager.py:.agents/symlink-manager.py" \
+              "generate-subagents.py:tools/agent/generate-subagents.py"; do
     local t="${pair%%:*}" inst="$TARGET/${pair##*:}"
-    [[ -f "$inst" ]] && ! cmp -s "$TPL/$t" "$inst" && { printf '%s drift: %s differs from the skill template\n' "$info" "${pair##*:}"; drift=$((drift+1)); }
+    case "$t" in
+      worktree.sh|trunk_edit_guard.sh) [[ "$WORKTREE_FLOW" == 1 ]] || continue ;;
+    esac
+    [[ -f "$inst" ]] && ! cmp -s "$TPL/$t" "$inst" && { printf '%s drift: %s differs from the skill template\n' "$fail" "${pair##*:}"; drift=$((drift+1)); }
   done
-  [[ "$drift" == 0 ]] && printf '%s installed scripts match the skill templates\n' "$pass" || printf '%s %d script(s) drifted — run: agent-scaffold upgrade\n' "$info" "$drift"
+  if [[ "$drift" == 0 ]]; then
+    printf '%s active-profile scripts match the skill templates\n' "$pass"
+  else
+    printf '%s %d active-profile script(s) drifted — run: agent-scaffold upgrade\n' "$fail" "$drift"
+    fails=$((fails + drift))
+  fi
 
-  if [[ -f "$TARGET/tools/agent/generate-subagents.py" ]] && command -v python >/dev/null 2>&1; then
-    if python "$TARGET/tools/agent/generate-subagents.py" --check >/dev/null 2>&1; then
+  if [[ -f "$TARGET/tools/agent/generate-subagents.py" ]]; then
+    if run_python "$TARGET/tools/agent/generate-subagents.py" --check >/dev/null 2>&1; then
       printf '%s subagent projections in sync\n' "$pass"
     else
       printf '%s subagent projections drifted — run: python tools/agent/generate-subagents.py\n' "$fail"; fails=$((fails+1))
     fi
   else
-    printf '%s no subagent generator (python unavailable or not installed)\n' "$info"
+    printf '%s subagent generator missing\n' "$fail"; fails=$((fails+1))
   fi
 
   echo
@@ -547,7 +872,17 @@ do_verify() {
 }
 
 case "$MODE" in
-  init|retrofit|upgrade) do_install ;;
-  plan) do_plan ;;
-  verify) do_verify ;;
+  init|retrofit|upgrade)
+    # Contract and capability preflights are deliberately before the first target write.
+    validate_agents_markers
+    validate_existing_hook_configs
+    run_python "$TPL/symlink-manager.py" preflight-install --repo "$TARGET" >/dev/null
+    env AGENT_SCAFFOLD_PREFLIGHT_REPO="$TARGET" PYTHONUTF8=1 "${PYTHON_CMD[@]}" \
+      "$TPL/generate-subagents.py" --preflight-import >/dev/null
+    run_python "$TPL/symlink-manager.py" doctor --repo "$TARGET" >/dev/null
+    do_install
+    ;;
+  plan) validate_agents_markers; do_plan ;;
+  doctor) run_python "$TPL/symlink-manager.py" doctor --repo "$TARGET" ;;
+  verify) validate_agents_markers; do_verify ;;
 esac

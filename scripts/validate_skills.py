@@ -6,11 +6,14 @@ from the README, a deleted install path still advertised, frontmatter that lost
 its `name`/`description`, YAML frontmatter that `npx skills` cannot parse, a
 `name` that no longer matches its directory, the `{{ARGUMENTS}}` moustache
 placeholder (Claude Code substitutes `$ARGUMENTS`), and a `reference.md` link
-with no shipped file. Warnings flag softer hygiene: missing or over-broad
-(`Bash`, `Bash(bash:*)`) `allowed-tools`, and an over-long description.
+with no shipped file. Catalog skills must leave tool approval to the host rather
+than declaring `allowed-tools`; warnings flag softer hygiene such as an
+over-long description.
 
-No third-party dependencies. Exit 0 = clean, 1 = errors. Warnings never fail.
+Install the pinned validation dependency first. Exit 0 = clean, 1 = errors.
+Warnings never fail.
 
+    python -m pip install -r requirements-validation.txt
     python scripts/validate_skills.py            # validate this repo
     SKILLS_REPO=/path/to/repo python scripts/validate_skills.py
 """
@@ -23,53 +26,48 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from strictyaml import YAMLValidationError, dirty_load
+except ImportError:  # reported as a concise catalog error from main()
+    YAMLValidationError = Exception  # type: ignore[assignment,misc]
+    dirty_load = None
+
 REPO = Path(os.environ.get("SKILLS_REPO", Path(__file__).resolve().parent.parent))
 SKILLS_DIR = REPO / "skills"
 README = REPO / "README.md"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
 GROUPING_MANIFEST = REPO / ".claude-plugin" / "plugin.json"
+# Coarse repo-local prose budget, not a host token limit. It scales with the
+# catalog so adding a well-scoped skill does not consume another skill's share.
+METADATA_PROSE_CHARS_PER_SKILL = 512
 
 errors: list[str] = []
 warnings: list[str] = []
 
 
-def parse_frontmatter(text: str) -> dict[str, str] | None:
-    """Read top-level `key: value` pairs from a leading `---` block.
-
-    Deliberately minimal (no YAML dep): every skill here uses single-line scalar
-    fields. Returns None when there is no closed frontmatter block.
-    """
+def parse_frontmatter(text: str) -> dict[str, object]:
+    """Parse a leading frontmatter block with a real strict YAML parser."""
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
-        return None
-    fm: dict[str, str] = {}
-    for line in lines[1:]:
+        raise ValueError("SKILL.md has no opening `---` frontmatter delimiter")
+    closing = None
+    for index, line in enumerate(lines[1:], start=1):
         if line.strip() == "---":
-            return fm
-        m = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
-        if m:
-            fm[m.group(1)] = m.group(2).strip().strip('"').strip("'")
-    return None  # never closed
-
-
-def plain_scalar_hazards(text: str) -> list[str]:
-    """Find single-line values that are not valid YAML plain scalars."""
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return []
-    hazards: list[str] = []
-    for line in lines[1:]:
-        if line.strip() == "---":
+            closing = index
             break
-        m = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
-        if not m:
-            continue
-        key, raw_value = m.group(1), m.group(2).strip()
-        if not raw_value or raw_value[0] in {"'", '"', "|", ">"}:
-            continue
-        if re.search(r":\s", raw_value):
-            hazards.append(f"`{key}` is an unquoted YAML scalar containing `: `; quote it so `npx skills` can parse the frontmatter")
-    return hazards
+    if closing is None:
+        raise ValueError("SKILL.md has no closing `---` frontmatter delimiter")
+    if dirty_load is None:
+        raise ValueError(
+            "StrictYAML is unavailable — run `python -m pip install -r requirements-validation.txt`"
+        )
+    try:
+        parsed = dirty_load("\n".join(lines[1:closing]), allow_flow_style=True).data
+    except YAMLValidationError as exc:
+        raise ValueError(f"frontmatter is not valid YAML: {exc.context} {exc.problem}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError("frontmatter must be a YAML mapping")
+    return parsed
 
 
 def main() -> int:
@@ -84,8 +82,10 @@ def main() -> int:
     skill_dirs = sorted(p for p in SKILLS_DIR.iterdir() if p.is_dir())
     if not skill_dirs:
         errors.append("no skill directories under skills/")
+    metadata_prose_chars = 0
 
     validate_grouping_manifest(skill_dirs)
+    validate_npx_discovery_contract()
 
     for d in skill_dirs:
         dir_name = d.name
@@ -95,32 +95,35 @@ def main() -> int:
             continue
 
         text = skill_md.read_text(encoding="utf-8")
-        fm = parse_frontmatter(text)
-        if fm is None:
-            errors.append(f"{dir_name}: SKILL.md has no valid `---` frontmatter block")
-            continue
-
-        for hazard in plain_scalar_hazards(text):
-            errors.append(f"{dir_name}: {hazard}")
-
-        # The minimal parser reads single-line scalars only; reject YAML block scalars
-        # explicitly rather than silently treating `|` / `>` as the field value.
-        bad_block = [k for k in ("name", "description") if fm.get(k, "") in {"|", ">", "|-", ">-", "|+", ">+"}]
-        if bad_block:
-            errors.append(f"{dir_name}: {', '.join(bad_block)} use(s) a YAML block scalar the minimal parser cannot read — inline as single-line scalars (or switch to a YAML parser)")
+        try:
+            fm = parse_frontmatter(text)
+        except ValueError as exc:
+            errors.append(f"{dir_name}: {exc}")
             continue
 
         name = fm.get("name", "")
-        if not name:
+        if isinstance(name, str):
+            metadata_prose_chars += len(name)
+        if not isinstance(name, str) or not name:
             errors.append(f"{dir_name}: frontmatter is missing `name`")
         elif name != dir_name:
             errors.append(f"{dir_name}: `name: {name}` does not match directory name `{dir_name}`")
+        elif len(name) > 64 or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name):
+            errors.append(f"{dir_name}: `name` must be 1-64 lowercase letters/numbers/hyphen segments")
 
         desc = fm.get("description", "")
-        if not desc:
+        if isinstance(desc, str):
+            metadata_prose_chars += len(desc)
+        if not isinstance(desc, str) or not desc:
             errors.append(f"{dir_name}: frontmatter is missing a non-empty `description`")
         elif len(desc) > 1024:
-            warnings.append(f"{dir_name}: description is {len(desc)} chars (>1024); trigger descriptions read best when concise")
+            errors.append(f"{dir_name}: description is {len(desc)} chars (>1024 specification limit)")
+
+        compatibility = fm.get("compatibility")
+        if compatibility is not None and (
+            not isinstance(compatibility, str) or not 1 <= len(compatibility) <= 500
+        ):
+            errors.append(f"{dir_name}: `compatibility` must be a non-empty string of at most 500 characters")
 
         # Claude Code substitutes `$ARGUMENTS`; the moustache form is never expanded.
         if "{{ARGUMENTS}}" in text:
@@ -130,20 +133,27 @@ def main() -> int:
         if "reference.md" in text and not (d / "reference.md").exists():
             errors.append(f"{dir_name}: SKILL.md links `reference.md` but {dir_name}/reference.md does not exist")
 
-        # `allowed-tools` pre-approves (suppresses prompts) for the listed tools.
-        tools = [t.strip() for t in fm.get("allowed-tools", "").split(",") if t.strip()]
-        if "allowed-tools" not in fm:
-            warnings.append(f"{dir_name}: no `allowed-tools` in frontmatter — every tool call prompts; declare a scoped set (e.g. `Read, Edit, Write, Grep, Glob, Bash(git:*)`)")
-        # Bare `Bash` pre-approves arbitrary shell; `Bash(bash:*)`/`Bash(sh:*)` are nearly as broad.
-        if "Bash" in tools:
-            warnings.append(f"{dir_name}: `allowed-tools` pre-approves bare `Bash` (arbitrary shell, no prompt) — scope it (e.g. `Bash(git *)`) or drop it unless arbitrary shell is intended")
-        broad = [t for t in tools if t.startswith("Bash(bash") or t.startswith("Bash(sh")]
-        if broad:
-            warnings.append(f"{dir_name}: `allowed-tools` pre-approves {', '.join(broad)} (a shell interpreter — nearly as broad as bare `Bash`); intended only when the skill runs bundled scripts")
+        if "allowed-tools" in fm:
+            errors.append(
+                f"{dir_name}: catalog skills must not declare `allowed-tools`; defer approvals to the host"
+            )
 
         # README coverage
         if readme and f"(skills/{dir_name}/)" not in readme:
             errors.append(f"{dir_name}: not linked from the README skills table (expected a `(skills/{dir_name}/)` link)")
+
+    metadata_prose_budget = len(skill_dirs) * METADATA_PROSE_CHARS_PER_SKILL
+    if metadata_prose_chars > metadata_prose_budget:
+        errors.append(
+            "catalog routing metadata exceeds the repo-local prose budget: "
+            f"{metadata_prose_chars} chars > {metadata_prose_budget} "
+            f"({METADATA_PROSE_CHARS_PER_SKILL} per skill)"
+        )
+
+    validate_agent_scaffold_contract()
+    validate_tooling_conventions_contract()
+    validate_conventional_commit_contract()
+    validate_semver_release_contract()
 
     # Reverse coverage: a README link must point at a real skill directory.
     for m in re.finditer(r"\(skills/([A-Za-z0-9_-]+)/\)", readme):
@@ -158,6 +168,310 @@ def main() -> int:
         errors.append("README references `.claude-plugin/marketplace.json` which does not exist")
 
     return report()
+
+
+def validate_npx_discovery_contract() -> None:
+    """Require CI to compare pinned npx discovery with the catalog exactly."""
+    workflow = REPO / ".github" / "workflows" / "validate.yml"
+    if not workflow.exists():
+        return
+    workflow_text = workflow.read_text(encoding="utf-8")
+    match = re.search(
+        r"(?ms)^\s*- name: Smoke-test real npx skills discovery\s*$"
+        r"(.*?)(?=^\s*- name:|\Z)",
+        workflow_text,
+    )
+    discovery_step = match.group(1) if match else ""
+    required = {
+        "capture pinned CLI output": (
+            r"output=.*NO_COLOR=1\s+DISABLE_TELEMETRY=1\s+"
+            r"npx --yes skills@1\.5\.17 add \. -l.*2>&1"
+        ),
+        "preserve CLI failure status": (
+            r"status=\$\?[\s\S]*if \[ [\"']?\$status[\"']? -ne 0 \]; then"
+        ),
+        "extract names independently of the UI border": (
+            r"actual=.*sed -n [\"']s/\^\.\*    "
+        ),
+        "derive expected names from skills/": r"expected=.*python -c.*Path",
+        "compare the two sets exactly": (
+            r"if \[ [\"']?\$actual[\"']? != [\"']?\$expected[\"']? \]; then"
+        ),
+    }
+    missing = [label for label, pattern in required.items() if not re.search(pattern, discovery_step)]
+    if missing:
+        errors.append(
+            "CI npx discovery must assert that the pinned CLI returns the exact catalog skill set; "
+            f"missing={missing}"
+        )
+
+
+def validate_agent_scaffold_contract() -> None:
+    """Keep Python 3.8+ a hard prerequisite throughout the selected router."""
+    skill = SKILLS_DIR / "agent-scaffold" / "SKILL.md"
+    if not skill.exists():
+        return
+    skill_text = skill.read_text(encoding="utf-8")
+    stale_optional_python = {
+        "retrofit fallback": r"without\s+python\s+the installer flags them instead",
+        "workflow skip": r"subagents when python is unavailable",
+        "conditional generator install": r"when\s+python\s+is\s+available\s+—\s+installs",
+    }
+    required_python_contract = {
+        "hard prerequisite": (
+            r"The harness requires\s+\*\*git, Python 3\.8\+, and Bash 3\.2\+\*\*\."
+        ),
+        "unconditional generator install": (
+            r"installs\s+and\s+runs\s+the\s+subagent\s+generator"
+        ),
+    }
+    found = [
+        label
+        for label, pattern in stale_optional_python.items()
+        if re.search(pattern, skill_text, flags=re.IGNORECASE)
+    ]
+    missing = [
+        label
+        for label, pattern in required_python_contract.items()
+        if not re.search(pattern, skill_text)
+    ]
+    if found or missing:
+        errors.append(
+            "agent-scaffold/SKILL.md: Python 3.8+ is a hard prerequisite; "
+            f"missing={missing}, stale_optional={found}"
+        )
+
+
+def validate_tooling_conventions_contract() -> None:
+    """Keep Python syntax checks compile-accurate without bytecode residue."""
+    skill_dir = SKILLS_DIR / "tooling-conventions"
+    paths = {
+        "SKILL.md": skill_dir / "SKILL.md",
+        "reference.md": skill_dir / "reference.md",
+        "manifest.schema.md": skill_dir / "manifest.schema.md",
+        "manifest-check.sh": skill_dir / "manifest-check.sh",
+    }
+    if any(not path.exists() for path in paths.values()):
+        return
+    texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
+    memory_compile = (
+        "python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), "
+        "sys.argv[1], \"exec\")'"
+    )
+    for label in ("reference.md", "manifest-check.sh"):
+        if memory_compile not in texts[label]:
+            errors.append(f"tooling-conventions/{label}: in-memory Python compile command is missing")
+    if "in-memory Python compile" not in texts["SKILL.md"]:
+        errors.append("tooling-conventions/SKILL.md: no-bytecode Python verification route is missing")
+    stale = [label for label, value in texts.items() if "py_compile" in value]
+    if stale:
+        errors.append(f"tooling-conventions: py_compile bytecode-producing guidance remains in {stale}")
+
+    workflow = REPO / ".github" / "workflows" / "validate.yml"
+    workflow_text = workflow.read_text(encoding="utf-8") if workflow.exists() else ""
+    fixture_contract = (
+        "valid path-雪.py",
+        "manifest check left Python bytecode residue",
+        "return 1",
+    )
+    missing_fixture = [value for value in fixture_contract if value not in workflow_text]
+    if missing_fixture:
+        errors.append(
+            "tooling-conventions: bytecode-residue CI fixture is incomplete: "
+            f"{missing_fixture}"
+        )
+
+
+def validate_conventional_commit_contract() -> None:
+    """Keep commit mode from staging changes on a detached HEAD."""
+    skill = SKILLS_DIR / "conventional-commit" / "SKILL.md"
+    if not skill.exists():
+        return
+    skill_text = skill.read_text(encoding="utf-8")
+    match = re.search(r"(?ms)^## Workflow[ \t]*\r?\n(.*?)(?=^## |\Z)", skill_text)
+    workflow = match.group(1) if match else ""
+    preflight = "git symbolic-ref --quiet --short HEAD"
+    detached = (
+        "On exit status 1, stop before staging and report that commit mode requires "
+        "an attached branch because HEAD is detached."
+    )
+    git_error = "On any other nonzero status, stop before staging and report the Git preflight error."
+    stage = "stage the intended files"
+    required = (preflight, detached, git_error, stage)
+    missing = [value for value in required if value not in workflow]
+    ordered = not missing and [workflow.index(value) for value in required] == sorted(
+        workflow.index(value) for value in required
+    )
+    if missing or not ordered:
+        errors.append("conventional-commit: attached-HEAD preflight must precede commit-mode staging")
+
+
+def validate_semver_release_contract() -> None:
+    """Guard bump inference and package identity across release ecosystems."""
+    skill = SKILLS_DIR / "semver-release" / "SKILL.md"
+    reference = SKILLS_DIR / "semver-release" / "reference.md"
+    if not skill.exists() or not reference.exists():
+        return
+    skill_text = skill.read_text(encoding="utf-8")
+    reference_text = reference.read_text(encoding="utf-8")
+    combined = skill_text + reference_text
+    bump_contract = (
+        "BREAKING CHANGE:",
+        "BREAKING-CHANGE:",
+        "case-insensitive",
+        "remains uppercase",
+    )
+    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+        missing_bump = [value for value in bump_contract if value not in text]
+        if missing_bump:
+            errors.append(f"semver-release/{label}: bump inference contract lost fixtures: {missing_bump}")
+    required = ("1.2.0-beta.1", "1.2.0b1", "1.2.0rc1", "project(... VERSION 1.2.0)")
+    missing = [value for value in required if value not in combined]
+    if missing:
+        errors.append(f"semver-release: prerelease ecosystem contract lost fixtures: {missing}")
+    python_boundary_skill = (
+        "explicit repository-defined Python mapping",
+        "stop before writing release files, committing, tagging, or pushing",
+    )
+    missing_python_skill = [value for value in python_boundary_skill if value not in skill_text]
+    if missing_python_skill:
+        errors.append(
+            "semver-release/SKILL.md: Python prerelease mapping boundary lost fixtures: "
+            f"{missing_python_skill}"
+        )
+    python_boundary_reference = (
+        "`alpha.N` → `aN`",
+        "`beta.N` → `bN`",
+        "`rc.N` → `rcN`",
+        "`v1.2.0-canary.1` remains a valid SemVer tag",
+        "historical base selection",
+        "non-Python ecosystems",
+    )
+    missing_python_reference = [
+        value for value in python_boundary_reference if value not in reference_text
+    ]
+    if missing_python_reference:
+        errors.append(
+            "semver-release/reference.md: Python prerelease mapping boundary lost fixtures: "
+            f"{missing_python_reference}"
+        )
+    shared_base_contract = (
+        "HEAD-reachable",
+        "SemVer 2.0.0 precedence",
+        "no HEAD-reachable valid SemVer base",
+    )
+    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+        missing_base = [value for value in shared_base_contract if value not in text]
+        if missing_base:
+            errors.append(f"semver-release/{label}: base-selection contract lost fixtures: {missing_base}")
+    equal_precedence = (
+        "When highest-precedence tags differ only by build metadata, use their shared commit as "
+        "`<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity."
+    )
+    peel_commit = "git rev-parse '<tag>^{commit}'"
+    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+        if equal_precedence not in text:
+            errors.append(f"semver-release/{label}: equal-precedence base rule is missing")
+        if peel_commit not in text:
+            errors.append(f"semver-release/{label}: annotated-tag commit resolution is missing")
+    skill_base_contract = (
+        "git rev-parse --is-shallow-repository",
+        "git rev-list --max-parents=0 HEAD",
+        "git cat-file -p <root>",
+        "git tag --merged HEAD --list 'v[0-9]*'",
+        "git merge-base --is-ancestor <base> HEAD",
+        "do not sort or truncate before validation",
+        "stop before base selection only if an apparent HEAD root has a raw `parent` header",
+    )
+    missing_skill_base = [value for value in skill_base_contract if value not in skill_text]
+    if missing_skill_base:
+        errors.append(f"semver-release/SKILL.md: base-selection workflow lost fixtures: {missing_skill_base}")
+    reference_base_contract = (
+        "`v01.2.3` and `v1.2.3-rc.01` are invalid",
+        "`v1.1.0-rc.1 < v1.1.0`",
+        "build metadata does not affect precedence",
+        "Git's `version:refname` order is not SemVer precedence",
+        "previous HEAD-reachable stable release, or repo root if none exists",
+        "shallow repository",
+        "git rev-list --max-parents=0 HEAD",
+        "git cat-file -p <root>",
+        "commit headers before the first blank line",
+        "repository-level `true` is not sufficient",
+    )
+    missing_reference_base = [value for value in reference_base_contract if value not in reference_text]
+    if missing_reference_base:
+        errors.append(
+            f"semver-release/reference.md: SemVer precedence contract lost fixtures: {missing_reference_base}"
+        )
+    release_stage_contract = (
+        "git add -- CHANGELOG.md <all-version-files> <all-coupled-lockfiles> [release-notes]",
+        "git diff --cached --check",
+        "every file changed for the release must be staged",
+        'git commit -m "release: vX.Y.Z"',
+        "git status --porcelain # must be empty before tagging",
+        'git tag -a vX.Y.Z -m "Release vX.Y.Z"',
+    )
+    missing_stage = [value for value in release_stage_contract if value not in skill_text]
+    stage_ordered = not missing_stage and [skill_text.index(value) for value in release_stage_contract] == sorted(
+        skill_text.index(value) for value in release_stage_contract
+    )
+    if missing_stage or not stage_ordered:
+        errors.append(
+            "semver-release/SKILL.md: complete release snapshot must be staged and clean before tagging"
+        )
+    sync_invariant = (
+        "Ecosystem synchronization must not create the release commit, tag, or push, "
+        "or refresh unrelated dependencies."
+    )
+    if sync_invariant not in skill_text:
+        errors.append("semver-release/SKILL.md: bounded ecosystem synchronization invariant is missing")
+    npm_sync_contract = (
+        "existing `package-lock.json`",
+        "`preversion`, `version`, and `postversion`",
+        "npm version <version> --no-git-tag-version --ignore-scripts",
+        "`package.json.version`",
+        "`package-lock.json.version`",
+        "`package-lock.json.packages[\"\"].version`",
+    )
+    missing_npm_sync = [value for value in npm_sync_contract if value not in reference_text]
+    npm_sync_ordered = not missing_npm_sync and [reference_text.index(value) for value in npm_sync_contract] == sorted(
+        reference_text.index(value) for value in npm_sync_contract
+    )
+    if missing_npm_sync or not npm_sync_ordered:
+        errors.append("semver-release/reference.md: bounded npm version synchronization contract is missing")
+    cargo_sync_contract = (
+        "authoritative version source",
+        "`version.workspace = true`",
+        "`[workspace.package].version`",
+        "existing `Cargo.lock`",
+        "cargo update --workspace",
+        "cargo metadata --locked --format-version 1",
+        "unrelated dependency versions remain locked",
+    )
+    missing_cargo_sync = [value for value in cargo_sync_contract if value not in reference_text]
+    cargo_sync_ordered = not missing_cargo_sync and [
+        reference_text.index(value) for value in cargo_sync_contract
+    ] == sorted(reference_text.index(value) for value in cargo_sync_contract)
+    if missing_cargo_sync or not cargo_sync_ordered:
+        errors.append("semver-release/reference.md: bounded Cargo lock synchronization contract is missing")
+    for line in reference_text.splitlines():
+        command = line.strip()
+        if re.match(r"^npm version(?:\s|$)", command) and (
+            "--no-git-tag-version" not in command or "--ignore-scripts" not in command
+        ):
+            errors.append("semver-release/reference.md: npm version command can own Git or lifecycle side effects")
+            break
+    if re.search(r"(?m)^\s*cargo update\s*$", reference_text):
+        errors.append("semver-release/reference.md: bare cargo update command can refresh dependencies")
+    if "cargo metadata --locked --no-deps --format-version 1" in reference_text:
+        errors.append("semver-release/reference.md: --no-deps metadata does not validate Cargo.lock")
+    stale_selector = "git tag --list 'v[0-9]*' --sort=-v:refname | head -10"
+    if stale_selector in combined:
+        errors.append("semver-release: stale Git version-sort base selector remains")
+    if "git add CHANGELOG.md <version-file> [release-notes]" in skill_text:
+        errors.append("semver-release/SKILL.md: partial release staging command remains")
+    if "Prerelease suffixes generally do **not** go into the version file" in combined:
+        errors.append("semver-release: stale tag-only prerelease guidance remains")
 
 
 def validate_grouping_manifest(skill_dirs: list[Path]) -> None:

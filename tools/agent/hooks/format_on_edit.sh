@@ -25,44 +25,17 @@ fmt_cmd="${FORMAT_ON_EDIT_CMD:-npx --no-install prettier --write}"
 fmt_exts="${FORMAT_ON_EDIT_EXTS:-ts tsx js mjs cjs json}"
 
 hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-proj="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/dev/null || (cd "$hook_dir/../../.." && pwd))}"
+common="$hook_dir/hook-common.sh"
+[[ -f "$common" ]] || exit 0
+# shellcheck source=hook-common.sh
+# shellcheck disable=SC1091
+source "$common"
+proj="$(hook_project_root 2>/dev/null || true)"
+[[ -n "$proj" ]] || exit 0
 input="$(cat || true)"
 
 extract_paths() {
-    if command -v python >/dev/null 2>&1; then
-        HOOK_INPUT="$input" python - <<'PY'
-import json, os, re, sys
-raw = os.environ.get("HOOK_INPUT", "")
-try:
-    data = json.loads(raw) if raw.strip() else {}
-except Exception:
-    sys.exit(0)
-tool_input = data.get("tool_input") or {}
-if not isinstance(tool_input, dict):
-    tool_input = {"input": str(tool_input)}
-cwd = data.get("cwd") or os.environ.get("PWD") or os.getcwd()
-paths = []
-for key in ("file_path", "path"):
-    value = tool_input.get(key)
-    if isinstance(value, str) and value:
-        paths.append(value)
-patch = tool_input.get("patch") or tool_input.get("input") or data.get("input")
-if isinstance(patch, str):
-    for line in patch.splitlines():
-        m = re.match(r"^\*\*\* (?:Add|Update) File: (.+)$", line)
-        if m:
-            paths.append(m.group(1).strip())
-seen = set()
-for path in paths:
-    if not os.path.isabs(path):
-        path = os.path.abspath(os.path.join(cwd, path))
-    if path not in seen:
-        seen.add(path)
-        print(path)
-PY
-    elif command -v jq >/dev/null 2>&1; then
-        jq -r '.tool_input.file_path // .tool_input.path // empty' <<<"$input" 2>/dev/null
-    fi
+    hook_extract_paths "$input"
 }
 
 # Bail (loud no-op) if the formatter's launcher isn't on PATH (e.g. no npx).

@@ -10,9 +10,11 @@ Read subjects **and** bodies (`git log <base>..HEAD --pretty='%h %s%n%b%n---'`):
 
 | Trigger | Bump | Example |
 |---|---|---|
-| `!:` in subject (`feat!:`, `fix!:`) or `BREAKING CHANGE:` in body | MAJOR | `0.4.2 → 1.0.0` |
+| `!` before the subject colon (`feat!:`, `fix!:`) or an uppercase `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | MAJOR | `0.4.2 → 1.0.0` |
 | any `feat:` / `feat(scope):` | MINOR | `0.4.2 → 0.5.0` |
 | only `fix:` / `perf:` / `refactor:` / `docs:` / `chore:` / `test:` / `build:` / `style:` / `ci:` | PATCH | `0.4.2 → 0.4.3` |
+
+Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
 
 Pre-1.0 caution: many projects treat a breaking change before `1.0.0` as a MINOR bump rather than jumping to `1.0.0`. When the repo is still `0.y.z`, confirm with the user before auto-promoting a breaking change to `1.0.0`.
 
@@ -31,22 +33,97 @@ Prerelease increment rules:
 
 ### Base selection
 
-- Find the base by matching `v\d+\.\d+\.\d+(-\S+)?` tags only; skip non-semver tags (release-train markers, ship tags, etc.).
-- For a **prerelease** (`v0.5.0-beta.2`): base = the previous tag (including an earlier prerelease of the same version). The CHANGELOG appends a new section; older prerelease sections stay (fragmentation is expected during a preview round).
+Before enumerating tags, run `git rev-parse --is-shallow-repository`. In a shallow repository that flag covers every ref, so a repository-level `true` is not sufficient to prove that HEAD history is incomplete. List each apparent HEAD root with `git rev-list --max-parents=0 HEAD`, then inspect its raw commit headers before the first blank line with `git cat-file -p <root>`. A true root has no `parent` header; an apparent root whose raw object still records a `parent` is a HEAD-reachable shallow boundary. Stop before base selection only if an apparent HEAD root has a raw `parent` header, then deepen or unshallow the checkout; fetched tag refs alone do not restore missing ancestry. Never interpret tags hidden by such a boundary as a first release.
+
+Enumerate every HEAD-reachable `v`-prefixed candidate first with `git tag --merged HEAD --list 'v[0-9]*'`. Strip exactly one leading `v`, then validate the remainder as full SemVer 2.0.0 before ranking it. Historical base tags may use the full specification even though this skill deliberately creates the narrower stable or numbered-prerelease forms documented in `SKILL.md`.
+
+Strict validity requires:
+
+- exactly three numeric core identifiers with no leading zeroes (except `0` itself);
+- non-empty prerelease identifiers containing only ASCII alphanumerics or hyphens, with no leading zeroes in numeric identifiers;
+- optional non-empty build identifiers containing only ASCII alphanumerics or hyphens.
+
+Thus `v01.2.3` and `v1.2.3-rc.01` are invalid. Reject them before ordering or truncating the candidate set.
+
+Rank valid candidates by SemVer 2.0.0 precedence: compare major, minor, and patch numerically; a prerelease is lower than the matching stable version; compare prerelease identifiers numerically when both are numeric, otherwise by the SemVer numeric/non-numeric and ASCII rules. For example, `v1.1.0-rc.1 < v1.1.0`. Build metadata is valid but build metadata does not affect precedence. Git's `version:refname` order is not SemVer precedence and can change with `versionsort.suffix`, so never use Git version sort (or `sort -V`) as the selector.
+
+Peel each tied tag object with `git rev-parse '<tag>^{commit}'`. When highest-precedence tags differ only by build metadata, use their shared commit as `<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity.
+
+Before using the result, run `git merge-base --is-ancestor <base> HEAD`. Status 1 means it is not HEAD-reachable; another nonzero status is a Git error. Stop instead of choosing a different tag by incidental list order.
+
+- For a **prerelease** (`v0.5.0-beta.2`): base = the previous HEAD-reachable valid SemVer tag (including an earlier prerelease of the same version). The CHANGELOG appends a new section; older prerelease sections stay (fragmentation is expected during a preview round).
 - For a **stable** `vX.Y.Z` when same-`X.Y.Z` prereleases exist: see **Promote-and-merge** below.
-- First-ever release (no `v*` tag): base = repo root (`git log` with no range, or `--root`); default start tag `v0.1.0` or the version file's current value.
+- First-ever release means there is no HEAD-reachable valid SemVer base: base = repo root (`git log` with no range, or `--root`); default start tag `v0.1.0` or the version file's current value.
 
 ## Version-file sync
 
-Update only the numeric `X.Y.Z` triple. Prerelease suffixes generally do **not** go into the version file — `v0.5.0-beta.1` and the final `v0.5.0` both carry `0.5.0` in the manifest, distinguished by the git tag. Common files:
+Keep the manifest identity aligned with what that ecosystem will publish. A git
+tag is not a substitute for a package version: publishing `v0.5.0-beta.1` from a
+manifest that says `0.5.0` can occupy or mislabel the final version.
 
-| Ecosystem | File | Field |
-|---|---|---|
-| Node | `package.json` | `"version"` |
-| Python | `pyproject.toml` / `setup.cfg` | `version` |
-| Rust | `Cargo.toml` | `version` |
-| C/C++ (CMake) | `CMakeLists.txt` | `project(... VERSION X.Y.Z)` |
-| generic | `VERSION` | whole-file `X.Y.Z` |
+| Ecosystem | Prerelease tag `v1.2.0-beta.1` | Final `v1.2.0` | Coupled files/tooling |
+|---|---|---|---|
+| Node | `package.json` version `1.2.0-beta.1` | `1.2.0` | update the package lock with the repository's package manager |
+| Rust | `Cargo.toml` version `1.2.0-beta.1` | `1.2.0` | let Cargo update `Cargo.lock` when the package is represented there |
+| Python | PEP 440 `1.2.0b1` (`alpha.N` → `aN`, `beta.N` → `bN`, `rc.N` → `rcN`) | `1.2.0` | update the authoritative static version field; respect dynamic-version tooling |
+| C/C++ (CMake) | keep `project(... VERSION 1.2.0)` numeric and update the repo's separate suffix field to `beta.1` | clear the suffix | stop and ask if the project has no defined suffix mechanism but ships prerelease artifacts |
+| generic `VERSION` | follow the repo's documented format; default to `1.2.0-beta.1` when it is package-facing | `1.2.0` | update any generated mirrors through their authoritative command |
+
+### Python prerelease mapping boundary
+
+[SemVer 2.0.0](https://semver.org/spec/v2.0.0.html) permits arbitrary valid prerelease
+identifiers, while the [Python packaging version
+scheme](https://packaging.python.org/en/latest/specifications/version-specifiers/) defines
+`a`, `b`, and `rc` as its prerelease phases and gives `.devN` separate ordering semantics.
+Therefore `v1.2.0-canary.1` remains a valid SemVer tag for historical base selection and
+non-Python ecosystems, but it has no built-in Python mapping here.
+
+For a Python version field, map only the lowercase numbered forms shown in the table by
+default. If the repository documents another mapping in its packaging or dynamic-version
+tooling, follow that rule and verify the resulting package identity. Otherwise stop before
+writing release files, committing, tagging, or pushing. Never silently reinterpret an unknown
+label as `.devN`, a local version, or the final release; those forms have different identity or
+ordering semantics. This boundary does not narrow full-SemVer historical tag validation or the
+values used by Node, Rust, and generic version files.
+
+### Bounded coupled-file updates
+
+Ecosystem tools synchronize release files; they do not own the release commit, tag, or push, and
+they must not widen the change into dependency upgrades.
+
+- **Node (single-package npm project with an existing `package-lock.json`).** Inspect
+  `preversion`, `version`, and `postversion` before invoking npm. If one is the repository's
+  authoritative version-mirror or release flow, follow the repository documentation only after
+  confirming it leaves commit/tag/push ownership to this workflow; if that is unclear, stop and
+  ask. When those scripts are absent or confirmed unnecessary for release-file synchronization,
+  do not hand-edit `package.json` first; run:
+
+  ```bash
+  npm version <version> --no-git-tag-version --ignore-scripts
+  ```
+
+  Verify that `package.json.version`, `package-lock.json.version`, and, when present,
+  `package-lock.json.packages[""].version` all equal `<version>`, then inspect the diff for only
+  the intended manifest and lock changes. For workspaces or another package manager, use the
+  repository's bounded, documented equivalent instead of guessing.
+- **Rust (standalone or shared-version workspace).** First locate the authoritative version source.
+  If the member declares `version.workspace = true`, update the root
+  `[workspace.package].version` and preserve that inheritance marker; otherwise update the direct
+  member `[package].version`. Independently versioned workspaces stay on the repository's release
+  tooling boundary below. With an existing `Cargo.lock` that already represents the target package,
+  run:
+
+  ```bash
+  cargo update --workspace
+  cargo metadata --locked --format-version 1
+  ```
+
+  The metadata call resolves the dependency graph so `--locked` fails if resolution would change
+  the lock; it may fetch according to the repository's Cargo configuration but cannot rewrite the
+  lock. Confirm it reports the intended workspace-package version and review `Cargo.lock` so
+  unrelated dependency versions remain locked. If the lock is absent, the package is not
+  represented, or the pinned Cargo lacks `--workspace`, follow the repository's documented flow or
+  stop; never fall back to a bare dependency update or create a lockfile implicitly.
 
 If the project has no version file, skip this step and say so.
 
@@ -120,9 +197,9 @@ Keep the heading shape exactly `## [vX.Y.Z] — YYYY-MM-DD` so this extraction �
 
 When tagging a **stable** `vX.Y.Z` and same-`X.Y.Z` prerelease tags already exist (`vX.Y.Z-beta.N` / `-rc.N` / `-alpha.N`):
 
-- **changelog base** = the previous *stable* release (skip all same-`X.Y.Z` prereleases), so the final section covers the whole span in one place.
+- **changelog base** = the previous HEAD-reachable stable release, or repo root if none exists (skip all same-`X.Y.Z` prereleases), so the final section covers the whole span in one place.
 - **CHANGELOG write is replace-style**: delete the same-`X.Y.Z` prerelease sections and insert one new `## [vX.Y.Z] — YYYY-MM-DD` covering the full previous-stable..HEAD range. A reader sees one consolidated `[vX.Y.Z]` section instead of stitching `beta.1`/`beta.2`/`rc.1` together.
-- the version file already holds `X.Y.Z` from the prereleases — no numeric change.
+- rewrite prerelease-aware manifests from their prerelease value to the final value (for example `1.2.0-rc.2` / `1.2.0rc2` → `1.2.0`); CMake clears its separate suffix while retaining numeric `X.Y.Z`.
 
 Illustration:
 

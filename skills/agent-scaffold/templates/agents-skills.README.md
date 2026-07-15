@@ -7,12 +7,12 @@ Both runtimes consume the same `SKILL.md` files, by different discovery paths:
 |---|---|---|
 | Source | `.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
 | Discovery | `.claude/skills/<name>` (symlink) | reads `.agents/skills/` directly |
-| After a change | run `./.agents/relink-skills.sh` | nothing extra |
+| After a change | run `bash .agents/relink-skills.sh` | nothing extra |
 
 ## Add / rename / remove a skill
 
 1. Create or edit `.agents/skills/<name>/SKILL.md` (+ optional `references/`, `scripts/`).
-2. Run `./.agents/relink-skills.sh` (idempotent — (re)creates `.claude/skills/<name>`, prunes stale links).
+2. Run `bash .agents/relink-skills.sh` (idempotent — preflights real links, (re)creates `.claude/skills/<name>`, and prunes stale managed links; never copies).
 3. `git add .agents/skills/<name> .claude/skills/<name>`.
 
 Directories named `_*` (e.g. `_shared/`) are support material — they are **not** skills

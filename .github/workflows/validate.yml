@@ -6,24 +6,241 @@ on:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    name: validate (${{ matrix.os }})
+    env:
+      # Windows otherwise defaults Path.read_text() and redirected stdout to a
+      # legacy code page, which breaks UTF-8 skill files and non-ASCII repo paths.
+      PYTHONUTF8: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
+      # checkout must see the global value before it materializes tracked 120000 entries.
+      - name: Enable native symlink checkout (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: git config --global core.symlinks true
+
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      # Local equivalent: python scripts/validate_skills.py
-      - name: Validate skills catalog
+
+      - name: Assert platform shell and real checkout links
+        env:
+          EXPECTED_OS: ${{ runner.os }}
+        run: |
+          bash --version | head -1
+          case "$EXPECTED_OS" in
+            macOS)
+              [[ ${BASH_VERSINFO[0]} -eq 3 ]]
+              ;;
+            Windows)
+              case "$(uname -s)" in MINGW*|MSYS*) ;; *) exit 1 ;; esac
+              git config --local core.symlinks true
+              rm -f CLAUDE.md
+              git checkout -- CLAUDE.md
+              ;;
+          esac
+          test -L CLAUDE.md
+          test "$(readlink CLAUDE.md)" = AGENTS.md
+
+      - name: Install pinned validation dependencies
+        run: python -m pip install -r requirements-validation.txt
+
+      - name: Validate catalog rules
         run: python scripts/validate_skills.py
-      # Local equivalent: bash scripts/check-agent-scaffold.sh
+
+      - name: Validate official Agent Skills specification
+        run: |
+          for skill in skills/*; do
+            [[ -d "$skill" ]] && python -m skills_ref.cli validate "$skill"
+          done
+
       - name: Check agent-scaffold invariants
-        if: always() # run even if the catalog check failed — one run surfaces every failure
+        if: always()
         run: bash scripts/check-agent-scaffold.sh
-      # Local equivalent: shellcheck $(find scripts skills -type f -name '*.sh')  — shellcheck is preinstalled on ubuntu-latest
-      - name: Shellcheck bundled scripts
+
+      - name: Exercise tooling manifest reconciliation
         if: always()
-        run: shellcheck $(find scripts skills -type f -name '*.sh')
-      # Local equivalent: bash scripts/e2e-agent-scaffold.sh  (installs the harness into a throwaway repo and asserts it works)
-      - name: E2E installer test (agent-scaffold)
+        run: |
+          fixture="$(mktemp -d)"
+          trap 'rm -rf "$fixture"' EXIT
+          mkdir -p "$fixture/tools/package-dir" "$fixture/tools/vendor"
+          printf 'path\tsurface\n' > "$fixture/tools/tools-manifest.tsv"
+          printf 'tool.sh\tpublic\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf 'package-dir/\tpackage\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf 'vendor/tool\tvendor\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf 'valid path-雪.py\thelper\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf '%s\n' '#!/usr/bin/env bash' 'case "${1:-}" in -h|--help) exit 0;; esac' > "$fixture/tools/tool.sh"
+          printf 'vendor fixture\n' > "$fixture/tools/vendor/tool"
+          printf '# -*- coding: latin-1 -*-\nmessage = "caf\351"\n' > "$fixture/tools/valid path-雪.py"
+          bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"
+          if find "$fixture/tools" -type f -name '*.pyc' -print -quit | grep -q .; then
+            echo "manifest check left Python bytecode residue" >&2
+            exit 1
+          fi
+          negative_fails=0
+          cp "$fixture/tools/tools-manifest.tsv" "$fixture/base-manifest.tsv"
+          printf 'path\tsurface\n' > "$fixture/tools/duplicate-path-manifest.tsv"
+          printf 'tool.sh\tpublic\n' >> "$fixture/tools/duplicate-path-manifest.tsv"
+          printf 'tool.sh\thelper\n' >> "$fixture/tools/duplicate-path-manifest.tsv"
+          if duplicate_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/duplicate-path-manifest.tsv" 2>&1)"; then
+            echo "expected a duplicate manifest path to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: duplicate manifest path: tool.sh' <<<"$duplicate_output"; then
+            echo "missing duplicate manifest path diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf 'path\tsurface\n' > "$fixture/tools/invalid-surface-manifest.tsv"
+          printf 'tool.sh\tpublci\n' >> "$fixture/tools/invalid-surface-manifest.tsv"
+          if invalid_surface_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/invalid-surface-manifest.tsv" 2>&1)"; then
+            echo "expected an invalid manifest surface to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: invalid manifest surface for tool.sh: publci' <<<"$invalid_surface_output"; then
+            echo "missing invalid manifest surface diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf 'vendor/missing-tool\tvendor\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf 'missing-package/\tpackage\n' >> "$fixture/tools/tools-manifest.tsv"
+          if forward_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv" 2>&1)"; then
+            echo "expected every missing manifest row to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          else
+            for missing in vendor/missing-tool missing-package/; do
+              if ! grep -qF "manifest row → missing file: $missing" <<<"$forward_output"; then
+                echo "missing forward-drift diagnostic for: $missing" >&2
+                negative_fails=$((negative_fails + 1))
+              fi
+            done
+          fi
+          printf 'audit_level\tpath\tsurface\n' > "$fixture/tools/enforce-manifest.tsv"
+          printf 'enforce\ttool.sh\tpublic\n' >> "$fixture/tools/enforce-manifest.tsv"
+          printf 'enforce\tvendor/missing-enforce-tool\tvendor\n' >> "$fixture/tools/enforce-manifest.tsv"
+          if enforce_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/enforce-manifest.tsv" 2>&1)"; then
+            echo "expected explicit audit_level=enforce to remain blocking" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: manifest row → missing file: vendor/missing-enforce-tool' <<<"$enforce_output"; then
+            echo "missing explicit enforce-level diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf 'path\tsurface\taudit_level\tnotes\n' > "$fixture/tools/blank-audit-manifest.tsv"
+          printf 'tool.sh\tpublic\tenforce\tfixture\n' >> "$fixture/tools/blank-audit-manifest.tsv"
+          printf 'vendor/missing-blank-audit-tool\tvendor\t\twarn\n' >> "$fixture/tools/blank-audit-manifest.tsv"
+          if blank_audit_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/blank-audit-manifest.tsv" 2>&1)"; then
+            echo "expected a blank audit_level to default to enforce" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: manifest row → missing file: vendor/missing-blank-audit-tool' <<<"$blank_audit_output"; then
+            echo "later TSV fields shifted into a blank audit_level" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf 'path\taudit_level\tsurface\r\n' > "$fixture/tools/crlf-manifest.tsv"
+          printf 'tool.sh\tenforce\tpublic\r\n' >> "$fixture/tools/crlf-manifest.tsv"
+          printf 'vendor/missing-crlf-tool\twarn\tvendor\r\n' >> "$fixture/tools/crlf-manifest.tsv"
+          if ! crlf_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/crlf-manifest.tsv" 2>&1)"; then
+            echo "expected CRLF manifest rows to preserve named columns and warn levels" >&2
+            printf '%s\n' "$crlf_output" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'warn: manifest row → missing file: vendor/missing-crlf-tool' <<<"$crlf_output"; then
+            echo "missing CRLF warn-level diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf 'path\tsurface\taudit_level\r\n' > "$fixture/tools/crlf-audit-manifest.tsv"
+          printf 'tool.sh\tpublic\tenforce\r\n' >> "$fixture/tools/crlf-audit-manifest.tsv"
+          printf 'vendor/missing-crlf-audit-tool\tvendor\twarn\r\n' >> "$fixture/tools/crlf-audit-manifest.tsv"
+          if ! crlf_audit_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/crlf-audit-manifest.tsv" 2>&1)"; then
+            echo "expected a CRLF audit_level value to remain advisory" >&2
+            printf '%s\n' "$crlf_audit_output" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'warn: manifest row → missing file: vendor/missing-crlf-audit-tool' <<<"$crlf_audit_output"; then
+            echo "CRLF changed the warn audit level" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf '%s\n' '#!/usr/bin/env bash' 'if then' > "$fixture/tools/bad.sh"
+          printf '%s\n' 'return 1' > "$fixture/tools/bad.py"
+          printf 'path\tsurface\tdomain\tentry_for\taudit_level\n' > "$fixture/tools/warn-manifest.tsv"
+          printf 'tool.sh\tpublic\tfixture\t\tenforce\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'vendor/missing-warn-tool\tvendor\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'missing-warn-package/\tpackage\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'bad.sh\thelper\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          printf 'bad.py\thelper\tfixture\t\twarn\n' >> "$fixture/tools/warn-manifest.tsv"
+          if ! warn_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/warn-manifest.tsv" 2>&1)"; then
+            echo "expected audit_level=warn rows to remain advisory" >&2
+            printf '%s\n' "$warn_output" >&2
+            negative_fails=$((negative_fails + 1))
+          else
+            for missing in vendor/missing-warn-tool missing-warn-package/; do
+              if ! grep -qF "warn: manifest row → missing file: $missing" <<<"$warn_output"; then
+                echo "missing warn-level forward-drift diagnostic for: $missing" >&2
+                negative_fails=$((negative_fails + 1))
+              fi
+            done
+            for syntax in 'shell syntax error: bad.sh' 'python compile error: bad.py'; do
+              if ! grep -qF "warn: $syntax" <<<"$warn_output"; then
+                echo "missing warn-level syntax diagnostic for: $syntax" >&2
+                negative_fails=$((negative_fails + 1))
+              fi
+            done
+            if ! grep -qF 'RESULT: OK (4 warn)' <<<"$warn_output"; then
+              echo "warn-level forward drift did not remain non-blocking" >&2
+              negative_fails=$((negative_fails + 1))
+            fi
+          fi
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$fixture/tools/rogue.sh"
+          if rogue_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/warn-manifest.tsv" 2>&1)"; then
+            echo "expected reverse drift to remain blocking after warn-level rows" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: unregistered command surface (no manifest row): rogue.sh' <<<"$rogue_output"; then
+            echo "warn-level row state leaked into reverse drift" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          mv "$fixture/base-manifest.tsv" "$fixture/tools/tools-manifest.tsv"
+          if TOOLS_DIR="$fixture/missing" bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"; then
+            echo "expected a missing scan root to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          mkdir -p "$fixture/bin"
+          printf '%s\n' '#!/usr/bin/env bash' 'echo "injected find failure" >&2' 'exit 37' > "$fixture/bin/find"
+          chmod +x "$fixture/bin/find"
+          if PATH="$fixture/bin:$PATH" bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"; then
+            echo "expected a reverse-scan failure to propagate" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          test "$negative_fails" = 0
+
+      - name: E2E installer test with mandatory real links
         if: always()
+        env:
+          AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS: "1"
         run: bash scripts/e2e-agent-scaffold.sh
+
+      - name: Smoke-test real npx skills discovery
+        if: always()
+        run: |
+          set +e
+          output="$(NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add . -l 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            printf 'npx discovery command failed with status %s\n' "$status" >&2
+            exit "$status"
+          fi
+          actual="$(printf '%s\n' "$output" | tr -d '\r' | sed -n 's/^.*    \([a-z0-9][a-z0-9-]*\)$/\1/p' | sort)"
+          expected="$(python -c 'from pathlib import Path; print("\n".join(sorted(path.name for path in Path("skills").iterdir() if path.is_dir())))' | tr -d '\r')"
+          if [ "$actual" != "$expected" ]; then
+            printf 'npx discovery mismatch\nexpected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2
+            exit 1
+          fi
+
+      - name: Shellcheck bundled scripts and extensionless Husky hook
+        if: always() && runner.os == 'Linux'
+        run: |
+          find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
+          shellcheck skills/agent-scaffold/templates/husky.pre-commit

@@ -37,6 +37,21 @@ python tools/agent/generate-subagents.py --check   # exit 1 on drift
 }
 ```
 
+`<name>` is the portable intersection used by both hosts: lowercase ASCII letter groups separated
+by single hyphens, excluding Windows-reserved device names. Keep that exact value in the directory,
+`metadata.json`, and both generated filenames; the generator rejects Codex-only underscore
+identities instead of silently renaming them. Codex nickname candidates must be unique and contain
+only ASCII letters, digits, spaces, hyphens, and underscores.
+
+The generator validates this documented JSON shape before rendering: object fields must be objects,
+all projected scalar fields must be non-empty strings, `claude.tools` must be a non-empty string
+array of already-trimmed, comma-free entries when present, and unsupported fields fail closed instead
+of being coerced or silently omitted. Apart from this README, `.gitkeep`, and underscore-prefixed
+helpers, every child of this directory must be a subagent directory.
+Host import applies the same presence rule to explicit optional fields. Generated YAML/TOML strings
+escape their shared non-printable range; instruction bodies that cannot be represented by the TOML
+multiline literal projection are rejected before any source or projection is written.
+
 `instructions.md` is the full behavioral prompt (becomes the CC body and the Codex
 `developer_instructions`). Keep subagents **read-only reviewers** unless a write surface is justified.
 
@@ -44,6 +59,6 @@ python tools/agent/generate-subagents.py --check   # exit 1 on drift
 > Python standard library, with no extra dependency to write TOML. The generated **Codex**
 > projection is still valid TOML.
 
-> Requires python (the generator + the `--check` drift guard) — no Node or `package.json` needed.
-> On a host without python the agent-scaffold skill skips subagent projection; install python and
-> re-run `agent-scaffold upgrade` to enable it.
+> The harness requires Python 3.8+ (resolved from `PYTHON_BIN`, `python`, `python3`, or `py -3`)
+> for real-link management, hook JSON parsing, and subagent projection. No Node or `package.json`
+> is needed; without Python the installer fails before changing the target repository.

@@ -2,7 +2,7 @@
 #
 # IMPORTANT — Codex trust gate: Codex only loads a project's .codex/ (config +
 # hooks + agents) for a TRUSTED project. Until the project is trusted, the whole
-# project-level .codex/ — including the worktree guard and the other hooks — is
+# project-level .codex/ — including enabled hooks and the optional worktree guard — is
 # silently skipped. Trust it once, either way:
 #   - run `codex` in this repo and accept the trust prompt, or
 #   - add to ~/.codex/config.toml:

@@ -44,6 +44,6 @@ python tools/agent/generate-subagents.py --check   # exit 1 on drift
 > Python standard library, with no extra dependency to write TOML. The generated **Codex**
 > projection is still valid TOML.
 
-> Requires python (the generator + the `--check` drift guard) — no Node or `package.json` needed.
-> On a host without python the agent-scaffold skill skips subagent projection; install python and
-> re-run `agent-scaffold upgrade` to enable it.
+> The harness requires Python 3.8+ (resolved from `PYTHON_BIN`, `python`, `python3`, or `py -3`)
+> for real-link management, hook JSON parsing, and subagent projection. No Node or `package.json`
+> is needed; without Python the installer fails before changing the target repository.

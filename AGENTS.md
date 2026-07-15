@@ -17,10 +17,14 @@ Agent-Skills hosts). It ships 5 skills: `conventional-commit`, `semver-release`,
 The CI gates must stay green — `.github/workflows/validate.yml` runs them on push/PR:
 
 ```bash
+python -m pip install -r requirements-validation.txt  # pinned StrictYAML + official skills-ref
 python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
+for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
+npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 bash scripts/e2e-agent-scaffold.sh      # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
-shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell script stays clean
+find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
+shellcheck skills/agent-scaffold/templates/husky.pre-commit
 ```
 
 ## Architecture
@@ -35,8 +39,9 @@ shellcheck $(find scripts skills -type f -name '*.sh')   # every bundled shell s
   green before any merge back to `main`.
 - **Cross-platform (design goal)** — skills + bundled scripts target macOS / Linux / Windows
   (**Git Bash only**): keep them POSIX-bash + GNU-coreutils compatible, **LF** line endings
-  (enforced by `.gitattributes` + a CI CRLF check), and **symlink-degradation-aware** (never
-  silently copy when the OS lacks symlink support). Subagents/hook-JSON use `python`.
+  (enforced by `.gitattributes` + a CI CRLF check), and **real-symlink-required** (preflight
+  fails before mutation when the OS lacks symlink support; copying is forbidden). Harness
+  symlink management, subagents, and hook JSON parsing use `python`.
 
 ## Catalog Maintenance Gotchas
 
@@ -62,8 +67,8 @@ implementations under `tools/agent/`.
 is NOT an exception), starts in its own worktree cut from the trunk tip:
 
 ```bash
-tools/agent/worktree.sh new <name>   # edit inside .worktrees/<name>/  (branch feat|fix|docs|chore/<name>)
-tools/agent/worktree.sh done         # merge back to local trunk (--no-ff) + clean up + ff-only push
+bash tools/agent/worktree.sh new <name>   # edit inside .worktrees/<name>/  (branch feat|fix|docs|chore/<name>)
+bash tools/agent/worktree.sh done         # merge back to local trunk (--no-ff) + clean up + ff-only push
 ```
 
 `tools/agent/hooks/trunk_edit_guard.sh` (PreToolUse) mechanically blocks edits to
@@ -87,11 +92,12 @@ files carry `<!-- Parent: ../AGENTS.md -->` and stay subordinate to the root.
 | `.agents/subagents/<name>/{metadata.json,instructions.md}` | subagent source | ✅ |
 | `.claude/skills/<name>` | symlink → `.agents/skills/<name>` (CC discovery; Codex reads `.agents/` directly) | ✅ |
 | `.claude/agents/*.md`, `.codex/agents/*.toml` | **generated** subagent projections — do NOT hand-edit | ✅ |
-| `tools/agent/hooks/` | shared hook impls (trunk guard / doc budget / format) | ✅ |
+| `tools/agent/hooks/` | shared hook impls (doc budget / format + optional trunk guard) | ✅ |
 | `tools/agent/worktree.sh` | worktree lifecycle | ✅ |
-| `.claude/allow-trunk-edit`, `.claude/settings.local.json` | escape hatch / personal overrides | ❌ ignored |
+| `.claude/allow-trunk-edit` | worktree escape hatch | ❌ ignored |
+| `.claude/settings.local.json` | personal overrides | ❌ ignored |
 
-- **Add a skill**: edit `.agents/skills/` → run `./.agents/relink-skills.sh` → commit source + symlink.
+- **Add a skill**: edit `.agents/skills/` → run `bash .agents/relink-skills.sh` → commit source + symlink.
 - **Add a subagent** (needs python): edit `.agents/subagents/` → run `python tools/agent/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
 - **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
 

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; \"$root/tools/agent/hooks/trunk_edit_guard.sh\"'",
+            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; bash \"$root/tools/agent/hooks/trunk_edit_guard.sh\"'",
             "statusMessage": "Checking worktree policy"
           }
         ]
@@ -18,12 +18,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; \"$root/tools/agent/hooks/format_on_edit.sh\"'",
+            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; bash \"$root/tools/agent/hooks/format_on_edit.sh\"'",
             "statusMessage": "Running format-on-edit hook"
           },
           {
             "type": "command",
-            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; \"$root/tools/agent/hooks/authority_doc_budget.sh\"'",
+            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; bash \"$root/tools/agent/hooks/authority_doc_budget.sh\"'",
             "statusMessage": "Checking AGENTS.md budget"
           }
         ]

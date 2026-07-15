@@ -1,0 +1,3 @@
+# Official Agent Skills reference validator pinned to an audited upstream commit.
+# It supplies StrictYAML for the repo-local validator as well as `skills-ref`.
+skills-ref @ git+https://github.com/agentskills/agentskills.git@38a2ff82958afee88dadf4831509e6f7e9d8ef4e#subdirectory=skills-ref

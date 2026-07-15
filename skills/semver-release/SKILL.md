@@ -1,7 +1,7 @@
 ---
 name: semver-release
 description: Cut a semantic-version release from conventional commits — infer the MAJOR/MINOR/PATCH bump since the last tag, update CHANGELOG.md and the project version file, create the release commit and annotated tag, optionally publish a GitHub/GitLab release, and push. Use when the user wants to release, tag a version, bump the version, or update the changelog for a release; handles prerelease (beta/rc) and promoting a prerelease to final. Not for per-commit messages (use conventional-commit) or pushing feature branches.
-allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git:*), Bash(gh:*), Bash(glab:*), Bash(date:*), Bash(awk:*)
+compatibility: Requires git and a clean release-capable checkout; publishing additionally requires authenticated gh or glab.
 ---
 
 # Semver Release
@@ -26,8 +26,8 @@ Do not use this skill for:
 
 ## Invariants
 
-- **Tag format** is `vX.Y.Z` or `vX.Y.Z-<pre>.N` (e.g. `v1.2.0`, `v0.3.0-beta.1`, `v1.0.0-rc.2`). Reject `v1.0`, `0.1.0`, underscores.
-- **Version file stays in sync** with the numeric part of the tag. Detect the project's version file (e.g. `package.json`, `pyproject.toml`, `Cargo.toml`, `CMakeLists.txt project(... VERSION ...)`, `VERSION`) and update only its numeric `X.Y.Z` — prerelease suffixes usually do not go into it.
+- **Tags this skill creates** use `vX.Y.Z` or `vX.Y.Z-<pre>.N` (e.g. `v1.2.0`, `v0.3.0-beta.1`, `v1.0.0-rc.2`). Reject `v1.0`, `0.1.0`, underscores, and build-metadata suffixes on new tags; historical base tags are validated against full SemVer 2.0.0 in step 2.
+- **Version file stays semantically in sync with the tag.** Node and Rust manifests use the full SemVer value (`1.2.0-beta.1`); Python uses the equivalent PEP 440 value (`1.2.0b1` / `1.2.0rc1`) only for the built-in `alpha.N` / `beta.N` / `rc.N` mappings. Any other label requires an explicit repository-defined Python mapping; without one, stop before writing release files, committing, tagging, or pushing. CMake's `project(... VERSION ...)` stays numeric and any project-defined prerelease suffix is updated separately. Never publish a prerelease package whose manifest still identifies it as the final release.
 - **A tag push is not the finish line.** A tag-triggered release CI (if the repo has one) turns the push into the release; verify the forge release actually appeared and the release commit is on the trunk.
 - **Build/publish from a clean trunk**, not a dirty working tree. Refuse a detached HEAD.
 - **Never move or overwrite an existing tag.** If the target tag exists, stop and report.
@@ -40,17 +40,28 @@ Do not use this skill for:
 git status --porcelain          # must be empty
 git rev-parse --abbrev-ref HEAD # refuse detached HEAD
 git fetch --tags origin
+git rev-parse --is-shallow-repository
 ```
 
-If the branch is not the trunk (`main`/`master`) or a `release/*` line, call that out before continuing.
+If the branch is not the trunk (`main`/`master`) or a `release/*` line, call that out before continuing. If the shallow-repository check prints `true`, list apparent roots with `git rev-list --max-parents=0 HEAD` and inspect each raw commit with `git cat-file -p <root>`. A true root has no parent header; stop before base selection only if an apparent HEAD root has a raw `parent` header. A repository can remain shallow because of an unrelated ref, so the repository-level flag alone must not block the release.
 
 ### 2. Choose base and version
 
-List existing semver tags and find the base (latest `vX.Y.Z`, including prereleases; ignore non-semver tags):
+List every `v`-prefixed candidate whose tag commit is HEAD-reachable:
 
 ```bash
-git tag --list 'v[0-9]*' --sort=-v:refname | head -10
+git tag --merged HEAD --list 'v[0-9]*'
 ```
+
+Strip exactly one leading `v`, validate every candidate as strict SemVer 2.0.0, then rank all valid candidates by SemVer 2.0.0 precedence. Collect the full set and do not sort or truncate before validation. Git's version sort is configurable and is not a SemVer selector. Peel tied tag objects with `git rev-parse '<tag>^{commit}'`. When highest-precedence tags differ only by build metadata, use their shared commit as `<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity.
+
+Defensively confirm the selected base before collecting commits:
+
+```bash
+git merge-base --is-ancestor <base> HEAD
+```
+
+Exit status 1 means the selected base is not actually HEAD-reachable; any other nonzero status is a Git error. Stop in either case.
 
 Collect commits since the base, subjects **and** bodies, to infer the bump:
 
@@ -62,16 +73,18 @@ Infer the bump (highest match wins):
 
 | Trigger in any commit | Bump |
 |---|---|
-| `!:` in the subject (e.g. `feat!:`) or `BREAKING CHANGE:` in the body | **MAJOR** |
+| `!` before the subject colon (e.g. `feat!:`) or an uppercase `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | **MAJOR** |
 | any `feat:` / `feat(scope):` | **MINOR** |
 | only `fix:` / `perf:` / `refactor:` / `docs:` / `chore:` / `test:` / `build:` / `style:` / `ci:` | **PATCH** |
 
-Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. First-ever release with no `v*` tag → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease and promote-to-final mechanics: `reference.md`.
+Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
+
+Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. A first-ever release has no HEAD-reachable valid SemVer base → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease and promote-to-final mechanics: `reference.md`.
 
 ### 3. Write release files
 
 - **`CHANGELOG.md`** — insert a new `## [vX.Y.Z] — YYYY-MM-DD` section, conventional-commit grouped (Added / Fixed / Changed / Docs / Chore, breaking changes called out on top). Format + write strategy: `reference.md`. Edit in place; never overwrite the whole file.
-- **Version file(s)** — bump the numeric `X.Y.Z`. If the project pins its version in more than one place (a code constant, `package.json` + its lockfile, a docs badge), update **all** of them — `git grep -F <old-version>` to find them.
+- **Version file(s)** — write the ecosystem-canonical release value, including prerelease identity where the ecosystem supports it. Update coupled lockfiles (`package-lock.json`, `Cargo.lock`) through the ecosystem tool when applicable. Ecosystem synchronization must not create the release commit, tag, or push, or refresh unrelated dependencies. If the project pins its version in more than one place (a code constant, manifest + lockfile, docs badge), update **all** of them — `git grep -F <old-version>` to find them. The exact mapping and promote-to-final behavior are in `reference.md` → *Version-file sync*.
 - Optionally a per-release notes doc if the project keeps one.
 
 Get the date from the environment (`date +%F`); do not guess it.
@@ -79,12 +92,17 @@ Get the date from the environment (`date +%F`); do not guess it.
 ### 4. Commit, tag, push
 
 ```bash
-git add CHANGELOG.md <version-file> [release-notes]
+git add -- CHANGELOG.md <all-version-files> <all-coupled-lockfiles> [release-notes]
+git diff --cached --check
+git status --short # every file changed for the release must be staged
 git commit -m "release: vX.Y.Z"
+git status --porcelain # must be empty before tagging
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin <branch>
 git push origin vX.Y.Z
 ```
+
+Review the short status before committing: every file changed for the release must be staged, including lockfiles and generated version mirrors, with no unstaged or untracked release output and no unrelated path. If the staged set is not the exact intended release snapshot, stop and correct it before committing or tagging.
 
 ### 5. Publish the release
 

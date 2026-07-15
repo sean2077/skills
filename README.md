@@ -2,7 +2,7 @@
 
 Reusable agent skills for development, ops, and productivity — battle-tested patterns with working examples.
 
-Uses the universal [SKILL.md](https://github.com/anthropics/skills) format. Compatible with Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, Windsurf, and other agents supporting the Agent Skills spec.
+Uses the universal [Agent Skills specification](https://agentskills.io/specification). Compatible with Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, Windsurf, and other Agent Skills hosts.
 
 The minimal [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) is installer compatibility metadata: `npx skills` uses it to group the installed skills under **Sean2077 Skills** for every target agent.
 
@@ -35,7 +35,7 @@ If the skills were installed before the compatibility manifest existed, rerun th
 | [semver-release](skills/semver-release/) | Cut a semver release from conventional commits: infer the bump, update CHANGELOG + version file, tag, then hand off to tag-triggered release CI (or publish a GitHub/GitLab release directly). | Git, Release |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [tooling-conventions](skills/tooling-conventions/) | Govern a project's `tools/`/`scripts/` directory at scale: surface taxonomy, failure-domain aggregation, placement tree, script contract, and a reconciliation-checked surface manifest. Ships `manifest-check.sh`. | Shell, Governance |
-| [agent-scaffold](skills/agent-scaffold/) | Install or retrofit the full dual-host (Claude Code + Codex) agent harness into a project: `.agents/` single-source-of-truth layout, worktree-per-change flow + trunk-edit guard, AGENTS.md line-budget + format-on-edit hooks, `CLAUDE.md`→`AGENTS.md` contract + a parent-linked nested AGENTS.md tree, and a Python subagent generator + pre-commit drift guard. One idempotent, merge-aware installer (`harness-init.sh`); coexists with `npx skills` for third-party skills. | Shell, Python, Governance |
+| [agent-scaffold](skills/agent-scaffold/) | Install or retrofit a dual-host (Claude Code + Codex) agent harness: `.agents/` SSOT with mandatory real symlink projections, AGENTS.md/format/subagent governance, and a default-on worktree + trunk-guard workflow that lighter projects can omit with `--no-worktree`. Includes a preflight `doctor`; unsupported symlink hosts fail before mutation and never receive copy fallbacks. | Shell, Python, Governance |
 
 ## Structure
 
@@ -49,6 +49,7 @@ scripts/
 ├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 └── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
+requirements-validation.txt  # pinned official skills-ref + StrictYAML validation dependency
 .claude-plugin/
 └── plugin.json             # npx skills grouping metadata, kept in sync by the validator
 .github/workflows/
