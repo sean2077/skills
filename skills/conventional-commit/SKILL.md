@@ -2,7 +2,6 @@
 name: conventional-commit
 description: Create one local git commit with a Conventional Commits subject whose summary language follows repository history, defaulting to English when history is absent or unclear; or generate only the subject when explicitly asked.
 compatibility: Requires git and a non-detached repository checkout.
-allowed-tools: Read Grep Glob Bash(git:*)
 ---
 
 # Conventional Commit

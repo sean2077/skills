@@ -2,7 +2,6 @@
 name: semver-release
 description: Cut a semantic-version release from conventional commits — infer the MAJOR/MINOR/PATCH bump since the last tag, update CHANGELOG.md and the project version file, create the release commit and annotated tag, optionally publish a GitHub/GitLab release, and push. Use when the user wants to release, tag a version, bump the version, or update the changelog for a release; handles prerelease (beta/rc) and promoting a prerelease to final. Not for per-commit messages (use conventional-commit) or pushing feature branches.
 compatibility: Requires git and a clean release-capable checkout; publishing additionally requires authenticated gh or glab.
-allowed-tools: Read Edit Write Grep Glob Bash(git:*) Bash(gh:*) Bash(glab:*) Bash(date:*) Bash(awk:*)
 ---
 
 # Semver Release
