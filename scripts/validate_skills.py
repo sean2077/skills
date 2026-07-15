@@ -133,6 +133,7 @@ def main() -> int:
         if readme and f"(skills/{dir_name}/)" not in readme:
             errors.append(f"{dir_name}: not linked from the README skills table (expected a `(skills/{dir_name}/)` link)")
 
+    validate_conventional_commit_contract()
     validate_semver_release_contract()
 
     # Reverse coverage: a README link must point at a real skill directory.
@@ -148,6 +149,27 @@ def main() -> int:
         errors.append("README references `.claude-plugin/marketplace.json` which does not exist")
 
     return report()
+
+
+def validate_conventional_commit_contract() -> None:
+    """Keep commit mode from staging changes on a detached HEAD."""
+    skill = SKILLS_DIR / "conventional-commit" / "SKILL.md"
+    if not skill.exists():
+        return
+    skill_text = skill.read_text(encoding="utf-8")
+    match = re.search(r"(?ms)^## Workflow[ \t]*\r?\n(.*?)(?=^## |\Z)", skill_text)
+    workflow = match.group(1) if match else ""
+    preflight = "git symbolic-ref --quiet --short HEAD"
+    stop = "stop before staging"
+    stage = "stage the intended files"
+    if (
+        preflight not in workflow
+        or stop not in workflow
+        or stage not in workflow
+        or workflow.index(preflight) > workflow.index(stage)
+        or workflow.index(stop) > workflow.index(stage)
+    ):
+        errors.append("conventional-commit: attached-HEAD preflight must precede commit-mode staging")
 
 
 def validate_semver_release_contract() -> None:
