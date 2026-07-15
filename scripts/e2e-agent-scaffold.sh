@@ -361,8 +361,8 @@ check "upgrade preserves authority lookalikes" sh -c 'grep -qF check_authority_d
 check "upgrade preserves guard lookalikes"     sh -c 'grep -qF trunk_edit_guard_backup.sh "$1" && grep -qF trunk_edit_guard_backup.sh "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves suffix lookalikes"    sh -c 'grep -qF format_on_edit.sh.backup "$1" && grep -qF format_on_edit.sh.backup "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves unrelated config"     grep -q keep-me "$U/.claude/settings.json"
-# shellcheck disable=SC2016
-check "--no-format-hook removes managed format" sh -c '! grep -q format_on_edit "$1" && ! grep -q format_on_edit "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "--no-format-hook removes Claude managed format" jcommand_count "$U/.claude/settings.json" format_on_edit 0
+check "--no-format-hook removes Codex managed format"  jcommand_count "$U/.codex/hooks.json" format_on_edit 0
 check "Claude trunk guard appears once"        jcommand_count "$U/.claude/settings.json" trunk_edit_guard 1
 check "Codex authority hook appears once"       jcommand_count "$U/.codex/hooks.json" authority_doc_budget 1
 ( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-worktree --no-format-hook --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
