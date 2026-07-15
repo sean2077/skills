@@ -230,6 +230,7 @@ def validate_semver_release_contract() -> None:
         "`v1.1.0-rc.1 < v1.1.0`",
         "build metadata does not affect precedence",
         "Git's `version:refname` order is not SemVer precedence",
+        "previous HEAD-reachable stable release, or repo root if none exists",
     )
     missing_reference_base = [value for value in reference_base_contract if value not in reference_text]
     if missing_reference_base:
