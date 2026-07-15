@@ -1099,7 +1099,7 @@ git -C "$Q" add peer.txt && git -C "$Q" commit -q -m "peer change"
 git -C "$Q" push -q origin develop
 (
   cd "$W" || exit 1
-  bash "$WT_HELPER" done --trunk develop --keep-branch
+  bash "$WT_HELPER" "done" --trunk develop --keep-branch
 ) >"$work/worktree-push-first.out" 2>&1; first_rc=$?
 check "concurrent remote advance rejects the first push" test "$first_rc" = 2
 check "feature commit remains on local develop" git -C "$P" merge-base --is-ancestor "$feature_oid" develop
@@ -1115,7 +1115,7 @@ git -C "$D" merge --no-edit origin/develop >"$work/worktree-push-recover.out" 2>
 check "trunk can merge the concurrent remote advance" test "$recover_rc" = 0
 (
   cd "$W" || exit 1
-  bash "$WT_HELPER" done --trunk develop --keep-branch
+  bash "$WT_HELPER" "done" --trunk develop --keep-branch
 ) >"$work/worktree-push-retry.out" 2>&1; retry_rc=$?
 check "retained worktree can retry done" test "$retry_rc" = 0
 check "successful retry removes feature worktree" test ! -d "$W"
