@@ -527,7 +527,22 @@ wire_subagents() {
 
 # ---- the install path (shared by init / retrofit / upgrade) ----------------
 do_install() {
-  # 1. vendored scripts
+  # 1. contract convergence
+  # A real CLAUDE.md must become a symlink while it is still byte-identical to
+  # AGENTS.md. Only then may the managed block or any other target file change.
+  local contract_linked=0
+  if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then
+    cp "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
+    ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
+  fi
+  if [[ -e "$TARGET/AGENTS.md" ]]; then
+    ensure_claude_md_symlink
+    contract_linked=1
+  fi
+  ensure_agents_md
+  [[ "$contract_linked" == 1 ]] || ensure_claude_md_symlink
+
+  # 2. vendored scripts
   if [[ "$WORKTREE_FLOW" == 1 ]]; then
     copy_script "$TPL/worktree.sh"            "$TARGET/tools/agent/worktree.sh"
     copy_script "$TPL/trunk_edit_guard.sh"    "$TARGET/tools/agent/hooks/trunk_edit_guard.sh"
@@ -542,12 +557,12 @@ do_install() {
   copy_script "$TPL/symlink-manager.py"     "$TARGET/.agents/symlink-manager.py"
   log "selected vendored scripts in place under tools/agent/ + .agents/"
 
-  # 2. .agents/ SSOT scaffolding
+  # 3. .agents/ SSOT scaffolding
   copy_if_missing "$TPL/agents-skills.README.md"    "$TARGET/.agents/skills/README.md"
   copy_if_missing "$TPL/agents-subagents.README.md" "$TARGET/.agents/subagents/README.md"
   touch "$TARGET/.agents/skills/.gitkeep"
 
-  # 3. dual-host hook wiring (merge, never clobber)
+  # 4. dual-host hook wiring (merge, never clobber)
   local cc_add="$TMPDIR_H/cc_add.json" cx_add="$TMPDIR_H/cx_add.json"
   prepare_hook_addition "$TPL/claude.settings.json" "$cc_add"
   prepare_hook_addition "$TPL/codex.hooks.json"     "$cx_add"
@@ -555,18 +570,7 @@ do_install() {
   write_hook_config "Codex"       "$TARGET/.codex/hooks.json"     "$cx_add"
   copy_if_missing "$TPL/codex.config.toml" "$TARGET/.codex/config.toml"
 
-  # 4. contracts + ignore
-  # A legacy real CLAUDE.md must become a symlink while it is still byte-identical
-  # to the freshly adopted AGENTS.md. Only then may the managed block change AGENTS.md.
-  local migrated=0
-  if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then migrated=1; fi
-  if [[ "$migrated" == 1 ]]; then
-    cp "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
-    ok "CLAUDE.md prose adopted as AGENTS.md (SSOT); CLAUDE.md will become a symlink"
-    ensure_claude_md_symlink
-  fi
-  ensure_agents_md
-  [[ "$migrated" == 1 ]] || ensure_claude_md_symlink
+  # 5. ignore + attributes
   local gi="$TARGET/.gitignore"
   ensure_line "$gi" ".claude/settings.local.json"
   if [[ "$WORKTREE_FLOW" == 1 ]]; then
@@ -585,7 +589,7 @@ do_install() {
   ensure_line "$ga" ".agents/*.py text eol=lf"
   ensure_line "$ga" ".husky/pre-commit text eol=lf"
 
-  # 5. example subagent (so the source → projection round-trip is demonstrable)
+  # 6. example subagent (so the source → projection round-trip is demonstrable)
   if [[ "$EXAMPLE_SUBAGENT" == 1 ]]; then
     if find "$TARGET/.agents/subagents" -mindepth 1 -maxdepth 1 -type d ! -name '_*' 2>/dev/null | grep -q .; then
       log "subagents already exist — skipping example seed"
@@ -598,10 +602,10 @@ do_install() {
   fi
   [[ "$EXAMPLE_SUBAGENT" == 1 ]] || touch "$TARGET/.agents/subagents/.gitkeep"
 
-  # 6. relink skills (idempotent)
+  # 7. relink skills (idempotent)
   bash "$TARGET/.agents/relink-skills.sh"
 
-  # 7. subagent generator + drift guard (python is a harness prerequisite)
+  # 8. subagent generator + drift guard (python is a harness prerequisite)
   copy_script "$TPL/generate-subagents.py" "$TARGET/tools/agent/generate-subagents.py"
   wire_subagents
   # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
@@ -610,7 +614,7 @@ do_install() {
   # sourceless "orphan"; any ownership or parse conflict propagates and aborts the install.
   run_python "$TARGET/tools/agent/generate-subagents.py" --import
 
-  # 8. closing notes
+  # 9. closing notes
   echo
   ok "harness $MODE complete."
   log "Codex trust: project-level .codex/ only loads for a TRUSTED project. Trust once:"

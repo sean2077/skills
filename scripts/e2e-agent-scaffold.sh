@@ -1252,6 +1252,42 @@ check "hook config link target survives" test "$(readlink "$K/.claude/settings.j
 check "hook config referent is byte-identical" test "$(git hash-object "$K/shared/settings.json")" = "$before"
 check "symlink rejection leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
 
+echo "== safe contract copies converge before AGENTS.md changes =="
+for fixture in target-text identical-copy; do
+  K="$work/positive-contract-$fixture"; mkdir -p "$K"
+  git -C "$K" init -q -b main
+  git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
+  git -C "$K" config core.symlinks true
+  printf '# Canonical contract\n' > "$K/AGENTS.md"
+  if [[ "$fixture" == target-text ]]; then
+    printf 'AGENTS.md\n' > "$K/CLAUDE.md"
+  else
+    cp "$K/AGENTS.md" "$K/CLAUDE.md"
+  fi
+  git -C "$K" add -A && git -C "$K" commit -q -m "$fixture contract fixture"
+  (
+    cd "$K" || exit 1
+    bash "$H" retrofit --no-worktree --no-husky --no-example-subagent
+  ) >"$work/positive-contract-$fixture.out" 2>&1; rc=$?
+  check "$fixture contract retrofit exits 0" test "$rc" = 0
+  check "$fixture contract becomes a real link" test -L "$K/CLAUDE.md"
+  check "$fixture contract targets AGENTS.md" test "$(readlink "$K/CLAUDE.md")" = AGENTS.md
+  check "$fixture contract keeps original prose" grep -qxF '# Canonical contract' "$K/AGENTS.md"
+  check "$fixture contract has one managed block" \
+    test "$(grep -cF '<!-- agent-scaffold:start' "$K/AGENTS.md")" = 1
+  (cd "$K" && bash "$H" verify --no-worktree --no-husky --no-example-subagent) \
+    >"$work/positive-contract-$fixture-verify.out" 2>&1; rc=$?
+  check "$fixture contract verifies" test "$rc" = 0
+  git -C "$K" add -A
+  mode="$(git -C "$K" ls-files -s -- CLAUDE.md | awk '{print $1}')"
+  check "$fixture contract stages as a symlink" test "$mode" = 120000
+  git -C "$K" commit -q -m "$fixture contract installed"
+  (cd "$K" && bash "$H" retrofit --no-worktree --no-husky --no-example-subagent) \
+    >"$work/positive-contract-$fixture-rerun.out" 2>&1; rc=$?
+  check "$fixture contract rerun exits 0" test "$rc" = 0
+  check "$fixture contract rerun is idempotent" test -z "$(git -C "$K" status --porcelain)"
+done
+
 echo "== init (greenfield) =="
 # Existing text files need not end with a newline. Every managed append must
 # preserve the old record and add the new record on its own line.
