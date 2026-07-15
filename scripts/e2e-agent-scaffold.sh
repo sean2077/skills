@@ -302,12 +302,41 @@ check "inline basic prompt is exact"                 grep -qxF INLINE_BASIC_SENT
 check "inline literal prompt is exact"               grep -qxF INLINE_LITERAL_SENTINEL "$I/.agents/subagents/literal-inline/instructions.md"
 
 Y="$work/claude-comment-boundary"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
-printf -- '---\nname: quoted-hash\ndescription: "Review #123"\nmodel: "false"\n---\n\nQUOTED_HASH_SENTINEL\n' > "$Y/.claude/agents/quoted-hash.md"
+printf '%s\n' \
+  '---' \
+  'name: quoted-hash' \
+  'description: "  Review #123\nNext  "' \
+  'model: "false"' \
+  '---' \
+  '' \
+  'QUOTED_HASH_SENTINEL' > "$Y/.claude/agents/quoted-hash.md"
 cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
 ( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/quoted-hash-import.out" 2>&1; rc=$?
 check "quoted hash Claude metadata imports"          test "$rc" = 0
-check "quoted hash description stays quoted"        grep -qxF 'description: "Review #123"' "$Y/.claude/agents/quoted-hash.md"
+check "quoted hash description stays exact"         grep -qxF 'description: "  Review #123\nNext  "' "$Y/.claude/agents/quoted-hash.md"
 check "bool-looking model stays quoted"              grep -qxF 'model: "false"' "$Y/.claude/agents/quoted-hash.md"
+
+Y="$work/claude-leading-body-space"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf '%s\n' \
+  '---' \
+  'name: leading-body-space' \
+  'description: preserve intentional leading body space' \
+  '---' \
+  '' \
+  '' \
+  'LEADING_BODY_SENTINEL' > "$Y/.claude/agents/leading-body-space.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/leading-body-space-import.out" 2>&1; rc=$?
+check "leading body whitespace imports"              test "$rc" = 0
+check "one intentional leading body line remains"    python -c 'import pathlib,sys; raise SystemExit(pathlib.Path(sys.argv[1]).read_bytes() != b"\nLEADING_BODY_SENTINEL\n")' "$Y/.agents/subagents/leading-body-space/instructions.md"
+
+Y="$work/claude-implicit-type"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf -- '---\nname: implicit-type\ndescription: reject implicit YAML types\nmodel: false\n---\n\nIMPLICIT_TYPE_SENTINEL\n' > "$Y/.claude/agents/implicit-type.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/implicit-type-import.out" 2>&1; rc=$?
+check "implicit YAML type exits nonzero"              test "$rc" != 0
+check "implicit YAML type explains string boundary"  grep -qF "implicit non-string YAML value for field 'model'" "$work/implicit-type-import.out"
+check "implicit YAML type writes no SSOT"             test ! -e "$Y/.agents"
 
 Y="$work/claude-value-comment"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
 printf -- '---\nname: value-comment\ndescription: # KEEP_COMMENT\n---\n\nVALUE_COMMENT_SENTINEL\n' > "$Y/.claude/agents/value-comment.md"
@@ -327,6 +356,28 @@ cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.
 ( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/closing-comment-import.out" 2>&1; rc=$?
 check "Codex closing comment exits nonzero"          test "$rc" != 0
 check "Codex closing comment writes no SSOT"         test ! -e "$Y/.agents"
+
+N="$work/dual-host-name-subset"; mkdir -p "$N/.codex/agents" "$N/tools/agent"
+printf '%s\n' \
+  'name = "pr_explorer"' \
+  'description = "official Codex-only identity shape"' \
+  "developer_instructions = '''NAME_SUBSET_SENTINEL'''" > "$N/.codex/agents/pr-explorer.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
+( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/name-subset-import.out" 2>&1; rc=$?
+check "Codex-only name shape exits nonzero"           test "$rc" != 0
+check "Codex-only name explains dual-host subset"    grep -qF "not dual-host compatible; use lowercase letters separated by hyphens" "$work/name-subset-import.out"
+check "Codex-only name writes no SSOT"                test ! -e "$N/.agents"
+
+N="$work/case-colliding-names"; mkdir -p "$N/.claude/agents" "$N/.codex/agents" "$N/tools/agent"
+printf -- '---\nname: Review\ndescription: uppercase Claude identity\n---\n\nCASE_COLLISION_SENTINEL\n' > "$N/.claude/agents/Review.md"
+printf '%s\n' \
+  'name = "review"' \
+  'description = "lowercase Codex identity"' \
+  "developer_instructions = '''CASE_COLLISION_SENTINEL'''" > "$N/.codex/agents/review.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
+( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/case-collision-import.out" 2>&1; rc=$?
+check "case-colliding names exit nonzero"             test "$rc" != 0
+check "case-colliding names write no SSOT"            test ! -e "$N/.agents"
 
 C="$work/source-projection-collision"; mkdir -p "$C/.agents/subagents/sourced" "$C/.claude/agents" "$C/tools/agent"
 printf '%s\n' '{"name":"sourced","description":"existing source"}' > "$C/.agents/subagents/sourced/metadata.json"
@@ -372,6 +423,17 @@ check "Codex import conflict writes no Claude side"  test ! -e "$C/.claude/agent
 check "Codex default collision exits nonzero"        test "$rc" != 0
 check "Codex default preserves projection"           test "$(git hash-object "$C/.codex/agents/sourced-codex.toml")" = "$codex_collision_before"
 check "Codex default conflict writes no Claude side" test ! -e "$C/.claude/agents/sourced-codex.md"
+
+P="$work/projection-parent-conflict"; mkdir -p "$P/.claude/agents" "$P/tools/agent"
+printf -- '---\nname: parent-conflict\ndescription: projection parent is not a directory\n---\n\nPARENT_CONFLICT_SENTINEL\n' > "$P/.claude/agents/parent-conflict.md"
+printf 'not a directory\n' > "$P/.codex"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+parent_before="$(git hash-object "$P/.claude/agents/parent-conflict.md")"
+( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/projection-parent-conflict.out" 2>&1; rc=$?
+check "projection parent conflict exits nonzero"      test "$rc" != 0
+check "projection parent conflict names the path"    grep -qF ".codex: expected a directory" "$work/projection-parent-conflict.out"
+check "projection parent conflict writes no SSOT"    test ! -e "$P/.agents"
+check "projection parent preserves host input"       test "$(git hash-object "$P/.claude/agents/parent-conflict.md")" = "$parent_before"
 
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
