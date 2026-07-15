@@ -338,6 +338,14 @@ check "implicit YAML type exits nonzero"              test "$rc" != 0
 check "implicit YAML type explains string boundary"  grep -qF "implicit non-string YAML value for field 'model'" "$work/implicit-type-import.out"
 check "implicit YAML type writes no SSOT"             test ! -e "$Y/.agents"
 
+Y="$work/claude-empty-optional"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+printf -- '---\nname: empty-optional\ndescription: reject empty optional YAML values\nmodel:\n---\n\nEMPTY_OPTIONAL_SENTINEL\n' > "$Y/.claude/agents/empty-optional.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/empty-optional-import.out" 2>&1; rc=$?
+check "empty optional YAML value exits nonzero"       test "$rc" != 0
+check "empty optional YAML value is typed"            grep -qF "implicit non-string YAML value for field 'model'" "$work/empty-optional-import.out"
+check "empty optional YAML value writes no SSOT"      test ! -e "$Y/.agents"
+
 Y="$work/claude-value-comment"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
 printf -- '---\nname: value-comment\ndescription: # KEEP_COMMENT\n---\n\nVALUE_COMMENT_SENTINEL\n' > "$Y/.claude/agents/value-comment.md"
 cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
@@ -357,6 +365,41 @@ cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.
 check "Codex closing comment exits nonzero"          test "$rc" != 0
 check "Codex closing comment writes no SSOT"         test ! -e "$Y/.agents"
 
+Y="$work/codex-literal-quote"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf '%s\n' \
+  "name = 'literal-quote'" \
+  "description = 'can''t be one TOML literal'" \
+  "developer_instructions = 'LITERAL_QUOTE_SENTINEL'" > "$Y/.codex/agents/literal-quote.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/literal-quote-import.out" 2>&1; rc=$?
+check "invalid TOML literal exits nonzero"            test "$rc" != 0
+check "invalid TOML literal names the field"         grep -qF "unsupported Codex value for field 'description'" "$work/literal-quote-import.out"
+check "invalid TOML literal writes no SSOT"           test ! -e "$Y/.agents"
+
+Y="$work/codex-duplicate-nicknames"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf '%s\n' \
+  'name = "duplicate-nicknames"' \
+  'description = "duplicate nickname candidates"' \
+  'nickname_candidates = ["Twin", "Twin"]' \
+  "developer_instructions = 'DUPLICATE_NICKNAME_SENTINEL'" > "$Y/.codex/agents/duplicate-nicknames.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/duplicate-nicknames-import.out" 2>&1; rc=$?
+check "duplicate nicknames exit nonzero"              test "$rc" != 0
+check "duplicate nicknames explain uniqueness"       grep -qF "nickname_candidates must contain unique names" "$work/duplicate-nicknames-import.out"
+check "duplicate nicknames write no SSOT"             test ! -e "$Y/.agents"
+
+Y="$work/codex-invalid-nickname"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+printf '%s\n' \
+  'name = "invalid-nickname"' \
+  'description = "invalid nickname characters"' \
+  'nickname_candidates = ["bad@name"]' \
+  "developer_instructions = 'INVALID_NICKNAME_SENTINEL'" > "$Y/.codex/agents/invalid-nickname.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-nickname-import.out" 2>&1; rc=$?
+check "invalid nickname exits nonzero"                test "$rc" != 0
+check "invalid nickname explains character set"      grep -qF "nickname_candidates use only ASCII letters, digits, spaces, hyphens, and underscores" "$work/invalid-nickname-import.out"
+check "invalid nickname writes no SSOT"               test ! -e "$Y/.agents"
+
 N="$work/dual-host-name-subset"; mkdir -p "$N/.codex/agents" "$N/tools/agent"
 printf '%s\n' \
   'name = "pr_explorer"' \
@@ -367,6 +410,14 @@ cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.
 check "Codex-only name shape exits nonzero"           test "$rc" != 0
 check "Codex-only name explains dual-host subset"    grep -qF "not dual-host compatible; use lowercase letters separated by hyphens" "$work/name-subset-import.out"
 check "Codex-only name writes no SSOT"                test ! -e "$N/.agents"
+
+N="$work/windows-reserved-name"; mkdir -p "$N/.claude/agents" "$N/tools/agent"
+printf -- '---\nname: con\ndescription: Windows reserved filename\n---\n\nWINDOWS_RESERVED_SENTINEL\n' > "$N/.claude/agents/portable-name.md"
+cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
+( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/windows-reserved-name.out" 2>&1; rc=$?
+check "Windows-reserved name exits nonzero"           test "$rc" != 0
+check "Windows-reserved name explains portability"   grep -qF "agent name 'con' is reserved on Windows" "$work/windows-reserved-name.out"
+check "Windows-reserved name writes no SSOT"          test ! -e "$N/.agents"
 
 N="$work/case-colliding-names"; mkdir -p "$N/.claude/agents" "$N/.codex/agents" "$N/tools/agent"
 printf -- '---\nname: Review\ndescription: uppercase Claude identity\n---\n\nCASE_COLLISION_SENTINEL\n' > "$N/.claude/agents/Review.md"
@@ -434,6 +485,40 @@ check "projection parent conflict exits nonzero"      test "$rc" != 0
 check "projection parent conflict names the path"    grep -qF ".codex: expected a directory" "$work/projection-parent-conflict.out"
 check "projection parent conflict writes no SSOT"    test ! -e "$P/.agents"
 check "projection parent preserves host input"       test "$(git hash-object "$P/.claude/agents/parent-conflict.md")" = "$parent_before"
+
+P="$work/noncanonical-host-extension"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/tools/agent"
+printf -- '---\nname: alias\ndescription: hand-authored uppercase extension\n---\n\nUPPERCASE_EXTENSION_SENTINEL\n' > "$P/.claude/agents/alias.MD"
+printf '%s\n' \
+  'name = "alias"' \
+  'description = "Codex alias candidate"' \
+  "developer_instructions = 'UPPERCASE_EXTENSION_SENTINEL'" > "$P/.codex/agents/alias.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+alias_before="$(git hash-object "$P/.claude/agents/alias.MD")"
+( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/noncanonical-extension.out" 2>&1; rc=$?
+check "noncanonical host extension exits nonzero"     test "$rc" != 0
+check "noncanonical extension explains lowercase"    grep -qF "host agent extension must be lowercase .md" "$work/noncanonical-extension.out"
+check "noncanonical extension writes no SSOT"         test ! -e "$P/.agents"
+check "noncanonical extension preserves host input"  test "$(git hash-object "$P/.claude/agents/alias.MD")" = "$alias_before"
+
+P="$work/projection-temp-conflict"; mkdir -p "$P/.claude/agents" "$P/.codex/agents/alpha.toml.tmp" "$P/tools/agent"
+printf -- '---\nname: alpha\ndescription: temporary projection conflict\n---\n\nTEMP_CONFLICT_SENTINEL\n' > "$P/.claude/agents/alpha.md"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+temp_before="$(git hash-object "$P/.claude/agents/alpha.md")"
+( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/projection-temp-conflict.out" 2>&1; rc=$?
+check "projection temp conflict exits nonzero"        test "$rc" != 0
+check "projection temp conflict names the path"      grep -qF ".codex/agents/alpha.toml.tmp: temporary write path already exists" "$work/projection-temp-conflict.out"
+check "projection temp conflict writes no SSOT"      test ! -e "$P/.agents"
+check "projection temp preserves host input"         test "$(git hash-object "$P/.claude/agents/alpha.md")" = "$temp_before"
+
+P="$work/stale-path-conflict"; mkdir -p "$P/.agents/subagents/alpha" "$P/.claude/agents/orphan.md" "$P/tools/agent"
+printf '%s\n' '{"name":"alpha","description":"stale path preflight"}' > "$P/.agents/subagents/alpha/metadata.json"
+printf 'STALE_PATH_SOURCE\n' > "$P/.agents/subagents/alpha/instructions.md"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+( cd "$P" && python tools/agent/generate-subagents.py ) >"$work/stale-path-conflict.out" 2>&1; rc=$?
+check "stale path conflict exits nonzero"             test "$rc" != 0
+check "stale path conflict names the path"           grep -qF ".claude/agents/orphan.md: expected a regular file" "$work/stale-path-conflict.out"
+check "stale conflict writes no wanted projection"   test ! -e "$P/.claude/agents/alpha.md"
+check "stale conflict writes no Codex projection"    test ! -e "$P/.codex/agents/alpha.toml"
 
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
