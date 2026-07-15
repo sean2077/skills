@@ -216,6 +216,36 @@ if [ "$rc" != 0 ]; then
 fi
 check "verify reports harness OK (exit 0)"   test "$rc" = 0
 
+echo "== verify rejects active-profile drift and hook mismatches =="
+( cd "$S" && bash "$H" verify --no-format-hook ) >/dev/null 2>&1; rc=$?
+check "verify rejects unexpected format hook" test "$rc" != 0
+cp "$S/.claude/settings.json" "$work/claude-settings.clean.json"
+cp "$S/.codex/hooks.json" "$work/codex-hooks.clean.json"
+python - "$S/.claude/settings.json" "$S/.codex/hooks.json" <<'PY'
+import json, sys
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as source:
+        data = json.load(source)
+    for event, groups in list(data.get("hooks", {}).items()):
+        for group in groups or []:
+            group["hooks"] = [
+                hook for hook in group.get("hooks", [])
+                if "format_on_edit" not in str(hook.get("command", ""))
+            ]
+    with open(path, "w", encoding="utf-8") as target:
+        json.dump(data, target, indent=2, ensure_ascii=False)
+        target.write("\n")
+PY
+( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+check "verify rejects missing format hook" test "$rc" != 0
+mv "$work/claude-settings.clean.json" "$S/.claude/settings.json"
+mv "$work/codex-hooks.clean.json" "$S/.codex/hooks.json"
+cp "$S/tools/agent/hooks/format_on_edit.sh" "$work/format-on-edit.clean.sh"
+printf '\n# drift fixture\n' >> "$S/tools/agent/hooks/format_on_edit.sh"
+( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+check "verify rejects active script drift" test "$rc" != 0
+mv "$work/format-on-edit.clean.sh" "$S/tools/agent/hooks/format_on_edit.sh"
+
 echo "== lightweight profile: --no-worktree omits the complete worktree policy =="
 L="$work/lightweight"; mkdir -p "$L"
 git -C "$L" init -q -b main
@@ -327,6 +357,9 @@ check "light upgrade preserves existing worktree ignore" grep -qxF ".worktrees/"
 check "light upgrade preserves existing escape ignore"   grep -qxF ".claude/allow-trunk-edit" "$U/.gitignore"
 ( cd "$U" && bash "$H" verify --no-worktree --no-format-hook ) >/dev/null 2>&1; rc=$?
 check "light upgrade verifies with matching flags" test "$rc" = 0
+printf '\n# dormant drift fixture\n' >> "$U/tools/agent/worktree.sh"
+( cd "$U" && bash "$H" verify --no-worktree --no-format-hook ) >/dev/null 2>&1; rc=$?
+check "light verify ignores dormant worktree script drift" test "$rc" = 0
 
 echo "== hardening: deep-review regression fixes =="
 # PY_MERGE: retrofit over an existing config whose "hooks" is null must not crash on
