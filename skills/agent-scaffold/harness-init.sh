@@ -357,14 +357,20 @@ is_generated_agent_projection() {  # <path> <name>
   case "$path" in
     *.toml)
       IFS= read -r first < "$path" || return 1
+      first="${first%$'\r'}"
       [[ "$first" == "# $marker" ]]
       ;;
     *.md)
       awk -v marker="<!-- $marker -->" '
+        { sub(/\r$/, "", $0) }
         NR == 1 { if ($0 != "---") exit 1; next }
         $0 == "---" {
-          if ((getline blank) <= 0 || blank != "") exit 1
-          if ((getline owner) <= 0 || owner != marker) exit 1
+          if ((getline blank) <= 0) exit 1
+          sub(/\r$/, "", blank)
+          if (blank != "") exit 1
+          if ((getline owner) <= 0) exit 1
+          sub(/\r$/, "", owner)
+          if (owner != marker) exit 1
           found=1
           exit
         }
