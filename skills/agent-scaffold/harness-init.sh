@@ -302,7 +302,9 @@ prepare_hook_addition() {
 
 validate_existing_hook_config() {  # <existing-file> <repo-relative-name>
   local existing="$1" name="$2"
-  [[ -e "$existing" || -L "$existing" ]] || return 0
+  [[ -L "$existing" ]] && \
+    die "$name: symlinked hook configs are unsupported; replace it with a regular file before installing"
+  [[ -e "$existing" ]] || return 0
   HARNESS_EXISTING="$existing" HARNESS_CONFIG_NAME="$name" \
     run_python -c "$PY_VALIDATE_HOOK_CONFIG"
 }
