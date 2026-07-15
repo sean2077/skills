@@ -1079,6 +1079,41 @@ if [ "$symlink_rc" != 0 ]; then
   echo "FAIL: $fails agent-scaffold e2e assertion(s) failed"; exit 1
 fi
 
+echo "== symlinked hook configs: reject before capability probe or mutation =="
+K="$work/symlinked-hook-config"; mkdir -p "$K/.claude" "$K/shared"
+git -C "$K" init -q -b main
+git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
+git -C "$K" config core.symlinks true
+printf '%s\n' '{"env":{"KEEP":"yes"},"hooks":{}}' > "$K/shared/settings.json"
+python - "$K" <<'PY'
+import os
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+os.symlink(
+    "../shared/settings.json",
+    root / ".claude/settings.json",
+    target_is_directory=False,
+)
+PY
+git -C "$K" add -A && git -C "$K" commit -q -m "symlinked hook config fixture"
+before="$(git hash-object "$K/shared/settings.json")"
+(
+  cd "$K" || exit 1
+  AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 \
+    bash "$H" retrofit --no-worktree --no-husky --no-example-subagent
+) >"$work/symlinked-hook-config.out" 2>&1; rc=$?
+check "symlinked hook config exits 2" test "$rc" = 2
+check "symlinked hook config names unsupported boundary" \
+  grep -qF ".claude/settings.json: symlinked hook configs are unsupported" "$work/symlinked-hook-config.out"
+check "symlinked hook config stops before doctor" \
+  no_fixed_text "$work/symlinked-hook-config.out" "symlink capability denied by the test fixture"
+check "hook config link survives" test -L "$K/.claude/settings.json"
+check "hook config link target survives" test "$(readlink "$K/.claude/settings.json")" = "../shared/settings.json"
+check "hook config referent is byte-identical" test "$(git hash-object "$K/shared/settings.json")" = "$before"
+check "symlink rejection leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
+
 echo "== init (greenfield) =="
 # Existing text files need not end with a newline. Every managed append must
 # preserve the old record and add the new record on its own line.
