@@ -162,10 +162,14 @@ def validate_conventional_commit_contract() -> None:
     preflight = "git symbolic-ref --quiet --short HEAD"
     stop = "stop before staging"
     stage = "stage the intended files"
+    status_one = "exit status 1"
+    other_nonzero = "other nonzero status"
     if (
         preflight not in workflow
         or stop not in workflow
         or stage not in workflow
+        or status_one not in workflow
+        or other_nonzero not in workflow
         or workflow.index(preflight) > workflow.index(stage)
         or workflow.index(stop) > workflow.index(stage)
     ):
