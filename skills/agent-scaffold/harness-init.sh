@@ -581,7 +581,7 @@ do_plan() {
   : > "$seen_file"
   for agent_dir in "$TARGET/.claude/agents" "$TARGET/.codex/agents"; do
     if [[ ! -d "$agent_dir" ]] && [[ -e "$agent_dir" || -L "$agent_dir" ]]; then
-      printf '  %s %s: expected a directory\n' "$MAN" "${agent_dir#$TARGET/}"
+      printf '  %s %s: expected a directory\n' "$MAN" "${agent_dir#"$TARGET"/}"
       any=1
     fi
   done
@@ -606,14 +606,14 @@ do_plan() {
           *"$expected_ext")
             base="${filename%.*}"
             printf '%s\n' "$base" >> "$seen_file"; any=1
-            printf '  %s %s: host agent extension must be lowercase %s\n' "$MAN" "${af#$TARGET/}" "$expected_ext"
+            printf '  %s %s: host agent extension must be lowercase %s\n' "$MAN" "${af#"$TARGET"/}" "$expected_ext"
             ;;
         esac
         continue
         ;;
     esac
     if [[ ! -f "$af" ]]; then
-      printf '  %s %s: expected a regular file\n' "$MAN" "${af#$TARGET/}"
+      printf '  %s %s: expected a regular file\n' "$MAN" "${af#"$TARGET"/}"
       any=1
       continue
     fi
