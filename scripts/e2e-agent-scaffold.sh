@@ -34,6 +34,8 @@ jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(
 jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
 jcommand_count() { python -c 'import json,re,sys; d=json.load(open(sys.argv[1])); p=re.compile(r"(?:^|/)tools/agent/hooks/"+re.escape(sys.argv[2])+r"\.sh(?=$|[\s\"'\'';])"); n=sum(bool(p.search(str(h.get("command", "")).replace("\\", "/"))) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
+# shellcheck disable=SC2317,SC2329
+fixed_text_in_both() { grep -qF "$1" "$2" && grep -qF "$1" "$3"; }
 # shellcheck disable=SC2317,SC2329  # run indirectly through check() "$@"
 is_real_dir() { [ -d "$1" ] && [ ! -L "$1" ]; }
 # shellcheck disable=SC2317,SC2329
@@ -345,6 +347,10 @@ for path, matcher, user in ((sys.argv[1], "Edit", "user-extra.sh"), (sys.argv[2]
         {"type": "command", "command": "python scripts/check_authority_doc_budget_custom.py"},
         {"type": "command", "command": "bash tools/custom/trunk_edit_guard_backup.sh"},
         {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh.backup"},
+        {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh~"},
+        {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh+backup"},
+        {"type": "command", "command": "bash vendor/@tools/agent/hooks/format_on_edit.sh"},
+        {"type": "command", "command": "bash pkg:tools/agent/hooks/format_on_edit.sh"},
         {"type": "command", "command": "old/tools/agent/hooks/trunk_edit_guard.sh"},
     ]}], "PostToolUse": [{"matcher": matcher, "hooks": [
         {"type": "command", "command": "old/tools/agent/hooks/format_on_edit.sh"},
@@ -357,9 +363,13 @@ PY
 check "upgrade without jq exits 0"             test "$rc" = 0
 check "upgrade preserves Claude user hook"     grep -q user-extra "$U/.claude/settings.json"
 check "upgrade preserves Codex user hook"      grep -q user-cx "$U/.codex/hooks.json"
-check "upgrade preserves authority lookalikes" sh -c 'grep -qF check_authority_doc_budget_custom.py "$1" && grep -qF check_authority_doc_budget_custom.py "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
-check "upgrade preserves guard lookalikes"     sh -c 'grep -qF trunk_edit_guard_backup.sh "$1" && grep -qF trunk_edit_guard_backup.sh "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
-check "upgrade preserves suffix lookalikes"    sh -c 'grep -qF format_on_edit.sh.backup "$1" && grep -qF format_on_edit.sh.backup "$2"' _ "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves authority lookalikes" fixed_text_in_both check_authority_doc_budget_custom.py "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves guard lookalikes"     fixed_text_in_both trunk_edit_guard_backup.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves dotted suffix"        fixed_text_in_both format_on_edit.sh.backup "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves tilde suffix"         fixed_text_in_both format_on_edit.sh~ "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves plus suffix"          fixed_text_in_both format_on_edit.sh+backup "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves at-prefixed segment"  fixed_text_in_both vendor/@tools/agent/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves colon-prefixed path"  fixed_text_in_both pkg:tools/agent/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves unrelated config"     grep -q keep-me "$U/.claude/settings.json"
 check "--no-format-hook removes Claude managed format" jcommand_count "$U/.claude/settings.json" format_on_edit 0
 check "--no-format-hook removes Codex managed format"  jcommand_count "$U/.codex/hooks.json" format_on_edit 0
