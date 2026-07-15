@@ -160,19 +160,18 @@ def validate_conventional_commit_contract() -> None:
     match = re.search(r"(?ms)^## Workflow[ \t]*\r?\n(.*?)(?=^## |\Z)", skill_text)
     workflow = match.group(1) if match else ""
     preflight = "git symbolic-ref --quiet --short HEAD"
-    stop = "stop before staging"
+    detached = (
+        "On exit status 1, stop before staging and report that commit mode requires "
+        "an attached branch because HEAD is detached."
+    )
+    git_error = "On any other nonzero status, stop before staging and report the Git preflight error."
     stage = "stage the intended files"
-    status_one = "exit status 1"
-    other_nonzero = "other nonzero status"
-    if (
-        preflight not in workflow
-        or stop not in workflow
-        or stage not in workflow
-        or status_one not in workflow
-        or other_nonzero not in workflow
-        or workflow.index(preflight) > workflow.index(stage)
-        or workflow.index(stop) > workflow.index(stage)
-    ):
+    required = (preflight, detached, git_error, stage)
+    missing = [value for value in required if value not in workflow]
+    ordered = not missing and [workflow.index(value) for value in required] == sorted(
+        workflow.index(value) for value in required
+    )
+    if missing or not ordered:
         errors.append("conventional-commit: attached-HEAD preflight must precede commit-mode staging")
 
 
