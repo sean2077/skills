@@ -159,7 +159,12 @@ def validate_semver_release_contract() -> None:
     skill_text = skill.read_text(encoding="utf-8")
     reference_text = reference.read_text(encoding="utf-8")
     combined = skill_text + reference_text
-    bump_contract = ("BREAKING CHANGE:", "BREAKING-CHANGE:", "case-insensitive")
+    bump_contract = (
+        "BREAKING CHANGE:",
+        "BREAKING-CHANGE:",
+        "case-insensitive",
+        "remains uppercase",
+    )
     for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
         missing_bump = [value for value in bump_contract if value not in text]
         if missing_bump:
