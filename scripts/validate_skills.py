@@ -37,6 +37,9 @@ SKILLS_DIR = REPO / "skills"
 README = REPO / "README.md"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
 GROUPING_MANIFEST = REPO / ".claude-plugin" / "plugin.json"
+# Coarse repo-local prose budget, not a host token limit. It scales with the
+# catalog so adding a well-scoped skill does not consume another skill's share.
+METADATA_PROSE_CHARS_PER_SKILL = 512
 
 errors: list[str] = []
 warnings: list[str] = []
@@ -79,6 +82,7 @@ def main() -> int:
     skill_dirs = sorted(p for p in SKILLS_DIR.iterdir() if p.is_dir())
     if not skill_dirs:
         errors.append("no skill directories under skills/")
+    metadata_prose_chars = 0
 
     validate_grouping_manifest(skill_dirs)
     validate_npx_discovery_contract()
@@ -98,6 +102,8 @@ def main() -> int:
             continue
 
         name = fm.get("name", "")
+        if isinstance(name, str):
+            metadata_prose_chars += len(name)
         if not isinstance(name, str) or not name:
             errors.append(f"{dir_name}: frontmatter is missing `name`")
         elif name != dir_name:
@@ -106,6 +112,8 @@ def main() -> int:
             errors.append(f"{dir_name}: `name` must be 1-64 lowercase letters/numbers/hyphen segments")
 
         desc = fm.get("description", "")
+        if isinstance(desc, str):
+            metadata_prose_chars += len(desc)
         if not isinstance(desc, str) or not desc:
             errors.append(f"{dir_name}: frontmatter is missing a non-empty `description`")
         elif len(desc) > 1024:
@@ -133,6 +141,14 @@ def main() -> int:
         # README coverage
         if readme and f"(skills/{dir_name}/)" not in readme:
             errors.append(f"{dir_name}: not linked from the README skills table (expected a `(skills/{dir_name}/)` link)")
+
+    metadata_prose_budget = len(skill_dirs) * METADATA_PROSE_CHARS_PER_SKILL
+    if metadata_prose_chars > metadata_prose_budget:
+        errors.append(
+            "catalog routing metadata exceeds the repo-local prose budget: "
+            f"{metadata_prose_chars} chars > {metadata_prose_budget} "
+            f"({METADATA_PROSE_CHARS_PER_SKILL} per skill)"
+        )
 
     validate_agent_scaffold_contract()
     validate_tooling_conventions_contract()
