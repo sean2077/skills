@@ -118,6 +118,13 @@ if [ "$symlink_rc" != 0 ]; then
 fi
 
 echo "== init (greenfield) =="
+# Existing text files need not end with a newline. Every managed append must
+# preserve the old record and add the new record on its own line.
+printf 'dist' > "$S/.gitignore"
+printf '*.txt text' > "$S/.gitattributes"
+printf '{"name":"fixture"}\n' > "$S/package.json"
+mkdir -p "$S/.husky"
+printf '#!/usr/bin/env bash' > "$S/.husky/pre-commit"
 ( cd "$S" && bash "$H" init ) >/dev/null 2>&1 || bad "init exited nonzero"
 check "no bogus '*' symlink in .claude/skills" test -z "$(ls -A "$S/.claude/skills" 2>/dev/null)"
 check "worktree.sh installed"                test -f "$S/tools/agent/worktree.sh"
@@ -126,9 +133,14 @@ check "shared hook parser installed"         test -f "$S/tools/agent/hooks/hook-
 check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" = AGENTS.md
 check "CC PreToolUse matcher"                jmatch "$S/.claude/settings.json" PreToolUse "Edit|MultiEdit|Write|NotebookEdit"
 check "Codex PreToolUse matcher"             jmatch "$S/.codex/hooks.json"     PreToolUse "Edit|Write|apply_patch"
+check "original gitignore line stays separate" grep -qxF "dist" "$S/.gitignore"
+check "first gitignore append is separate"     grep -qxF ".claude/settings.local.json" "$S/.gitignore"
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
-check ".gitattributes pins LF on scripts"    grep -qF "tools/agent/*.sh text eol=lf" "$S/.gitattributes"
-check ".gitattributes pins Husky LF"         grep -qF ".husky/pre-commit text eol=lf" "$S/.gitattributes"
+check "original attributes line stays separate" grep -qxF "*.txt text" "$S/.gitattributes"
+check ".gitattributes pins LF on scripts"    grep -qxF "tools/agent/*.sh text eol=lf" "$S/.gitattributes"
+check ".gitattributes pins Husky LF"         grep -qxF ".husky/pre-commit text eol=lf" "$S/.gitattributes"
+check "original Husky line stays separate"   grep -qxF "#!/usr/bin/env bash" "$S/.husky/pre-commit"
+check "Husky guard append is separate"       grep -qxF "python tools/agent/generate-subagents.py --check" "$S/.husky/pre-commit"
 git -C "$S" add -A
 # shellcheck disable=SC2016  # sh -c expands its own positional parameters
 check "tracked CLAUDE.md mode is 120000"     sh -c '[ "$(git -C "$1" ls-files -s -- CLAUDE.md | awk '\''{print $1}'\'')" = 120000 ]' _ "$S"
