@@ -72,12 +72,30 @@ jobs:
         run: |
           fixture="$(mktemp -d)"
           trap 'rm -rf "$fixture"' EXIT
-          mkdir -p "$fixture/tools"
+          mkdir -p "$fixture/tools/package-dir" "$fixture/tools/vendor"
           printf 'path\tsurface\n' > "$fixture/tools/tools-manifest.tsv"
           printf 'tool.sh\tpublic\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf 'package-dir/\tpackage\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf 'vendor/tool\tvendor\n' >> "$fixture/tools/tools-manifest.tsv"
           printf '%s\n' '#!/usr/bin/env bash' 'case "${1:-}" in -h|--help) exit 0;; esac' > "$fixture/tools/tool.sh"
+          printf 'vendor fixture\n' > "$fixture/tools/vendor/tool"
           bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"
           negative_fails=0
+          cp "$fixture/tools/tools-manifest.tsv" "$fixture/base-manifest.tsv"
+          printf 'vendor/missing-tool\tvendor\n' >> "$fixture/tools/tools-manifest.tsv"
+          printf 'missing-package/\tpackage\n' >> "$fixture/tools/tools-manifest.tsv"
+          if forward_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv" 2>&1)"; then
+            echo "expected every missing manifest row to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          else
+            for missing in vendor/missing-tool missing-package/; do
+              if ! grep -qF "manifest row → missing file: $missing" <<<"$forward_output"; then
+                echo "missing forward-drift diagnostic for: $missing" >&2
+                negative_fails=$((negative_fails + 1))
+              fi
+            done
+          fi
+          mv "$fixture/base-manifest.tsv" "$fixture/tools/tools-manifest.tsv"
           if TOOLS_DIR="$fixture/missing" bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv"; then
             echo "expected a missing scan root to fail" >&2
             negative_fails=$((negative_fails + 1))
