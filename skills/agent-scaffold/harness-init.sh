@@ -381,6 +381,12 @@ is_generated_agent_projection() {  # <path> <name>
   esac
 }
 
+is_portable_subagent_name() {
+  [[ "$1" =~ ^[a-z]+(-[a-z]+)*$ ]] || return 1
+  case "$1" in con | prn | aux | nul) return 1 ;; esac
+  return 0
+}
+
 wire_subagents() {
   local pkg="$TARGET/package.json"
   local manager="" prepare=0
@@ -571,16 +577,60 @@ do_plan() {
   echo
 
   echo "Subagents:"
-  local any=0 af base seen_file="$TMPDIR_H/seen-subagents"
+  local any=0 af base filename lower expected_ext agent_dir seen_file="$TMPDIR_H/seen-subagents"
   : > "$seen_file"
-  for af in "$TARGET/.claude/agents"/*.md "$TARGET/.codex/agents"/*.toml; do
-    [[ -e "$af" ]] || continue
-    base="$(basename "$af")"; base="${base%.*}"
+  for agent_dir in "$TARGET/.claude/agents" "$TARGET/.codex/agents"; do
+    if [[ ! -d "$agent_dir" ]] && [[ -e "$agent_dir" || -L "$agent_dir" ]]; then
+      printf '  %s %s: expected a directory\n' "$MAN" "${agent_dir#$TARGET/}"
+      any=1
+    fi
+  done
+  for af in \
+    "$TARGET/.claude/agents"/* \
+    "$TARGET/.claude/agents"/.[!.]* \
+    "$TARGET/.claude/agents"/..?* \
+    "$TARGET/.codex/agents"/* \
+    "$TARGET/.codex/agents"/.[!.]* \
+    "$TARGET/.codex/agents"/..?*; do
+    [[ -e "$af" || -L "$af" ]] || continue
+    filename="$(basename "$af")"
+    case "$af" in
+      "$TARGET/.claude/agents/"*) expected_ext=.md ;;
+      *) expected_ext=.toml ;;
+    esac
+    lower="$(printf '%s' "$filename" | tr '[:upper:]' '[:lower:]')"
+    case "$filename" in
+      *"$expected_ext") ;;
+      *)
+        case "$lower" in
+          *"$expected_ext")
+            base="${filename%.*}"
+            printf '%s\n' "$base" >> "$seen_file"; any=1
+            printf '  %s %s: host agent extension must be lowercase %s\n' "$MAN" "${af#$TARGET/}" "$expected_ext"
+            ;;
+        esac
+        continue
+        ;;
+    esac
+    if [[ ! -f "$af" ]]; then
+      printf '  %s %s: expected a regular file\n' "$MAN" "${af#$TARGET/}"
+      any=1
+      continue
+    fi
+    base="${filename%.*}"
     if grep -qxF "$base" "$seen_file" 2>/dev/null; then continue; fi
-    if [[ -d "$TARGET/.agents/subagents/$base" ]]; then continue; fi
+    if ! is_portable_subagent_name "$base"; then
+      printf '%s\n' "$base" >> "$seen_file"; any=1
+      printf '  %s subagent non-portable host filename %s — use lowercase letter groups separated by hyphens\n' "$MAN" "$filename"
+      continue
+    fi
     if is_generated_agent_projection "$af" "$base"; then continue; fi
     printf '%s\n' "$base" >> "$seen_file"; any=1
-    printf '  %s subagent %s → adopt hand-authored agent into .agents/subagents/%s\n' "$MIG" "$base" "$base"
+    if [[ -d "$TARGET/.agents/subagents/$base" ]]; then
+      printf '  %s subagent %s hand-authored projection conflicts with existing .agents/subagents/%s — resolve it before retrofit\n' "$MAN" "$base" "$base"
+    else
+      printf '  %s subagent %s → adopt hand-authored agent into .agents/subagents/%s\n' "$MIG" "$base" "$base"
+    fi
   done
   if [[ "$any" == 0 ]]; then
     printf '  %s no hand-authored subagents to adopt; generator projects .agents/subagents/\n' "$SKP"

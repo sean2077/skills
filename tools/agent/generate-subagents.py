@@ -24,6 +24,15 @@ DO_NOT_EDIT = (
     "Generated from .agents/subagents/%s; do not edit by hand. "
     "Run: python tools/agent/generate-subagents.py"
 )
+DUAL_HOST_NAME = re.compile(r"^[a-z]+(?:-[a-z]+)*$")
+WINDOWS_RESERVED_NAMES = {"con", "prn", "aux", "nul"}
+NICKNAME_CANDIDATE = re.compile(r"^[A-Za-z0-9 _-]+$")
+SOURCE_FIELDS = {"name", "description", "claude", "codex"}
+CLAUDE_FIELDS = {"tools", "model"}
+CODEX_FIELDS = {"model", "model_reasoning_effort", "sandbox_mode", "nickname_candidates"}
+SOURCE_SUPPORT_FILES = {".gitkeep", "README.md"}
+
+
 def is_dir(p):
     return os.path.isdir(p)
 
@@ -67,32 +76,173 @@ def normalize_instructions(instructions):
     return instructions if instructions.endswith("\n") else instructions + "\n"
 
 
+def validate_agent_name(name, where):
+    if not isinstance(name, str) or not DUAL_HOST_NAME.fullmatch(name):
+        raise SystemExit(
+            "%s: agent name '%s' is not dual-host compatible; use lowercase letters separated by hyphens"
+            % (where, name)
+        )
+    if name in WINDOWS_RESERVED_NAMES:
+        raise SystemExit("%s: agent name '%s' is reserved on Windows" % (where, name))
+
+
+def has_invalid_unicode_scalar(value):
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return True
+    return False
+
+
+def has_forbidden_yaml_raw_character(value):
+    for character in value:
+        codepoint = ord(character)
+        if (codepoint < 0x20 and character not in "\t\n\r") or (
+            0x7F <= codepoint <= 0x84 or 0x86 <= codepoint <= 0x9F
+        ) or codepoint in (0xFFFE, 0xFFFF):
+            return True
+    return False
+
+
+def has_forbidden_toml_raw_character(value, multiline=False):
+    allowed = "\t\n\r" if multiline else "\t"
+    return any(
+        (ord(character) < 0x20 and character not in allowed) or ord(character) == 0x7F
+        for character in value
+    )
+
+
+def reject_unknown_source_fields(name, value, allowed, label):
+    unsupported = sorted(set(value) - allowed)
+    if unsupported:
+        raise SystemExit(
+            "subagent '%s': %s has unsupported field '%s'"
+            % (name, label, unsupported[0])
+        )
+
+
+def validate_source_string(name, value, label):
+    if not isinstance(value, str) or not value.strip():
+        raise SystemExit("subagent '%s': %s must be a non-empty string" % (name, label))
+    if has_invalid_unicode_scalar(value):
+        raise SystemExit(
+            "subagent '%s': %s contains an invalid Unicode scalar value" % (name, label)
+        )
+
+
+def nickname_candidates_error(nicks):
+    if not isinstance(nicks, list) or not nicks or any(not isinstance(nick, str) for nick in nicks):
+        return "nickname_candidates must be a non-empty list of strings"
+    if len(set(nicks)) != len(nicks):
+        return "nickname_candidates must contain unique names"
+    if any(not nick.strip() or NICKNAME_CANDIDATE.fullmatch(nick) is None for nick in nicks):
+        return "nickname_candidates use only ASCII letters, digits, spaces, hyphens, and underscores"
+    return None
+
+
 def validate_source(name, meta, instructions):
+    if not isinstance(meta, dict):
+        raise SystemExit("subagent '%s': metadata.json must contain an object" % name)
+    reject_unknown_source_fields(name, meta, SOURCE_FIELDS, "metadata.json")
+    validate_agent_name(name, "subagent '%s'" % name)
     if meta.get("name") != name:
         raise SystemExit(
             "subagent '%s': metadata.name='%s' must match directory name" % (name, meta.get("name"))
         )
-    if not str(meta.get("description") or "").strip():
+    description = meta.get("description")
+    if not isinstance(description, str):
+        raise SystemExit(
+            "subagent '%s': metadata.description must be a non-empty string" % name
+        )
+    if not description.strip():
         raise SystemExit("subagent '%s': metadata.json needs a non-empty description" % name)
+    if has_invalid_unicode_scalar(description):
+        raise SystemExit(
+            "subagent '%s': metadata.description contains an invalid Unicode scalar value" % name
+        )
+    if not isinstance(instructions, str):
+        raise SystemExit("subagent '%s': instructions.md must contain text" % name)
+    if has_invalid_unicode_scalar(instructions):
+        raise SystemExit(
+            "subagent '%s': instructions.md contains an invalid Unicode scalar value" % name
+        )
+
+    if "claude" in meta:
+        claude = meta["claude"]
+        if not isinstance(claude, dict):
+            raise SystemExit("subagent '%s': metadata.claude must be an object" % name)
+        reject_unknown_source_fields(name, claude, CLAUDE_FIELDS, "metadata.claude")
+        if "tools" in claude:
+            tools = claude["tools"]
+            if (
+                not isinstance(tools, list)
+                or not tools
+                or any(not isinstance(tool, str) or not tool.strip() for tool in tools)
+            ):
+                raise SystemExit(
+                    "subagent '%s': metadata.claude.tools must be a non-empty list of strings"
+                    % name
+                )
+            for tool in tools:
+                if has_invalid_unicode_scalar(tool):
+                    raise SystemExit(
+                        "subagent '%s': metadata.claude.tools contains an invalid Unicode scalar value"
+                        % name
+                    )
+            if any(tool != tool.strip() or "," in tool for tool in tools):
+                raise SystemExit(
+                    "subagent '%s': metadata.claude.tools entries must not contain commas or "
+                    "surrounding whitespace" % name
+                )
+        if "model" in claude:
+            validate_source_string(name, claude["model"], "metadata.claude.model")
+
+    if "codex" in meta:
+        codex = meta["codex"]
+        if not isinstance(codex, dict):
+            raise SystemExit("subagent '%s': metadata.codex must be an object" % name)
+        reject_unknown_source_fields(name, codex, CODEX_FIELDS, "metadata.codex")
+        for field in ("model", "model_reasoning_effort", "sandbox_mode"):
+            if field in codex:
+                validate_source_string(name, codex[field], "metadata.codex.%s" % field)
+        if "nickname_candidates" in codex:
+            error = nickname_candidates_error(codex["nickname_candidates"])
+            if error:
+                raise SystemExit("subagent '%s': %s" % (name, error))
     return normalize_instructions(instructions)
 
 
 # JSON string encoding doubles as a valid YAML double-quoted scalar / TOML basic
-# string for our text; ensure_ascii=False keeps raw Unicode (matches the prior Node port).
+# string for our text. JSON can emit raw C1 controls that YAML excludes, so keep
+# ordinary Unicode readable while escaping the shared non-printable range.
 def jstr(s):
-    return json.dumps(str(s), ensure_ascii=False)
+    if not isinstance(s, str) or has_invalid_unicode_scalar(s):
+        raise SystemExit("cannot render a non-string or invalid Unicode value")
+    encoded = json.dumps(s, ensure_ascii=False)
+    return "".join(
+        "\\u%04x" % ord(character)
+        if 0x7F <= ord(character) <= 0x9F or ord(character) in (0xFFFE, 0xFFFF)
+        else character
+        for character in encoded
+    )
 
 
 def load_subagents():
+    if os.path.lexists(SOURCE_DIR) and not is_dir(SOURCE_DIR):
+        raise SystemExit("%s: expected a directory" % rel(SOURCE_DIR))
     if not is_dir(SOURCE_DIR):
         return []
     out = []
     for name in sorted(os.listdir(SOURCE_DIR)):
+        d = os.path.join(SOURCE_DIR, name)
+        if name in SOURCE_SUPPORT_FILES:
+            if not os.path.isfile(d):
+                raise SystemExit("%s: expected a regular file" % rel(d))
+            continue
         if name.startswith("_"):
             continue
-        d = os.path.join(SOURCE_DIR, name)
         if not is_dir(d):
-            continue
+            raise SystemExit("%s: expected a directory" % rel(d))
         meta_path = os.path.join(d, "metadata.json")
         instr_path = os.path.join(d, "instructions.md")
         if not os.path.exists(meta_path) or not os.path.exists(instr_path):
@@ -106,24 +256,21 @@ def load_subagents():
     return out
 
 
-# YAML single-line scalar: quote only when raw would be ambiguous.
-_YAML_NEEDS_QUOTE = re.compile(r"""^[\s>|@`"'%#&*!?{}\[\],]|:\s|\s#|^$""")
-
-
-def yaml_scalar(s):
-    one_line = re.sub(r"\s*\n\s*", " ", str(s)).strip()
-    return jstr(one_line) if _YAML_NEEDS_QUOTE.search(one_line) else one_line
+# JSON strings are valid YAML double-quoted scalars. Always quote host-schema
+# strings so values such as "false" or "null" cannot change YAML type.
+def yaml_string(s):
+    return jstr(s)
 
 
 def render_claude(sa):
     name, meta, instructions = sa["name"], sa["meta"], sa["instructions"]
-    fm = ["name: %s" % name, "description: %s" % yaml_scalar(meta.get("description"))]
+    fm = ["name: %s" % yaml_string(name), "description: %s" % yaml_string(meta.get("description"))]
     claude = meta.get("claude") or {}
     tools = claude.get("tools")
     if isinstance(tools, list) and tools:
-        fm.append("tools: %s" % ", ".join(tools))
+        fm.append("tools: %s" % yaml_string(", ".join(tools)))
     if claude.get("model"):
-        fm.append("model: %s" % claude["model"])
+        fm.append("model: %s" % yaml_string(claude["model"]))
     banner = DO_NOT_EDIT.replace("%s", name)
     return "---\n%s\n---\n\n<!-- %s -->\n\n%s" % ("\n".join(fm), banner, instructions)
 
@@ -131,6 +278,8 @@ def render_claude(sa):
 def toml_multiline(s):
     if "'''" in s:
         raise SystemExit("instructions cannot contain ''' (TOML multiline literal delimiter)")
+    if has_forbidden_toml_raw_character(s, multiline=True):
+        raise SystemExit("instructions contain a character forbidden by TOML multiline literal strings")
     return "'''\n%s'''" % s
 
 
@@ -171,19 +320,67 @@ def orphans(subagents):
         expect.add(os.path.join(CODEX_DIR, sa["name"] + ".toml"))
     found = []
     for d, ext in ((CLAUDE_DIR, ".md"), (CODEX_DIR, ".toml")):
-        if not is_dir(d):
-            continue
-        for f in sorted(os.listdir(d)):
-            p = os.path.join(d, f)
-            if f.endswith(ext) and p not in expect:
+        for p in host_agent_paths(d, ext):
+            if p not in expect:
                 found.append(p)
     return found
+
+
+def host_agent_paths(directory, extension):
+    preflight_directory(directory)
+    if not is_dir(directory):
+        return []
+    paths = []
+    for filename in sorted(os.listdir(directory)):
+        path = os.path.join(directory, filename)
+        if filename.lower().endswith(extension) and not filename.endswith(extension):
+            raise SystemExit(
+                "%s: host agent extension must be lowercase %s" % (rel(path), extension)
+            )
+        if filename.endswith(extension):
+            name = filename[: -len(extension)]
+            validate_agent_name(name, "%s filename" % rel(path))
+            paths.append(path)
+    return paths
 
 
 # --- Adoption (--import): turn hand-authored host agent files into SSOT sources ---
 
 # Parse the losslessly representable Claude subset (simple frontmatter + body).
 # Unsupported fields/structures fail closed instead of disappearing on projection.
+_YAML_IMPLICIT_NUMBER = re.compile(
+    r"""^[-+]?(?:
+        0o[0-7_]+ |
+        0x[0-9a-f_]+ |
+        [0-9][0-9_]* |
+        (?:[0-9][0-9_]*\.[0-9_]*|\.[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)? |
+        [0-9][0-9_]*[eE][-+]?[0-9]+ |
+        \.(?:inf|nan)
+    )$""",
+    re.IGNORECASE | re.VERBOSE,
+)
+_YAML_IMPLICIT_DATE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[-+]\d{2}(?::?\d{2})?)?)?$"
+)
+
+
+def is_implicit_yaml_non_string(raw):
+    return (
+        raw.lower() in {"~", "null", "true", "false"}
+        or _YAML_IMPLICIT_NUMBER.fullmatch(raw) is not None
+        or _YAML_IMPLICIT_DATE.fullmatch(raw) is not None
+    )
+
+
+def is_unsupported_yaml_plain(raw):
+    return (
+        raw.startswith(("[", "]", "{", "}", ",", "#", "&", "*", "!", "|", ">", "%", "@", "`"))
+        or re.match(r"^[-?:](?:\s|$)", raw) is not None
+        or re.search(r":(?:\s|$)", raw) is not None
+        or re.search(r"\s#", raw) is not None
+    )
+
+
 def parse_claude_agent(text):
     m = re.match(r"^---\n([\s\S]*?)\n---\n?([\s\S]*)$", text)
     if not m:
@@ -204,7 +401,7 @@ def parse_claude_agent(text):
             raise ValueError("unsupported Claude field '%s'" % key)
         if key in meta:
             raise ValueError("duplicate Claude field '%s'" % key)
-        if re.search(r"\s#", raw) or raw.startswith(("[", "{", "|", ">", "&", "*", "!")):
+        if has_forbidden_yaml_raw_character(raw):
             raise ValueError("unsupported Claude value for field '%s'" % key)
         if raw.startswith('"'):
             if not raw.endswith('"'):
@@ -218,35 +415,92 @@ def parse_claude_agent(text):
         elif raw.startswith("'"):
             if not raw.endswith("'"):
                 raise ValueError("unsupported Claude value for field '%s'" % key)
-            value = raw[1:-1].replace("''", "'")
+            inner = raw[1:-1]
+            if "'" in inner.replace("''", ""):
+                raise ValueError("unsupported Claude value for field '%s'" % key)
+            value = inner.replace("''", "'")
         else:
+            if is_unsupported_yaml_plain(raw):
+                raise ValueError("unsupported Claude value for field '%s'" % key)
+            if (raw == "" and key not in {"name", "description"}) or is_implicit_yaml_non_string(raw):
+                raise ValueError("implicit non-string YAML value for field '%s'" % key)
             value = raw
+        if has_invalid_unicode_scalar(value):
+            raise ValueError("unsupported Claude value for field '%s'" % key)
         meta[key] = value
-    tools = [s.strip() for s in meta["tools"].split(",")] if meta.get("tools") else []
-    tools = [s for s in tools if s]
+    tools = []
+    if "tools" in meta:
+        tools = [s.strip() for s in meta["tools"].split(",")]
+        if not tools or any(not tool for tool in tools):
+            raise ValueError("Claude field 'tools' must not be empty")
+    if "model" in meta and not meta["model"].strip():
+        raise ValueError("Claude field 'model' must not be empty")
     return {
         "name": meta.get("name"),
         "description": meta.get("description") or "",
         "tools": tools,
         "model": meta.get("model"),
-        "body": re.sub(r"^\n+", "", raw_body),
+        "body": raw_body[1:] if raw_body.startswith("\n") else raw_body,
     }
 
 
 # Parse the losslessly representable Codex subset. Both TOML multiline string
 # forms are accepted; other session-config fields fail closed before adoption.
+def decode_toml_basic_string(raw, key):
+    if len(raw) < 2 or not raw.startswith('"') or not raw.endswith('"'):
+        raise ValueError("unsupported Codex value for field '%s'" % key)
+    inner = raw[1:-1]
+    if has_forbidden_toml_raw_character(inner):
+        raise ValueError("unsupported Codex value for field '%s'" % key)
+    i = 0
+    while i < len(inner):
+        if inner[i] != "\\":
+            i += 1
+            continue
+        if i + 1 >= len(inner):
+            raise ValueError("unsupported Codex value for field '%s'" % key)
+        escape = inner[i + 1]
+        if escape in {'"', "\\", "b", "t", "n", "f", "r"}:
+            i += 2
+            continue
+        if escape == "u":
+            digits = inner[i + 2 : i + 6]
+            if len(digits) != 4 or re.fullmatch(r"[0-9A-Fa-f]{4}", digits) is None:
+                raise ValueError("unsupported Codex value for field '%s'" % key)
+            codepoint = int(digits, 16)
+            if 0xD800 <= codepoint <= 0xDFFF:
+                raise ValueError("unsupported Codex value for field '%s'" % key)
+            i += 6
+            continue
+        raise ValueError("unsupported Codex value for field '%s'" % key)
+    try:
+        # TOML permits a raw TAB in a basic string; JSON requires it escaped.
+        value = json.loads(raw.replace("\t", "\\t"))
+    except ValueError:
+        raise ValueError("unsupported Codex value for field '%s'" % key)
+    if not isinstance(value, str) or has_invalid_unicode_scalar(value):
+        raise ValueError("unsupported Codex value for field '%s'" % key)
+    return value
+
+
 def parse_codex_agent(text):
     multiline = re.search(
-        r"(?m)^developer_instructions\s*=\s*(?P<quote>'''|\"\"\")\n"
-        r"(?P<body>[\s\S]*?)(?P=quote)\s*(?:#.*)?$",
+        r"(?m)^developer_instructions\s*=\s*(?P<quote>'''|\"\"\")"
+        r"(?P<body>[\s\S]*?)(?P=quote)[ \t]*$",
         text,
     )
     instructions = None
     scanned = text
     if multiline:
         instructions = multiline.group("body")
+        if multiline.group("quote") in instructions:
+            raise ValueError("unsupported Codex value for field 'developer_instructions'")
+        if instructions.startswith("\n"):
+            instructions = instructions[1:]
         if multiline.group("quote") == '"""' and "\\" in instructions:
             raise ValueError("unsupported Codex escape in basic multiline developer_instructions")
+        if has_forbidden_toml_raw_character(instructions, multiline=True):
+            raise ValueError("unsupported Codex value for field 'developer_instructions'")
         scanned = text[: multiline.start()] + 'developer_instructions = ""' + text[multiline.end() :]
 
     allowed = {
@@ -282,16 +536,18 @@ def parse_codex_agent(text):
         raw = values.get(key)
         if raw is None:
             return None
-        try:
-            value = json.loads(raw)
-        except ValueError:
-            if len(raw) >= 2 and raw.startswith("'") and raw.endswith("'"):
-                value = raw[1:-1].replace("''", "'")
-            else:
+        if raw.startswith('"'):
+            return decode_toml_basic_string(raw, key)
+        if len(raw) >= 2 and raw.startswith("'") and raw.endswith("'"):
+            inner = raw[1:-1]
+            if (
+                "'" in inner
+                or has_invalid_unicode_scalar(inner)
+                or has_forbidden_toml_raw_character(inner)
+            ):
                 raise ValueError("unsupported Codex value for field '%s'" % key)
-        if not isinstance(value, str):
-            raise ValueError("unsupported Codex value for field '%s'" % key)
-        return value
+            return inner
+        raise ValueError("unsupported Codex value for field '%s'" % key)
 
     nicks = None
     if "nickname_candidates" in values:
@@ -299,13 +555,14 @@ def parse_codex_agent(text):
             nicks = json.loads(values["nickname_candidates"])
         except ValueError:
             raise ValueError("unsupported Codex value for field 'nickname_candidates'")
-        if not isinstance(nicks, list) or not nicks or any(not isinstance(n, str) for n in nicks):
-            raise ValueError("unsupported Codex value for field 'nickname_candidates'")
+        error = nickname_candidates_error(nicks)
+        if error:
+            raise ValueError(error)
     if "developer_instructions" not in values:
         raise ValueError("missing required Codex field 'developer_instructions'")
     if instructions is None:
         instructions = scalar("developer_instructions")
-    return {
+    parsed = {
         "name": scalar("name"),
         "description": scalar("description") or "",
         "model": scalar("model"),
@@ -314,26 +571,31 @@ def parse_codex_agent(text):
         "nickname_candidates": nicks,
         "instructions": instructions,
     }
+    for key in ("model", "model_reasoning_effort", "sandbox_mode"):
+        if key in values and not parsed[key].strip():
+            raise ValueError("Codex field '%s' must not be empty" % key)
+    return parsed
 
 
-# Collect hand-authored host agent files (no SSOT source yet, no generated banner),
-# keyed by subagent name, merging the Claude (.md) and Codex (.toml) sides.
+# Collect hand-authored host agent files, keyed by subagent name, merging the
+# Claude (.md) and Codex (.toml) sides. A same-name SSOT is an ownership
+# conflict, never permission to overwrite the hand-authored projection.
 def collect_adoptable():
     by_name = {}
 
     def consider(d, ext, kind):
-        if not is_dir(d):
-            return
-        for f in sorted(os.listdir(d)):
-            if not f.endswith(ext):
-                continue
-            name = f[: -len(ext)]
-            if is_dir(os.path.join(SOURCE_DIR, name)):
-                continue  # already an SSOT source
-            path = os.path.join(d, f)
+        for path in host_agent_paths(d, ext):
+            if not os.path.isfile(path):
+                raise SystemExit("%s: expected a regular file" % rel(path))
+            name = os.path.basename(path)[: -len(ext)]
             text = read_text(path)
             if is_generated_projection(path, text):
                 continue  # a generated projection, not hand-authored
+            if is_dir(os.path.join(SOURCE_DIR, name)):
+                raise SystemExit(
+                    "%s: hand-authored projection conflicts with existing .agents/subagents/%s; "
+                    "resolve or remove it before projection" % (rel(path), name)
+                )
             try:
                 parsed = parse_claude_agent(text) if kind == "claude" else parse_codex_agent(text)
             except ValueError as error:
@@ -343,6 +605,7 @@ def collect_adoptable():
                 raise SystemExit("cannot parse %s as a %s agent" % (rel(path), label))
             e = by_name.get(name) or {"name": name}
             e[kind] = parsed
+            e[kind + "_path"] = path
             by_name[name] = e
 
     consider(CLAUDE_DIR, ".md", "claude")
@@ -350,10 +613,9 @@ def collect_adoptable():
     return by_name
 
 
-# Write each adoptable host agent back as a .agents/subagents/<name>/ source.
-def import_hand_authored():
-    # Validate existing sources and every host candidate before the first write.
-    projections(load_subagents())
+# Prepare every adoptable host agent in memory. Main preflights the combined
+# source/projection layout before write_imported() performs the first source write.
+def prepare_hand_authored():
     adoptable = collect_adoptable()
     prepared = []
     for name, e in adoptable.items():
@@ -364,10 +626,12 @@ def import_hand_authored():
         for kind, parsed, ext in (("Claude", cc, ".md"), ("Codex", cx, ".toml")):
             if not parsed:
                 continue
-            path = os.path.join(CLAUDE_DIR if kind == "Claude" else CODEX_DIR, name + ext)
+            path = e[kind.lower() + "_path"]
             declared = parsed.get("name")
             if not declared:
                 raise SystemExit("%s is missing required %s field 'name'" % (rel(path), kind))
+            validate_agent_name(name, "%s filename" % rel(path))
+            validate_agent_name(declared, rel(path))
             if declared != name:
                 raise SystemExit(
                     "%s declares name '%s'; rename it to %s%s before --import"
@@ -411,28 +675,118 @@ def import_hand_authored():
         instructions = validate_source(
             name,
             meta,
-            cc["body"] if (cc and cc.get("body") and cc["body"].strip()) else (cx["instructions"] if cx else ""),
+            cc["body"] if cc else (cx["instructions"] if cx else ""),
         )
         candidate = {"name": name, "meta": meta, "instructions": instructions}
         render_claude(candidate)
         render_codex(candidate)
         frm = " + ".join(x for x in [cc and ".claude/agents", cx and ".codex/agents"] if x)
-        prepared.append((name, meta, instructions, frm))
+        host_paths = {e[key] for key in ("claude_path", "codex_path") if key in e}
+        prepared.append((candidate, frm, host_paths))
+    return prepared
 
-    imported = 0
-    for name, meta, instructions, frm in prepared:
+
+def validate_unique_names(subagents):
+    seen = {}
+    for sa in subagents:
+        name = sa["name"]
+        folded = name.casefold()
+        if folded in seen:
+            raise SystemExit(
+                "subagent names '%s' and '%s' collide on case-insensitive filesystems"
+                % (seen[folded], name)
+            )
+        seen[folded] = name
+
+
+def preflight_directory(path):
+    current = os.path.abspath(path)
+    while current != ROOT:
+        if os.path.lexists(current) and not is_dir(current):
+            raise SystemExit("%s: expected a directory" % rel(current))
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+
+
+def preflight_import_sources(prepared):
+    preflight_directory(SOURCE_DIR)
+    for candidate, _frm, _host_paths in prepared:
+        source_payloads(candidate)
+        d = os.path.join(SOURCE_DIR, candidate["name"])
+        if os.path.lexists(d):
+            raise SystemExit("%s: expected a new source directory" % rel(d))
+
+
+def canonical_path(path):
+    return os.path.normcase(os.path.abspath(path))
+
+
+def preflight_projection_targets(wanted, adopted_paths):
+    for d in (CLAUDE_DIR, CODEX_DIR):
+        preflight_directory(d)
+    for w in wanted:
+        path = w["path"]
+        preflight_directory(os.path.dirname(path))
+        if os.path.lexists(path):
+            if not os.path.isfile(path):
+                raise SystemExit("%s: expected a regular file" % rel(path))
+            current = read_text(path)
+            if current == w["content"]:
+                continue
+            if not is_generated_projection(path, current) and canonical_path(path) not in adopted_paths:
+                name = os.path.splitext(os.path.basename(path))[0]
+                raise SystemExit(
+                    "%s: hand-authored projection conflicts with existing .agents/subagents/%s; "
+                    "resolve or remove it before projection" % (rel(path), name)
+                )
+        temporary = path + ".tmp"
+        if os.path.lexists(temporary):
+            raise SystemExit("%s: temporary write path already exists" % rel(temporary))
+
+
+def preflight_stale(stale):
+    contents = {}
+    for path in stale:
+        preflight_directory(os.path.dirname(path))
+        if not os.path.isfile(path):
+            raise SystemExit("%s: expected a regular file" % rel(path))
+        try:
+            contents[path] = read_text(path)
+        except (OSError, UnicodeError) as error:
+            raise SystemExit("%s: cannot read stale projection: %s" % (rel(path), error))
+    return contents
+
+
+def source_payloads(candidate):
+    metadata = json.dumps(candidate["meta"], indent=2, ensure_ascii=False) + "\n"
+    instructions = candidate["instructions"]
+    try:
+        metadata.encode("utf-8")
+        instructions.encode("utf-8")
+    except UnicodeEncodeError:
+        raise SystemExit(
+            "subagent '%s': source payload contains an invalid Unicode scalar value"
+            % candidate["name"]
+        )
+    return metadata, instructions
+
+
+def write_imported(prepared):
+    for candidate, frm, _host_paths in prepared:
+        name, meta, instructions = candidate["name"], candidate["meta"], candidate["instructions"]
         d = os.path.join(SOURCE_DIR, name)
         os.makedirs(d, exist_ok=True)
-        write_text(os.path.join(d, "metadata.json"), json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
-        write_text(os.path.join(d, "instructions.md"), instructions)
+        metadata_payload, instructions_payload = source_payloads(candidate)
+        write_text(os.path.join(d, "metadata.json"), metadata_payload)
+        write_text(os.path.join(d, "instructions.md"), instructions_payload)
         print("adopted %s -> %s (from %s)" % (name, rel(d), frm))
-        imported += 1
     print(
-        "--import: adopted %d hand-authored subagent(s) into %s" % (imported, rel(SOURCE_DIR))
-        if imported
+        "--import: adopted %d hand-authored subagent(s) into %s" % (len(prepared), rel(SOURCE_DIR))
+        if prepared
         else "--import: no hand-authored subagents to adopt"
     )
-    return imported
 
 
 def main(argv):
@@ -455,11 +809,22 @@ def main(argv):
         return 0
 
     check = "--check" in argv
-    if "--import" in argv and not check:
-        import_hand_authored()
-    subagents = load_subagents()
+    importing = "--import" in argv and not check
+    existing = load_subagents()
+    prepared = prepare_hand_authored() if importing else []
+    adopted_paths = {
+        canonical_path(path)
+        for _candidate, _frm, host_paths in prepared
+        for path in host_paths
+    }
+    subagents = sorted(
+        existing + [candidate for candidate, _frm, _host_paths in prepared],
+        key=lambda sa: sa["name"],
+    )
+    validate_unique_names(subagents)
     wanted = projections(subagents)
     stale = orphans(subagents)
+    stale_contents = preflight_stale(stale)
 
     if check:
         drift = []
@@ -467,7 +832,7 @@ def main(argv):
             if not os.path.exists(w["path"]) or read_text(w["path"]) != w["content"]:
                 drift.append(rel(w["path"]))
         for p in stale:
-            hand = not is_generated_projection(p, read_text(p))
+            hand = not is_generated_projection(p, stale_contents[p])
             note = "hand-authored; run --import to adopt" if hand else "no source"
             drift.append("%s (orphan -- %s)" % (rel(p), note))
         if drift:
@@ -481,8 +846,16 @@ def main(argv):
         )
         return 0
 
+    # No source or projection is written until every candidate, render, parent
+    # directory, target type, and ownership decision has passed preflight.
+    if importing:
+        preflight_import_sources(prepared)
+    preflight_projection_targets(wanted, adopted_paths)
+
     for d in (CLAUDE_DIR, CODEX_DIR):
         os.makedirs(d, exist_ok=True)
+    if importing:
+        write_imported(prepared)
     wrote = 0
     for w in wanted:
         if not os.path.exists(w["path"]) or read_text(w["path"]) != w["content"]:
@@ -490,7 +863,7 @@ def main(argv):
             wrote += 1
     pruned = 0
     for p in stale:
-        if is_generated_projection(p, read_text(p)):
+        if is_generated_projection(p, stale_contents[p]):
             os.remove(p)
             pruned += 1
             print("pruned orphan %s" % rel(p))
