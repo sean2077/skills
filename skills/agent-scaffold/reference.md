@@ -2,13 +2,14 @@
 
 Deep material for the `agent-scaffold` skill. Read on demand; `SKILL.md` is the lean router.
 
-> **Platform target:** macOS / Linux / Windows (**Git Bash only**). Bundled scripts stay
-> POSIX-bash + GNU-coreutils and **LF-only**; symlink creation degrades *loudly* (never silently)
-> when the OS lacks symlink support. Windows/Git Bash specifics: [§11](#11-troubleshooting).
+> **Platform target:** macOS / Linux / Windows (**Git Bash only**), with Bash 3.2 as the
+> shell baseline. Bundled scripts stay **LF-only**. Real file + directory symlinks are a hard
+> prerequisite: `doctor` and every mutating entry fail before target writes when capability is
+> missing. There is no copy fallback. Windows/Git Bash specifics: [§11](#11-troubleshooting).
 
 - [1. Bundled files: provenance + landing](#1-bundled-files-provenance--landing)
 - [2. Hook semantics](#2-hook-semantics)
-- [3. Dual-host wiring (exact snippets)](#3-dual-host-wiring-exact-snippets)
+- [3. Dual-host wiring](#3-dual-host-wiring)
 - [4. The JSON-merge algorithm](#4-the-json-merge-algorithm)
 - [5. The `.agents/` SSOT model](#5-the-agents-ssot-model)
 - [6. AGENTS.md governance & budget](#6-agentsmd-governance--budget)
@@ -30,11 +31,13 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 
 | `templates/` file | Lands at (target) | Notes |
 |---|---|---|
-| `worktree.sh` | `tools/agent/worktree.sh` | worktree-per-change lifecycle (new/done/release/list) |
-| `trunk_edit_guard.sh` | `tools/agent/hooks/trunk_edit_guard.sh` | PreToolUse trunk-edit blocker (dual-host `proj=` resolver) |
+| `worktree.sh` | `tools/agent/worktree.sh` | default profile only: worktree-per-change lifecycle (new/done/release/list) |
+| `trunk_edit_guard.sh` | `tools/agent/hooks/trunk_edit_guard.sh` | default profile only: PreToolUse trunk-edit blocker (dual-host `proj=` resolver) |
 | `authority_doc_budget.sh` | `tools/agent/hooks/authority_doc_budget.sh` | PostToolUse AGENTS.md line-budget advisor |
 | `format_on_edit.sh` | `tools/agent/hooks/format_on_edit.sh` | PostToolUse formatter (default Prettier; env-overridable) |
+| `hook-common.sh` + `hook-paths.py` | `tools/agent/hooks/` | shared Python JSON parser + Git Bash/native path normalization |
 | `relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
+| `symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, migration, sync, and verification |
 | `generate-subagents.py` | `tools/agent/generate-subagents.py` | subagent projection + `--check` drift mode (python) |
 | `claude.settings.json` | merged into `.claude/settings.json` | CC hook block (merge source) |
 | `codex.hooks.json` | merged into `.codex/hooks.json` | Codex hook block (merge source) |
@@ -45,7 +48,7 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 | `agents-subagents.README.md` | `.agents/subagents/README.md` | authoring contract |
 | `subagent.metadata.json` + `subagent.instructions.md` | `.agents/subagents/code-reviewer/` (init) | deletable example, exercises the source → projection round-trip |
 | `husky.pre-commit` | merged into `.husky/pre-commit` (npm/husky projects) | only the `--check` drift line is harness-owned |
-| `gitignore.snippet` | appended to `.gitignore` | `.worktrees/`, `.claude/settings.local.json`, `.claude/allow-trunk-edit` |
+| `gitignore.snippet` | appended to `.gitignore` | always `.claude/settings.local.json`; default profile also adds `.worktrees/` and `.claude/allow-trunk-edit` |
 
 The vendored scripts derive their own paths (git-common-dir / `$BASH_SOURCE`), so they are
 layout-independent once they land at the paths above. **They are intentionally tuned for the
@@ -54,21 +57,33 @@ layout-independent once they land at the paths above. **They are intentionally t
 resolver to a shallower path: the git-toplevel fallback is what makes the hooks work under Codex
 (which has no `$CLAUDE_PROJECT_DIR`), and `scripts/check-agent-scaffold.sh` guards this invariant.
 
+### Optional lightweight profile
+
+`--no-worktree` disables worktree governance while retaining the rest of the harness. A clean
+install omits `worktree.sh`, `trunk_edit_guard.sh`, their dual-host hook entries, the managed
+worktree section in `AGENTS.md`, and new worktree-specific ignore lines. A default→light upgrade
+removes only the managed guard/policy; existing script copies and unmarked `.gitignore` lines are
+preserved as dormant/user-owned content. The option is per-invocation: repeat it for `plan`,
+`retrofit`/`upgrade`, and `verify`. Omitting it on a later upgrade selects the default profile and
+re-enables worktree governance.
+
 ## 2. Hook semantics
 
-All three hooks read the tool-call JSON on **stdin**, extract the touched file path(s) with
-`python` (preferred) or `jq` (fallback), and **fail open** when neither is available. Each
-only acts on files in the **project repo** (same git-common-dir as the resolved project root),
-so edits to nested/sibling repos pass through; gitignored paths are exempt.
+All three hooks read the tool-call JSON on **stdin**. `hook-paths.py` only parses raw paths and
+payload cwd; `hook-common.sh` converts `C:/…`, backslash, UNC, Git Bash, relative, spaces, and
+Unicode paths into the Bash namespace (using `cygpath` on Windows). Each hook only acts on files
+in the **project repo** (same git-common-dir as the resolved project root), so edits to
+nested/sibling repos pass through; gitignored paths are exempt. A damaged/missing helper fails open.
 
 ### trunk_edit_guard.sh — PreToolUse, blocking
 
+- Installed and wired only by the default profile; `--no-worktree` removes the managed wiring.
 - **Exit 0** allow · **exit 2** block (message on stderr) · any other exit = non-blocking error (fails open).
 - Blocks an edit to a file in a worktree whose branch is a **trunk** (`main` / `master` / `release/*` / `maintenance/*`), unless an escape hatch is active.
 - **Escape hatches** (only when the user explicitly authorizes a trunk edit):
   - `WORKTREE_ALLOW_TRUNK_EDIT=1` — one-shot env bypass.
   - `touch <repo>/.claude/allow-trunk-edit` — flag file, auto-expires **2 h** (mtime check `now - mtime <= 7200`); re-touch to renew.
-- `WORKTREE_GUARD_CMD` overrides the command shown in the block message (default `tools/agent/worktree.sh`).
+- `WORKTREE_GUARD_CMD` overrides the command shown in the block message (default `bash tools/agent/worktree.sh`).
 
 ### authority_doc_budget.sh — PostToolUse, advisory (never blocks)
 
@@ -80,25 +95,28 @@ so edits to nested/sibling repos pass through; gitignored paths are exempt.
 
 - Runs the project's formatter on edited files; reports what it rewrote as `additionalContext` so you re-read before further exact-string edits. See [§9](#9-format_on_edit-genericization) for the `FORMAT_ON_EDIT_CMD` / `FORMAT_ON_EDIT_EXTS` overrides and the runtime self-skip.
 
-## 3. Dual-host wiring (exact snippets)
+## 3. Dual-host wiring
 
-Both hosts invoke the **same** scripts under `tools/agent/hooks/`. The installer writes both
+Both hosts invoke the **same** enabled scripts under `tools/agent/hooks/`. The installer writes both
 forms; do **not** "simplify" one host's path form to match the other — they differ on purpose.
+The PreToolUse examples below describe the default worktree profile; the lightweight profile
+omits them entirely while retaining the PostToolUse hooks.
 
-**Claude Code — `.claude/settings.json`:**
+**Claude Code — `.claude/settings.json` shape** (the canonical full command strings live in
+`templates/claude.settings.json`):
 
 ```json
 {
   "hooks": {
     "PreToolUse": [
       { "matcher": "Edit|MultiEdit|Write|NotebookEdit",
-        "hooks": [ { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/agent/hooks/trunk_edit_guard.sh" } ] }
+        "hooks": [ { "type": "command", "command": "bash -lc '<normalize project root>; bash \"$root/tools/agent/hooks/trunk_edit_guard.sh\"'" } ] }
     ],
     "PostToolUse": [
       { "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/agent/hooks/format_on_edit.sh" },
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/tools/agent/hooks/authority_doc_budget.sh" }
+          { "type": "command", "command": "bash -lc '<normalize project root>; bash \"$root/tools/agent/hooks/format_on_edit.sh\"'" },
+          { "type": "command", "command": "bash -lc '<normalize project root>; bash \"$root/tools/agent/hooks/authority_doc_budget.sh\"'" }
         ] }
     ]
   }
@@ -110,46 +128,34 @@ Codex (which has no `$CLAUDE_PROJECT_DIR`) resolves the repo root itself:
 
 ```json
 { "type": "command",
-  "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; \"$root/tools/agent/hooks/trunk_edit_guard.sh\"'",
+  "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; bash \"$root/tools/agent/hooks/trunk_edit_guard.sh\"'",
   "statusMessage": "Checking worktree policy" }
 ```
 
 **Why two forms:** Claude Code sets `$CLAUDE_PROJECT_DIR`; Codex does not, so its hook resolves
-`git rev-parse --show-toplevel` at call time. Either way, the **hook script itself** bridges
-both via its `proj=` line:
+`git rev-parse --show-toplevel` at call time. Either way, `hook-common.sh` bridges both and
+retains the install-depth fallback:
 
 ```bash
-proj="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/dev/null || (cd "$hook_dir/../../.." && pwd))}"
+raw="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/dev/null || (cd "$hook_dir/../../.." && pwd))}"
+proj="$(hook_posix_path "$raw")"
 ```
 
 ## 4. The JSON-merge algorithm
 
-Retrofitting must **add** our hook entries without clobbering existing ones or duplicating on
-re-run. The installer never string-munges JSON; it uses **jq → python → "paste this block"**:
-
-1. **Missing config** → write the template verbatim.
-2. **Existing config** → for each event (`PreToolUse`/`PostToolUse`) and our matcher, ensure a
-   matcher group exists; within it, **union hooks by `.command`** (exact string). Idempotent:
-   re-running adds nothing because the command strings are identical.
-3. **Neither jq nor python** → print the block to paste by hand and flag the run as deferred
-   (`HARNESS_MERGE_DEFERRED`), rather than risk corrupting the file.
-
-The jq core (`mergeEvent` matches groups by `.matcher`; `unionByCommand` dedups by `.command`):
-
-```jq
-def unionByCommand($a; $b):
-  reduce $b[] as $h ($a; if (map(.command) | index($h.command)) then . else . + [$h] end);
-def mergeEvent($cur; $add):
-  reduce $add[] as $g ($cur;
-    (map(.matcher == $g.matcher) | index(true)) as $i
-    | if $i == null then . + [$g]
-      else .[$i].hooks = unionByCommand((.[$i].hooks // []); ($g.hooks // [])) end);
-```
+Retrofit/upgrade must refresh our hook commands without clobbering user hooks or retaining stale
+N-1 strings. The Python reconciler parses JSON, removes only commands containing the three owned
+identities (`trunk_edit_guard`, `authority_doc_budget`, `format_on_edit`), then merges the current
+templates by event + matcher and deduplicates exact commands. `--no-worktree` and
+`--no-format-hook` omit their current managed commands and remove older managed entries while
+leaving every user command and unrelated config key intact. Empty managed events are removed
+rather than written as empty matcher groups. Python is a harness prerequisite, so this path has no
+jq-dependent behavior or unsafe paste fallback.
 
 Writes are atomic (`> tmp && mv`). `package.json` script keys (`gen:subagents`, `check:agents`,
 optional `prepare: husky`) are merged the same way — added only when absent.
 
-**Idempotency keys:** hooks by exact `.command` + `.matcher`; `.gitignore`/`.husky/pre-commit`
+**Idempotency keys:** managed hook identity + current `.command`/`.matcher`; `.gitignore`/`.husky/pre-commit`
 lines by `grep -qxF`; `package.json` scripts by key presence; the `AGENTS.md` harness section by
 the `<!-- agent-scaffold:start … end -->` markers.
 
@@ -190,7 +196,8 @@ block:
 - `AGENTS.md` without the markers → append the block (review placement).
 
 Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade`
-refreshes everything between them.
+refreshes everything between them. The template's inner worktree boundary is installer-owned:
+`--no-worktree` removes that complete policy and its worktree-only layout rows.
 
 When the contract lives in a **real `CLAUDE.md`** with no `AGENTS.md` yet, retrofit adopts that
 prose as the `AGENTS.md` SSOT and replaces `CLAUDE.md` with the symlink — see
@@ -222,7 +229,8 @@ parent-linked and refreshable:
 ## 7. Codex trust gate
 
 Project-level `.codex/` (config + hooks + agents) **only loads for a TRUSTED project**. Until the
-project is trusted, the entire project-level `.codex/` — including the worktree guard — is
+project is trusted, the entire project-level `.codex/` — including configured hooks and the
+optional worktree guard — is
 silently skipped, so the harness looks half-installed on the Codex side. Trust once:
 
 - run `codex` in the repo and accept the prompt, **or**
@@ -239,13 +247,12 @@ the trust reminder rather than asserting trust.
 
 | Capability | Needs | Without it |
 |---|---|---|
-| worktree flow, 3 hooks, `relink-skills.sh`, both host configs, `AGENTS.md` contract | bash (+ jq **or** python for the hook-JSON merge) | always installed |
-| subagent projection (`generate-subagents.py`) + `--check` drift guard | python (no Node / `package.json`) | cleanly skipped; installer says how to enable |
+| full harness, real-link manager, hooks, and subagent projection | git + Bash 3.2+ + Python 3.8+ + real file/directory links | preflight exits 2 before target mutation |
 | `gen:subagents` / `check:agents` npm scripts + husky `--check` hook | a `package.json` (npm/husky) | other hook managers / CI: installer prints the one line to wire |
 
-`generate-subagents.py` is standard-library python — no Node, no `package.json`. Because the core
-already prefers python for the hook-JSON merge, subagents install wherever the rest of the harness
-does. To enable them on a host that lacked python: install python, then re-run `agent-scaffold upgrade`.
+`generate-subagents.py`, `symlink-manager.py`, and `hook-paths.py` use only the Python standard
+library — no Node or `package.json`. Resolve Python with `PYTHON_BIN`, `python`, `python3`, or
+Windows `py -3`. Node remains an optional convenience surface only.
 
 ## 9. format_on_edit genericization
 
@@ -264,24 +271,25 @@ Prettier-locked:
 
 ## 10. Coexistence with `npx skills`
 
-Two mechanisms live side by side, partitioned by **symlink (ours) vs real directory (theirs)**:
+Two mechanisms live side by side, partitioned by **managed target (ours) vs other entry (theirs)**:
 
 - **Project-authored** skills/subagents live in `.agents/` and project into `.claude/`/`.codex/`.
 - **Third-party** skills install via `npx skills add <repo> -a claude-code -a codex` and land as
-  **real directories** in `.claude/skills/`. `relink-skills.sh` only manages **symlinks**, so it
-  skips and never touches a real directory (`skip … not a symlink (vendor-native skill?)`).
-- **Name-clash caveat**: if a project skill and an installed skill share a name, the relinker
-  skips yours and the installed one wins under that name in CC. Keep names distinct.
+  **real directories** in `.claude/skills/`. `relink-skills.sh` never touches unrelated real
+  directories or symlinks. A same-name project source is a conflict: it is preserved and the
+  relinker exits 2 rather than silently choosing one owner.
+- **Legacy migration**: a Git target-text placeholder or byte-identical historical copy is safe to
+  replace with a real relative link; drifted content is always preserved as a reported conflict.
 
 ## 11. Troubleshooting
 
-- **Hooks don't fire (Codex)** → the project isn't trusted ([§7](#7-codex-trust-gate)); or a matcher typo; or the script isn't executable (`chmod +x tools/agent/hooks/*.sh`).
+- **Hooks don't fire (Codex)** → the project isn't trusted ([§7](#7-codex-trust-gate)); or a matcher typo; or `bash` resolves outside the supported Unix/Git Bash runtime. Hook commands explicitly invoke Bash and do not depend on checkout executable bits.
 - **Hooks don't fire (Claude Code)** → confirm `.claude/settings.json` parses and the command path is right; restart the session after editing settings.
-- **Duplicate hook entries after a re-run** → shouldn't happen (dedup by `.command`); if you hand-edited a command string, the dedup key changed — align it with the template or run `upgrade`.
+- **Duplicate/stale managed hook entries** → run `upgrade` with the same profile flags used for install; it removes only agent-scaffold-owned identities and writes the enabled current commands while preserving user hooks.
 - **`generate-subagents --check` fails in CI** → run `python tools/agent/generate-subagents.py` and commit the regenerated `.claude/agents/*` + `.codex/agents/*`.
-- **`relink-skills.sh` skipped my skill** → a real directory of the same name exists in `.claude/skills/` (likely an `npx`-installed skill). Rename one ([§10](#10-coexistence-with-npx-skills)).
-- **`trunk_edit_guard` blocks everything** → you're on a trunk branch. Start a worktree: `tools/agent/worktree.sh new <name>`. Only with explicit authorization: `touch .claude/allow-trunk-edit` (2 h).
-- **Windows / Git Bash** (the only supported Windows surface) → two OS-level needs. **(1) Symlinks:** `CLAUDE.md → AGENTS.md` and `.claude/skills/*` need real symlinks — enable with `git config core.symlinks true`, `export MSYS=winsymlinks:nativestrict`, and Developer Mode (or admin). Without them `ln -s` *silently copies* instead of linking; the installer/relinker **detect this, warn loudly, and leave a drift-prone copy** you can fix by re-running once symlinks work (it never degrades silently). **(2) LF endings:** the installer writes `.gitattributes` rules pinning the vendored `*.sh`/`*.py` to LF (CRLF breaks bash); a CI check guards it. **python** (not bundled with Git Bash) is needed for subagents and for the hooks' JSON parsing — without it the trunk guard fails open and subagents are skipped; install it to enable them.
+- **`relink-skills.sh` reports a conflict** → a differing real directory or unrelated symlink of the same name exists in `.claude/skills/` (often an `npx`-installed skill). It was preserved; rename one owner ([§10](#10-coexistence-with-npx-skills)).
+- **`trunk_edit_guard` blocks everything** → you're using the default profile on a trunk branch. Start a worktree: `bash tools/agent/worktree.sh new <name>`. Only with explicit authorization: `touch .claude/allow-trunk-edit` (2 h). If the project intentionally does not use this workflow, rerun `upgrade --no-worktree` and keep that flag on later verify/upgrade calls.
+- **Windows / Git Bash** (the only supported Windows surface) → install Python, enable Developer Mode (or run with native symlink privilege), and make the target repo's **effective** `git config --get core.symlinks` equal `true` (remove a local `false` override if necessary). Run `bash <skill-dir>/harness-init.sh doctor`; it must pass both file and directory probes. Link creation uses Python `os.symlink`, so it no longer depends on MSYS `ln -s` behavior. The installer also pins vendored shell/Python files and `.husky/pre-commit` to LF. Capability failure exits 2 before target writes and leaves no copy or partial harness.
 
 ## 12. End-to-end test recipe
 
@@ -296,9 +304,10 @@ git init -q -b main && git config user.email t@t.t && git config user.name teste
 git commit --allow-empty -qm init
 
 # init (greenfield)
+bash "$H" doctor
 bash "$H" init
 [ -z "$(ls -A .claude/skills)" ]                                             # no bogus '*' symlink
-test -x tools/agent/worktree.sh && test -x tools/agent/hooks/trunk_edit_guard.sh
+test -f tools/agent/worktree.sh && test -f tools/agent/hooks/trunk_edit_guard.sh
 test -L CLAUDE.md && [ "$(readlink CLAUDE.md)" = AGENTS.md ]
 jq -e '.hooks.PreToolUse[0].matcher=="Edit|MultiEdit|Write|NotebookEdit"' .claude/settings.json
 jq -e '.hooks.PreToolUse[0].matcher=="Edit|Write|apply_patch"'              .codex/hooks.json
@@ -321,8 +330,8 @@ bash tools/agent/worktree.sh new demo --type chore && test -d .worktrees/demo
 test ! -d .worktrees/demo && git log --oneline | grep -q "Merge branch 'chore/demo'"
 
 # trunk guard blocks on main; escape hatch allows
-printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | CLAUDE_PROJECT_DIR="$PWD" tools/agent/hooks/trunk_edit_guard.sh; echo "exit=$?"   # 2
-printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$PWD" tools/agent/hooks/trunk_edit_guard.sh; echo "exit=$?"  # 0
+printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | CLAUDE_PROJECT_DIR="$PWD" bash tools/agent/hooks/trunk_edit_guard.sh; echo "exit=$?"   # 2
+printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$PWD" bash tools/agent/hooks/trunk_edit_guard.sh; echo "exit=$?"  # 0
 
 # subagents: generator + drift guard (python — no package.json needed)
 bash "$H" upgrade
@@ -335,7 +344,7 @@ jq -e '.scripts["check:agents"]' package.json
 
 # authority budget advises over-budget
 seq 1 400 | sed 's/^/line /' > AGENTS.md
-printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$PWD" | AUTHORITY_DOC_MAX_ROOT=320 CLAUDE_PROJECT_DIR="$PWD" tools/agent/hooks/authority_doc_budget.sh   # prints budget nudge, exit 0
+printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$PWD" | AUTHORITY_DOC_MAX_ROOT=320 CLAUDE_PROJECT_DIR="$PWD" bash tools/agent/hooks/authority_doc_budget.sh   # prints budget nudge, exit 0
 
 # relink coexistence: project skill symlinked, npx-installed real dir untouched
 mkdir -p .agents/skills/proj-skill && printf -- '---\nname: proj-skill\n---\n' > .agents/skills/proj-skill/SKILL.md
@@ -345,6 +354,18 @@ test -L .claude/skills/proj-skill && test -d .claude/skills/vendor-skill && ! te
 
 # verify mode (read-only) reports OK on a clean install
 bash "$H" verify
+
+# lightweight profile (separate throwaway repo)
+rm -rf /tmp/scratch-light && mkdir -p /tmp/scratch-light && cd /tmp/scratch-light
+git init -q -b main && git config user.email t@t.t && git config user.name tester
+git commit --allow-empty -qm init
+bash "$H" plan --no-worktree | grep -qF 'retrofit --no-worktree'   # copyable apply command keeps the flag
+bash "$H" init --no-worktree --no-husky --no-example-subagent
+test ! -e tools/agent/worktree.sh && test ! -e tools/agent/hooks/trunk_edit_guard.sh
+! grep -q trunk_edit_guard .claude/settings.json && ! grep -q trunk_edit_guard .codex/hooks.json
+! grep -qF 'Worktree-per-change (hard rule)' AGENTS.md
+bash "$H" verify --no-worktree
+# The profile flag is per-invocation; plain `upgrade` deliberately restores the default profile.
 
 # plan is read-only; retrofit adopts a real CLAUDE.md as the AGENTS.md SSOT
 rm -rf /tmp/scratch2 && mkdir -p /tmp/scratch2 && cd /tmp/scratch2
@@ -385,13 +406,13 @@ SSOT and `CLAUDE.md` as its symlink, so:
   replaced with the `CLAUDE.md → AGENTS.md` symlink. Nothing is lost — the content moves, it is not
   deleted.
 - **real `CLAUDE.md` *and* real `AGENTS.md`** → ambiguous (two authored files); the installer keeps
-  both and tells you to merge `CLAUDE.md` into `AGENTS.md` by hand, then symlink.
-- **already a symlink** → left as-is (warned if it points somewhere other than `AGENTS.md`).
+  both and exits with a conflict after telling you to merge `CLAUDE.md` into `AGENTS.md` by hand.
+- **already the correct symlink** → left as-is; a different symlink target is preserved as a conflict.
 
 ### Adopting hand-authored subagents (`--import`, python)
 
-A project may already have hand-written `.claude/agents/*.md` or `.codex/agents/*.toml`. When python
-is available the installer runs `generate-subagents.py --import` before projecting:
+A project may already have hand-written `.claude/agents/*.md` or `.codex/agents/*.toml`. Python is
+a harness prerequisite, and the installer runs `generate-subagents.py --import` before projecting:
 
 1. For each host agent file with **no** `.agents/subagents/<name>/` source and **no** generated
    banner, it parses the frontmatter / TOML (name, description, tools/model, Codex knobs, body) and
@@ -402,5 +423,5 @@ is available the installer runs `generate-subagents.py --import` before projecti
 
 Adoption is idempotent (a name that already has a source is skipped) and **never destructive**: the
 projection step that finds a sourceless, banner-less file **keeps** it and tells you to `--import`
-it, rather than pruning it as an orphan. Without python the installer cannot parse agents, so it
-flags any hand-authored ones and points you at installing python + `upgrade`.
+it, rather than pruning it as an orphan. If Python is unavailable, the installer fails at preflight
+before changing the target repository.

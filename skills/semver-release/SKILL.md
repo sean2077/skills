@@ -1,7 +1,8 @@
 ---
 name: semver-release
 description: Cut a semantic-version release from conventional commits — infer the MAJOR/MINOR/PATCH bump since the last tag, update CHANGELOG.md and the project version file, create the release commit and annotated tag, optionally publish a GitHub/GitLab release, and push. Use when the user wants to release, tag a version, bump the version, or update the changelog for a release; handles prerelease (beta/rc) and promoting a prerelease to final. Not for per-commit messages (use conventional-commit) or pushing feature branches.
-allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git:*), Bash(gh:*), Bash(glab:*), Bash(date:*), Bash(awk:*)
+compatibility: Requires git and a clean release-capable checkout; publishing additionally requires authenticated gh or glab.
+allowed-tools: Read Edit Write Grep Glob Bash(git:*) Bash(gh:*) Bash(glab:*) Bash(date:*) Bash(awk:*)
 ---
 
 # Semver Release
@@ -27,7 +28,7 @@ Do not use this skill for:
 ## Invariants
 
 - **Tag format** is `vX.Y.Z` or `vX.Y.Z-<pre>.N` (e.g. `v1.2.0`, `v0.3.0-beta.1`, `v1.0.0-rc.2`). Reject `v1.0`, `0.1.0`, underscores.
-- **Version file stays in sync** with the numeric part of the tag. Detect the project's version file (e.g. `package.json`, `pyproject.toml`, `Cargo.toml`, `CMakeLists.txt project(... VERSION ...)`, `VERSION`) and update only its numeric `X.Y.Z` — prerelease suffixes usually do not go into it.
+- **Version file stays semantically in sync with the tag.** Node and Rust manifests use the full SemVer value (`1.2.0-beta.1`); Python uses the equivalent PEP 440 value (`1.2.0b1` / `1.2.0rc1`); CMake's `project(... VERSION ...)` stays numeric and any project-defined prerelease suffix is updated separately. Never publish a prerelease package whose manifest still identifies it as the final release.
 - **A tag push is not the finish line.** A tag-triggered release CI (if the repo has one) turns the push into the release; verify the forge release actually appeared and the release commit is on the trunk.
 - **Build/publish from a clean trunk**, not a dirty working tree. Refuse a detached HEAD.
 - **Never move or overwrite an existing tag.** If the target tag exists, stop and report.
@@ -71,7 +72,7 @@ Confirm the computed next version with the user when it is ambiguous or when the
 ### 3. Write release files
 
 - **`CHANGELOG.md`** — insert a new `## [vX.Y.Z] — YYYY-MM-DD` section, conventional-commit grouped (Added / Fixed / Changed / Docs / Chore, breaking changes called out on top). Format + write strategy: `reference.md`. Edit in place; never overwrite the whole file.
-- **Version file(s)** — bump the numeric `X.Y.Z`. If the project pins its version in more than one place (a code constant, `package.json` + its lockfile, a docs badge), update **all** of them — `git grep -F <old-version>` to find them.
+- **Version file(s)** — write the ecosystem-canonical release value, including prerelease identity where the ecosystem supports it. Update coupled lockfiles (`package-lock.json`, `Cargo.lock`) through the ecosystem tool when applicable. If the project pins its version in more than one place (a code constant, manifest + lockfile, docs badge), update **all** of them — `git grep -F <old-version>` to find them. The exact mapping and promote-to-final behavior are in `reference.md` → *Version-file sync*.
 - Optionally a per-release notes doc if the project keeps one.
 
 Get the date from the environment (`date +%F`); do not guess it.

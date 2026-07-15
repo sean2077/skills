@@ -9,8 +9,10 @@ placeholder (Claude Code substitutes `$ARGUMENTS`), and a `reference.md` link
 with no shipped file. Warnings flag softer hygiene: missing or over-broad
 (`Bash`, `Bash(bash:*)`) `allowed-tools`, and an over-long description.
 
-No third-party dependencies. Exit 0 = clean, 1 = errors. Warnings never fail.
+Install the pinned validation dependency first. Exit 0 = clean, 1 = errors.
+Warnings never fail.
 
+    python -m pip install -r requirements-validation.txt
     python scripts/validate_skills.py            # validate this repo
     SKILLS_REPO=/path/to/repo python scripts/validate_skills.py
 """
@@ -23,6 +25,12 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from strictyaml import YAMLValidationError, dirty_load
+except ImportError:  # reported as a concise catalog error from main()
+    YAMLValidationError = Exception  # type: ignore[assignment,misc]
+    dirty_load = None
+
 REPO = Path(os.environ.get("SKILLS_REPO", Path(__file__).resolve().parent.parent))
 SKILLS_DIR = REPO / "skills"
 README = REPO / "README.md"
@@ -33,43 +41,29 @@ errors: list[str] = []
 warnings: list[str] = []
 
 
-def parse_frontmatter(text: str) -> dict[str, str] | None:
-    """Read top-level `key: value` pairs from a leading `---` block.
-
-    Deliberately minimal (no YAML dep): every skill here uses single-line scalar
-    fields. Returns None when there is no closed frontmatter block.
-    """
+def parse_frontmatter(text: str) -> dict[str, object]:
+    """Parse a leading frontmatter block with a real strict YAML parser."""
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
-        return None
-    fm: dict[str, str] = {}
-    for line in lines[1:]:
+        raise ValueError("SKILL.md has no opening `---` frontmatter delimiter")
+    closing = None
+    for index, line in enumerate(lines[1:], start=1):
         if line.strip() == "---":
-            return fm
-        m = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
-        if m:
-            fm[m.group(1)] = m.group(2).strip().strip('"').strip("'")
-    return None  # never closed
-
-
-def plain_scalar_hazards(text: str) -> list[str]:
-    """Find single-line values that are not valid YAML plain scalars."""
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return []
-    hazards: list[str] = []
-    for line in lines[1:]:
-        if line.strip() == "---":
+            closing = index
             break
-        m = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
-        if not m:
-            continue
-        key, raw_value = m.group(1), m.group(2).strip()
-        if not raw_value or raw_value[0] in {"'", '"', "|", ">"}:
-            continue
-        if re.search(r":\s", raw_value):
-            hazards.append(f"`{key}` is an unquoted YAML scalar containing `: `; quote it so `npx skills` can parse the frontmatter")
-    return hazards
+    if closing is None:
+        raise ValueError("SKILL.md has no closing `---` frontmatter delimiter")
+    if dirty_load is None:
+        raise ValueError(
+            "StrictYAML is unavailable — run `python -m pip install -r requirements-validation.txt`"
+        )
+    try:
+        parsed = dirty_load("\n".join(lines[1:closing]), allow_flow_style=True).data
+    except YAMLValidationError as exc:
+        raise ValueError(f"frontmatter is not valid YAML: {exc.context} {exc.problem}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError("frontmatter must be a YAML mapping")
+    return parsed
 
 
 def main() -> int:
@@ -95,32 +89,31 @@ def main() -> int:
             continue
 
         text = skill_md.read_text(encoding="utf-8")
-        fm = parse_frontmatter(text)
-        if fm is None:
-            errors.append(f"{dir_name}: SKILL.md has no valid `---` frontmatter block")
-            continue
-
-        for hazard in plain_scalar_hazards(text):
-            errors.append(f"{dir_name}: {hazard}")
-
-        # The minimal parser reads single-line scalars only; reject YAML block scalars
-        # explicitly rather than silently treating `|` / `>` as the field value.
-        bad_block = [k for k in ("name", "description") if fm.get(k, "") in {"|", ">", "|-", ">-", "|+", ">+"}]
-        if bad_block:
-            errors.append(f"{dir_name}: {', '.join(bad_block)} use(s) a YAML block scalar the minimal parser cannot read — inline as single-line scalars (or switch to a YAML parser)")
+        try:
+            fm = parse_frontmatter(text)
+        except ValueError as exc:
+            errors.append(f"{dir_name}: {exc}")
             continue
 
         name = fm.get("name", "")
-        if not name:
+        if not isinstance(name, str) or not name:
             errors.append(f"{dir_name}: frontmatter is missing `name`")
         elif name != dir_name:
             errors.append(f"{dir_name}: `name: {name}` does not match directory name `{dir_name}`")
+        elif len(name) > 64 or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name):
+            errors.append(f"{dir_name}: `name` must be 1-64 lowercase letters/numbers/hyphen segments")
 
         desc = fm.get("description", "")
-        if not desc:
+        if not isinstance(desc, str) or not desc:
             errors.append(f"{dir_name}: frontmatter is missing a non-empty `description`")
         elif len(desc) > 1024:
-            warnings.append(f"{dir_name}: description is {len(desc)} chars (>1024); trigger descriptions read best when concise")
+            errors.append(f"{dir_name}: description is {len(desc)} chars (>1024 specification limit)")
+
+        compatibility = fm.get("compatibility")
+        if compatibility is not None and (
+            not isinstance(compatibility, str) or not 1 <= len(compatibility) <= 500
+        ):
+            errors.append(f"{dir_name}: `compatibility` must be a non-empty string of at most 500 characters")
 
         # Claude Code substitutes `$ARGUMENTS`; the moustache form is never expanded.
         if "{{ARGUMENTS}}" in text:
@@ -131,9 +124,15 @@ def main() -> int:
             errors.append(f"{dir_name}: SKILL.md links `reference.md` but {dir_name}/reference.md does not exist")
 
         # `allowed-tools` pre-approves (suppresses prompts) for the listed tools.
-        tools = [t.strip() for t in fm.get("allowed-tools", "").split(",") if t.strip()]
+        allowed = fm.get("allowed-tools", "")
+        if allowed and not isinstance(allowed, str):
+            errors.append(f"{dir_name}: `allowed-tools` must be a space-separated string")
+            allowed = ""
+        if "," in allowed:
+            errors.append(f"{dir_name}: `allowed-tools` must be space-separated, not comma-separated")
+        tools = allowed.split()
         if "allowed-tools" not in fm:
-            warnings.append(f"{dir_name}: no `allowed-tools` in frontmatter — every tool call prompts; declare a scoped set (e.g. `Read, Edit, Write, Grep, Glob, Bash(git:*)`)")
+            warnings.append(f"{dir_name}: no `allowed-tools` in frontmatter — every tool call prompts; declare a scoped space-separated set when pre-approval is intended")
         # Bare `Bash` pre-approves arbitrary shell; `Bash(bash:*)`/`Bash(sh:*)` are nearly as broad.
         if "Bash" in tools:
             warnings.append(f"{dir_name}: `allowed-tools` pre-approves bare `Bash` (arbitrary shell, no prompt) — scope it (e.g. `Bash(git *)`) or drop it unless arbitrary shell is intended")
@@ -144,6 +143,8 @@ def main() -> int:
         # README coverage
         if readme and f"(skills/{dir_name}/)" not in readme:
             errors.append(f"{dir_name}: not linked from the README skills table (expected a `(skills/{dir_name}/)` link)")
+
+    validate_semver_release_contract()
 
     # Reverse coverage: a README link must point at a real skill directory.
     for m in re.finditer(r"\(skills/([A-Za-z0-9_-]+)/\)", readme):
@@ -158,6 +159,21 @@ def main() -> int:
         errors.append("README references `.claude-plugin/marketplace.json` which does not exist")
 
     return report()
+
+
+def validate_semver_release_contract() -> None:
+    """Guard the package-identity rules that distinguish prerelease ecosystems."""
+    skill = SKILLS_DIR / "semver-release" / "SKILL.md"
+    reference = SKILLS_DIR / "semver-release" / "reference.md"
+    if not skill.exists() or not reference.exists():
+        return
+    combined = skill.read_text(encoding="utf-8") + reference.read_text(encoding="utf-8")
+    required = ("1.2.0-beta.1", "1.2.0b1", "1.2.0rc1", "project(... VERSION 1.2.0)")
+    missing = [value for value in required if value not in combined]
+    if missing:
+        errors.append(f"semver-release: prerelease ecosystem contract lost fixtures: {missing}")
+    if "Prerelease suffixes generally do **not** go into the version file" in combined:
+        errors.append("semver-release: stale tag-only prerelease guidance remains")
 
 
 def validate_grouping_manifest(skill_dirs: list[Path]) -> None:

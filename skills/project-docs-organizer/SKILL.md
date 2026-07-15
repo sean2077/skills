@@ -1,7 +1,8 @@
 ---
 name: project-docs-organizer
 description: Build, restructure, or clean up project documentation systems. Use when the user asks to create or organize README files, docs/ or doc/ trees, onboarding docs, maintainer docs, ADRs, specs, plans, tooling docs, standards, runbooks, archives, or documentation navigation for a software project.
-allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git:*)
+compatibility: Requires filesystem access to the target project; git is used when repository history or status matters.
+allowed-tools: Read Edit Write Grep Glob Bash(git:*)
 ---
 
 # Project Docs Organizer

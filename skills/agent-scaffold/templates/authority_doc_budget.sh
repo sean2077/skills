@@ -26,49 +26,20 @@ max_root="${AUTHORITY_DOC_MAX_ROOT:-320}"
 max_nested="${AUTHORITY_DOC_MAX_NESTED:-120}"
 
 hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Location-independent project root: $CLAUDE_PROJECT_DIR (Claude Code) if set,
-# else the git toplevel of the hook's own dir (works for Codex and any layout).
-proj="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/dev/null || (cd "$hook_dir/../../.." && pwd))}"
+common="$hook_dir/hook-common.sh"
+[[ -f "$common" ]] || exit 0
+# shellcheck source=hook-common.sh
+# shellcheck disable=SC1091
+source "$common"
+proj="$(hook_project_root 2>/dev/null || true)"
+[[ -n "$proj" ]] || exit 0
 input="$(cat || true)"
 
 # Pull every file path the tool call touched out of the hook JSON on stdin.
-# Handles Edit/Write (file_path/path) and apply_patch payloads. python
-# preferred, jq fallback; with neither, stay silent (advisory hook, fail open).
+# Handles Edit/Write (file_path/path) and apply_patch payloads through the shared
+# parser + Git Bash path normalizer. Missing prerequisites stay fail-open.
 extract_paths() {
-    if command -v python >/dev/null 2>&1; then
-        HOOK_INPUT="$input" python - <<'PY'
-import json, os, re, sys
-raw = os.environ.get("HOOK_INPUT", "")
-try:
-    data = json.loads(raw) if raw.strip() else {}
-except Exception:
-    sys.exit(0)
-tool_input = data.get("tool_input") or {}
-if not isinstance(tool_input, dict):
-    tool_input = {"input": str(tool_input)}
-cwd = data.get("cwd") or os.environ.get("PWD") or os.getcwd()
-paths = []
-for key in ("file_path", "notebook_path", "path"):
-    value = tool_input.get(key)
-    if isinstance(value, str) and value:
-        paths.append(value)
-patch = tool_input.get("patch") or tool_input.get("input") or data.get("input")
-if isinstance(patch, str):
-    for line in patch.splitlines():
-        m = re.match(r"^\*\*\* (?:Add|Update) File: (.+)$", line)
-        if m:
-            paths.append(m.group(1).strip())
-seen = set()
-for path in paths:
-    if not os.path.isabs(path):
-        path = os.path.abspath(os.path.join(cwd, path))
-    if path not in seen:
-        seen.add(path)
-        print(path)
-PY
-    elif command -v jq >/dev/null 2>&1; then
-        jq -r '.tool_input.file_path // .tool_input.notebook_path // .tool_input.path // empty' <<<"$input" 2>/dev/null
-    fi
+    hook_extract_paths "$input"
 }
 
 warnings=()
@@ -88,7 +59,16 @@ while IFS= read -r file_path; do
 
     # Resolve the CLAUDE.md → AGENTS.md symlink so each contract is measured once.
     real="$file_path"
-    [[ -L "$file_path" ]] && real="$(readlink -f "$file_path" 2>/dev/null || echo "$file_path")"
+    if [[ -L "$file_path" ]]; then
+        link_target="$(readlink "$file_path" 2>/dev/null || true)"
+        case "$link_target" in
+            /*) real="$link_target" ;;
+            *)
+                target_dir="$(cd "$(dirname "$file_path")/$(dirname "$link_target")" 2>/dev/null && pwd -P)" || continue
+                real="$target_dir/$(basename "$link_target")"
+                ;;
+        esac
+    fi
     [[ -f "$real" ]] || continue
     lines="$(wc -l <"$real" 2>/dev/null | tr -d ' ')" || continue
     [[ "$lines" =~ ^[0-9]+$ ]] || continue

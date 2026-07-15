@@ -38,15 +38,17 @@ Prerelease increment rules:
 
 ## Version-file sync
 
-Update only the numeric `X.Y.Z` triple. Prerelease suffixes generally do **not** go into the version file — `v0.5.0-beta.1` and the final `v0.5.0` both carry `0.5.0` in the manifest, distinguished by the git tag. Common files:
+Keep the manifest identity aligned with what that ecosystem will publish. A git
+tag is not a substitute for a package version: publishing `v0.5.0-beta.1` from a
+manifest that says `0.5.0` can occupy or mislabel the final version.
 
-| Ecosystem | File | Field |
-|---|---|---|
-| Node | `package.json` | `"version"` |
-| Python | `pyproject.toml` / `setup.cfg` | `version` |
-| Rust | `Cargo.toml` | `version` |
-| C/C++ (CMake) | `CMakeLists.txt` | `project(... VERSION X.Y.Z)` |
-| generic | `VERSION` | whole-file `X.Y.Z` |
+| Ecosystem | Prerelease tag `v1.2.0-beta.1` | Final `v1.2.0` | Coupled files/tooling |
+|---|---|---|---|
+| Node | `package.json` version `1.2.0-beta.1` | `1.2.0` | update the package lock with the repository's package manager |
+| Rust | `Cargo.toml` version `1.2.0-beta.1` | `1.2.0` | let Cargo update `Cargo.lock` when the package is represented there |
+| Python | PEP 440 `1.2.0b1` (`alpha.1` → `a1`, `rc.1` → `rc1`) | `1.2.0` | update the authoritative static version field; respect dynamic-version tooling |
+| C/C++ (CMake) | keep `project(... VERSION 1.2.0)` numeric and update the repo's separate suffix field to `beta.1` | clear the suffix | stop and ask if the project has no defined suffix mechanism but ships prerelease artifacts |
+| generic `VERSION` | follow the repo's documented format; default to `1.2.0-beta.1` when it is package-facing | `1.2.0` | update any generated mirrors through their authoritative command |
 
 If the project has no version file, skip this step and say so.
 
@@ -122,7 +124,7 @@ When tagging a **stable** `vX.Y.Z` and same-`X.Y.Z` prerelease tags already exis
 
 - **changelog base** = the previous *stable* release (skip all same-`X.Y.Z` prereleases), so the final section covers the whole span in one place.
 - **CHANGELOG write is replace-style**: delete the same-`X.Y.Z` prerelease sections and insert one new `## [vX.Y.Z] — YYYY-MM-DD` covering the full previous-stable..HEAD range. A reader sees one consolidated `[vX.Y.Z]` section instead of stitching `beta.1`/`beta.2`/`rc.1` together.
-- the version file already holds `X.Y.Z` from the prereleases — no numeric change.
+- rewrite prerelease-aware manifests from their prerelease value to the final value (for example `1.2.0-rc.2` / `1.2.0rc2` → `1.2.0`); CMake clears its separate suffix while retaining numeric `X.Y.Z`.
 
 Illustration:
 

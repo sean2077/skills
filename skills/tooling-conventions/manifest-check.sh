@@ -43,13 +43,18 @@ col_any() {
 ip="$(col_any path)"; is="$(col_any surface surface_current)"
 [[ -n "$ip" && -n "$is" ]] || { echo "manifest must have a 'path' and a 'surface' (or 'surface_current') column" >&2; exit 2; }
 
-declare -A SEEN
+SEEN_FILE="$(mktemp)"
+trap 'rm -f "$SEEN_FILE"' EXIT
+seen_count=0
 
 # Forward drift + per-file contract/syntax. Build the SEEN set of registered paths.
 while IFS=$'\t' read -r -a F || ((${#F[@]})); do
     p="${F[$((ip - 1))]:-}"; s="${F[$((is - 1))]:-}"
     [[ -z "$p" || "$p" == "path" ]] && continue
-    SEEN["$p"]=1
+    if ! grep -qxF "$p" "$SEEN_FILE" 2>/dev/null; then
+        printf '%s\n' "$p" >> "$SEEN_FILE"
+        seen_count=$((seen_count + 1))
+    fi
     [[ "$p" == */ ]] && continue                       # package/native directory row
     case "$p" in *.sh | *.py) : ;; *) continue ;; esac # only command files are existence-checked
     f="$SCAN_DIR/$p"
@@ -67,15 +72,24 @@ while IFS=$'\t' read -r -a F || ((${#F[@]})); do
 done < "$MANIFEST"
 
 # Reverse drift: command files on disk with no manifest row.
+is_python_cli() { # <path>
+    local file="$1" mode pathspec="${1#"$SCAN_DIR"/}"
+    if command -v git >/dev/null 2>&1 && git -C "$SCAN_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        mode="$(git -C "$SCAN_DIR" ls-files -s -- "$pathspec" 2>/dev/null | awk 'NR==1{print $1}')"
+        [[ -n "$mode" ]] && { [[ "$mode" == 100755 ]]; return; }
+    fi
+    [[ -x "$file" ]]
+}
+
 while IFS= read -r f; do
     rel="${f#"$SCAN_DIR"/}"
     [[ "$rel" =~ $SKIP_RE ]] && continue
-    [[ "$f" == *.py && ! -x "$f" ]] && continue # only executable .py count as command CLIs
-    [[ -n "${SEEN[$rel]:-}" ]] || fail "unregistered command surface (no manifest row): $rel"
+    [[ "$f" == *.py ]] && ! is_python_cli "$f" && continue # index-aware on core.filemode=false
+    grep -qxF "$rel" "$SEEN_FILE" 2>/dev/null || fail "unregistered command surface (no manifest row): $rel"
 done < <(find "$SCAN_DIR" -type f \( -name '*.sh' -o -name '*.py' \) | sort)
 
 echo "---"
-echo "manifest: $MANIFEST   scan: $SCAN_DIR   registered rows: ${#SEEN[@]}"
+echo "manifest: $MANIFEST   scan: $SCAN_DIR   registered rows: $seen_count"
 if ((fails)); then
     echo "RESULT: $fails fail / $warns warn"
     exit 1

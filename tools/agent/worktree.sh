@@ -106,7 +106,7 @@ cmd_new() {
     git -C "$ROOT" worktree add "$WTDIR" -b "$BRANCH" "$TRUNK"
     share_dirs "$WTDIR"
     log "ready: $WTDIR  (branch $BRANCH ← $TRUNK tip)"
-    log "when done, run inside it: tools/agent/worktree.sh done   # merge back to $TRUNK + clean up + push"
+    log "when done, run inside it: bash tools/agent/worktree.sh done   # merge back to $TRUNK + clean up + push"
 }
 
 cmd_release() {
