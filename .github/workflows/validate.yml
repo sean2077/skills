@@ -88,6 +88,25 @@ jobs:
           fi
           negative_fails=0
           cp "$fixture/tools/tools-manifest.tsv" "$fixture/base-manifest.tsv"
+          printf 'path\tsurface\n' > "$fixture/tools/duplicate-path-manifest.tsv"
+          printf 'tool.sh\tpublic\n' >> "$fixture/tools/duplicate-path-manifest.tsv"
+          printf 'tool.sh\thelper\n' >> "$fixture/tools/duplicate-path-manifest.tsv"
+          if duplicate_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/duplicate-path-manifest.tsv" 2>&1)"; then
+            echo "expected a duplicate manifest path to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: duplicate manifest path: tool.sh' <<<"$duplicate_output"; then
+            echo "missing duplicate manifest path diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
+          printf 'path\tsurface\n' > "$fixture/tools/invalid-surface-manifest.tsv"
+          printf 'tool.sh\tpublci\n' >> "$fixture/tools/invalid-surface-manifest.tsv"
+          if invalid_surface_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/invalid-surface-manifest.tsv" 2>&1)"; then
+            echo "expected an invalid manifest surface to fail" >&2
+            negative_fails=$((negative_fails + 1))
+          elif ! grep -qF 'FAIL: invalid manifest surface for tool.sh: publci' <<<"$invalid_surface_output"; then
+            echo "missing invalid manifest surface diagnostic" >&2
+            negative_fails=$((negative_fails + 1))
+          fi
           printf 'vendor/missing-tool\tvendor\n' >> "$fixture/tools/tools-manifest.tsv"
           printf 'missing-package/\tpackage\n' >> "$fixture/tools/tools-manifest.tsv"
           if forward_output="$(bash skills/tooling-conventions/manifest-check.sh "$fixture/tools/tools-manifest.tsv" 2>&1)"; then
