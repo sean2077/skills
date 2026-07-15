@@ -405,6 +405,23 @@ cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.
 check "Codex closing comment exits nonzero"          test "$rc" != 0
 check "Codex closing comment writes no SSOT"         test ! -e "$Y/.agents"
 
+expect_internal_multiline_delimiter_rejected() {
+  local slug="$1" instruction_line="$2" root="$work/$1"
+  mkdir -p "$root/.codex/agents" "$root/tools/agent"
+  printf '%s\n' \
+    "name = \"$slug\"" \
+    'description = "internal multiline delimiter"' \
+    "$instruction_line" > "$root/.codex/agents/$slug.toml"
+  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
+  ( cd "$root" && python tools/agent/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
+  check "$slug exits nonzero"                        test "$rc" != 0
+  check "$slug names the rejected field"            grep -qF "unsupported Codex value for field 'developer_instructions'" "$work/$slug.out"
+  check "$slug writes no SSOT"                      test ! -e "$root/.agents"
+}
+
+expect_internal_multiline_delimiter_rejected codex-internal-basic-delimiter \
+  'developer_instructions = """abc"""def"""'
+
 Y="$work/codex-literal-quote"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
 printf '%s\n' \
   "name = 'literal-quote'" \
@@ -454,6 +471,23 @@ check "raw YAML DEL exits nonzero"                   test "$rc" != 0
 check "raw YAML DEL names the field"                grep -qF "unsupported Claude value for field 'description'" "$work/claude-raw-del.out"
 check "raw YAML DEL writes no SSOT"                 test ! -e "$Y/.agents"
 
+Y="$work/claude-raw-noncharacter"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+python - "$Y/.claude/agents/raw-noncharacter.md" <<'PY'
+from pathlib import Path
+import sys
+
+Path(sys.argv[1]).write_text(
+    '---\nname: raw-noncharacter\ndescription: "a%sb"\n---\n\nRAW_NONCHARACTER_SENTINEL\n'
+    % chr(0xFFFE),
+    encoding="utf-8",
+)
+PY
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/claude-raw-noncharacter.out" 2>&1; rc=$?
+check "raw YAML noncharacter exits nonzero"          test "$rc" != 0
+check "raw YAML noncharacter names the field"       grep -qF "unsupported Claude value for field 'description'" "$work/claude-raw-noncharacter.out"
+check "raw YAML noncharacter writes no SSOT"        test ! -e "$Y/.agents"
+
 Y="$work/codex-raw-tab"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
 printf 'name = "raw-tab"\ndescription = "a\tb"\ndeveloper_instructions = "RAW_TAB_SENTINEL"\n' > "$Y/.codex/agents/raw-tab.toml"
 cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
@@ -472,6 +506,16 @@ check "escaped DEL source generates"                 test "$rc" = 0
 check "escaped DEL projections stay escaped"        python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; sys.exit(0 if all(b"\x7f" not in d and b"\\u007f" in d for d in data) else 1)' "$Y/.claude/agents/escaped-del.md" "$Y/.codex/agents/escaped-del.toml"
 ( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "escaped DEL projections are in sync"          test "$rc" = 0
+
+Y="$work/source-yaml-boundary"; mkdir -p "$Y/.agents/subagents/yaml-boundary" "$Y/tools/agent"
+printf '%s\n' '{"name":"yaml-boundary","description":"a\ufffeb\uffff"}' > "$Y/.agents/subagents/yaml-boundary/metadata.json"
+printf 'YAML_BOUNDARY_SOURCE\n' > "$Y/.agents/subagents/yaml-boundary/instructions.md"
+cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
+( cd "$Y" && python tools/agent/generate-subagents.py ) >"$work/source-yaml-boundary.out" 2>&1; rc=$?
+check "YAML boundary source generates"               test "$rc" = 0
+check "YAML boundary projections stay escaped"      python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; raw=(chr(0xfffe).encode(),chr(0xffff).encode()); sys.exit(0 if all(not any(c in d for c in raw) and b"\\ufffe" in d and b"\\uffff" in d for d in data) else 1)' "$Y/.claude/agents/yaml-boundary.md" "$Y/.codex/agents/yaml-boundary.toml"
+( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "YAML boundary projections are in sync"        test "$rc" = 0
 
 Y="$work/host-escaped-del"; mkdir -p "$Y/.claude/agents" "$Y/.codex/agents" "$Y/tools/agent"
 printf -- '---\nname: escaped-del-import\ndescription: "a\\u007fb"\n---\n\nESCAPED_DEL_IMPORT_SENTINEL\n' > "$Y/.claude/agents/escaped-del-import.md"
@@ -701,6 +745,20 @@ check "hidden host plan exits 0"                     test "$rc" = 0
 check "hidden host plan explains filename"          grep -qF "non-portable host filename .hidden.md" "$work/hidden-host-plan.out"
 check "double-hidden host plan explains filename"   grep -qF "non-portable host filename ..double-hidden.md" "$work/hidden-host-plan.out"
 
+P="$work/source-entry-file"; mkdir -p "$P/.agents/subagents/source-file" "$P/tools/agent"
+printf '%s\n' '{"name":"source-file","description":"source entry shape"}' > "$P/.agents/subagents/source-file/metadata.json"
+printf 'SOURCE_ENTRY_PROJECTION_SENTINEL\n' > "$P/.agents/subagents/source-file/instructions.md"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+( cd "$P" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
+check "source entry fixture setup exits 0"          test "$rc" = 0
+rm -rf "$P/.agents/subagents/source-file"
+printf 'SOURCE_ENTRY_FILE_SENTINEL\n' > "$P/.agents/subagents/source-file"
+( cd "$P" && python tools/agent/generate-subagents.py ) >"$work/source-entry-file.out" 2>&1; rc=$?
+check "source entry file exits nonzero"             test "$rc" != 0
+check "source entry file explains directory shape" grep -qF ".agents/subagents/source-file: expected a directory" "$work/source-entry-file.out"
+check "source entry file stays byte-identical"      grep -qxF "SOURCE_ENTRY_FILE_SENTINEL" "$P/.agents/subagents/source-file"
+check "source entry failure preserves projections" fixed_text_in_both "SOURCE_ENTRY_PROJECTION_SENTINEL" "$P/.claude/agents/source-file.md" "$P/.codex/agents/source-file.toml"
+
 expect_invalid_metadata() {
   local slug="$1" json="$2" needle="$3" root="$work/source-metadata-$1"
   mkdir -p "$root/.agents/subagents/$slug" "$root/tools/agent"
@@ -719,6 +777,12 @@ expect_invalid_metadata description-type \
 expect_invalid_metadata claude-tools-type \
   '{"name":"claude-tools-type","description":"bad tools","claude":{"tools":"Read"}}' \
   "metadata.claude.tools must be a non-empty list of strings"
+expect_invalid_metadata claude-tool-comma \
+  '{"name":"claude-tool-comma","description":"ambiguous tool","claude":{"tools":["Read,Write"]}}' \
+  "metadata.claude.tools entries must not contain commas or surrounding whitespace"
+expect_invalid_metadata claude-tool-padding \
+  '{"name":"claude-tool-padding","description":"padded tool","claude":{"tools":[" Read "]}}' \
+  "metadata.claude.tools entries must not contain commas or surrounding whitespace"
 expect_invalid_metadata codex-model-type \
   '{"name":"codex-model-type","description":"bad model","codex":{"model":{"unexpected":true}}}' \
   "metadata.codex.model must be a non-empty string"
