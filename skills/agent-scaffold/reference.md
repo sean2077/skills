@@ -145,9 +145,11 @@ proj="$(hook_posix_path "$raw")"
 ## 4. The JSON-merge algorithm
 
 Retrofit/upgrade must refresh our hook commands without clobbering user hooks or retaining stale
-N-1 strings. The Python reconciler parses JSON, removes only commands containing the three owned
-identities (`trunk_edit_guard`, `authority_doc_budget`, `format_on_edit`), then merges the current
-templates by event + matcher and deduplicates exact commands. `--no-worktree` and
+N-1 strings. The Python reconciler parses JSON, removes only commands that invoke the exact owned
+paths under `tools/agent/hooks/` (`trunk_edit_guard.sh`, `authority_doc_budget.sh`, or
+`format_on_edit.sh`), then merges the current templates by event + matcher and deduplicates exact
+commands. Legacy launchers and path prefixes still reconcile; basename lookalikes elsewhere remain
+user-owned. `--no-worktree` and
 `--no-format-hook` omit their current managed commands and remove older managed entries while
 leaving every user command and unrelated config key intact. Empty managed events are removed
 rather than written as empty matcher groups. Python is a harness prerequisite, so this path has no

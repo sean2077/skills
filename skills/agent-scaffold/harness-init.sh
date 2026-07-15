@@ -93,13 +93,19 @@ resolve_python || die "python is required (set PYTHON_BIN, or install python/pyt
 # canonical additions. User hooks and unrelated config keys remain untouched.
 
 PY_MERGE='
-import json, os
+import json, os, re
 ex = os.environ.get("HARNESS_EXISTING") or ""
 existing = json.load(open(ex)) if ex and os.path.exists(ex) else {}
 add = json.load(open(os.environ["HARNESS_ADD"]))
 if not isinstance(existing.get("hooks"), dict):
     existing["hooks"] = {}
-managed = ("trunk_edit_guard", "authority_doc_budget", "format_on_edit")
+managed_path = re.compile(
+    r"(?<![A-Za-z0-9_.-])tools/agent/hooks/"
+    r"(?:trunk_edit_guard|authority_doc_budget|format_on_edit)\.sh"
+    r"(?=$|[^A-Za-z0-9_.-])"
+)
+def is_managed(command):
+    return bool(managed_path.search(str(command or "").replace("\\", "/")))
 def union(a, b):
     out = list(a or [])
     seen = {h.get("command") for h in out}
@@ -116,7 +122,7 @@ def merge_event(cur, add_arr):
             continue
         group = dict(group)
         hooks = group.get("hooks") or []
-        group["hooks"] = [h for h in hooks if not any(name in str(h.get("command", "")) for name in managed)]
+        group["hooks"] = [h for h in hooks if not is_managed(h.get("command", ""))]
         if group["hooks"] or any(k not in {"matcher", "hooks"} for k in group):
             cleaned.append(group)
     cur = cleaned
