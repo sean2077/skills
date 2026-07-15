@@ -92,12 +92,17 @@ Get the date from the environment (`date +%F`); do not guess it.
 ### 4. Commit, tag, push
 
 ```bash
-git add CHANGELOG.md <version-file> [release-notes]
+git add -- CHANGELOG.md <all-version-files> <all-coupled-lockfiles> [release-notes]
+git diff --cached --check
+git status --short # every file changed for the release must be staged
 git commit -m "release: vX.Y.Z"
+git status --porcelain # must be empty before tagging
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin <branch>
 git push origin vX.Y.Z
 ```
+
+Review the short status before committing: every file changed for the release must be staged, including lockfiles and generated version mirrors, with no unstaged or untracked release output and no unrelated path. If the staged set is not the exact intended release snapshot, stop and correct it before committing or tagging.
 
 ### 5. Publish the release
 
