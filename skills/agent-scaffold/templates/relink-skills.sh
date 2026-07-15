@@ -18,17 +18,23 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 manager="$repo_root/.agents/symlink-manager.py"
 [[ -f "$manager" ]] || { echo "relink: missing helper .agents/symlink-manager.py; run agent-scaffold upgrade" >&2; exit 2; }
 
+python_compatible() {
+  PYTHONUTF8=1 "$@" -c \
+    'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)' \
+    >/dev/null 2>&1
+}
+
 PYTHON_CMD=()
-if [[ -n "${PYTHON_BIN:-}" ]] && command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+if [[ -n "${PYTHON_BIN:-}" ]] && python_compatible "$PYTHON_BIN"; then
   PYTHON_CMD=("$PYTHON_BIN")
-elif command -v python >/dev/null 2>&1; then
+elif python_compatible python; then
   PYTHON_CMD=(python)
-elif command -v python3 >/dev/null 2>&1; then
+elif python_compatible python3; then
   PYTHON_CMD=(python3)
-elif command -v py >/dev/null 2>&1 && py -3 -c 'import sys' >/dev/null 2>&1; then
+elif python_compatible py -3; then
   PYTHON_CMD=(py -3)
 else
-  echo "relink: python is required (set PYTHON_BIN, or install python/python3/py -3)" >&2
+  echo "relink: python 3.8+ is required (set PYTHON_BIN, or install python/python3/py -3)" >&2
   exit 2
 fi
 

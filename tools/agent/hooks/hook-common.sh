@@ -4,15 +4,21 @@
 
 hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+hook_python_compatible() {
+    PYTHONUTF8=1 "$@" -c \
+        'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)' \
+        >/dev/null 2>&1
+}
+
 hook_resolve_python() {
     HOOK_PYTHON=()
-    if [[ -n "${PYTHON_BIN:-}" ]] && command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+    if [[ -n "${PYTHON_BIN:-}" ]] && hook_python_compatible "$PYTHON_BIN"; then
         HOOK_PYTHON=("$PYTHON_BIN")
-    elif command -v python >/dev/null 2>&1; then
+    elif hook_python_compatible python; then
         HOOK_PYTHON=(python)
-    elif command -v python3 >/dev/null 2>&1; then
+    elif hook_python_compatible python3; then
         HOOK_PYTHON=(python3)
-    elif command -v py >/dev/null 2>&1 && py -3 -c 'import sys' >/dev/null 2>&1; then
+    elif hook_python_compatible py -3; then
         HOOK_PYTHON=(py -3)
     else
         return 1

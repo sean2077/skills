@@ -115,8 +115,9 @@ remediation, never a copy. Windows specifics: `reference.md` §11.
 
 ## Runtime prerequisites
 
-The harness requires **git, Python 3.8+, and Bash 3.2+**; Python is resolved from `PYTHON_BIN`,
-then `python`, `python3`, or `py -3`. It owns real-link creation, hook JSON parsing, and subagent
+The harness requires **git, Python 3.8+, and Bash 3.2+**. Each Python candidate is executed with a
+3.8+ probe before selection, in order: `PYTHON_BIN`, `python`, `python3`, then `py -3`; an unusable
+or older candidate falls through. Python owns real-link creation, hook JSON parsing, and subagent
 projection, so an install never quietly loses SSOT or guard behavior because Python is absent.
 Node and `package.json` remain optional; they only enable npm/Husky conveniences.
 
