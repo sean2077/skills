@@ -2,7 +2,7 @@
 name: agent-scaffold
 description: 'Install or retrofit a vendored dual-host (Claude Code + Codex) agent harness: the .agents/ single-source-of-truth layout, an optional worktree-per-change flow with a trunk-edit guard, AGENTS.md budget + format-on-edit hooks, the CLAUDE.md→AGENTS.md contract, skill symlinks, and a python subagent generator with a drift guard. One idempotent, merge-aware installer that also retrofits a project mid-development — adopting an existing CLAUDE.md as the AGENTS.md SSOT and reverse-generating hand-authored .claude/agents or .codex/agents into .agents/subagents sources. Use when setting up or standardizing agent tooling, adding hook/worktree governance, choosing a lighter non-worktree profile, migrating a CLAUDE.md or hand-written subagents into the harness, or asked to init/retrofit the agent harness. Modes: init, retrofit, plan, doctor, verify, upgrade. Not for one commit message (use conventional-commit) or third-party skills (use npx skills).'
 compatibility: Requires git, Python 3.8 or newer, and Bash 3.2 or newer. Windows requires Git Bash plus native file and directory symlink privilege.
-allowed-tools: Read Edit Write Grep Glob Bash(git:*) Bash(bash:*)
+allowed-tools: Read Edit Write Grep Glob Bash(git:*)
 ---
 
 # Agent Scaffold
