@@ -36,7 +36,7 @@ Do **not** use this skill for:
 - **Worktree governance is default-on but optional.** The default profile starts every change in `.worktrees/<name>` and enforces that with `trunk_edit_guard.sh`. `--no-worktree` omits that policy, lifecycle script, guard wiring, and new worktree ignore entries while preserving the SSOT, documentation, formatting, and subagent layers.
 - **`.agents/` is the SSOT; `.claude/`/`.codex/` are projections.** Skills project as symlinks (`relink-skills.sh`); subagents project via the python generator. **Never hand-edit** generated `.claude/agents/*.md` or `.codex/agents/*.toml`.
 - **Real symlinks are a hard prerequisite.** `doctor`, every mutating mode, and `relink-skills.sh` probe file + directory links first. Unsupported hosts exit 2 before target mutation; there is no copy fallback.
-- **Hook configs are reconciled, never clobbered.** The installer refreshes only enabled managed entries beside existing user hooks and removes only disabled managed identities.
+- **Hook configs are reconciled, never clobbered.** The installer refreshes only enabled managed entries beside existing user hooks and removes only disabled managed identities. Invalid or structurally incompatible existing hook JSON stops before target mutation with a named error.
 - **`CLAUDE.md` is a symlink to `AGENTS.md`.** `AGENTS.md` is an entry point, not a detail dump (the budget hook advises when it grows too large).
 - **The installer is idempotent for the same profile flags.** Re-running a mode with the same options changes nothing already in place; changing profile flags intentionally reconciles to that profile.
 

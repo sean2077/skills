@@ -292,6 +292,7 @@ Two mechanisms live side by side, partitioned by **managed target (ours) vs othe
 
 - **Hooks don't fire (Codex)** → the project isn't trusted ([§7](#7-codex-trust-gate)); or a matcher typo; or `bash` resolves outside the supported Unix/Git Bash runtime. Hook commands explicitly invoke Bash and do not depend on checkout executable bits.
 - **Hooks don't fire (Claude Code)** → confirm `.claude/settings.json` parses and the command path is right; restart the session after editing settings.
+- **Installer rejects an existing hook config** → repair the named `.claude/settings.json` or `.codex/hooks.json`; mutating modes require strict UTF-8 JSON with an object at the top level and well-typed hook arrays, and stop before target writes when that preflight fails.
 - **Duplicate/stale managed hook entries** → run `upgrade` with the same profile flags used for install; it removes only agent-scaffold-owned identities and writes the enabled current commands while preserving user hooks.
 - **`generate-subagents --check` fails in CI** → run `python tools/agent/generate-subagents.py` and commit the regenerated `.claude/agents/*` + `.codex/agents/*`.
 - **`relink-skills.sh` reports a conflict** → a differing real directory or unrelated symlink of the same name exists in `.claude/skills/` (often an `npx`-installed skill). It was preserved; rename one owner ([§10](#10-coexistence-with-npx-skills)).

@@ -181,6 +181,83 @@ with open(os.environ["HARNESS_OUT"], "w") as f:
     f.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 '
 
+PY_VALIDATE_HOOK_CONFIG='
+import json, math, os, sys
+path = os.environ["HARNESS_EXISTING"]
+name = os.environ["HARNESS_CONFIG_NAME"]
+def reject_constant(value):
+    raise ValueError(f"non-standard constant {value}")
+def validate_json_value(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("non-finite number")
+    if isinstance(value, str) and any(0xD800 <= ord(char) <= 0xDFFF for char in value):
+        raise ValueError("unpaired Unicode surrogate")
+    if isinstance(value, list):
+        for item in value:
+            validate_json_value(item)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            validate_json_value(key)
+            validate_json_value(item)
+try:
+    with open(path, encoding="utf-8") as source:
+        data = json.load(source, parse_constant=reject_constant)
+    validate_json_value(data)
+except json.JSONDecodeError as exc:
+    print(
+        f"[harness] ABORT: {name}: invalid JSON "
+        f"({exc.msg}, line {exc.lineno}, column {exc.colno})",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+except (OSError, UnicodeError) as exc:
+    print(f"[harness] ABORT: {name}: cannot read UTF-8 JSON ({exc})", file=sys.stderr)
+    raise SystemExit(2)
+except (ValueError, RecursionError) as exc:
+    print(f"[harness] ABORT: {name}: invalid JSON ({exc})", file=sys.stderr)
+    raise SystemExit(2)
+if not isinstance(data, dict):
+    print(f"[harness] ABORT: {name}: top level must be a JSON object", file=sys.stderr)
+    raise SystemExit(2)
+hooks = data.get("hooks")
+if hooks is not None and not isinstance(hooks, dict):
+    print(f"[harness] ABORT: {name}: hooks must be a JSON object or null", file=sys.stderr)
+    raise SystemExit(2)
+for event in ("PreToolUse", "PostToolUse"):
+    groups = (hooks or {}).get(event)
+    if groups is None:
+        continue
+    if not isinstance(groups, list):
+        print(f"[harness] ABORT: {name}: hooks.{event} must be an array or null", file=sys.stderr)
+        raise SystemExit(2)
+    for group_index, group in enumerate(groups):
+        field = f"hooks.{event}[{group_index}]"
+        if not isinstance(group, dict):
+            print(f"[harness] ABORT: {name}: {field} must be a JSON object", file=sys.stderr)
+            raise SystemExit(2)
+        entries = group.get("hooks")
+        if entries is None:
+            continue
+        if not isinstance(entries, list):
+            print(f"[harness] ABORT: {name}: {field}.hooks must be an array or null", file=sys.stderr)
+            raise SystemExit(2)
+        for hook_index, hook in enumerate(entries):
+            if not isinstance(hook, dict):
+                print(
+                    f"[harness] ABORT: {name}: {field}.hooks[{hook_index}] "
+                    "must be a JSON object",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
+            if "command" in hook and not isinstance(hook["command"], str):
+                print(
+                    f"[harness] ABORT: {name}: {field}.hooks[{hook_index}].command "
+                    "must be a string",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
+'
+
 PY_VERIFY_HOOKS='
 import json, os, sys
 def load(name):
@@ -221,6 +298,18 @@ prepare_hook_addition() {
   HARNESS_ADD="$src" HARNESS_OUT="$out" \
     HARNESS_ENABLE_WORKTREE="$WORKTREE_FLOW" HARNESS_ENABLE_FORMAT="$FORMAT_HOOK" \
     run_python -c "$PY_FILTER_HOOKS"
+}
+
+validate_existing_hook_config() {  # <existing-file> <repo-relative-name>
+  local existing="$1" name="$2"
+  [[ -e "$existing" || -L "$existing" ]] || return 0
+  HARNESS_EXISTING="$existing" HARNESS_CONFIG_NAME="$name" \
+    run_python -c "$PY_VALIDATE_HOOK_CONFIG"
+}
+
+validate_existing_hook_configs() {
+  validate_existing_hook_config "$TARGET/.claude/settings.json" ".claude/settings.json"
+  validate_existing_hook_config "$TARGET/.codex/hooks.json" ".codex/hooks.json"
 }
 
 verify_hook_config() {  # <existing> <expected-profile-addition> <full-managed-template>
@@ -780,6 +869,7 @@ case "$MODE" in
   init|retrofit|upgrade)
     # Contract and capability preflights are deliberately before the first target write.
     validate_agents_markers
+    validate_existing_hook_configs
     run_python "$TPL/symlink-manager.py" doctor --repo "$TARGET" >/dev/null
     do_install
     ;;
