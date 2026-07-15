@@ -320,9 +320,12 @@ def validate_semver_release_contract() -> None:
     if missing_npm_sync or not npm_sync_ordered:
         errors.append("semver-release/reference.md: bounded npm version synchronization contract is missing")
     cargo_sync_contract = (
+        "authoritative version source",
+        "`version.workspace = true`",
+        "`[workspace.package].version`",
         "existing `Cargo.lock`",
         "cargo update --workspace",
-        "cargo metadata --locked --no-deps --format-version 1",
+        "cargo metadata --locked --format-version 1",
         "unrelated dependency versions remain locked",
     )
     missing_cargo_sync = [value for value in cargo_sync_contract if value not in reference_text]
@@ -340,6 +343,8 @@ def validate_semver_release_contract() -> None:
             break
     if re.search(r"(?m)^\s*cargo update\s*$", reference_text):
         errors.append("semver-release/reference.md: bare cargo update command can refresh dependencies")
+    if "cargo metadata --locked --no-deps --format-version 1" in reference_text:
+        errors.append("semver-release/reference.md: --no-deps metadata does not validate Cargo.lock")
     stale_selector = "git tag --list 'v[0-9]*' --sort=-v:refname | head -10"
     if stale_selector in combined:
         errors.append("semver-release: stale Git version-sort base selector remains")
