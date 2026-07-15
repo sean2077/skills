@@ -172,12 +172,16 @@ rm -rf "$S/.claude/skills/proj-skill"
 check "capability loss exits 2"                       test "$rc" = 2
 check "capability loss leaves no project-skill copy" test ! -e "$S/.claude/skills/proj-skill"
 check "capability loss leaves vendor-native dir"     is_real_dir "$S/.claude/skills/vendor-skill"
-( cd "$S" && bash .agents/relink-skills.sh ) >/dev/null 2>&1   # idempotent real-link reconciliation
+( cd "$S" && bash .agents/relink-skills.sh ) >/dev/null 2>&1; rc=$?   # idempotent real-link reconciliation
+check "recovered: relink exits 0"                         test "$rc" = 0
 check "recovered: project skill back to a symlink"   test -L "$S/.claude/skills/proj-skill"
+check "recovered: project skill link is not dangling" test -e "$S/.claude/skills/proj-skill"
 check "recovered: vendor-native dir still untouched" is_real_dir "$S/.claude/skills/vendor-skill"
 git -C "$S" add .claude/skills/proj-skill .agents/skills/proj-skill
 # shellcheck disable=SC2016
 check "tracked project skill mode is 120000" sh -c '[ "$(git -C "$1" ls-files -s -- .claude/skills/proj-skill | awk '\''{print $1}'\'')" = 120000 ]' _ "$S"
+# shellcheck disable=SC2016
+check "tracked project skill target stays portable" sh -c '[ "$(git -C "$1" show :.claude/skills/proj-skill)" = ../../.agents/skills/proj-skill ]' _ "$S"
 
 echo "== verify mode (read-only) =="
 ( cd "$S" && bash "$H" doctor ) >/dev/null 2>&1; rc=$?

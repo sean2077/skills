@@ -22,6 +22,17 @@ class ContractError(RuntimeError):
     """A host preflight or projection contract failed."""
 
 
+def native_symlink_target(target: str) -> str:
+    """Materialize Git's POSIX link text in the host-native form."""
+    return target.replace("/", "\\") if os.name == "nt" else target
+
+
+def read_symlink_target(link: Path) -> str:
+    """Return the portable target text Git records in a mode-120000 blob."""
+    target = os.readlink(link)
+    return target.replace("\\", "/") if os.name == "nt" else target
+
+
 def git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(repo), *args],
@@ -60,9 +71,9 @@ def doctor(repo: Path) -> None:
         (probe_root / "target-dir").mkdir()
         os.symlink("target.txt", file_link)
         os.symlink("target-dir", dir_link, target_is_directory=True)
-        if not file_link.is_symlink() or os.readlink(file_link) != "target.txt":
+        if not file_link.is_symlink() or read_symlink_target(file_link) != "target.txt":
             raise ContractError("file symlink probe did not produce a real relative symlink")
-        if not dir_link.is_symlink() or os.readlink(dir_link) != "target-dir":
+        if not dir_link.is_symlink() or read_symlink_target(dir_link) != "target-dir":
             raise ContractError("directory symlink probe did not produce a real relative symlink")
     except OSError as exc:
         hint = ""
@@ -126,7 +137,7 @@ def validate_destination(
     replace_managed_link: bool,
 ) -> str:
     if link.is_symlink():
-        current = os.readlink(link)
+        current = read_symlink_target(link)
         if current == target:
             if not link.exists():
                 raise ContractError(f"projection is dangling: {link} -> {current}")
@@ -159,8 +170,8 @@ def create_relative_link(link: Path, resolved_target: Path, target: str, action:
     if temp_link.exists() or temp_link.is_symlink():
         remove_existing(temp_link)
     try:
-        os.symlink(target, temp_link, target_is_directory=resolved_target.is_dir())
-        if not temp_link.is_symlink() or os.readlink(temp_link) != target:
+        os.symlink(native_symlink_target(target), temp_link, target_is_directory=resolved_target.is_dir())
+        if not temp_link.is_symlink() or read_symlink_target(temp_link) != target:
             raise ContractError(f"failed to materialize a real symlink for {link}")
         if link.exists() or link.is_symlink():
             remove_existing(link)
@@ -168,7 +179,7 @@ def create_relative_link(link: Path, resolved_target: Path, target: str, action:
     finally:
         if temp_link.exists() or temp_link.is_symlink():
             remove_existing(temp_link)
-    if not link.is_symlink() or os.readlink(link) != target or not link.exists():
+    if not link.is_symlink() or read_symlink_target(link) != target or not link.exists():
         raise ContractError(f"projection verification failed after creating {link} -> {target}")
     return True
 
@@ -219,7 +230,7 @@ def sync_skills(repo: Path) -> None:
         for link in vendor.iterdir():
             if not link.is_symlink():
                 continue
-            target = os.readlink(link)
+            target = read_symlink_target(link)
             if managed_skill_target(target) and (link.name.startswith("_") or link.name not in source_names):
                 stale.append(link)
 
@@ -251,7 +262,7 @@ def verify_link(repo: Path, relative: str, target: str, failures: list[str]) -> 
     if not link.is_symlink():
         failures.append(f"{relative} is not a real symlink")
         return
-    current = os.readlink(link)
+    current = read_symlink_target(link)
     if current != target:
         failures.append(f"{relative} points to {current!r}, expected {target!r}")
     if not link.exists():
@@ -281,7 +292,7 @@ def verify(repo: Path) -> int:
         for link in vendor.iterdir():
             if not link.is_symlink():
                 continue
-            target = os.readlink(link)
+            target = read_symlink_target(link)
             if managed_skill_target(target) and (link.name.startswith("_") or link.name not in source_names):
                 failures.append(f"stale managed skill projection: .claude/skills/{link.name}")
 
