@@ -269,8 +269,28 @@ def collect_adoptable():
 
 # Write each adoptable host agent back as a .agents/subagents/<name>/ source.
 def import_hand_authored():
+    adoptable = collect_adoptable()
+
+    # Preflight every dual-host pair before creating any SSOT source. There is no
+    # safe implicit winner when both hosts carry distinct user instructions.
+    for name, e in adoptable.items():
+        cc = e.get("claude")
+        cx = e.get("codex")
+        if cc and cx:
+            claude_instructions = cc.get("body") or ""
+            codex_instructions = cx.get("instructions") or ""
+            if not claude_instructions.endswith("\n"):
+                claude_instructions += "\n"
+            if not codex_instructions.endswith("\n"):
+                codex_instructions += "\n"
+            if claude_instructions != codex_instructions:
+                raise SystemExit(
+                    "subagent '%s': .claude/agents/%s.md and .codex/agents/%s.toml have different "
+                    "instructions; resolve the conflict before --import" % (name, name, name)
+                )
+
     imported = 0
-    for name, e in collect_adoptable().items():
+    for name, e in adoptable.items():
         cc = e.get("claude")
         cx = e.get("codex")
         if not cc and not cx:

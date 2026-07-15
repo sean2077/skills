@@ -172,6 +172,21 @@ check "conflict preserves dual Claude input"       test "$(git hash-object "$D/.
 check "conflict preserves dual Codex input"        test "$(git hash-object "$D/.codex/agents/dual.toml")" = "$codex_before"
 check "conflict writes no SSOT sources"            test ! -e "$D/.agents"
 
+Q="$work/matching-hosts"; mkdir -p "$Q/.claude/agents" "$Q/.codex/agents" "$Q/tools/agent"
+printf -- '---\nname: matching\ndescription: shared description\n---\n\nMATCHING_INSTRUCTIONS' > "$Q/.claude/agents/matching.md"
+printf '%s\n' \
+  'name = "matching"' \
+  'description = "shared description"' \
+  "developer_instructions = '''" \
+  'MATCHING_INSTRUCTIONS' \
+  "'''" > "$Q/.codex/agents/matching.toml"
+cp "$repo/tools/agent/generate-subagents.py" "$Q/tools/agent/generate-subagents.py"
+( cd "$Q" && python tools/agent/generate-subagents.py --import ) >"$work/matching-import.out" 2>&1; rc=$?
+check "matching dual-host import exits 0"           test "$rc" = 0
+check "matching dual-host import creates SSOT"      grep -qF MATCHING_INSTRUCTIONS "$Q/.agents/subagents/matching/instructions.md"
+( cd "$Q" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "matching dual-host projections are in sync" test "$rc" = 0
+
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
   if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
