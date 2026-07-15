@@ -223,9 +223,11 @@ def preflight_install(repo: Path) -> None:
         if not link.is_file():
             raise ContractError(f"projection conflict: {link} exists but is not a regular file")
         if os.path.lexists(agents):
-            raise ContractError(
-                "projection conflict: real CLAUDE.md exists beside AGENTS.md; "
-                "merge it into AGENTS.md manually before installing"
+            validate_destination(
+                link,
+                agents,
+                "AGENTS.md",
+                replace_managed_link=False,
             )
 
     source_root = within_repo(repo, ".agents/skills")

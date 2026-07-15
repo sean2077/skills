@@ -1147,6 +1147,30 @@ check "contract conflict preserves AGENTS.md" test "$(git hash-object "$K/AGENTS
 check "contract conflict preserves CLAUDE.md" test "$(git hash-object "$K/CLAUDE.md")" = "$claude_before"
 check "contract conflict leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
 
+for fixture in target-text identical-copy; do
+  K="$work/preflight-contract-$fixture"; mkdir -p "$K"
+  git -C "$K" init -q -b main
+  git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
+  git -C "$K" config core.symlinks true
+  printf '# Canonical contract\n' > "$K/AGENTS.md"
+  if [[ "$fixture" == target-text ]]; then
+    printf 'AGENTS.md\n' > "$K/CLAUDE.md"
+  else
+    cp "$K/AGENTS.md" "$K/CLAUDE.md"
+  fi
+  git -C "$K" add -A && git -C "$K" commit -q -m "$fixture migration fixture"
+  (
+    cd "$K" || exit 1
+    AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 \
+      bash "$H" retrofit --no-husky --no-example-subagent
+  ) >"$work/preflight-contract-$fixture.out" 2>&1; rc=$?
+  check "$fixture migration reaches the capability probe" \
+    grep -qF "symlink capability denied by the test fixture" "$work/preflight-contract-$fixture.out"
+  check "$fixture capability failure exits 2" test "$rc" = 2
+  check "$fixture capability failure leaves repo unchanged" \
+    test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
+done
+
 K="$work/preflight-subagent-conflict"; mkdir -p "$K/.claude/agents" "$K/.codex/agents"
 git -C "$K" init -q -b main
 git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
