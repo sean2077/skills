@@ -222,7 +222,7 @@ def validate_semver_release_contract() -> None:
         "git tag --merged HEAD --list 'v[0-9]*'",
         "git merge-base --is-ancestor <base> HEAD",
         "do not sort or truncate before validation",
-        "stop before base selection",
+        "stop before base selection only if a shallow boundary is an ancestor of HEAD",
     )
     missing_skill_base = [value for value in skill_base_contract if value not in skill_text]
     if missing_skill_base:
@@ -234,6 +234,8 @@ def validate_semver_release_contract() -> None:
         "Git's `version:refname` order is not SemVer precedence",
         "previous HEAD-reachable stable release, or repo root if none exists",
         "shallow repository",
+        "git rev-parse --git-path shallow",
+        "repository-level `true` is not sufficient",
     )
     missing_reference_base = [value for value in reference_base_contract if value not in reference_text]
     if missing_reference_base:
