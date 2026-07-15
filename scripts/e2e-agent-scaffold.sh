@@ -107,6 +107,35 @@ check "upgrade rejects malformed markers before doctor" grep -qF "malformed agen
 check "failed upgrade leaves AGENTS.md byte-identical" test "$(git hash-object "$B/AGENTS.md")" = "$agents_before"
 check "failed upgrade leaves no partial harness"      no_generated_harness "$B"
 
+echo "== generated ownership requires the canonical marker, not prose =="
+P="$work/provenance-phrase"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/tools/agent"
+git -C "$P" init -q -b main
+git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
+git -C "$P" commit -q --allow-empty -m init
+printf -- '---\nname: phrase-claude\ndescription: hand-authored Claude agent\n---\n\nThis prose discusses Generated from .agents/subagents/ without claiming ownership.\nCLAUDE_PROSE_SENTINEL\n' > "$P/.claude/agents/phrase-claude.md"
+printf '%s\n' \
+  'name = "phrase-codex"' \
+  'description = "hand-authored Codex agent"' \
+  "developer_instructions = '''" \
+  'This prose discusses Generated from .agents/subagents/ without claiming ownership.' \
+  'CODEX_PROSE_SENTINEL' \
+  "'''" > "$P/.codex/agents/phrase-codex.toml"
+( cd "$P" && bash "$H" plan ) >"$work/provenance-plan.out" 2>&1; rc=$?
+check "provenance plan exits 0"                    test "$rc" = 0
+check "plan lists Claude prose file for adoption" grep -qF "subagent phrase-claude" "$work/provenance-plan.out"
+check "plan lists Codex prose file for adoption"  grep -qF "subagent phrase-codex" "$work/provenance-plan.out"
+cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/provenance-import.out" 2>&1; rc=$?
+check "provenance import exits 0"                 test "$rc" = 0
+check "Claude prose file is adopted into SSOT"   test -f "$P/.agents/subagents/phrase-claude/metadata.json"
+check "Codex prose file is adopted into SSOT"    test -f "$P/.agents/subagents/phrase-codex/metadata.json"
+check "Claude SSOT preserves prose"               grep -qF CLAUDE_PROSE_SENTINEL "$P/.agents/subagents/phrase-claude/instructions.md"
+check "Codex SSOT preserves prose"                grep -qF CODEX_PROSE_SENTINEL "$P/.agents/subagents/phrase-codex/instructions.md"
+check "Claude projection keeps prose"             grep -qF CLAUDE_PROSE_SENTINEL "$P/.claude/agents/phrase-claude.md"
+check "Codex projection keeps prose"              grep -qF CODEX_PROSE_SENTINEL "$P/.codex/agents/phrase-codex.toml"
+( cd "$P" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+check "provenance projections are in sync"        test "$rc" = 0
+
 python "$SM" doctor --repo "$S" >/dev/null 2>&1; symlink_rc=$?
 if [ "$symlink_rc" != 0 ]; then
   if [ "${AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS:-${CI:+1}}" = 1 ]; then
