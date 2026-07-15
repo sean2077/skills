@@ -38,6 +38,8 @@ jcommand_count() { python -c 'import json,re,sys; d=json.load(open(sys.argv[1]))
 fixed_text_in_both() { grep -qF "$1" "$2" && grep -qF "$1" "$3"; }
 # shellcheck disable=SC2317,SC2329
 fixed_text_absent_in_both() { ! grep -qF "$1" "$2" && ! grep -qF "$1" "$3"; }
+# shellcheck disable=SC2317,SC2329
+logical_line_count() { python -c 'import pathlib,sys; lines=pathlib.Path(sys.argv[1]).read_bytes().splitlines(); sys.exit(0 if lines.count(sys.argv[2].encode())==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329  # run indirectly through check() "$@"
 is_real_dir() { [ -d "$1" ] && [ ! -L "$1" ]; }
 # shellcheck disable=SC2317,SC2329
@@ -146,9 +148,27 @@ git -C "$S" add -A
 check "tracked CLAUDE.md mode is 120000"     sh -c '[ "$(git -C "$1" ls-files -s -- CLAUDE.md | awk '\''{print $1}'\'')" = 120000 ]' _ "$S"
 
 echo "== idempotent re-run =="
+python - "$S/.gitignore" "$S/.gitattributes" "$S/.husky/pre-commit" <<'PY'
+from pathlib import Path
+import sys
+
+fixtures = (
+    (sys.argv[1], b".claude/settings.local.json\n", b".claude/settings.local.json\r\n"),
+    (sys.argv[2], b"tools/agent/*.sh text eol=lf\n", b"tools/agent/*.sh text eol=lf\r\n"),
+    (sys.argv[3], b"python tools/agent/generate-subagents.py --check\n", b"python tools/agent/generate-subagents.py --check\r"),
+)
+for name, old, new in fixtures:
+    path = Path(name)
+    data = path.read_bytes()
+    assert data.count(old) == 1
+    path.write_bytes(data.replace(old, new, 1))
+PY
 ( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
 check "retrofit re-run exits 0"              test "$rc" = 0
 check "PostToolUse stays 2 hooks (no dup)"   jcount "$S/.claude/settings.json" PostToolUse 2
+check "CRLF gitignore target stays singular" logical_line_count "$S/.gitignore" ".claude/settings.local.json" 1
+check "CRLF attributes target stays singular" logical_line_count "$S/.gitattributes" "tools/agent/*.sh text eol=lf" 1
+check "CR-only Husky target stays singular" logical_line_count "$S/.husky/pre-commit" "python tools/agent/generate-subagents.py --check" 1
 
 echo "== retrofit-merge preserves a pre-existing user hook =="
 python - "$S/.claude/settings.json" <<'PY'
