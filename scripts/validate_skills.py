@@ -151,12 +151,19 @@ def main() -> int:
 
 
 def validate_semver_release_contract() -> None:
-    """Guard the package-identity rules that distinguish prerelease ecosystems."""
+    """Guard bump inference and package identity across release ecosystems."""
     skill = SKILLS_DIR / "semver-release" / "SKILL.md"
     reference = SKILLS_DIR / "semver-release" / "reference.md"
     if not skill.exists() or not reference.exists():
         return
-    combined = skill.read_text(encoding="utf-8") + reference.read_text(encoding="utf-8")
+    skill_text = skill.read_text(encoding="utf-8")
+    reference_text = reference.read_text(encoding="utf-8")
+    combined = skill_text + reference_text
+    bump_contract = ("BREAKING CHANGE:", "BREAKING-CHANGE:", "case-insensitive")
+    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+        missing_bump = [value for value in bump_contract if value not in text]
+        if missing_bump:
+            errors.append(f"semver-release/{label}: bump inference contract lost fixtures: {missing_bump}")
     required = ("1.2.0-beta.1", "1.2.0b1", "1.2.0rc1", "project(... VERSION 1.2.0)")
     missing = [value for value in required if value not in combined]
     if missing:
