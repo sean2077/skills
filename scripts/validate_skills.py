@@ -299,6 +299,47 @@ def validate_semver_release_contract() -> None:
         errors.append(
             "semver-release/SKILL.md: complete release snapshot must be staged and clean before tagging"
         )
+    sync_invariant = (
+        "Ecosystem synchronization must not create the release commit, tag, or push, "
+        "or refresh unrelated dependencies."
+    )
+    if sync_invariant not in skill_text:
+        errors.append("semver-release/SKILL.md: bounded ecosystem synchronization invariant is missing")
+    npm_sync_contract = (
+        "existing `package-lock.json`",
+        "`preversion`, `version`, and `postversion`",
+        "npm version <version> --no-git-tag-version --ignore-scripts",
+        "`package.json.version`",
+        "`package-lock.json.version`",
+        "`package-lock.json.packages[\"\"].version`",
+    )
+    missing_npm_sync = [value for value in npm_sync_contract if value not in reference_text]
+    npm_sync_ordered = not missing_npm_sync and [reference_text.index(value) for value in npm_sync_contract] == sorted(
+        reference_text.index(value) for value in npm_sync_contract
+    )
+    if missing_npm_sync or not npm_sync_ordered:
+        errors.append("semver-release/reference.md: bounded npm version synchronization contract is missing")
+    cargo_sync_contract = (
+        "existing `Cargo.lock`",
+        "cargo update --workspace",
+        "cargo metadata --locked --no-deps --format-version 1",
+        "unrelated dependency versions remain locked",
+    )
+    missing_cargo_sync = [value for value in cargo_sync_contract if value not in reference_text]
+    cargo_sync_ordered = not missing_cargo_sync and [
+        reference_text.index(value) for value in cargo_sync_contract
+    ] == sorted(reference_text.index(value) for value in cargo_sync_contract)
+    if missing_cargo_sync or not cargo_sync_ordered:
+        errors.append("semver-release/reference.md: bounded Cargo lock synchronization contract is missing")
+    for line in reference_text.splitlines():
+        command = line.strip()
+        if re.match(r"^npm version(?:\s|$)", command) and (
+            "--no-git-tag-version" not in command or "--ignore-scripts" not in command
+        ):
+            errors.append("semver-release/reference.md: npm version command can own Git or lifecycle side effects")
+            break
+    if re.search(r"(?m)^\s*cargo update\s*$", reference_text):
+        errors.append("semver-release/reference.md: bare cargo update command can refresh dependencies")
     stale_selector = "git tag --list 'v[0-9]*' --sort=-v:refname | head -10"
     if stale_selector in combined:
         errors.append("semver-release: stale Git version-sort base selector remains")
