@@ -1349,6 +1349,7 @@ check "legacy retrofit writes nothing"             test -z "$(git -C "$G" status
 check "legacy upgrade exits 0"                     test "$rc" = 0
 check "legacy worktree command moved"              test -f "$G/.agents/tools/worktree.sh"
 check "legacy generator moved"                     test -f "$G/.agents/tools/generate-subagents.py"
+# shellcheck disable=SC2016  # the inner sh expands its positional $1 and loop variable
 check "legacy managed files have no wrappers"      sh -c '
   for path in worktree.sh generate-subagents.py hooks/trunk_edit_guard.sh hooks/authority_doc_budget.sh hooks/format_on_edit.sh hooks/hook-common.sh hooks/hook-paths.py; do
     test ! -e "$1/tools/agent/$path" || exit 1
@@ -1569,7 +1570,7 @@ git -C "$PARTIAL_WT" add change.txt && git -C "$PARTIAL_WT" commit -q -m "partia
   cd "$WS" || exit 1
   REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
     PATH="$WS/test-bin:$PATH" SIMULATE_PARTIAL_REMOVE=1 \
-    bash "$WT_HELPER" done --dir "$PARTIAL_WT" --no-push
+    bash "$WT_HELPER" "done" --dir "$PARTIAL_WT" --no-push
 ) >"$work/worktree-partial-remove.out" 2>&1; rc=$?
 check "unregistered partial removal still completes cleanup" test "$rc" = 0
 check "partial removal explains the unregistered state" grep -qF "already unregistered" "$work/worktree-partial-remove.out"
@@ -1585,7 +1586,7 @@ git -C "$POST_WT" add change.txt && git -C "$POST_WT" commit -q -m "post-preflig
   cd "$WS" || exit 1
   REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
     PATH="$WS/test-bin:$PATH" SIMULATE_POST_PREFLIGHT_WRITE=1 \
-    bash "$WT_HELPER" done --dir "$POST_WT" --no-push
+    bash "$WT_HELPER" "done" --dir "$POST_WT" --no-push
 ) >"$work/worktree-post-preflight.out" 2>&1; rc=$?
 check "post-preflight data aborts worktree cleanup" test "$rc" = 2
 check "post-preflight data survives" test -f "$POST_WT/precious-untracked.txt"
