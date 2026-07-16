@@ -1,29 +1,30 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Subordinate to /AGENTS.md — the authoritative agent contract; on conflict /AGENTS.md wins. -->
+<!-- Parent: <relative path to the nearest ancestor AGENTS.md, e.g. ../AGENTS.md or ../../AGENTS.md> -->
+<!-- Subordinate to the parent-linked AGENTS.md chain; local rules may narrow this scope, while ancestor invariants remain authoritative. -->
 
 # DIR/
 
 ## Purpose
 
 <!-- TODO: what this directory contains and why it exists. One or two sentences.
-     Link depth into docs/ rather than inlining it. -->
+     This context is optional and does not by itself justify a local contract. -->
 
 ## Key Files
 
-<!-- TODO: table of the load-bearing files and their roles.
+<!-- OPTIONAL: include only files needed to apply the local differences below.
 | path | role |
 |---|---|
 | `Foo.ts` | ... |
 -->
 
-## For AI Agents
+## Local Differences
 
-<!-- TODO: how to work here — conventions, invariants ("铁律"), gotchas, where to
-     register new things. -->
+<!-- REQUIRED: state the rule, command, ownership boundary, or risk boundary that
+     differs from the nearest ancestor contract. If none exists, do not create
+     this file. -->
 
 ## Dependencies
 
-<!-- TODO: internal (sibling dirs, with links to their AGENTS.md) + external
-     (libraries) this directory depends on. -->
+<!-- OPTIONAL: include only dependencies needed to understand or verify the
+     local differences. -->
 
-<!-- MANUAL: notes below this line are preserved on regeneration -->
+<!-- MANUAL: author-owned notes below this line -->
