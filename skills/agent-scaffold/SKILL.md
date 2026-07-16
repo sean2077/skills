@@ -113,7 +113,7 @@ macOS, Linux, and **Windows (Git Bash only)**. Bash 3.2 is the shell baseline. B
 **LF-only** (the installer writes `.gitattributes` rules; CRLF breaks bash), and every internal
 shell dispatch explicitly uses `bash` rather than relying on executable-bit checkout behavior.
 Real file and directory symlinks are mandatory: unsupported hosts stop before mutation with
-remediation, never a copy. Windows specifics: `reference.md` §11.
+remediation, never a copy. Windows setup and degraded-checkout recovery: `reference.md` §11.
 
 ## Runtime prerequisites
 
