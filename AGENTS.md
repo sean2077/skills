@@ -78,11 +78,12 @@ or `WORKTREE_ALLOW_TRUNK_EDIT=1`.
 
 ### Authority docs
 
-`AGENTS.md` (root + every subdirectory; `CLAUDE.md` is a symlink) is an **entry
+`AGENTS.md` (root plus nested contracts created only for local differences;
+root `CLAUDE.md` is a symlink to it) is an **entry
 point**, not a detail dump. `tools/agent/hooks/authority_doc_budget.sh`
 (PostToolUse) advises when a contract exceeds its line budget (root 320 / nested
-120; override with `AUTHORITY_DOC_MAX_ROOT|NESTED`). Subdirectory `AGENTS.md`
-files carry `<!-- Parent: ../AGENTS.md -->` and stay subordinate to the root.
+120; override with `AUTHORITY_DOC_MAX_ROOT|NESTED`). Nested contracts carry a
+`<!-- Parent: ... -->` link to the nearest existing ancestor contract.
 
 ### SSOT layout
 

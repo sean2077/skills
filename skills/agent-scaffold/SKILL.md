@@ -80,7 +80,7 @@ create / merge / migrate decision without writing anything.
 
 1. **Detect intent + state.** From the user's words pick the mode; confirm the target repo with `git rev-parse --show-toplevel` and note whether `.claude/`, `.codex/`, and `AGENTS.md` already exist. If ambiguous between init and retrofit, run `retrofit`.
 2. **Run the installer** for that mode (table above). Useful flags: `--no-worktree`, `--no-format-hook`, `--no-husky`, `--no-example-subagent`, `--force-scripts` (implied by `upgrade`). See `harness-init.sh --help`. When enabled, the worktree flow's trunk is chosen per-call (`WORKTREE_TRUNK=… ` or `worktree.sh … --trunk <branch>`), not at install time.
-3. **Finish the contract.** For `init`, fill the `AGENTS.md` TODO sections (project overview / commands / architecture) — keep it an entry point; link depth into `docs/`. For nested directories that deserve their own contract, drop in `templates/AGENTS.nested.md` and fill it (keep `<!-- Parent: ../AGENTS.md -->`). For a multi-directory codebase, generate a full parent-linked tree — see `reference.md` → *Generating the nested AGENTS.md tree*.
+3. **Finish the contract.** For `init`, fill the root `AGENTS.md` TODOs and keep depth in `docs/`. Add a nested `AGENTS.md` only for guidance that differs from its nearest ancestor (rules, commands, ownership, or risk); directory structure alone does not qualify. Use `templates/AGENTS.nested.md`, link `<!-- Parent: ... -->` to the nearest existing contract, and see `reference.md` → *Creating nested AGENTS.md on demand*.
 4. **Report** what was installed, what was merged vs created, any preflight stop, and the **Codex trust** reminder the installer prints.
 5. **Verify** with `verify` mode (or the recipe in `reference.md`) before handing back.
 

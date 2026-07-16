@@ -43,7 +43,7 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 | `codex.hooks.json` | merged into `.codex/hooks.json` | Codex hook block (merge source) |
 | `codex.config.toml` | `.codex/config.toml` (create if missing) | trust-gate note; sets nothing else |
 | `AGENTS.root.md` | `AGENTS.md` (init) / harness block injected (retrofit) | the `<!-- agent-scaffold:start … end -->` block is the reusable contract |
-| `AGENTS.nested.md` | `<dir>/AGENTS.md` (on request) | hierarchical, parent-linked nested template w/ `<!-- Parent -->` |
+| `AGENTS.nested.md` | `<dir>/AGENTS.md` (on request) | nearest-ancestor-linked template for a real local difference |
 | `agents-skills.README.md` | `.agents/skills/README.md` | authoring contract |
 | `agents-subagents.README.md` | `.agents/subagents/README.md` | authoring contract |
 | `subagent.metadata.json` + `subagent.instructions.md` | `.agents/subagents/code-reviewer/` (init) | deletable example, exercises the source → projection round-trip |
@@ -186,11 +186,11 @@ the `<!-- agent-scaffold:start … end -->` markers.
 
 ## 6. AGENTS.md governance & budget
 
-`AGENTS.md` (root + every subdirectory; `CLAUDE.md` is a symlink to the root) is an **entry
+`AGENTS.md` (root plus any on-demand nested contracts; root `CLAUDE.md` is a symlink to it) is an **entry
 point, not a detail dump** — put depth in `docs/` and link back; inline only important,
 frequently-needed points. The `authority_doc_budget.sh` hook advises when a contract crosses its
-line budget (root 320 / nested 120). Nested contracts carry `<!-- Parent: ../AGENTS.md -->` and
-stay subordinate to the root.
+line budget (root 320 / nested 120). Nested contracts carry `<!-- Parent: ... -->` pointing to the
+nearest existing ancestor contract and stay subordinate to the root.
 
 **Retrofit never overwrites a hand-authored `AGENTS.md`.** The installer manages only the marked
 block:
@@ -209,28 +209,30 @@ When the contract lives in a **real `CLAUDE.md`** with no `AGENTS.md` yet, retro
 prose as the `AGENTS.md` SSOT and replaces `CLAUDE.md` with the symlink — see
 [§13](#13-retrofitting-an-in-flight-project-migration--adoption).
 
-### Generating the nested AGENTS.md tree
+### Creating nested AGENTS.md on demand
 
-For a multi-directory codebase, give each **significant** directory its own `AGENTS.md` from
-`templates/AGENTS.nested.md`, so an agent dropped anywhere can answer "what is this directory, how
-does it relate to the rest, how do I work here" without re-deriving the repo. The tree is
-parent-linked and refreshable:
+The root contract is sufficient by default. A multi-directory layout, source / config / asset
+files, or a useful directory description does **not** by itself justify another instruction file.
+Create a nested `AGENTS.md` only when the directory has at least one **local difference** from the
+nearest ancestor contract:
 
-- **Pick significant dirs.** A directory earns an `AGENTS.md` when it holds source / config / assets
-  an agent reads or edits. **Skip** generated/vendored noise: `node_modules`, `.git`, `dist`,
-  `build`, `out`, `target`, `.venv`, `__pycache__`, `coverage`, `.next`, `.nuxt`, `vendor`. Empty
-  dir → skip; subdir-only dir → a minimal Purpose + Subdirectories file.
-- **Generate parent-first.** Root first (no parent tag), then level 1, then level 2 … so every
-  `<!-- Parent: ../AGENTS.md -->` resolves the moment it is written. Independent dirs at the same
-  depth can be done in parallel; never a child before its parent.
-- **Fill from real content** — accurate file roles, real subdirectory purposes, the conventions an
-  agent must follow here, actual dependencies. No generic filler.
-- **Update, don't clobber.** If an `AGENTS.md` exists, preserve everything below
-  `<!-- MANUAL: notes below this line are preserved on regeneration -->` verbatim, refresh the auto
-  sections to match current files, and fix the parent path if the file moved.
-- **Validate.** Root has no parent tag; every other file's parent path resolves and chains to the
-  single root (no orphans, no cycles); every significant dir is covered; no `AGENTS.md` survives in
-  a deleted dir. Keep each file under the nested budget (120 lines) — an entry point, not a dump.
+- a different build, test, lint, generation, or release command;
+- a local invariant, convention, ownership boundary, or registration point; or
+- a stronger risk, security, data-handling, or review boundary.
+
+When a local difference exists:
+
+- **Start from the local delta.** Copy `templates/AGENTS.nested.md` and state the differing guidance
+  first. Purpose, key-file, or dependency notes are optional and belong only when they help apply
+  that guidance; never create the file merely to hold a directory map.
+- **Link to the nearest contract.** Set `<!-- Parent: ... -->` to the nearest ancestor directory
+  that actually has an `AGENTS.md`. Sparse trees may need `../../AGENTS.md` (or deeper); do not
+  create empty intermediary contracts just to keep every parent path at `../AGENTS.md`.
+- **Validate the sparse chain.** Every nested parent path resolves and chains to the single root
+  without orphans or cycles, and each nested file contains a concrete local difference while
+  staying under the 120-line budget.
+
+This creation policy does not scan, rewrite, or delete existing nested contracts.
 
 ## 7. Codex trust gate
 
