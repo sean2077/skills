@@ -43,7 +43,7 @@ logical_line_count() { python -c 'import pathlib,sys; lines=pathlib.Path(sys.arg
 # shellcheck disable=SC2317,SC2329  # run indirectly through check() "$@"
 is_real_dir() { [ -d "$1" ] && [ ! -L "$1" ]; }
 # shellcheck disable=SC2317,SC2329
-no_fixed_text() { ! grep -qF "$2" "$1"; }
+no_fixed_text() { ! grep -qF -- "$2" "$1"; }
 # shellcheck disable=SC2317,SC2329
 no_exact_line() { ! grep -qxF "$2" "$1"; }
 # shellcheck disable=SC2317,SC2329
@@ -284,6 +284,20 @@ hook_paths="$({
 check "hook path extraction remains fail-open" test "$rc" = 0
 check "hook uses jq when every Python candidate is incompatible" grep -qxF jq "$resolver_log"
 check "jq fallback returns the extracted path" test "$hook_paths" = /fixture/AGENTS.md
+
+echo "== generator CLI rejects unknown options before help or writes =="
+GOPT="$work/generator-options"; mkdir -p "$GOPT/.agents/tools"
+cp "$repo/.agents/tools/generate-subagents.py" "$GOPT/.agents/tools/generate-subagents.py"
+generator_before="$(find "$GOPT" -mindepth 1 -print | sort)"
+( cd "$GOPT" && python .agents/tools/generate-subagents.py --help --write-anyway ) \
+  >"$work/generator-help-unknown.out" 2>&1; rc=$?
+check "help does not mask an unknown generator option" test "$rc" = 2
+check "generator names the unknown option" grep -qF "unknown option(s): --write-anyway" "$work/generator-help-unknown.out"
+( cd "$GOPT" && python .agents/tools/generate-subagents.py --write-anyway ) \
+  >"$work/generator-unknown.out" 2>&1; rc=$?
+check "unknown generator option exits 2" test "$rc" = 2
+generator_after="$(find "$GOPT" -mindepth 1 -print | sort)"
+check "unknown generator options write nothing" test "$generator_after" = "$generator_before"
 
 echo "== malformed AGENTS markers: fail before mutation =="
 B="$work/bad-agents-markers"; mkdir -p "$B"
@@ -1517,6 +1531,69 @@ check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
 merge_subject="$(git -C "$S" log -1 --format=%s)"
 check "merge commit landed on main"          test "$merge_subject" = "Merge branch 'chore/demo'"
 
+echo "== worktree cleanup never force-deletes post-preflight data =="
+WS="$work/worktree-cleanup-safety"; mkdir -p "$WS"
+git -C "$WS" init -q -b main
+git -C "$WS" config user.email t@t.t; git -C "$WS" config user.name tester
+printf 'base\n' > "$WS/base.txt"
+git -C "$WS" add base.txt && git -C "$WS" commit -q -m base
+printf '.worktrees/\ntest-bin/\n' > "$WS/.git/info/exclude"
+mkdir -p "$WS/test-bin"
+cat > "$WS/test-bin/git" <<'SH'
+#!/usr/bin/env bash
+if [[ "${1:-}" == worktree && "${2:-}" == remove ]]; then
+  printf '%s\n' "$*" >> "${WORKTREE_REMOVE_LOG:?}"
+fi
+if [[ "${SIMULATE_PARTIAL_REMOVE:-0}" == 1 && "${1:-}" == worktree && "${2:-}" == remove && "${3:-}" != --force ]]; then
+  "$REAL_GIT" "$@"
+  status=$?
+  [[ $status -eq 0 ]] || exit "$status"
+  mkdir -p "$3"
+  printf 'must remain\n' > "$3/locked-residue.txt"
+  exit 1
+fi
+if [[ "${SIMULATE_POST_PREFLIGHT_WRITE:-0}" == 1 && "${1:-}" == worktree && "${2:-}" == remove && "${3:-}" != --force ]]; then
+  printf 'must survive\n' > "$3/precious-untracked.txt"
+  "$REAL_GIT" "$@"
+  exit $?
+fi
+exec "$REAL_GIT" "$@"
+SH
+chmod +x "$WS/test-bin/git"
+WT_REMOVE_LOG="$WS/.git/worktree-remove.log"; : > "$WT_REMOVE_LOG"
+( cd "$WS" && bash "$WT_HELPER" new partial-remove --type fix ) >/dev/null 2>&1
+PARTIAL_WT="$WS/.worktrees/partial-remove"
+printf 'partial\n' > "$PARTIAL_WT/change.txt"
+git -C "$PARTIAL_WT" add change.txt && git -C "$PARTIAL_WT" commit -q -m "partial removal"
+(
+  cd "$WS" || exit 1
+  REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
+    PATH="$WS/test-bin:$PATH" SIMULATE_PARTIAL_REMOVE=1 \
+    bash "$WT_HELPER" done --dir "$PARTIAL_WT" --no-push
+) >"$work/worktree-partial-remove.out" 2>&1; rc=$?
+check "unregistered partial removal still completes cleanup" test "$rc" = 0
+check "partial removal explains the unregistered state" grep -qF "already unregistered" "$work/worktree-partial-remove.out"
+check "partial removal keeps non-empty residue" test -f "$PARTIAL_WT/locked-residue.txt"
+check "partial removal drops the merged branch" test -z "$(git -C "$WS" branch --list fix/partial-remove)"
+check "partial removal is absent from the registry" no_fixed_text <(git -C "$WS" worktree list --porcelain) "partial-remove"
+
+( cd "$WS" && bash "$WT_HELPER" new post-preflight --type fix ) >/dev/null 2>&1
+POST_WT="$WS/.worktrees/post-preflight"
+printf 'post\n' > "$POST_WT/change.txt"
+git -C "$POST_WT" add change.txt && git -C "$POST_WT" commit -q -m "post-preflight write"
+(
+  cd "$WS" || exit 1
+  REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
+    PATH="$WS/test-bin:$PATH" SIMULATE_POST_PREFLIGHT_WRITE=1 \
+    bash "$WT_HELPER" done --dir "$POST_WT" --no-push
+) >"$work/worktree-post-preflight.out" 2>&1; rc=$?
+check "post-preflight data aborts worktree cleanup" test "$rc" = 2
+check "post-preflight data survives" test -f "$POST_WT/precious-untracked.txt"
+check "registered failure keeps the feature branch" test -n "$(git -C "$WS" branch --list fix/post-preflight)"
+check "registered failure remains in the registry" grep -qF "post-preflight" <(git -C "$WS" worktree list --porcelain)
+check "registered failure explains force-removal refusal" grep -qF "refusing force removal" "$work/worktree-post-preflight.out"
+check "cleanup never invokes worktree remove --force" no_fixed_text "$WT_REMOVE_LOG" "--force"
+
 echo "== trunk guard: block on main + escape hatch =="
 g="$S/.agents/tools/hooks/trunk_edit_guard.sh"
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
@@ -1542,6 +1619,35 @@ case "$(uname -s)" in
     check "hook runtime accepts Git Bash paths" bash -c 'source "$1"; [[ "$(hook_posix_path "/c/Temp/x")" == /c/Temp/x ]]' _ "$S/.agents/tools/hooks/hook-common.sh"
     ;;
 esac
+
+echo "== authority budgets classify root and nested contracts across path namespaces =="
+budget_hook="$S/.agents/tools/hooks/authority_doc_budget.sh"
+mkdir -p "$S/docs/budget-fixture"
+printf 'nested\nentry\n' > "$S/docs/budget-fixture/AGENTS.md"
+budget_root="$S"
+root_contract="$S/AGENTS.md"
+nested_contract="$S/docs/budget-fixture/AGENTS.md"
+case "$(uname -s)" in
+  MINGW* | MSYS*)
+    budget_root="$(cygpath -w "$budget_root")"
+    root_contract="$(cygpath -w "$root_contract")"
+    nested_contract="$(cygpath -w "$nested_contract")"
+    ;;
+esac
+python -c 'import json,sys; print(json.dumps({"cwd":sys.argv[1],"tool_input":{"file_path":sys.argv[2]}}))' \
+  "$budget_root" "$root_contract" \
+  | CLAUDE_PROJECT_DIR="$budget_root" AUTHORITY_DOC_MAX_ROOT=9999 AUTHORITY_DOC_MAX_NESTED=1 \
+      bash "$budget_hook" >"$work/root-budget.out" 2>&1; rc=$?
+check "root budget hook exits 0" test "$rc" = 0
+check "root contract uses the root budget" no_fixed_text "$work/root-budget.out" "budget exceeded"
+python -c 'import json,sys; print(json.dumps({"cwd":sys.argv[1],"tool_input":{"file_path":sys.argv[2]}}))' \
+  "$budget_root" "$nested_contract" \
+  | CLAUDE_PROJECT_DIR="$budget_root" AUTHORITY_DOC_MAX_ROOT=9999 AUTHORITY_DOC_MAX_NESTED=1 \
+      bash "$budget_hook" >"$work/nested-budget.out" 2>&1; rc=$?
+check "nested budget hook exits 0" test "$rc" = 0
+check "nested contract uses the nested budget" grep -qF "docs/budget-fixture/AGENTS.md" "$work/nested-budget.out"
+check "nested contract reports budget 1" grep -qF "budget 1" "$work/nested-budget.out"
+rm -rf "$S/docs/budget-fixture"
 
 echo "== relink coexistence with an npx-installed skill =="
 mkdir -p "$S/.agents/skills/proj-skill"; printf -- '---\nname: proj-skill\n---\n' > "$S/.agents/skills/proj-skill/SKILL.md"

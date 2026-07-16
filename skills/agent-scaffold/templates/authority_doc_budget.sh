@@ -56,6 +56,8 @@ while IFS= read -r file_path; do
     proj_common="$(git -C "$proj" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || continue
     [[ "$file_common" == "$proj_common" ]] || continue
     toplevel="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || continue
+    toplevel="$(hook_posix_path "$toplevel" 2>/dev/null || true)"
+    [[ -n "$toplevel" ]] || continue
 
     # Resolve the CLAUDE.md → AGENTS.md symlink so each contract is measured once.
     real="$file_path"
