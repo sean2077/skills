@@ -800,6 +800,16 @@ def write_imported(prepared):
 
 
 def main(argv):
+    known = {"--check", "--import", "--preflight-import", "-h", "--help"}
+    unknown = [argument for argument in argv if argument not in known]
+    if unknown:
+        print(
+            "generate-subagents: unknown option(s): %s" % ", ".join(unknown),
+            file=sys.stderr,
+        )
+        print("Run: python .agents/tools/generate-subagents.py --help", file=sys.stderr)
+        return 2
+
     if "-h" in argv or "--help" in argv:
         print(
             "\n".join(

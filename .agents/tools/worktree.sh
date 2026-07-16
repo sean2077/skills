@@ -121,6 +121,44 @@ cmd_release() {
     log "ready: $WTDIR  (detached @ $REF) — when packaging is done: git worktree remove --force $WTDIR"
 }
 
+worktree_is_registered() {
+    local TARGET="$1" REGISTRY FIELD FOUND=1
+    REGISTRY="$(mktemp "${TMPDIR:-/tmp}/agent-scaffold-worktrees.XXXXXX")" \
+        || die "could not create temporary worktree registry file"
+    if ! git worktree list --porcelain -z >"$REGISTRY"; then
+        rm -f "$REGISTRY"
+        die "could not inspect the worktree registry after remove failed"
+    fi
+    while IFS= read -r -d '' FIELD; do
+        if [[ "$FIELD" == "worktree $TARGET" ]]; then
+            FOUND=0
+            break
+        fi
+    done <"$REGISTRY"
+    rm -f "$REGISTRY"
+    return "$FOUND"
+}
+
+remove_done_worktree() {
+    local WT="$1"
+    git worktree remove "$WT" && return 0
+
+    worktree_is_registered "$WT" \
+        && die "worktree removal failed and '$WT' remains registered; refusing force removal. Worktree and branch kept"
+
+    # Git can unregister a worktree before Windows finishes deleting its
+    # directory. Registration is the safety boundary: continue branch cleanup,
+    # but never recursively or forcibly delete residue that may contain new data.
+    log "worktree removal reported failure after '$WT' was already unregistered; continuing cleanup"
+    if [[ -d "$WT" ]]; then
+        if rmdir "$WT" 2>/dev/null; then
+            log "removed empty residual worktree directory: $WT"
+        else
+            log "WARNING: unregistered residual directory remains (no recursive delete attempted): $WT"
+        fi
+    fi
+}
+
 cmd_done() {
     local WT="$PWD" TRUNK="" MSG="" PUSH=1 KEEP=0
     while [[ $# -gt 0 ]]; do
@@ -171,7 +209,7 @@ Never force-push from here — that is the user's call."
     else
         log "not pushed (--no-push); remember to push $TRUNK later"
     fi
-    git worktree remove "$WT" 2>/dev/null || git worktree remove --force "$WT"
+    remove_done_worktree "$WT"
     [[ $KEEP -eq 1 ]] || git branch -d "$BRANCH" 2>/dev/null \
         || log "WARN: branch $BRANCH not fully merged into $TRUNK - kept; delete: git branch -D $BRANCH"
     git worktree prune
