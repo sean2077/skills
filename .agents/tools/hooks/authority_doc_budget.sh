@@ -58,6 +58,7 @@ while IFS= read -r file_path; do
     toplevel="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || continue
     toplevel="$(hook_posix_path "$toplevel" 2>/dev/null || true)"
     [[ -n "$toplevel" ]] || continue
+    toplevel="$(cd "$toplevel" 2>/dev/null && pwd -P)" || continue
 
     # Resolve the CLAUDE.md → AGENTS.md symlink so each contract is measured once.
     real="$file_path"
@@ -71,6 +72,8 @@ while IFS= read -r file_path; do
                 ;;
         esac
     fi
+    real_dir="$(cd "$(dirname "$real")" 2>/dev/null && pwd -P)" || continue
+    real="$real_dir/$(basename "$real")"
     [[ -f "$real" ]] || continue
     lines="$(wc -l <"$real" 2>/dev/null | tr -d ' ')" || continue
     [[ "$lines" =~ ^[0-9]+$ ]] || continue
