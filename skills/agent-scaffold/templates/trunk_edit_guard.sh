@@ -3,7 +3,7 @@
 #
 # Installed by the agent-scaffold skill. Enforces the hard invariant: never edit
 # tracked files in a trunk worktree (main / master / release/* / maintenance/*).
-# Blocks the wrong move and points at the right one (tools/agent/worktree.sh
+# Blocks the wrong move and points at the right one (.agents/tools/worktree.sh
 # new <name>).
 #
 # Wired for BOTH runtimes at the same shared impl:
@@ -32,7 +32,7 @@ common="$hook_dir/hook-common.sh"
 source "$common"
 proj="$(hook_project_root 2>/dev/null || true)"
 [[ -n "$proj" ]] || { echo "trunk_edit_guard: cannot resolve project root, allowing" >&2; exit 0; }
-wt_cmd="${WORKTREE_GUARD_CMD:-bash tools/agent/worktree.sh}"
+wt_cmd="${WORKTREE_GUARD_CMD:-bash .agents/tools/worktree.sh}"
 input="$(cat || true)"
 
 # Pull every file path the tool call would touch out of the hook JSON on stdin.

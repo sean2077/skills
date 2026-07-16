@@ -1,6 +1,6 @@
-# tooling-conventions — reference
+# Tool Surface Taxonomy
 
-On-demand depth for the resident `SKILL.md`: the full surface taxonomy, the failure-domain aggregation deep-dive, the complete script contract, the move checklist, and the verification set.
+Read this when classifying committed command surfaces or deciding whether related commands share a failure domain.
 
 ## Full surface taxonomy
 
@@ -30,49 +30,3 @@ The three-axis test (audience / target-state⊕artifact / hazard⊕verification)
 - ↔ **split** — two commands that both "touch a board from a dev machine" but differ in target-state (one provisions identity, the other deploys a build) and hazard (one is low-risk, the other rides an auto-rollback upgrade) → separate, even though the noun overlaps.
 
 Keep the four sub-signals (`target_state`, `artifact`, `hazard`, `verify`) as distinct manifest fields even though the decision tree folds them into two axes — they are the evidence for re-reviewing a boundary case later.
-
-## Complete script contract
-
-### Mandatory (gate/audit these)
-
-- **`--help` + exit-code contract** — public/installed entries: `-h/--help` → exit 0; usage / unknown flag → exit 2; runtime/preflight failure → nonzero and **do not proceed** with the dangerous action. Unknown args must never fall through to the default action.
-- **Unified resolver** — if a script selects one of {build preset, profile, config path, target path, install path} from a platform/environment, it `source`s a single shared resolver (one precedence definition: explicit flag > env var > inferred-from-context > default), instead of re-implementing `--platform`/`--env` parsing or hardcoding one value.
-- **Authoritative path for dangerous actions** — deploying code, mutating production/device state (config / service / identity / credentials), or producing a release deliverable goes through the project's blessed upgrade/install/desired-state/image/release path. A temporary escape hatch is allowed only as an **explicit flag + a logged risk warning + never a QA/customer path**.
-- **Secrets** — never commit keys; never print secret values; no `set -x` that would leak them; temp files `0600`; `trap '…' EXIT` to shred/cleanup; deliverables pass a secrets/leak gate before shipping.
-- **Atomic + idempotent** — state-file writes: `.tmp` + fsync/close + atomic rename. Install / desired-state / config-migration steps are idempotent (no ledger needed; re-running converges).
-- **Logging** — multi-step scripts use a stable bracketed prefix; errors go to stderr.
-- **Manifest registration** — adding/moving/removing any public/installed/break-glass/paused/legacy command surface updates the manifest (and its human view) in the same commit, or the reconciliation audit fails. New scripts default to "enforced".
-
-### Recommended (judgment, not gated)
-
-- `shellcheck` when available; `cmd_<verb>` subcommand dispatch; JSON output only when something automated consumes it.
-- A header contract on public/installed shell entries: ① one-line purpose ② 2–3 *real* usage lines ③ surface + audience ④ hazard / dry-run note. Native sources, package modules, and templates don't need the same header — register them in the domain/target docs instead.
-- Prefer `--dry-run` over `--yes`. Keep a deprecation shim for external/QA surfaces for at least one release; internal surfaces can move without a shim.
-
-## Move / rename / delete checklist
-
-A move is a contract change — sync every mechanical reference surface in the **same commit**:
-
-- [ ] project manual / agent docs that name the path
-- [ ] sibling skills that invoke it
-- [ ] service/unit files bound to it (change the unit/install contract first, or leave a shim)
-- [ ] build files, install scripts, image/packaging scripts, and any other callers
-- [ ] the manifest row + its human-readable view
-- [ ] decide on a deprecation shim (external/QA: keep ≥1 release; internal: drop)
-- [ ] re-check the moved script's own `REPO_ROOT`/`HERE` derivation and sibling-file references (a relocated script often needs one extra `..`)
-
-External state (a wiki, an issue tracker, agent memory) is not a commit-blocking file surface, but list any that affect the current workflow in the change summary.
-
-## Verification — minimal set
-
-```bash
-bash -n <script.sh>                 # shell syntax
-python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")' path/to/script.py  # python syntax, no bytecode file
-<script> --help                     # exit 0 + usage
-<script> --dry-run ...              # dangerous scripts: prove the no-op path
-bash manifest-check.sh <manifest>   # reconcile manifest vs disk (this skill's checker)
-rg -n '<old-path>' <docs> <skills> <units>   # after a move: no stale active references
-# plus any domain test the project already has
-```
-
-Scripts whose effect can't be fully verified on a dev host (anything that drives real hardware, a device GUI, or a flashing/loader path) still need a real-target smoke before they're trusted.

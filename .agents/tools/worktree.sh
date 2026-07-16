@@ -107,7 +107,7 @@ cmd_new() {
     git -C "$ROOT" worktree add "$WTDIR" -b "$BRANCH" "$TRUNK"
     share_dirs "$WTDIR"
     log "ready: $WTDIR  (branch $BRANCH ← $TRUNK tip)"
-    log "when done, run inside it: bash tools/agent/worktree.sh done   # merge back to $TRUNK + clean up + push"
+    log "when done, run inside it: bash .agents/tools/worktree.sh done   # merge back to $TRUNK + clean up + push"
 }
 
 cmd_release() {
@@ -165,7 +165,7 @@ $(git -C "$WT" status --short | head -10)"
 Resolve origin/$TRUNK in the trunk worktree, then retry:
   git -C \"$PD\" fetch origin
   git -C \"$PD\" merge origin/$TRUNK
-  bash \"$PD/tools/agent/worktree.sh\" done --dir \"$WT\" --trunk \"$TRUNK\"$RETRY_KEEP
+  bash \"$PD/.agents/tools/worktree.sh\" done --dir \"$WT\" --trunk \"$TRUNK\"$RETRY_KEEP
 Never force-push from here — that is the user's call."
         log "pushed $TRUNK → origin"
     else

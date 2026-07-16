@@ -43,10 +43,12 @@ If the skills were installed before the compatibility manifest existed, rerun th
 skills/
 └── <name>/
     ├── SKILL.md            # Single source of truth for every installer
-    ├── reference.md        # Optional: on-demand detail kept out of the resident skill body
+    ├── references/         # Optional: category-named, on-demand detail (no catch-all document)
+    │   └── <category>.md
     └── *.sh / templates/   # Optional: scripts/templates a skill ships (agent-scaffold, tooling-conventions)
 scripts/
 ├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
+├── test_validate_skills.py  # Focused fixtures for category reference routing and naming
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 └── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 requirements-validation.txt  # pinned official skills-ref + StrictYAML validation dependency
@@ -55,6 +57,10 @@ requirements-validation.txt  # pinned official skills-ref + StrictYAML validatio
 .github/workflows/
 └── validate.yml            # Runs the checks on push / PR
 ```
+
+Reference filenames are descriptive lowercase kebab-case. Link every category directly from its
+resident `SKILL.md`; do not add root-level `reference.md` files or catch-alls such as `misc.md`,
+`all.md`, or `references/README.md`.
 
 `npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
 

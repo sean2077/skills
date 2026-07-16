@@ -6,129 +6,101 @@ compatibility: Requires git, Python 3.8 or newer, and Bash 3.2 or newer. Windows
 
 # Agent Scaffold
 
-Install or retrofit a **vendored, dual-host agent harness** into a project so Claude
-Code and Codex work from the **same** rules and tooling. `.agents/` is the single
-source of truth (SSOT); `.claude/` and `.codex/` are wired to the same implementations
-under `tools/agent/`. After running this skill once, the harness is fully set up for
-both runtimes — there is no resident skill to keep loaded for day-to-day use; the
-installed scripts and the project's `AGENTS.md` carry the workflow.
+Install or retrofit a vendored dual-host harness so Claude Code and Codex share
+one contract, one project-authored asset source, and one runtime. `.agents/` is
+the harness home: skills and subagents are authoritative sources, runtime tools
+live under `.agents/tools/`, and `.claude/` / `.codex/` are host projections.
 
-A ready-to-run installer ships beside this skill as **`harness-init.sh`**; it does the
-mechanical work (idempotent, merge-aware). The deep tables, hook semantics, dual-host
-wiring snippets, the JSON-merge algorithm, and troubleshooting live in **`reference.md`** —
-read it on demand, not up front.
+`harness-init.sh` beside this file is the idempotent, merge-aware installer.
+After installation, the target repo's `AGENTS.md` and `.agents/tools/` carry the
+day-to-day workflow; no resident copy of this skill is required.
 
-## When To Use
+## When to use
 
-- set up agent tooling / standardize Claude Code + Codex for a repo ("init the agent harness")
-- retrofit the default worktree flow, or install the lighter `--no-worktree` profile while retaining the rest of the harness
-- check an existing harness for drift or parity across the two hosts (`verify`)
-- refresh the vendored harness scripts after this skill is updated (`upgrade`)
+- initialize or retrofit the dual-host harness
+- preview a retrofit without writes (`plan`)
+- diagnose prerequisites (`doctor`) or installed drift (`verify`)
+- refresh vendored runtime files and migrate an older installed layout (`upgrade`)
 
-Do **not** use this skill for:
-
-- writing a single commit message → `conventional-commit`
-- installing third-party skills → `npx skills add <repo> -a claude-code -a codex` (coexists; see below)
-- authoring one standalone `CLAUDE.md` with no harness → just write the file
+Do not use it for a single commit message, a standalone `CLAUDE.md`, or
+third-party skill installation.
 
 ## Invariants
 
-- **Worktree governance is default-on but optional.** The default profile starts every change in `.worktrees/<name>` and enforces that with `trunk_edit_guard.sh`. `--no-worktree` omits that policy, lifecycle script, guard wiring, and new worktree ignore entries while preserving the SSOT, documentation, formatting, and subagent layers.
-- **`.agents/` is the SSOT; `.claude/`/`.codex/` are projections.** Skills project as symlinks (`relink-skills.sh`); subagents project via the python generator. **Never hand-edit** generated `.claude/agents/*.md` or `.codex/agents/*.toml`.
-- **Real symlinks are a hard prerequisite.** `doctor`, every mutating mode, and `relink-skills.sh` probe file + directory links first. Unsupported hosts exit 2 before target mutation; there is no copy fallback.
-- **Hook configs are reconciled, never clobbered.** The installer refreshes only enabled managed entries beside existing user hooks and removes only disabled managed identities. Invalid, structurally incompatible, or symlinked existing hook configs stop before target mutation with a named error.
-- **`CLAUDE.md` is a symlink to `AGENTS.md`.** `AGENTS.md` is an entry point, not a detail dump (the budget hook advises when it grows too large).
-- **The installer is idempotent for the same profile flags.** Re-running a mode with the same options changes nothing already in place; changing profile flags intentionally reconciles to that profile.
+- **`.agents/` is the harness home and SSOT.** Project-authored skills live in
+  `.agents/skills/`; subagents live in `.agents/subagents/`; shared runtime tools
+  live in `.agents/tools/`.
+- **`.claude/` and `.codex/` are projections.** Never hand-edit generated
+  `.claude/agents/*.md` or `.codex/agents/*.toml`.
+- **Real symlinks are mandatory.** Every mutating mode and `relink-skills.sh`
+  probes file and directory link capability before target mutation; there is no
+  copy fallback.
+- **Hook configs are reconciled, never clobbered.** Only exact managed hook
+  identities are refreshed or removed; user hooks and unrelated config survive.
+- **`CLAUDE.md` is a symlink to `AGENTS.md`.** Keep `AGENTS.md` as a lean entry
+  point and put project detail in `docs/`.
+- **Worktree governance defaults on.** `--no-worktree` omits the lifecycle,
+  trunk guard, and managed policy while retaining the rest of the harness.
+- **Profile-equivalent reruns are idempotent.** Changing profile flags
+  intentionally reconciles the installation to that profile.
 
 ## Modes
 
-| Mode | When | Command (run from the target repo root) |
-|---|---|---|
-| `init` | greenfield — no `.claude/`, `.codex/`, or `AGENTS.md` | `bash <skill-dir>/harness-init.sh init` |
-| `retrofit` | project already has some `.claude`/`.codex`/`AGENTS.md`, or is mid-development (a real `CLAUDE.md`, hand-written subagents) | `bash <skill-dir>/harness-init.sh retrofit` |
-| `plan` | preview what init/retrofit would create / merge / migrate (read-only) | `bash <skill-dir>/harness-init.sh plan` |
-| `doctor` | check Python, effective git symlink config, and real file/directory link capability (read-only) | `bash <skill-dir>/harness-init.sh doctor` |
-| `verify` | check presence / drift / dual-host parity (read-only) | `bash <skill-dir>/harness-init.sh verify` |
-| `upgrade` | re-copy the vendored scripts + add any new hook | `bash <skill-dir>/harness-init.sh upgrade` |
+Run from inside the target repository:
 
-`<skill-dir>` is this skill's installed directory (where `harness-init.sh` sits). `init` and
-`retrofit` share one idempotent code path — when unsure which applies, run `retrofit`; it
-creates what is missing and merges into what exists.
+| Mode | Purpose |
+|---|---|
+| `init` | Greenfield install; seeds an example subagent unless disabled |
+| `retrofit` | Merge into an existing `.claude` / `.codex` / AGENTS setup |
+| `plan` | Read-only preview of create, merge, adopt, and migration decisions |
+| `doctor` | Read-only prerequisite and real-symlink capability check |
+| `verify` | Read-only presence, drift, projection, and host-parity check |
+| `upgrade` | Refresh vendored files and migrate an installed legacy layout |
 
-Append `--no-worktree` to `plan`, `init`/`retrofit`, `upgrade`, and `verify` for the lightweight
-profile. Flags are intentionally per-invocation: repeat it on later `upgrade`/`verify` runs;
-omitting it selects the default worktree profile again. A clean lightweight install omits the
-scripts; a default→light upgrade leaves existing copies dormant and removes only managed
-policy/hook wiring.
+```bash
+bash <skill-dir>/harness-init.sh <mode> [flags]
+```
 
-## Retrofitting a project mid-development
-
-`retrofit` is not only for near-empty repos — it folds an in-flight project's existing agent
-assets into the SSOT instead of stranding them. **Run `plan` first** to preview every
-create / merge / migrate decision without writing anything.
-
-- **A real `CLAUDE.md` and no `AGENTS.md`** → its prose is adopted as the `AGENTS.md` SSOT and
-  `CLAUDE.md` is replaced with the symlink. A real `CLAUDE.md` *beside* a real `AGENTS.md` is left
-  for you to merge by hand (the installer says which).
-- **Hand-authored `.claude/agents/*.md` / `.codex/agents/*.toml`** → reverse-generated into
-  `.agents/subagents/<name>/` sources (`generate-subagents.py --import`), then re-projected with
-  the do-not-edit banner. A sourceless hand-authored projection is never silently pruned; import
-  conflicts stop before projection writes.
-- **Everything else** (hook configs, `.gitignore`, `package.json` scripts) is merged, never clobbered.
+Useful flags: `--no-worktree`, `--no-format-hook`, `--no-husky`,
+`--no-example-subagent`, `--example-subagent`, and `--force-scripts` (implied by
+`upgrade`). Repeat profile flags on later `upgrade` and `verify` runs.
 
 ## Workflow
 
-1. **Detect intent + state.** From the user's words pick the mode; confirm the target repo with `git rev-parse --show-toplevel` and note whether `.claude/`, `.codex/`, and `AGENTS.md` already exist. If ambiguous between init and retrofit, run `retrofit`.
-2. **Run the installer** for that mode (table above). Useful flags: `--no-worktree`, `--no-format-hook`, `--no-husky`, `--no-example-subagent`, `--force-scripts` (implied by `upgrade`). See `harness-init.sh --help`. When enabled, the worktree flow's trunk is chosen per-call (`WORKTREE_TRUNK=… ` or `worktree.sh … --trunk <branch>`), not at install time.
-3. **Finish the contract.** For `init`, fill the root `AGENTS.md` TODOs and keep depth in `docs/`. Add a nested `AGENTS.md` only for guidance that differs from its nearest ancestor (rules, commands, ownership, or risk); directory structure alone does not qualify. Use `templates/AGENTS.nested.md`, link `<!-- Parent: ... -->` to the nearest existing contract, and see `reference.md` → *Creating nested AGENTS.md on demand*.
-4. **Report** what was installed, what was merged vs created, any preflight stop, and the **Codex trust** reminder the installer prints.
-5. **Verify** with `verify` mode (or the recipe in `reference.md`) before handing back.
+1. Confirm the target with `git rev-parse --show-toplevel` and inspect whether
+   `.claude/`, `.codex/`, `AGENTS.md`, or legacy harness artifacts already exist.
+2. Run `plan` before a non-trivial retrofit. If it reports the legacy
+   `tools/agent` layout or stale managed path identities, read only
+   [`references/harness-migration.md`](references/harness-migration.md), then
+   run `upgrade` rather than `retrofit`.
+3. Run the selected mode. Mutating modes preflight deterministic contract,
+   projection, import, hook-config, runtime-layout, and symlink conflicts before
+   the first target write.
+4. For `init`, fill the root contract TODOs. Add nested authority documents only
+   for real local differences; use
+   [`references/authority-docs.md`](references/authority-docs.md).
+5. Run `verify` and report created versus merged assets, any stopped preflight,
+   and the Codex trust reminder. The installer installs and runs the subagent
+   generator unconditionally.
 
-## The installer at a glance
+## On-demand references
 
-`harness-init.sh` resolves Python 3.8+ before every mode. In mutating modes it rejects deterministic
-contract, skill-projection, and subagent-import conflicts before the real-link doctor or any target write.
-It then copies the selected vendored scripts into `tools/agent/` + `.agents/`, **reconciles only owned hook
-entries** in `.claude/settings.json` and `.codex/hooks.json` (Python; user hooks remain), creates the
-`CLAUDE.md → AGENTS.md` symlink, seeds `.agents/{skills,subagents}/`
-and the root `AGENTS.md`, appends the selected `.gitignore` lines, runs `relink-skills.sh`, installs
-and runs the subagent generator. When drift-hook wiring is enabled, eligible Husky projects are
-updated automatically; alternate managers or no-package projects receive manual guidance. Every step is
-"create if missing, merge if present, skip if already done."
+Read only the category required by the current task:
 
-## Dual-host wiring (at a glance)
+| Task | Reference |
+|---|---|
+| Installed layout, profiles, SSOT, third-party coexistence | [`harness-layout.md`](references/harness-layout.md) |
+| Hooks, dual-host wiring, merge ownership, Codex trust | [`host-integration.md`](references/host-integration.md) |
+| AGENTS/CLAUDE budgets and nested contracts | [`authority-docs.md`](references/authority-docs.md) |
+| Subagent import, generation, projection, drift | [`subagents.md`](references/subagents.md) |
+| Retrofit or legacy installed layout migration | [`harness-migration.md`](references/harness-migration.md) |
+| Runtime prerequisites, Windows/Git Bash, symlink repair | [`platform-support.md`](references/platform-support.md) |
+| Deep verify and E2E recipes | [`verification.md`](references/verification.md) |
 
-Both hosts call the **same** hook scripts under `tools/agent/hooks/`; only the invocation differs:
+## Platform contract
 
-| | Claude Code (`.claude/settings.json`) | Codex (`.codex/hooks.json`) |
-|---|---|---|
-| Path resolution | `bash -lc` + `$CLAUDE_PROJECT_DIR`, normalized with `cygpath` on Windows | `bash -lc` + `git rev-parse --show-toplevel` |
-| Matcher | `Edit\|MultiEdit\|Write\|NotebookEdit` (Pre) / `Edit\|MultiEdit\|Write` (Post) | `Edit\|Write\|apply_patch` |
-
-The hook scripts resolve their own project root either way, so nothing host-specific leaks into them. **Codex only loads project-level `.codex/` for a TRUSTED project** — the installer prints how to trust it. Full snippets + rationale: `reference.md`.
-
-## Platform support
-
-macOS, Linux, and **Windows (Git Bash only)**. Bash 3.2 is the shell baseline. Bundled scripts are
-**LF-only** (the installer writes `.gitattributes` rules; CRLF breaks bash), and every internal
-shell dispatch explicitly uses `bash` rather than relying on executable-bit checkout behavior.
-Real file and directory symlinks are mandatory: unsupported hosts stop before mutation with
-remediation, never a copy. Windows setup and degraded-checkout recovery: `reference.md` §11.
-
-## Runtime prerequisites
-
-The harness requires **git, Python 3.8+, and Bash 3.2+**. Each Python candidate is executed with a
-3.8+ probe before selection, in order: `PYTHON_BIN`, `python`, `python3`, then `py -3`; an unusable
-or older candidate falls through. Python owns real-link creation, hook JSON parsing, and subagent
-projection, so an install never quietly loses SSOT or guard behavior because Python is absent.
-Node and `package.json` remain optional; they only enable npm/Husky conveniences.
-
-## Coexistence with `npx skills`
-
-`.agents/skills/` holds this **project's own** skills (SSOT). **Third-party** skills install
-separately via `npx skills` and land as **real directories** in `.claude/skills/`; the relinker
-only manages **symlinks**, so it never touches them. Keep project skill names distinct from
-installed ones.
-
-→ Deep reference (manifest, hook semantics, merge algorithm, AGENTS.md budget rationale,
-Codex trust, troubleshooting, end-to-end test recipe): **`reference.md`**.
+The harness requires **git, Python 3.8+, and Bash 3.2+**. Windows support is Git
+Bash only and requires native file and directory symlink privilege. Bundled shell
+and Python files stay LF-only. Python owns link materialization, hook JSON
+handling, and subagent projection; Node is optional and only enables package/Husky
+conveniences.

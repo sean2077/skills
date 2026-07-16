@@ -19,6 +19,7 @@ The CI gates must stay green — `.github/workflows/validate.yml` runs them on p
 ```bash
 python -m pip install -r requirements-validation.txt  # pinned StrictYAML + official skills-ref
 python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
+python scripts/test_validate_skills.py # category-reference validation fixtures
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
 npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
@@ -30,8 +31,10 @@ shellcheck skills/agent-scaffold/templates/husky.pre-commit
 ## Architecture
 
 - `skills/<name>/SKILL.md` — the **distributable** catalog (what `npx skills` consumers install);
-  optional `reference.md` holds on-demand depth, plus any scripts/templates a skill ships. Kept lean
-  (router + invariants + skeleton; depth sinks to `reference.md`).
+  optional `references/<category>.md` files hold on-demand depth, plus any scripts/templates a skill
+  ships. Keep the resident file lean (router + invariants + skeleton); use descriptive lowercase
+  kebab-case category names and link each file directly from `SKILL.md`. Do not use root-level
+  `reference.md` or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
 - `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI.
 - **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product);
   `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
@@ -59,7 +62,7 @@ shellcheck skills/agent-scaffold/templates/husky.pre-commit
 
 This repo carries a vendored, dual-host agent harness. `.agents/` is the single
 source of truth (SSOT); `.claude/` and `.codex/` are wired to the **same**
-implementations under `tools/agent/`.
+implementations under `.agents/tools/`.
 
 ### Worktree-per-change (hard rule)
 
@@ -67,11 +70,11 @@ implementations under `tools/agent/`.
 is NOT an exception), starts in its own worktree cut from the trunk tip:
 
 ```bash
-bash tools/agent/worktree.sh new <name>   # edit inside .worktrees/<name>/  (branch feat|fix|docs|chore/<name>)
-bash tools/agent/worktree.sh done         # merge back to local trunk (--no-ff) + clean up + ff-only push
+bash .agents/tools/worktree.sh new <name>   # edit inside .worktrees/<name>/  (branch feat|fix|docs|chore/<name>)
+bash .agents/tools/worktree.sh done         # merge back to local trunk (--no-ff) + clean up + ff-only push
 ```
 
-`tools/agent/hooks/trunk_edit_guard.sh` (PreToolUse) mechanically blocks edits to
+`.agents/tools/hooks/trunk_edit_guard.sh` (PreToolUse) mechanically blocks edits to
 tracked files while on trunk. Escape hatch — only when the user explicitly
 authorizes a trunk edit: `touch .claude/allow-trunk-edit` (auto-expires in 2 h)
 or `WORKTREE_ALLOW_TRUNK_EDIT=1`.
@@ -80,7 +83,7 @@ or `WORKTREE_ALLOW_TRUNK_EDIT=1`.
 
 `AGENTS.md` (root plus nested contracts created only for local differences;
 root `CLAUDE.md` is a symlink to it) is an **entry
-point**, not a detail dump. `tools/agent/hooks/authority_doc_budget.sh`
+point**, not a detail dump. `.agents/tools/hooks/authority_doc_budget.sh`
 (PostToolUse) advises when a contract exceeds its line budget (root 320 / nested
 120; override with `AUTHORITY_DOC_MAX_ROOT|NESTED`). Nested contracts carry a
 `<!-- Parent: ... -->` link to the nearest existing ancestor contract.
@@ -93,13 +96,13 @@ point**, not a detail dump. `tools/agent/hooks/authority_doc_budget.sh`
 | `.agents/subagents/<name>/{metadata.json,instructions.md}` | subagent source | ✅ |
 | `.claude/skills/<name>` | symlink → `.agents/skills/<name>` (CC discovery; Codex reads `.agents/` directly) | ✅ |
 | `.claude/agents/*.md`, `.codex/agents/*.toml` | **generated** subagent projections — do NOT hand-edit | ✅ |
-| `tools/agent/hooks/` | shared hook impls (doc budget / format + optional trunk guard) | ✅ |
-| `tools/agent/worktree.sh` | worktree lifecycle | ✅ |
+| `.agents/tools/hooks/` | shared hook impls (doc budget / format + optional trunk guard) | ✅ |
+| `.agents/tools/worktree.sh` | worktree lifecycle | ✅ |
 | `.claude/allow-trunk-edit` | worktree escape hatch | ❌ ignored |
 | `.claude/settings.local.json` | personal overrides | ❌ ignored |
 
 - **Add a skill**: edit `.agents/skills/` → run `bash .agents/relink-skills.sh` → commit source + symlink.
-- **Add a subagent** (needs python): edit `.agents/subagents/` → run `python tools/agent/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
+- **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
 - **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
 
 **Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a

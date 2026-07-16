@@ -90,7 +90,7 @@ docs/
 └── 91-archive/
 ```
 
-The first digit alone is **not** a sufficient classification — `20-development/ 30-iteration/ 40-tooling-standards/` collapses each major area into one landing folder and loses the subcategory semantics; prefer real subcategories (`21-architecture/ 22-codebase/ 32-adrs/ 33-specs-rfcs/ 41-development-tools/ 44-coding-standards/`). Add nested numeric prefixes (`00-`, `01-`) inside a subcategory only when readers must consume the files in sequence. Worked before/after examples: [`reference.md`](reference.md) → *Numbering pitfalls*.
+The first digit alone is **not** a sufficient classification — `20-development/ 30-iteration/ 40-tooling-standards/` collapses each major area into one landing folder and loses the subcategory semantics; prefer real subcategories (`21-architecture/ 22-codebase/ 32-adrs/ 33-specs-rfcs/ 41-development-tools/ 44-coding-standards/`). Add nested numeric prefixes (`00-`, `01-`) inside a subcategory only when readers must consume the files in sequence. Worked before/after examples: [`references/numbering-patterns.md`](references/numbering-patterns.md).
 
 ## Default Zone Model
 
@@ -105,7 +105,7 @@ Use an audience-plus-lifecycle taxonomy by default; create only the subcategorie
 - `6x` — reference
 - `9x` — system: archive, deprecated, generated, doc-migrations
 
-**Before designing a complex docs tree, read [`reference.md`](reference.md)** for the full `00`–`94` zone catalog (every subcategory and its purpose). If a project needs fewer zones, collapse them; if more, choose the next unused first digit and keep the one-class-per-zone rule.
+**Before designing a complex docs tree, read [`references/zone-catalog.md`](references/zone-catalog.md)** for the full `00`–`94` zone catalog (every subcategory and its purpose). If a project needs fewer zones, collapse them; if more, choose the next unused first digit and keep the one-class-per-zone rule.
 
 ## README Rules
 

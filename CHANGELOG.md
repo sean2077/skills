@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file. The format is b
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking
+
+- `agent-scaffold` now installs its shared runtime under `.agents/tools/` instead of
+  `tools/agent/`. `upgrade` performs a hard-cut migration of known managed files and
+  references; no compatibility wrappers are installed.
+
+### Changed
+
+- Catalog skills now route on-demand depth through category-named `references/*.md`
+  files instead of root-level catch-all `reference.md` documents.
+
 ## [v1.0.0] — 2026-06-30
 
 First stable release of the **`sean2077/skills`** catalog — a universal
@@ -43,4 +56,5 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
+[Unreleased]: https://github.com/sean2077/skills/compare/v1.0.0...HEAD
 [v1.0.0]: https://github.com/sean2077/skills/releases/tag/v1.0.0

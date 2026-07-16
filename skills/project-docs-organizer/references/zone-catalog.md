@@ -1,10 +1,6 @@
-# `project-docs-organizer` — reference
+# Project Documentation Zone Catalog
 
-The full default zone catalog plus numbering-pitfall examples for the `project-docs-organizer` skill. `SKILL.md` keeps the
-operative rules resident — location priority, simple-vs-complex classification, two-digit
-numbering semantics, README role rules, the deletion-evidence rule, and the acceptance
-checks — plus the major-area summary. Read this catalog before designing a complex docs
-tree, and create only the subcategories the project actually needs.
+Read this when choosing the complete numbered zone model for a complex documentation tree.
 
 ## Default zone catalog
 
@@ -52,37 +48,3 @@ Use an audience-plus-lifecycle taxonomy by default:
 The developer area is `2x`. The iteration area is `3x`. The tooling and standards area is `4x`. Keep tools in `4x` even when they are primarily used by developers, operators, or release managers.
 
 If a project needs fewer zones, collapse them. If it needs more, choose the next unused first digit and keep the one-class-per-zone rule.
-
-## Numbering pitfalls
-
-Worked examples for the numbering rules in `SKILL.md` → *Numbered Zone Rules*.
-
-**Don't let the first digit be the only classification** — collapsing every major area into a single landing folder loses the subcategory semantics:
-
-```text
-# avoid
-docs/
-├── 20-development/
-├── 30-iteration/
-└── 40-tooling-standards/
-```
-
-```text
-# prefer — real subcategories under each major area
-docs/
-├── 21-architecture/
-├── 22-codebase/
-├── 32-adrs/
-├── 33-specs-rfcs/
-├── 41-development-tools/
-└── 44-coding-standards/
-```
-
-**Nested numeric prefixes only for required reading order** — inside a numbered subcategory, add `00-`/`01-`/… prefixes only when readers must consume the files in sequence:
-
-```text
-docs/01-quickstart/
-├── 00-install.md
-├── 01-first-run.md
-└── 02-first-change.md
-```

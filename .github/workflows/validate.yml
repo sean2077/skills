@@ -55,7 +55,9 @@ jobs:
         run: python -m pip install -r requirements-validation.txt
 
       - name: Validate catalog rules
-        run: python scripts/validate_skills.py
+        run: |
+          python scripts/validate_skills.py
+          python scripts/test_validate_skills.py
 
       - name: Validate official Agent Skills specification
         run: |
@@ -238,6 +240,33 @@ jobs:
             printf 'npx discovery mismatch\nexpected:\n%s\nactual:\n%s\n' "$expected" "$actual" >&2
             exit 1
           fi
+
+      - name: Smoke-test installed category references
+        if: always()
+        run: |
+          repo="$(pwd)"
+          source="$repo"
+          case "$(uname -s)" in MINGW*|MSYS*) source="$(pwd -W)" ;; esac
+          fixture="$(mktemp -d)"
+          trap 'rm -rf "$fixture"' EXIT
+          git -C "$fixture" init -q
+          (
+            cd "$fixture"
+            NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add "$source" -a codex -y
+          )
+          for source_refs in "$repo"/skills/*/references; do
+            [ -d "$source_refs" ] || continue
+            skill="$(basename "$(dirname "$source_refs")")"
+            installed_refs="$fixture/.agents/skills/$skill/references"
+            test -d "$installed_refs"
+            expected="$(cd "$(dirname "$source_refs")" && find references -type f -print | sort)"
+            actual="$(cd "$fixture/.agents/skills/$skill" && find references -type f -print | sort)"
+            if [ "$actual" != "$expected" ]; then
+              printf '%s installed references mismatch\nexpected:\n%s\nactual:\n%s\n' "$skill" "$expected" "$actual" >&2
+              exit 1
+            fi
+            diff -ru "$source_refs" "$installed_refs"
+          done
 
       - name: Shellcheck bundled scripts and extensionless Husky hook
         if: always() && runner.os == 'Linux'

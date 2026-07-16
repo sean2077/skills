@@ -12,13 +12,13 @@ generated files.**
 ## Add / edit a subagent
 
 1. Create/edit `.agents/subagents/<name>/metadata.json` and `instructions.md`.
-2. Run `python tools/agent/generate-subagents.py` (writes both projections).
+2. Run `python .agents/tools/generate-subagents.py` (writes both projections).
 3. `git add .agents/subagents/<name> .claude/agents/<name>.md .codex/agents/<name>.toml`.
 
 Verify projections are in sync (use in CI / pre-commit):
 
 ```bash
-python tools/agent/generate-subagents.py --check   # exit 1 on drift
+python .agents/tools/generate-subagents.py --check   # exit 1 on drift
 ```
 
 ## metadata.json shape
