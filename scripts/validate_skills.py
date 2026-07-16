@@ -5,7 +5,7 @@ Catches the drift classes that have actually bitten this repo: a skill missing
 from the README, a deleted install path still advertised, frontmatter that lost
 its `name`/`description`, YAML frontmatter that `npx skills` cannot parse, a
 `name` that no longer matches its directory, the `{{ARGUMENTS}}` moustache
-placeholder (Claude Code substitutes `$ARGUMENTS`), and a `reference.md` link
+placeholder (Claude Code substitutes `$ARGUMENTS`), and category reference links
 with no shipped file. Catalog skills must leave tool approval to the host rather
 than declaring `allowed-tools`; warnings flag softer hygiene such as an
 over-long description.
@@ -70,6 +70,59 @@ def parse_frontmatter(text: str) -> dict[str, object]:
     return parsed
 
 
+REFERENCE_LINK = re.compile(r"\]\((references/[^)\s#]+\.md)(?:#[^)]+)?\)")
+LEGACY_REFERENCE_LINK = re.compile(r"\]\((?:\./)?reference\.md(?:#[^)]+)?\)", re.IGNORECASE)
+REFERENCE_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
+FORBIDDEN_REFERENCE_NAMES = {"reference.md", "references.md", "misc.md", "all.md", "readme.md"}
+
+
+def validate_category_references(skill_dir: Path, skill_text: str) -> None:
+    """Require direct, category-named, non-dangling on-demand reference routing."""
+    skill_name = skill_dir.name
+    legacy_candidates = [path for path in skill_dir.iterdir() if path.name.lower() == "reference.md"]
+    if legacy_candidates:
+        errors.append(f"{skill_name}: root-level reference.md is forbidden; use references/<category>.md")
+    if LEGACY_REFERENCE_LINK.search(skill_text):
+        errors.append(f"{skill_name}: SKILL.md must route references directly to references/<category>.md")
+
+    references_dir = skill_dir / "references"
+    reference_files = (
+        {path for path in references_dir.rglob("*") if path.is_file() or path.is_symlink()}
+        if references_dir.is_dir()
+        else set()
+    )
+    linked: set[Path] = set()
+    for relative in REFERENCE_LINK.findall(skill_text):
+        relative_path = Path(relative)
+        if relative_path.parent != Path("references"):
+            errors.append(f"{skill_name}: reference link must target references/<category>.md: {relative}")
+            continue
+        lower_name = relative_path.name.lower()
+        if relative_path.name != lower_name or not REFERENCE_NAME.fullmatch(relative_path.name):
+            errors.append(f"{skill_name}: reference link filename must be lowercase kebab-case: {relative}")
+        if lower_name in FORBIDDEN_REFERENCE_NAMES:
+            errors.append(f"{skill_name}: reference link uses a forbidden catch-all name: {relative}")
+        target = skill_dir / relative
+        linked.add(target)
+        if not target.is_file():
+            errors.append(f"{skill_name}: SKILL.md reference link does not exist: {relative}")
+
+    for path in sorted(reference_files):
+        relative = path.relative_to(skill_dir).as_posix()
+        if path.parent != references_dir:
+            errors.append(f"{skill_name}: nested reference categories are unsupported: {relative}")
+        lower_name = path.name.lower()
+        if path.name != lower_name or not REFERENCE_NAME.fullmatch(path.name):
+            errors.append(f"{skill_name}: reference filename must be lowercase kebab-case: {relative}")
+        if lower_name in FORBIDDEN_REFERENCE_NAMES:
+            errors.append(f"{skill_name}: catch-all reference filename is forbidden: {relative}")
+        if path not in linked:
+            errors.append(f"{skill_name}: orphan reference is not linked directly from SKILL.md: {relative}")
+
+    if linked and not references_dir.is_dir():
+        errors.append(f"{skill_name}: SKILL.md links references/ but the directory does not exist")
+
+
 def main() -> int:
     if not SKILLS_DIR.is_dir():
         errors.append(f"no skills/ directory at {SKILLS_DIR}")
@@ -129,9 +182,7 @@ def main() -> int:
         if "{{ARGUMENTS}}" in text:
             errors.append(f"{dir_name}: SKILL.md uses `{{{{ARGUMENTS}}}}` — Claude Code substitutes `$ARGUMENTS`")
 
-        # A SKILL.md that routes to `reference.md` must actually ship it (no dangling link).
-        if "reference.md" in text and not (d / "reference.md").exists():
-            errors.append(f"{dir_name}: SKILL.md links `reference.md` but {dir_name}/reference.md does not exist")
+        validate_category_references(d, text)
 
         if "allowed-tools" in fm:
             errors.append(
@@ -247,7 +298,7 @@ def validate_tooling_conventions_contract() -> None:
     skill_dir = SKILLS_DIR / "tooling-conventions"
     paths = {
         "SKILL.md": skill_dir / "SKILL.md",
-        "reference.md": skill_dir / "reference.md",
+        "references/verification.md": skill_dir / "references" / "verification.md",
         "manifest.schema.md": skill_dir / "manifest.schema.md",
         "manifest-check.sh": skill_dir / "manifest-check.sh",
     }
@@ -258,7 +309,7 @@ def validate_tooling_conventions_contract() -> None:
         "python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), "
         "sys.argv[1], \"exec\")'"
     )
-    for label in ("reference.md", "manifest-check.sh"):
+    for label in ("references/verification.md", "manifest-check.sh"):
         if memory_compile not in texts[label]:
             errors.append(f"tooling-conventions/{label}: in-memory Python compile command is missing")
     if "in-memory Python compile" not in texts["SKILL.md"]:
@@ -309,19 +360,27 @@ def validate_conventional_commit_contract() -> None:
 def validate_semver_release_contract() -> None:
     """Guard bump inference and package identity across release ecosystems."""
     skill = SKILLS_DIR / "semver-release" / "SKILL.md"
-    reference = SKILLS_DIR / "semver-release" / "reference.md"
-    if not skill.exists() or not reference.exists():
+    reference_paths = {
+        "references/version-selection.md": SKILLS_DIR / "semver-release" / "references" / "version-selection.md",
+        "references/version-files.md": SKILLS_DIR / "semver-release" / "references" / "version-files.md",
+        "references/changelog.md": SKILLS_DIR / "semver-release" / "references" / "changelog.md",
+        "references/prerelease-promotion.md": SKILLS_DIR / "semver-release" / "references" / "prerelease-promotion.md",
+    }
+    if not skill.exists() or any(not path.exists() for path in reference_paths.values()):
         return
     skill_text = skill.read_text(encoding="utf-8")
-    reference_text = reference.read_text(encoding="utf-8")
-    combined = skill_text + reference_text
+    reference_texts = {label: path.read_text(encoding="utf-8") for label, path in reference_paths.items()}
+    selection_text = reference_texts["references/version-selection.md"]
+    version_files_text = reference_texts["references/version-files.md"]
+    promotion_text = reference_texts["references/prerelease-promotion.md"]
+    combined = skill_text + "".join(reference_texts.values())
     bump_contract = (
         "BREAKING CHANGE:",
         "BREAKING-CHANGE:",
         "case-insensitive",
         "remains uppercase",
     )
-    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+    for label, text in (("SKILL.md", skill_text), ("references/version-selection.md", selection_text)):
         missing_bump = [value for value in bump_contract if value not in text]
         if missing_bump:
             errors.append(f"semver-release/{label}: bump inference contract lost fixtures: {missing_bump}")
@@ -348,11 +407,11 @@ def validate_semver_release_contract() -> None:
         "non-Python ecosystems",
     )
     missing_python_reference = [
-        value for value in python_boundary_reference if value not in reference_text
+        value for value in python_boundary_reference if value not in version_files_text
     ]
     if missing_python_reference:
         errors.append(
-            "semver-release/reference.md: Python prerelease mapping boundary lost fixtures: "
+            "semver-release/references/version-files.md: Python prerelease mapping boundary lost fixtures: "
             f"{missing_python_reference}"
         )
     shared_base_contract = (
@@ -360,7 +419,7 @@ def validate_semver_release_contract() -> None:
         "SemVer 2.0.0 precedence",
         "no HEAD-reachable valid SemVer base",
     )
-    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+    for label, text in (("SKILL.md", skill_text), ("references/version-selection.md", selection_text)):
         missing_base = [value for value in shared_base_contract if value not in text]
         if missing_base:
             errors.append(f"semver-release/{label}: base-selection contract lost fixtures: {missing_base}")
@@ -369,7 +428,7 @@ def validate_semver_release_contract() -> None:
         "`<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity."
     )
     peel_commit = "git rev-parse '<tag>^{commit}'"
-    for label, text in (("SKILL.md", skill_text), ("reference.md", reference_text)):
+    for label, text in (("SKILL.md", skill_text), ("references/version-selection.md", selection_text)):
         if equal_precedence not in text:
             errors.append(f"semver-release/{label}: equal-precedence base rule is missing")
         if peel_commit not in text:
@@ -391,18 +450,21 @@ def validate_semver_release_contract() -> None:
         "`v1.1.0-rc.1 < v1.1.0`",
         "build metadata does not affect precedence",
         "Git's `version:refname` order is not SemVer precedence",
-        "previous HEAD-reachable stable release, or repo root if none exists",
         "shallow repository",
         "git rev-list --max-parents=0 HEAD",
         "git cat-file -p <root>",
         "commit headers before the first blank line",
         "repository-level `true` is not sufficient",
     )
-    missing_reference_base = [value for value in reference_base_contract if value not in reference_text]
+    missing_reference_base = [value for value in reference_base_contract if value not in selection_text]
     if missing_reference_base:
         errors.append(
-            f"semver-release/reference.md: SemVer precedence contract lost fixtures: {missing_reference_base}"
+            "semver-release/references/version-selection.md: SemVer precedence contract lost fixtures: "
+            f"{missing_reference_base}"
         )
+    promotion_contract = "previous HEAD-reachable stable release, or repo root if none exists"
+    if promotion_contract not in promotion_text:
+        errors.append("semver-release/references/prerelease-promotion.md: stable-base contract is missing")
     release_stage_contract = (
         "git add -- CHANGELOG.md <all-version-files> <all-coupled-lockfiles> [release-notes]",
         "git diff --cached --check",
@@ -433,12 +495,12 @@ def validate_semver_release_contract() -> None:
         "`package-lock.json.version`",
         "`package-lock.json.packages[\"\"].version`",
     )
-    missing_npm_sync = [value for value in npm_sync_contract if value not in reference_text]
-    npm_sync_ordered = not missing_npm_sync and [reference_text.index(value) for value in npm_sync_contract] == sorted(
-        reference_text.index(value) for value in npm_sync_contract
+    missing_npm_sync = [value for value in npm_sync_contract if value not in version_files_text]
+    npm_sync_ordered = not missing_npm_sync and [version_files_text.index(value) for value in npm_sync_contract] == sorted(
+        version_files_text.index(value) for value in npm_sync_contract
     )
     if missing_npm_sync or not npm_sync_ordered:
-        errors.append("semver-release/reference.md: bounded npm version synchronization contract is missing")
+        errors.append("semver-release/references/version-files.md: bounded npm synchronization contract is missing")
     cargo_sync_contract = (
         "authoritative version source",
         "`version.workspace = true`",
@@ -448,23 +510,23 @@ def validate_semver_release_contract() -> None:
         "cargo metadata --locked --format-version 1",
         "unrelated dependency versions remain locked",
     )
-    missing_cargo_sync = [value for value in cargo_sync_contract if value not in reference_text]
+    missing_cargo_sync = [value for value in cargo_sync_contract if value not in version_files_text]
     cargo_sync_ordered = not missing_cargo_sync and [
-        reference_text.index(value) for value in cargo_sync_contract
-    ] == sorted(reference_text.index(value) for value in cargo_sync_contract)
+        version_files_text.index(value) for value in cargo_sync_contract
+    ] == sorted(version_files_text.index(value) for value in cargo_sync_contract)
     if missing_cargo_sync or not cargo_sync_ordered:
-        errors.append("semver-release/reference.md: bounded Cargo lock synchronization contract is missing")
-    for line in reference_text.splitlines():
+        errors.append("semver-release/references/version-files.md: bounded Cargo synchronization contract is missing")
+    for line in version_files_text.splitlines():
         command = line.strip()
         if re.match(r"^npm version(?:\s|$)", command) and (
             "--no-git-tag-version" not in command or "--ignore-scripts" not in command
         ):
-            errors.append("semver-release/reference.md: npm version command can own Git or lifecycle side effects")
+            errors.append("semver-release/references/version-files.md: npm command can own Git or lifecycle side effects")
             break
-    if re.search(r"(?m)^\s*cargo update\s*$", reference_text):
-        errors.append("semver-release/reference.md: bare cargo update command can refresh dependencies")
-    if "cargo metadata --locked --no-deps --format-version 1" in reference_text:
-        errors.append("semver-release/reference.md: --no-deps metadata does not validate Cargo.lock")
+    if re.search(r"(?m)^\s*cargo update\s*$", version_files_text):
+        errors.append("semver-release/references/version-files.md: bare cargo update can refresh dependencies")
+    if "cargo metadata --locked --no-deps --format-version 1" in version_files_text:
+        errors.append("semver-release/references/version-files.md: --no-deps metadata does not validate Cargo.lock")
     stale_selector = "git tag --list 'v[0-9]*' --sort=-v:refname | head -10"
     if stale_selector in combined:
         errors.append("semver-release: stale Git version-sort base selector remains")

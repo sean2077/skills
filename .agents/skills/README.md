@@ -37,6 +37,10 @@ description: "<one line: what it does + when to use it>"
 
 Keep `SKILL.md` lean: routing + invariants + step skeleton. Push long checklists,
 templates, and worked examples into `references/` so they load only when needed.
+Name each file after one category using lowercase kebab-case (for example,
+`references/host-integration.md`); do not create a catch-all `reference.md`,
+`misc.md`, `all.md`, or `references/README.md`. Link every category directly
+from `SKILL.md` so the host can load only what the current task needs.
 
 ## Coexistence with `npx skills` (third-party skills)
 

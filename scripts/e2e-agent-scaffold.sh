@@ -5,7 +5,7 @@
 # static gate (check-agent-scaffold.sh) cannot: dual-host wiring, idempotent re-run,
 # retrofit-merge of a pre-existing hook, the worktree round-trip, the trunk guard's
 # block + escape hatch, and relink coexistence with an npx-installed skill.
-# Mirrors skills/agent-scaffold/reference.md section 12. All writes stay in a mktemp dir.
+# Mirrors skills/agent-scaffold/references/verification.md. All writes stay in a mktemp dir.
 #
 # Usage: bash scripts/e2e-agent-scaffold.sh [-h|--help]
 # Exit 0 = all runnable assertions passed, 1 = a failure. Needs git + python.
@@ -33,7 +33,7 @@ jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(
 # shellcheck disable=SC2317,SC2329
 jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
-jcommand_count() { python -c 'import json,re,sys; d=json.load(open(sys.argv[1])); p=re.compile(r"(?:^|[/\s\"\x27;&|()<>])tools/agent/hooks/"+re.escape(sys.argv[2])+r"\.sh(?=$|[\s\"\x27;&|()<>])"); n=sum(bool(p.search(str(h.get("command", "")).replace("\\", "/"))) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
+jcommand_count() { python -c 'import json,re,sys; d=json.load(open(sys.argv[1])); p=re.compile(r"(?:^|[/\s\"\x27;&|()<>]).agents/tools/hooks/"+re.escape(sys.argv[2])+r"\.sh(?=$|[\s\"\x27;&|()<>])"); n=sum(bool(p.search(str(h.get("command", "")).replace("\\", "/"))) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
 fixed_text_in_both() { grep -qF "$1" "$2" && grep -qF "$1" "$3"; }
 # shellcheck disable=SC2317,SC2329
@@ -384,7 +384,7 @@ check "valid Unicode pair preserves hooks:null compatibility" grep -qF "symlink 
 check "valid Unicode fixture leaves repo unchanged" test -z "$(git -C "$J" status --porcelain --untracked-files=all)"
 
 echo "== generated ownership requires the canonical marker, not prose =="
-P="$work/provenance-phrase"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/tools/agent"
+P="$work/provenance-phrase"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/.agents/tools"
 git -C "$P" init -q -b main
 git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
 git -C "$P" commit -q --allow-empty -m init
@@ -400,8 +400,8 @@ printf '%s\n' \
 check "provenance plan exits 0"                    test "$rc" = 0
 check "plan lists Claude prose file for adoption" grep -qF "subagent phrase-claude" "$work/provenance-plan.out"
 check "plan lists Codex prose file for adoption"  grep -qF "subagent phrase-codex" "$work/provenance-plan.out"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
-( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/provenance-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
+( cd "$P" && python .agents/tools/generate-subagents.py --import ) >"$work/provenance-import.out" 2>&1; rc=$?
 check "provenance import exits 0"                 test "$rc" = 0
 check "Claude prose file is adopted into SSOT"   test -f "$P/.agents/subagents/phrase-claude/metadata.json"
 check "Codex prose file is adopted into SSOT"    test -f "$P/.agents/subagents/phrase-codex/metadata.json"
@@ -409,7 +409,7 @@ check "Claude SSOT preserves prose"               grep -qF CLAUDE_PROSE_SENTINEL
 check "Codex SSOT preserves prose"                grep -qF CODEX_PROSE_SENTINEL "$P/.agents/subagents/phrase-codex/instructions.md"
 check "Claude projection keeps prose"             grep -qF CLAUDE_PROSE_SENTINEL "$P/.claude/agents/phrase-claude.md"
 check "Codex projection keeps prose"              grep -qF CODEX_PROSE_SENTINEL "$P/.codex/agents/phrase-codex.toml"
-( cd "$P" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$P" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "provenance projections are in sync"        test "$rc" = 0
 rm -rf "$P/.agents"
 python - "$P/.claude/agents/phrase-claude.md" "$P/.codex/agents/phrase-codex.toml" <<'PY'
@@ -427,7 +427,7 @@ check "CRLF provenance plan exits 0"               test "$rc" = 0
 check "plan recognizes canonical CRLF projections" no_fixed_text "$work/provenance-crlf-plan.out" "subagent phrase-"
 
 echo "== divergent dual-host instructions fail before adoption =="
-D="$work/divergent-hosts"; mkdir -p "$D/.claude/agents" "$D/.codex/agents" "$D/tools/agent"
+D="$work/divergent-hosts"; mkdir -p "$D/.claude/agents" "$D/.codex/agents" "$D/.agents/tools"
 printf -- '---\nname: alpha\ndescription: Claude-only control\n---\n\nALPHA_INSTRUCTIONS\n' > "$D/.claude/agents/alpha.md"
 printf -- '---\nname: dual\ndescription: shared description\n---\n\nCLAUDE_ONLY_INSTRUCTIONS\n' > "$D/.claude/agents/dual.md"
 printf '%s\n' \
@@ -436,19 +436,19 @@ printf '%s\n' \
   "developer_instructions = '''" \
   'CODEX_ONLY_INSTRUCTIONS' \
   "'''" > "$D/.codex/agents/dual.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$D/tools/agent/generate-subagents.py"
+cp "$repo/.agents/tools/generate-subagents.py" "$D/.agents/tools/generate-subagents.py"
 alpha_before="$(git hash-object "$D/.claude/agents/alpha.md")"
 claude_before="$(git hash-object "$D/.claude/agents/dual.md")"
 codex_before="$(git hash-object "$D/.codex/agents/dual.toml")"
-( cd "$D" && python tools/agent/generate-subagents.py --import ) >"$work/divergent-import.out" 2>&1; rc=$?
+( cd "$D" && python .agents/tools/generate-subagents.py --import ) >"$work/divergent-import.out" 2>&1; rc=$?
 check "divergent import exits nonzero"             test "$rc" != 0
 check "divergent import explains the conflict"     grep -qF "subagent 'dual': .claude/agents/dual.md and .codex/agents/dual.toml have different instructions" "$work/divergent-import.out"
 check "conflict preserves earlier Claude input"    test "$(git hash-object "$D/.claude/agents/alpha.md")" = "$alpha_before"
 check "conflict preserves dual Claude input"       test "$(git hash-object "$D/.claude/agents/dual.md")" = "$claude_before"
 check "conflict preserves dual Codex input"        test "$(git hash-object "$D/.codex/agents/dual.toml")" = "$codex_before"
-check "conflict writes no SSOT sources"            test ! -e "$D/.agents"
+check "conflict writes no SSOT sources"            test ! -e "$D/.agents/subagents"
 
-Q="$work/matching-hosts"; mkdir -p "$Q/.claude/agents" "$Q/.codex/agents" "$Q/tools/agent"
+Q="$work/matching-hosts"; mkdir -p "$Q/.claude/agents" "$Q/.codex/agents" "$Q/.agents/tools"
 printf -- '---\nname: matching\ndescription: shared description\n---\n\nMATCHING_INSTRUCTIONS' > "$Q/.claude/agents/matching.md"
 printf '%s\n' \
   'name = "matching"' \
@@ -456,15 +456,15 @@ printf '%s\n' \
   "developer_instructions = '''" \
   'MATCHING_INSTRUCTIONS' \
   "'''" > "$Q/.codex/agents/matching.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Q/tools/agent/generate-subagents.py"
-( cd "$Q" && python tools/agent/generate-subagents.py --import ) >"$work/matching-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Q/.agents/tools/generate-subagents.py"
+( cd "$Q" && python .agents/tools/generate-subagents.py --import ) >"$work/matching-import.out" 2>&1; rc=$?
 check "matching dual-host import exits 0"           test "$rc" = 0
 check "matching dual-host import creates SSOT"      grep -qF MATCHING_INSTRUCTIONS "$Q/.agents/subagents/matching/instructions.md"
-( cd "$Q" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$Q" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "matching dual-host projections are in sync" test "$rc" = 0
 
 echo "== hand-authored import is lossless or fails before writing =="
-U="$work/unparseable-host"; mkdir -p "$U/.claude/agents" "$U/.codex/agents" "$U/tools/agent"
+U="$work/unparseable-host"; mkdir -p "$U/.claude/agents" "$U/.codex/agents" "$U/.agents/tools"
 printf -- '---\nname: alpha\ndescription: valid earlier candidate\n---\n\nALPHA_BEFORE_PARSE_FAILURE\n' > "$U/.claude/agents/alpha.md"
 printf 'BROKEN_CLAUDE_SENTINEL\n' > "$U/.claude/agents/broken.md"
 printf '%s\n' \
@@ -473,17 +473,17 @@ printf '%s\n' \
   'developer_instructions = """' \
   'CODEX_COUNTERPART_SENTINEL' \
   '"""' > "$U/.codex/agents/broken.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$U/tools/agent/generate-subagents.py"
+cp "$repo/.agents/tools/generate-subagents.py" "$U/.agents/tools/generate-subagents.py"
 broken_claude_before="$(git hash-object "$U/.claude/agents/broken.md")"
 broken_codex_before="$(git hash-object "$U/.codex/agents/broken.toml")"
-( cd "$U" && python tools/agent/generate-subagents.py --import ) >"$work/unparseable-import.out" 2>&1; rc=$?
+( cd "$U" && python .agents/tools/generate-subagents.py --import ) >"$work/unparseable-import.out" 2>&1; rc=$?
 check "unparseable host import exits nonzero"       test "$rc" != 0
 check "unparseable host names the rejected file"    grep -qF "cannot parse .claude/agents/broken.md as a Claude agent" "$work/unparseable-import.out"
 check "unparseable Claude input stays byte-identical" test "$(git hash-object "$U/.claude/agents/broken.md")" = "$broken_claude_before"
 check "unparseable Codex input stays byte-identical" test "$(git hash-object "$U/.codex/agents/broken.toml")" = "$broken_codex_before"
-check "parse failure writes no SSOT sources"        test ! -e "$U/.agents"
+check "parse failure writes no SSOT sources"        test ! -e "$U/.agents/subagents"
 
-M="$work/missing-import-metadata"; mkdir -p "$M/.claude/agents" "$M/.codex/agents" "$M/tools/agent"
+M="$work/missing-import-metadata"; mkdir -p "$M/.claude/agents" "$M/.codex/agents" "$M/.agents/tools"
 printf -- '---\nname: alpha\ndescription: valid earlier candidate\n---\n\nALPHA_BEFORE_METADATA_FAILURE\n' > "$M/.claude/agents/alpha.md"
 printf -- '---\nname: meta\ndescription:\n---\n\nMATCHING_METADATA_INSTRUCTIONS\n' > "$M/.claude/agents/meta.md"
 printf '%s\n' \
@@ -492,35 +492,35 @@ printf '%s\n' \
   'developer_instructions = """' \
   'MATCHING_METADATA_INSTRUCTIONS' \
   '"""' > "$M/.codex/agents/meta.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$M/tools/agent/generate-subagents.py"
-( cd "$M" && python tools/agent/generate-subagents.py --import ) >"$work/missing-import-metadata.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$M/.agents/tools/generate-subagents.py"
+( cd "$M" && python .agents/tools/generate-subagents.py --import ) >"$work/missing-import-metadata.out" 2>&1; rc=$?
 check "missing import metadata exits nonzero"       test "$rc" != 0
 check "missing import metadata explains the field" grep -qF "subagent 'meta': metadata.json needs a non-empty description" "$work/missing-import-metadata.out"
-check "metadata failure writes no SSOT sources"     test ! -e "$M/.agents"
+check "metadata failure writes no SSOT sources"     test ! -e "$M/.agents/subagents"
 
-T="$work/codex-basic-multiline"; mkdir -p "$T/.codex/agents" "$T/tools/agent"
+T="$work/codex-basic-multiline"; mkdir -p "$T/.codex/agents" "$T/.agents/tools"
 printf '%s\n' \
   'name = "basic-multiline"' \
   'description = "official basic multiline form"' \
   'developer_instructions = """' \
   'CODEX_BASIC_MULTILINE_SENTINEL' \
   '"""' > "$T/.codex/agents/basic-multiline.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$T/tools/agent/generate-subagents.py"
-( cd "$T" && python tools/agent/generate-subagents.py --import ) >"$work/basic-multiline-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$T/.agents/tools/generate-subagents.py"
+( cd "$T" && python .agents/tools/generate-subagents.py --import ) >"$work/basic-multiline-import.out" 2>&1; rc=$?
 check "Codex basic multiline import exits 0"        test "$rc" = 0
 check "Codex basic multiline prompt is preserved"  grep -qF CODEX_BASIC_MULTILINE_SENTINEL "$T/.agents/subagents/basic-multiline/instructions.md"
-( cd "$T" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$T" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "Codex basic multiline projection is in sync" test "$rc" = 0
 
-F="$work/unsupported-host-fields"; mkdir -p "$F/.claude/agents" "$F/tools/agent"
+F="$work/unsupported-host-fields"; mkdir -p "$F/.claude/agents" "$F/.agents/tools"
 printf -- '---\nname: rich-claude\ndescription: unsupported Claude metadata\nmemory: project\n---\n\nRICH_CLAUDE_SENTINEL\n' > "$F/.claude/agents/rich-claude.md"
-cp "$repo/tools/agent/generate-subagents.py" "$F/tools/agent/generate-subagents.py"
-( cd "$F" && python tools/agent/generate-subagents.py --import ) >"$work/unsupported-claude-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$F/.agents/tools/generate-subagents.py"
+( cd "$F" && python .agents/tools/generate-subagents.py --import ) >"$work/unsupported-claude-import.out" 2>&1; rc=$?
 check "unsupported Claude metadata exits nonzero"   test "$rc" != 0
 check "unsupported Claude metadata names the field" grep -qF "unsupported Claude field 'memory'" "$work/unsupported-claude-import.out"
-check "unsupported Claude metadata writes no SSOT" test ! -e "$F/.agents"
+check "unsupported Claude metadata writes no SSOT" test ! -e "$F/.agents/subagents"
 
-F="$work/unsupported-codex-fields"; mkdir -p "$F/.codex/agents" "$F/tools/agent"
+F="$work/unsupported-codex-fields"; mkdir -p "$F/.codex/agents" "$F/.agents/tools"
 printf '%s\n' \
   'name = "rich-codex"' \
   'description = "unsupported Codex metadata"' \
@@ -529,26 +529,26 @@ printf '%s\n' \
   '"""' \
   '[mcp_servers.docs]' \
   'command = "docs-server"' > "$F/.codex/agents/rich-codex.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$F/tools/agent/generate-subagents.py"
-( cd "$F" && python tools/agent/generate-subagents.py --import ) >"$work/unsupported-codex-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$F/.agents/tools/generate-subagents.py"
+( cd "$F" && python .agents/tools/generate-subagents.py --import ) >"$work/unsupported-codex-import.out" 2>&1; rc=$?
 check "unsupported Codex metadata exits nonzero"    test "$rc" != 0
 check "unsupported Codex metadata names the field" grep -qF "unsupported Codex field 'mcp_servers.docs'" "$work/unsupported-codex-import.out"
-check "unsupported Codex metadata writes no SSOT"  test ! -e "$F/.agents"
+check "unsupported Codex metadata writes no SSOT"  test ! -e "$F/.agents/subagents"
 
-N="$work/host-identity-conflict"; mkdir -p "$N/.codex/agents" "$N/tools/agent"
+N="$work/host-identity-conflict"; mkdir -p "$N/.codex/agents" "$N/.agents/tools"
 printf '%s\n' \
   'name = "declared-name"' \
   'description = "name differs from the filename"' \
   "developer_instructions = '''" \
   'NAME_CONFLICT_SENTINEL' \
   "'''" > "$N/.codex/agents/filename-name.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
-( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/identity-conflict-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$N/.agents/tools/generate-subagents.py"
+( cd "$N" && python .agents/tools/generate-subagents.py --import ) >"$work/identity-conflict-import.out" 2>&1; rc=$?
 check "host identity conflict exits nonzero"        test "$rc" != 0
 check "host identity conflict explains the mismatch" grep -qF "declares name 'declared-name'; rename it to filename-name.toml before --import" "$work/identity-conflict-import.out"
-check "host identity conflict writes no SSOT"       test ! -e "$N/.agents"
+check "host identity conflict writes no SSOT"       test ! -e "$N/.agents/subagents"
 
-V="$work/description-conflict"; mkdir -p "$V/.claude/agents" "$V/.codex/agents" "$V/tools/agent"
+V="$work/description-conflict"; mkdir -p "$V/.claude/agents" "$V/.codex/agents" "$V/.agents/tools"
 printf -- '---\nname: description-conflict\ndescription: Claude description\n---\n\nSHARED_DESCRIPTION_INSTRUCTIONS\n' > "$V/.claude/agents/description-conflict.md"
 printf '%s\n' \
   'name = "description-conflict"' \
@@ -556,13 +556,13 @@ printf '%s\n' \
   "developer_instructions = '''" \
   'SHARED_DESCRIPTION_INSTRUCTIONS' \
   "'''" > "$V/.codex/agents/description-conflict.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$V/tools/agent/generate-subagents.py"
-( cd "$V" && python tools/agent/generate-subagents.py --import ) >"$work/description-conflict-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$V/.agents/tools/generate-subagents.py"
+( cd "$V" && python .agents/tools/generate-subagents.py --import ) >"$work/description-conflict-import.out" 2>&1; rc=$?
 check "description conflict exits nonzero"          test "$rc" != 0
 check "description conflict explains the mismatch" grep -qF "different descriptions; resolve the conflict before --import" "$work/description-conflict-import.out"
-check "description conflict writes no SSOT"        test ! -e "$V/.agents"
+check "description conflict writes no SSOT"        test ! -e "$V/.agents/subagents"
 
-I="$work/inline-multiline-strings"; mkdir -p "$I/.codex/agents" "$I/tools/agent"
+I="$work/inline-multiline-strings"; mkdir -p "$I/.codex/agents" "$I/.agents/tools"
 printf '%s\n' \
   'name = "basic-inline"' \
   'description = "inline basic multiline"' \
@@ -571,13 +571,13 @@ printf '%s\n' \
   'name = "literal-inline"' \
   'description = "inline literal multiline"' \
   "developer_instructions = '''INLINE_LITERAL_SENTINEL'''" > "$I/.codex/agents/literal-inline.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$I/tools/agent/generate-subagents.py"
-( cd "$I" && python tools/agent/generate-subagents.py --import ) >"$work/inline-multiline-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$I/.agents/tools/generate-subagents.py"
+( cd "$I" && python .agents/tools/generate-subagents.py --import ) >"$work/inline-multiline-import.out" 2>&1; rc=$?
 check "inline TOML multiline forms import"           test "$rc" = 0
 check "inline basic prompt is exact"                 grep -qxF INLINE_BASIC_SENTINEL "$I/.agents/subagents/basic-inline/instructions.md"
 check "inline literal prompt is exact"               grep -qxF INLINE_LITERAL_SENTINEL "$I/.agents/subagents/literal-inline/instructions.md"
 
-Y="$work/claude-comment-boundary"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-comment-boundary"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf '%s\n' \
   '---' \
   'name: quoted-hash' \
@@ -586,13 +586,13 @@ printf '%s\n' \
   '---' \
   '' \
   'QUOTED_HASH_SENTINEL' > "$Y/.claude/agents/quoted-hash.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/quoted-hash-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/quoted-hash-import.out" 2>&1; rc=$?
 check "quoted hash Claude metadata imports"          test "$rc" = 0
 check "quoted hash description stays exact"         grep -qxF 'description: "  Review #123\nNext  "' "$Y/.claude/agents/quoted-hash.md"
 check "bool-looking model stays quoted"              grep -qxF 'model: "false"' "$Y/.claude/agents/quoted-hash.md"
 
-Y="$work/claude-leading-body-space"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-leading-body-space"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf '%s\n' \
   '---' \
   'name: leading-body-space' \
@@ -601,53 +601,53 @@ printf '%s\n' \
   '' \
   '' \
   'LEADING_BODY_SENTINEL' > "$Y/.claude/agents/leading-body-space.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/leading-body-space-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/leading-body-space-import.out" 2>&1; rc=$?
 check "leading body whitespace imports"              test "$rc" = 0
 check "one intentional leading body line remains"    python -c 'import pathlib,sys; raise SystemExit(pathlib.Path(sys.argv[1]).read_bytes() != b"\nLEADING_BODY_SENTINEL\n")' "$Y/.agents/subagents/leading-body-space/instructions.md"
 
-Y="$work/claude-implicit-type"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-implicit-type"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf -- '---\nname: implicit-type\ndescription: reject implicit YAML types\nmodel: false\n---\n\nIMPLICIT_TYPE_SENTINEL\n' > "$Y/.claude/agents/implicit-type.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/implicit-type-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/implicit-type-import.out" 2>&1; rc=$?
 check "implicit YAML type exits nonzero"              test "$rc" != 0
 check "implicit YAML type explains string boundary"  grep -qF "implicit non-string YAML value for field 'model'" "$work/implicit-type-import.out"
-check "implicit YAML type writes no SSOT"             test ! -e "$Y/.agents"
+check "implicit YAML type writes no SSOT"             test ! -e "$Y/.agents/subagents"
 
-Y="$work/claude-empty-optional"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-empty-optional"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf -- '---\nname: empty-optional\ndescription: reject empty optional YAML values\nmodel:\n---\n\nEMPTY_OPTIONAL_SENTINEL\n' > "$Y/.claude/agents/empty-optional.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/empty-optional-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/empty-optional-import.out" 2>&1; rc=$?
 check "empty optional YAML value exits nonzero"       test "$rc" != 0
 check "empty optional YAML value is typed"            grep -qF "implicit non-string YAML value for field 'model'" "$work/empty-optional-import.out"
-check "empty optional YAML value writes no SSOT"      test ! -e "$Y/.agents"
+check "empty optional YAML value writes no SSOT"      test ! -e "$Y/.agents/subagents"
 
 expect_empty_claude_field() {
   local slug="$1" field="$2" field_line="$3" root="$work/$1"
-  mkdir -p "$root/.claude/agents" "$root/tools/agent"
+  mkdir -p "$root/.claude/agents" "$root/.agents/tools"
   printf -- '---\nname: %s\ndescription: explicit empty Claude option\n%s\n---\n\nEMPTY_CLAUDE_OPTION_SENTINEL\n' \
     "$slug" "$field_line" > "$root/.claude/agents/$slug.md"
-  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
-  ( cd "$root" && python tools/agent/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
+  cp "$repo/.agents/tools/generate-subagents.py" "$root/.agents/tools/generate-subagents.py"
+  ( cd "$root" && python .agents/tools/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
   check "$slug exits nonzero"                         test "$rc" != 0
   check "$slug names the empty field"                grep -qF "Claude field '$field' must not be empty" "$work/$slug.out"
-  check "$slug writes no SSOT"                       test ! -e "$root/.agents"
+  check "$slug writes no SSOT"                       test ! -e "$root/.agents/subagents"
 }
 
 expect_empty_codex_field() {
   local slug="$1" field="$2" field_line root="$work/$1"
   field_line="${3:-$field = \"\"}"
-  mkdir -p "$root/.codex/agents" "$root/tools/agent"
+  mkdir -p "$root/.codex/agents" "$root/.agents/tools"
   printf '%s\n' \
     "name = \"$slug\"" \
     'description = "explicit empty Codex option"' \
     "$field_line" \
     "developer_instructions = 'EMPTY_CODEX_OPTION_SENTINEL'" > "$root/.codex/agents/$slug.toml"
-  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
-  ( cd "$root" && python tools/agent/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
+  cp "$repo/.agents/tools/generate-subagents.py" "$root/.agents/tools/generate-subagents.py"
+  ( cd "$root" && python .agents/tools/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
   check "$slug exits nonzero"                         test "$rc" != 0
   check "$slug names the empty field"                grep -qF "Codex field '$field' must not be empty" "$work/$slug.out"
-  check "$slug writes no SSOT"                       test ! -e "$root/.agents"
+  check "$slug writes no SSOT"                       test ! -e "$root/.agents/subagents"
 }
 
 expect_empty_claude_field empty-claude-tools tools 'tools: ""'
@@ -660,92 +660,92 @@ expect_empty_codex_field empty-codex-model-literal model "model = ''"
 expect_empty_codex_field empty-codex-reasoning model_reasoning_effort
 expect_empty_codex_field empty-codex-sandbox sandbox_mode
 
-Y="$work/claude-value-comment"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-value-comment"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf -- '---\nname: value-comment\ndescription: # KEEP_COMMENT\n---\n\nVALUE_COMMENT_SENTINEL\n' > "$Y/.claude/agents/value-comment.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/value-comment-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/value-comment-import.out" 2>&1; rc=$?
 check "Claude value comment exits nonzero"           test "$rc" != 0
-check "Claude value comment writes no SSOT"          test ! -e "$Y/.agents"
+check "Claude value comment writes no SSOT"          test ! -e "$Y/.agents/subagents"
 
-Y="$work/codex-closing-comment"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-closing-comment"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf '%s\n' \
   'name = "closing-comment"' \
   'description = "closing delimiter comment"' \
   'developer_instructions = """' \
   'CLOSING_COMMENT_SENTINEL' \
   '""" # KEEP_COMMENT' > "$Y/.codex/agents/closing-comment.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/closing-comment-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/closing-comment-import.out" 2>&1; rc=$?
 check "Codex closing comment exits nonzero"          test "$rc" != 0
-check "Codex closing comment writes no SSOT"         test ! -e "$Y/.agents"
+check "Codex closing comment writes no SSOT"         test ! -e "$Y/.agents/subagents"
 
 expect_internal_multiline_delimiter_rejected() {
   local slug="$1" instruction_line="$2" root="$work/$1"
-  mkdir -p "$root/.codex/agents" "$root/tools/agent"
+  mkdir -p "$root/.codex/agents" "$root/.agents/tools"
   printf '%s\n' \
     "name = \"$slug\"" \
     'description = "internal multiline delimiter"' \
     "$instruction_line" > "$root/.codex/agents/$slug.toml"
-  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
-  ( cd "$root" && python tools/agent/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
+  cp "$repo/.agents/tools/generate-subagents.py" "$root/.agents/tools/generate-subagents.py"
+  ( cd "$root" && python .agents/tools/generate-subagents.py --import ) >"$work/$slug.out" 2>&1; rc=$?
   check "$slug exits nonzero"                        test "$rc" != 0
   check "$slug names the rejected field"            grep -qF "unsupported Codex value for field 'developer_instructions'" "$work/$slug.out"
-  check "$slug writes no SSOT"                      test ! -e "$root/.agents"
+  check "$slug writes no SSOT"                      test ! -e "$root/.agents/subagents"
 }
 
 expect_internal_multiline_delimiter_rejected codex-internal-basic-delimiter \
   'developer_instructions = """abc"""def"""'
 
-Y="$work/codex-literal-quote"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-literal-quote"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf '%s\n' \
   "name = 'literal-quote'" \
   "description = 'can''t be one TOML literal'" \
   "developer_instructions = 'LITERAL_QUOTE_SENTINEL'" > "$Y/.codex/agents/literal-quote.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/literal-quote-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/literal-quote-import.out" 2>&1; rc=$?
 check "invalid TOML literal exits nonzero"            test "$rc" != 0
 check "invalid TOML literal names the field"         grep -qF "unsupported Codex value for field 'description'" "$work/literal-quote-import.out"
-check "invalid TOML literal writes no SSOT"           test ! -e "$Y/.agents"
+check "invalid TOML literal writes no SSOT"           test ! -e "$Y/.agents/subagents"
 
-Y="$work/codex-invalid-basic-escape"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-invalid-basic-escape"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf '%s\n' \
   'name = "invalid-basic-escape"' \
   'description = "a\/b"' \
   "developer_instructions = 'INVALID_BASIC_ESCAPE_SENTINEL'" > "$Y/.codex/agents/invalid-basic-escape.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-basic-escape.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/invalid-basic-escape.out" 2>&1; rc=$?
 check "invalid TOML basic escape exits nonzero"       test "$rc" != 0
 check "invalid TOML basic escape names the field"    grep -qF "unsupported Codex value for field 'description'" "$work/invalid-basic-escape.out"
-check "invalid TOML basic escape writes no SSOT"     test ! -e "$Y/.agents"
+check "invalid TOML basic escape writes no SSOT"     test ! -e "$Y/.agents/subagents"
 
-Y="$work/codex-invalid-unicode-scalar"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-invalid-unicode-scalar"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf '%s\n' \
   'name = "invalid-unicode-scalar"' \
   'description = "\uD800"' \
   "developer_instructions = 'INVALID_UNICODE_SENTINEL'" > "$Y/.codex/agents/invalid-unicode-scalar.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-unicode-scalar.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/invalid-unicode-scalar.out" 2>&1; rc=$?
 check "invalid TOML Unicode scalar exits nonzero"    test "$rc" != 0
 check "invalid TOML Unicode scalar names the field" grep -qF "unsupported Codex value for field 'description'" "$work/invalid-unicode-scalar.out"
-check "invalid TOML Unicode scalar writes no SSOT"  test ! -e "$Y/.agents"
+check "invalid TOML Unicode scalar writes no SSOT"  test ! -e "$Y/.agents/subagents"
 
-Y="$work/codex-raw-del"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-raw-del"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf 'name = "raw-del"\ndescription = "a\177b"\ndeveloper_instructions = "RAW_DEL_SENTINEL"\n' > "$Y/.codex/agents/raw-del.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/codex-raw-del.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/codex-raw-del.out" 2>&1; rc=$?
 check "raw TOML DEL exits nonzero"                   test "$rc" != 0
 check "raw TOML DEL names the field"                grep -qF "unsupported Codex value for field 'description'" "$work/codex-raw-del.out"
-check "raw TOML DEL writes no SSOT"                 test ! -e "$Y/.agents"
+check "raw TOML DEL writes no SSOT"                 test ! -e "$Y/.agents/subagents"
 
-Y="$work/claude-raw-del"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-raw-del"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf -- '---\nname: raw-del\ndescription: "a\177b"\n---\n\nRAW_DEL_SENTINEL\n' > "$Y/.claude/agents/raw-del.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/claude-raw-del.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/claude-raw-del.out" 2>&1; rc=$?
 check "raw YAML DEL exits nonzero"                   test "$rc" != 0
 check "raw YAML DEL names the field"                grep -qF "unsupported Claude value for field 'description'" "$work/claude-raw-del.out"
-check "raw YAML DEL writes no SSOT"                 test ! -e "$Y/.agents"
+check "raw YAML DEL writes no SSOT"                 test ! -e "$Y/.agents/subagents"
 
-Y="$work/claude-raw-noncharacter"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-raw-noncharacter"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 python - "$Y/.claude/agents/raw-noncharacter.md" <<'PY'
 from pathlib import Path
 import sys
@@ -756,42 +756,42 @@ Path(sys.argv[1]).write_text(
     encoding="utf-8",
 )
 PY
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/claude-raw-noncharacter.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/claude-raw-noncharacter.out" 2>&1; rc=$?
 check "raw YAML noncharacter exits nonzero"          test "$rc" != 0
 check "raw YAML noncharacter names the field"       grep -qF "unsupported Claude value for field 'description'" "$work/claude-raw-noncharacter.out"
-check "raw YAML noncharacter writes no SSOT"        test ! -e "$Y/.agents"
+check "raw YAML noncharacter writes no SSOT"        test ! -e "$Y/.agents/subagents"
 
-Y="$work/codex-raw-tab"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-raw-tab"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf 'name = "raw-tab"\ndescription = "a\tb"\ndeveloper_instructions = "RAW_TAB_SENTINEL"\n' > "$Y/.codex/agents/raw-tab.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/codex-raw-tab.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/codex-raw-tab.out" 2>&1; rc=$?
 check "raw TOML TAB imports"                         test "$rc" = 0
 check "raw TOML TAB stays semantic"                 python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); sys.exit(0 if d["description"] == "a\tb" else 1)' "$Y/.agents/subagents/raw-tab/metadata.json"
-( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$Y" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "raw TOML TAB projection is in sync"           test "$rc" = 0
 
-Y="$work/source-escaped-del"; mkdir -p "$Y/.agents/subagents/escaped-del" "$Y/tools/agent"
+Y="$work/source-escaped-del"; mkdir -p "$Y/.agents/subagents/escaped-del" "$Y/.agents/tools"
 printf '%s\n' '{"name":"escaped-del","description":"a\u007fb"}' > "$Y/.agents/subagents/escaped-del/metadata.json"
 printf 'ESCAPED_DEL_SOURCE\n' > "$Y/.agents/subagents/escaped-del/instructions.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py ) >"$work/source-escaped-del.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py ) >"$work/source-escaped-del.out" 2>&1; rc=$?
 check "escaped DEL source generates"                 test "$rc" = 0
 check "escaped DEL projections stay escaped"        python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; sys.exit(0 if all(b"\x7f" not in d and b"\\u007f" in d for d in data) else 1)' "$Y/.claude/agents/escaped-del.md" "$Y/.codex/agents/escaped-del.toml"
-( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$Y" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "escaped DEL projections are in sync"          test "$rc" = 0
 
-Y="$work/source-yaml-boundary"; mkdir -p "$Y/.agents/subagents/yaml-boundary" "$Y/tools/agent"
+Y="$work/source-yaml-boundary"; mkdir -p "$Y/.agents/subagents/yaml-boundary" "$Y/.agents/tools"
 printf '%s\n' '{"name":"yaml-boundary","description":"a\ufffeb\uffff"}' > "$Y/.agents/subagents/yaml-boundary/metadata.json"
 printf 'YAML_BOUNDARY_SOURCE\n' > "$Y/.agents/subagents/yaml-boundary/instructions.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py ) >"$work/source-yaml-boundary.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py ) >"$work/source-yaml-boundary.out" 2>&1; rc=$?
 check "YAML boundary source generates"               test "$rc" = 0
 check "YAML boundary projections stay escaped"      python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; raw=(chr(0xfffe).encode(),chr(0xffff).encode()); sys.exit(0 if all(not any(c in d for c in raw) and b"\\ufffe" in d and b"\\uffff" in d for d in data) else 1)' "$Y/.claude/agents/yaml-boundary.md" "$Y/.codex/agents/yaml-boundary.toml"
-( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$Y" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "YAML boundary projections are in sync"        test "$rc" = 0
 
-Y="$work/host-escaped-del"; mkdir -p "$Y/.claude/agents" "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/host-escaped-del"; mkdir -p "$Y/.claude/agents" "$Y/.codex/agents" "$Y/.agents/tools"
 printf -- '---\nname: escaped-del-import\ndescription: "a\\u007fb"\n---\n\nESCAPED_DEL_IMPORT_SENTINEL\n' > "$Y/.claude/agents/escaped-del-import.md"
 printf '%s\n' \
   'name = "escaped-del-import"' \
@@ -799,89 +799,89 @@ printf '%s\n' \
   "developer_instructions = '''" \
   'ESCAPED_DEL_IMPORT_SENTINEL' \
   "'''" > "$Y/.codex/agents/escaped-del-import.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/host-escaped-del.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/host-escaped-del.out" 2>&1; rc=$?
 check "escaped DEL host import succeeds"             test "$rc" = 0
 check "escaped DEL host import stays semantic"       python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); sys.exit(0 if d["description"] == "a\x7fb" else 1)' "$Y/.agents/subagents/escaped-del-import/metadata.json"
 check "escaped DEL host projections stay escaped"   python -c 'import pathlib,sys; data=[pathlib.Path(p).read_bytes() for p in sys.argv[1:]]; sys.exit(0 if all(b"\x7f" not in d and b"\\u007f" in d for d in data) else 1)' "$Y/.claude/agents/escaped-del-import.md" "$Y/.codex/agents/escaped-del-import.toml"
-( cd "$Y" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$Y" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "escaped DEL host projections are in sync"     test "$rc" = 0
 
-Y="$work/claude-invalid-plain-colon"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-invalid-plain-colon"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf -- '---\nname: invalid-plain-colon\ndescription: value: changes YAML structure\n---\n\nINVALID_PLAIN_COLON_SENTINEL\n' > "$Y/.claude/agents/invalid-plain-colon.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-plain-colon.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/invalid-plain-colon.out" 2>&1; rc=$?
 check "invalid YAML plain colon exits nonzero"        test "$rc" != 0
 check "invalid YAML plain colon names the field"     grep -qF "unsupported Claude value for field 'description'" "$work/invalid-plain-colon.out"
-check "invalid YAML plain colon writes no SSOT"      test ! -e "$Y/.agents"
+check "invalid YAML plain colon writes no SSOT"      test ! -e "$Y/.agents/subagents"
 
-Y="$work/claude-invalid-plain-dash"; mkdir -p "$Y/.claude/agents" "$Y/tools/agent"
+Y="$work/claude-invalid-plain-dash"; mkdir -p "$Y/.claude/agents" "$Y/.agents/tools"
 printf -- '---\nname: invalid-plain-dash\ndescription: - changes YAML structure\n---\n\nINVALID_PLAIN_DASH_SENTINEL\n' > "$Y/.claude/agents/invalid-plain-dash.md"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-plain-dash.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/invalid-plain-dash.out" 2>&1; rc=$?
 check "invalid YAML plain dash exits nonzero"         test "$rc" != 0
 check "invalid YAML plain dash names the field"      grep -qF "unsupported Claude value for field 'description'" "$work/invalid-plain-dash.out"
-check "invalid YAML plain dash writes no SSOT"       test ! -e "$Y/.agents"
+check "invalid YAML plain dash writes no SSOT"       test ! -e "$Y/.agents/subagents"
 
-Y="$work/codex-duplicate-nicknames"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-duplicate-nicknames"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf '%s\n' \
   'name = "duplicate-nicknames"' \
   'description = "duplicate nickname candidates"' \
   'nickname_candidates = ["Twin", "Twin"]' \
   "developer_instructions = 'DUPLICATE_NICKNAME_SENTINEL'" > "$Y/.codex/agents/duplicate-nicknames.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/duplicate-nicknames-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/duplicate-nicknames-import.out" 2>&1; rc=$?
 check "duplicate nicknames exit nonzero"              test "$rc" != 0
 check "duplicate nicknames explain uniqueness"       grep -qF "nickname_candidates must contain unique names" "$work/duplicate-nicknames-import.out"
-check "duplicate nicknames write no SSOT"             test ! -e "$Y/.agents"
+check "duplicate nicknames write no SSOT"             test ! -e "$Y/.agents/subagents"
 
-Y="$work/codex-invalid-nickname"; mkdir -p "$Y/.codex/agents" "$Y/tools/agent"
+Y="$work/codex-invalid-nickname"; mkdir -p "$Y/.codex/agents" "$Y/.agents/tools"
 printf '%s\n' \
   'name = "invalid-nickname"' \
   'description = "invalid nickname characters"' \
   'nickname_candidates = ["bad@name"]' \
   "developer_instructions = 'INVALID_NICKNAME_SENTINEL'" > "$Y/.codex/agents/invalid-nickname.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$Y/tools/agent/generate-subagents.py"
-( cd "$Y" && python tools/agent/generate-subagents.py --import ) >"$work/invalid-nickname-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$Y/.agents/tools/generate-subagents.py"
+( cd "$Y" && python .agents/tools/generate-subagents.py --import ) >"$work/invalid-nickname-import.out" 2>&1; rc=$?
 check "invalid nickname exits nonzero"                test "$rc" != 0
 check "invalid nickname explains character set"      grep -qF "nickname_candidates use only ASCII letters, digits, spaces, hyphens, and underscores" "$work/invalid-nickname-import.out"
-check "invalid nickname writes no SSOT"               test ! -e "$Y/.agents"
+check "invalid nickname writes no SSOT"               test ! -e "$Y/.agents/subagents"
 
-N="$work/dual-host-name-subset"; mkdir -p "$N/.codex/agents" "$N/tools/agent"
+N="$work/dual-host-name-subset"; mkdir -p "$N/.codex/agents" "$N/.agents/tools"
 printf '%s\n' \
   'name = "pr_explorer"' \
   'description = "official Codex-only identity shape"' \
   "developer_instructions = '''NAME_SUBSET_SENTINEL'''" > "$N/.codex/agents/pr-explorer.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
-( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/name-subset-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$N/.agents/tools/generate-subagents.py"
+( cd "$N" && python .agents/tools/generate-subagents.py --import ) >"$work/name-subset-import.out" 2>&1; rc=$?
 check "Codex-only name shape exits nonzero"           test "$rc" != 0
 check "Codex-only name explains dual-host subset"    grep -qF "not dual-host compatible; use lowercase letters separated by hyphens" "$work/name-subset-import.out"
-check "Codex-only name writes no SSOT"                test ! -e "$N/.agents"
+check "Codex-only name writes no SSOT"                test ! -e "$N/.agents/subagents"
 
-N="$work/windows-reserved-name"; mkdir -p "$N/.claude/agents" "$N/tools/agent"
+N="$work/windows-reserved-name"; mkdir -p "$N/.claude/agents" "$N/.agents/tools"
 printf -- '---\nname: con\ndescription: Windows reserved filename\n---\n\nWINDOWS_RESERVED_SENTINEL\n' > "$N/.claude/agents/portable-name.md"
-cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
-( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/windows-reserved-name.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$N/.agents/tools/generate-subagents.py"
+( cd "$N" && python .agents/tools/generate-subagents.py --import ) >"$work/windows-reserved-name.out" 2>&1; rc=$?
 check "Windows-reserved name exits nonzero"           test "$rc" != 0
 check "Windows-reserved name explains portability"   grep -qF "agent name 'con' is reserved on Windows" "$work/windows-reserved-name.out"
-check "Windows-reserved name writes no SSOT"          test ! -e "$N/.agents"
+check "Windows-reserved name writes no SSOT"          test ! -e "$N/.agents/subagents"
 
-N="$work/case-colliding-names"; mkdir -p "$N/.claude/agents" "$N/.codex/agents" "$N/tools/agent"
+N="$work/case-colliding-names"; mkdir -p "$N/.claude/agents" "$N/.codex/agents" "$N/.agents/tools"
 printf -- '---\nname: Review\ndescription: uppercase Claude identity\n---\n\nCASE_COLLISION_SENTINEL\n' > "$N/.claude/agents/Review.md"
 printf '%s\n' \
   'name = "review"' \
   'description = "lowercase Codex identity"' \
   "developer_instructions = '''CASE_COLLISION_SENTINEL'''" > "$N/.codex/agents/review.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$N/tools/agent/generate-subagents.py"
-( cd "$N" && python tools/agent/generate-subagents.py --import ) >"$work/case-collision-import.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$N/.agents/tools/generate-subagents.py"
+( cd "$N" && python .agents/tools/generate-subagents.py --import ) >"$work/case-collision-import.out" 2>&1; rc=$?
 check "case-colliding names exit nonzero"             test "$rc" != 0
-check "case-colliding names write no SSOT"            test ! -e "$N/.agents"
+check "case-colliding names write no SSOT"            test ! -e "$N/.agents/subagents"
 
-C="$work/source-projection-collision"; mkdir -p "$C/.agents/subagents/sourced" "$C/.claude/agents" "$C/tools/agent"
+C="$work/source-projection-collision"; mkdir -p "$C/.agents/subagents/sourced" "$C/.claude/agents" "$C/.agents/tools"
 printf '%s\n' '{"name":"sourced","description":"existing source"}' > "$C/.agents/subagents/sourced/metadata.json"
 printf 'SOURCE_INSTRUCTIONS\n' > "$C/.agents/subagents/sourced/instructions.md"
 printf -- '---\nname: sourced\ndescription: hand-authored projection\n---\n\nHAND_PROJECTION_SENTINEL\n' > "$C/.claude/agents/sourced.md"
-cp "$repo/tools/agent/generate-subagents.py" "$C/tools/agent/generate-subagents.py"
+cp "$repo/.agents/tools/generate-subagents.py" "$C/.agents/tools/generate-subagents.py"
 git -C "$C" init -q -b main
 git -C "$C" config user.email t@t.t; git -C "$C" config user.name tester
 git -C "$C" commit -q --allow-empty -m init
@@ -889,23 +889,23 @@ collision_before="$(git hash-object "$C/.claude/agents/sourced.md")"
 ( cd "$C" && bash "$H" plan ) >"$work/source-collision-plan.out" 2>&1; rc=$?
 check "source collision plan exits 0"                test "$rc" = 0
 check "source collision plan requires resolution"    grep -qF "hand-authored projection conflicts with existing .agents/subagents/sourced" "$work/source-collision-plan.out"
-( cd "$C" && python tools/agent/generate-subagents.py --import ) >"$work/source-collision-import.out" 2>&1; rc=$?
+( cd "$C" && python .agents/tools/generate-subagents.py --import ) >"$work/source-collision-import.out" 2>&1; rc=$?
 check "source collision import exits nonzero"        test "$rc" != 0
 check "source collision import explains conflict"   grep -qF "hand-authored projection conflicts with existing .agents/subagents/sourced" "$work/source-collision-import.out"
 check "source collision import preserves projection" test "$(git hash-object "$C/.claude/agents/sourced.md")" = "$collision_before"
 printf -- '---\nname: sourced\ndescription: hand-authored projection\n---\n\nHAND_PROJECTION_SENTINEL\n' > "$C/.claude/agents/sourced.md"
-( cd "$C" && python tools/agent/generate-subagents.py ) >"$work/source-collision-project.out" 2>&1; rc=$?
+( cd "$C" && python .agents/tools/generate-subagents.py ) >"$work/source-collision-project.out" 2>&1; rc=$?
 check "default projection collision exits nonzero"  test "$rc" != 0
 check "default collision preserves projection"      test "$(git hash-object "$C/.claude/agents/sourced.md")" = "$collision_before"
 
-C="$work/source-codex-collision"; mkdir -p "$C/.agents/subagents/sourced-codex" "$C/.codex/agents" "$C/tools/agent"
+C="$work/source-codex-collision"; mkdir -p "$C/.agents/subagents/sourced-codex" "$C/.codex/agents" "$C/.agents/tools"
 printf '%s\n' '{"name":"sourced-codex","description":"existing source"}' > "$C/.agents/subagents/sourced-codex/metadata.json"
 printf 'SOURCE_INSTRUCTIONS\n' > "$C/.agents/subagents/sourced-codex/instructions.md"
 printf '%s\n' \
   'name = "sourced-codex"' \
   'description = "hand-authored Codex projection"' \
   "developer_instructions = '''HAND_CODEX_PROJECTION_SENTINEL'''" > "$C/.codex/agents/sourced-codex.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$C/tools/agent/generate-subagents.py"
+cp "$repo/.agents/tools/generate-subagents.py" "$C/.agents/tools/generate-subagents.py"
 git -C "$C" init -q -b main
 git -C "$C" config user.email t@t.t; git -C "$C" config user.name tester
 git -C "$C" commit -q --allow-empty -m init
@@ -913,33 +913,33 @@ codex_collision_before="$(git hash-object "$C/.codex/agents/sourced-codex.toml")
 ( cd "$C" && bash "$H" plan ) >"$work/source-codex-collision-plan.out" 2>&1; rc=$?
 check "Codex source collision plan exits 0"          test "$rc" = 0
 check "Codex source collision plan needs resolution" grep -qF "hand-authored projection conflicts with existing .agents/subagents/sourced-codex" "$work/source-codex-collision-plan.out"
-( cd "$C" && python tools/agent/generate-subagents.py --import ) >"$work/source-codex-collision-import.out" 2>&1; rc=$?
+( cd "$C" && python .agents/tools/generate-subagents.py --import ) >"$work/source-codex-collision-import.out" 2>&1; rc=$?
 check "Codex source collision import exits nonzero"  test "$rc" != 0
 check "Codex collision import preserves projection" test "$(git hash-object "$C/.codex/agents/sourced-codex.toml")" = "$codex_collision_before"
 check "Codex import conflict writes no Claude side"  test ! -e "$C/.claude/agents/sourced-codex.md"
-( cd "$C" && python tools/agent/generate-subagents.py ) >"$work/source-codex-collision-project.out" 2>&1; rc=$?
+( cd "$C" && python .agents/tools/generate-subagents.py ) >"$work/source-codex-collision-project.out" 2>&1; rc=$?
 check "Codex default collision exits nonzero"        test "$rc" != 0
 check "Codex default preserves projection"           test "$(git hash-object "$C/.codex/agents/sourced-codex.toml")" = "$codex_collision_before"
 check "Codex default conflict writes no Claude side" test ! -e "$C/.claude/agents/sourced-codex.md"
 
-P="$work/projection-parent-conflict"; mkdir -p "$P/.claude/agents" "$P/tools/agent"
+P="$work/projection-parent-conflict"; mkdir -p "$P/.claude/agents" "$P/.agents/tools"
 printf -- '---\nname: parent-conflict\ndescription: projection parent is not a directory\n---\n\nPARENT_CONFLICT_SENTINEL\n' > "$P/.claude/agents/parent-conflict.md"
 printf 'not a directory\n' > "$P/.codex"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
 parent_before="$(git hash-object "$P/.claude/agents/parent-conflict.md")"
-( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/projection-parent-conflict.out" 2>&1; rc=$?
+( cd "$P" && python .agents/tools/generate-subagents.py --import ) >"$work/projection-parent-conflict.out" 2>&1; rc=$?
 check "projection parent conflict exits nonzero"      test "$rc" != 0
 check "projection parent conflict names the path"    grep -qF ".codex: expected a directory" "$work/projection-parent-conflict.out"
-check "projection parent conflict writes no SSOT"    test ! -e "$P/.agents"
+check "projection parent conflict writes no SSOT"    test ! -e "$P/.agents/subagents"
 check "projection parent preserves host input"       test "$(git hash-object "$P/.claude/agents/parent-conflict.md")" = "$parent_before"
 
-P="$work/noncanonical-host-extension"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/tools/agent"
+P="$work/noncanonical-host-extension"; mkdir -p "$P/.claude/agents" "$P/.codex/agents" "$P/.agents/tools"
 printf -- '---\nname: alias\ndescription: hand-authored uppercase extension\n---\n\nUPPERCASE_EXTENSION_SENTINEL\n' > "$P/.claude/agents/alias.MD"
 printf '%s\n' \
   'name = "alias"' \
   'description = "Codex alias candidate"' \
   "developer_instructions = 'UPPERCASE_EXTENSION_SENTINEL'" > "$P/.codex/agents/alias.toml"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
 git -C "$P" init -q -b main
 git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
 git -C "$P" commit -q --allow-empty -m init
@@ -947,44 +947,44 @@ alias_before="$(git hash-object "$P/.claude/agents/alias.MD")"
 ( cd "$P" && bash "$H" plan ) >"$work/noncanonical-extension-plan.out" 2>&1; rc=$?
 check "noncanonical extension plan exits 0"          test "$rc" = 0
 check "noncanonical extension plan explains case"   grep -qF "host agent extension must be lowercase .md" "$work/noncanonical-extension-plan.out"
-( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/noncanonical-extension.out" 2>&1; rc=$?
+( cd "$P" && python .agents/tools/generate-subagents.py --import ) >"$work/noncanonical-extension.out" 2>&1; rc=$?
 check "noncanonical host extension exits nonzero"     test "$rc" != 0
 check "noncanonical extension explains lowercase"    grep -qF "host agent extension must be lowercase .md" "$work/noncanonical-extension.out"
-check "noncanonical extension writes no SSOT"         test ! -e "$P/.agents"
+check "noncanonical extension writes no SSOT"         test ! -e "$P/.agents/subagents"
 check "noncanonical extension preserves host input"  test "$(git hash-object "$P/.claude/agents/alias.MD")" = "$alias_before"
 
-P="$work/projection-temp-conflict"; mkdir -p "$P/.claude/agents" "$P/.codex/agents/alpha.toml.tmp" "$P/tools/agent"
+P="$work/projection-temp-conflict"; mkdir -p "$P/.claude/agents" "$P/.codex/agents/alpha.toml.tmp" "$P/.agents/tools"
 printf -- '---\nname: alpha\ndescription: temporary projection conflict\n---\n\nTEMP_CONFLICT_SENTINEL\n' > "$P/.claude/agents/alpha.md"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
 temp_before="$(git hash-object "$P/.claude/agents/alpha.md")"
-( cd "$P" && python tools/agent/generate-subagents.py --import ) >"$work/projection-temp-conflict.out" 2>&1; rc=$?
+( cd "$P" && python .agents/tools/generate-subagents.py --import ) >"$work/projection-temp-conflict.out" 2>&1; rc=$?
 check "projection temp conflict exits nonzero"        test "$rc" != 0
 check "projection temp conflict names the path"      grep -qF ".codex/agents/alpha.toml.tmp: temporary write path already exists" "$work/projection-temp-conflict.out"
-check "projection temp conflict writes no SSOT"      test ! -e "$P/.agents"
+check "projection temp conflict writes no SSOT"      test ! -e "$P/.agents/subagents"
 check "projection temp preserves host input"         test "$(git hash-object "$P/.claude/agents/alpha.md")" = "$temp_before"
 
-P="$work/stale-path-conflict"; mkdir -p "$P/.agents/subagents/alpha" "$P/.claude/agents/orphan.md" "$P/tools/agent"
+P="$work/stale-path-conflict"; mkdir -p "$P/.agents/subagents/alpha" "$P/.claude/agents/orphan.md" "$P/.agents/tools"
 printf '%s\n' '{"name":"alpha","description":"stale path preflight"}' > "$P/.agents/subagents/alpha/metadata.json"
 printf 'STALE_PATH_SOURCE\n' > "$P/.agents/subagents/alpha/instructions.md"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
-( cd "$P" && python tools/agent/generate-subagents.py ) >"$work/stale-path-conflict.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
+( cd "$P" && python .agents/tools/generate-subagents.py ) >"$work/stale-path-conflict.out" 2>&1; rc=$?
 check "stale path conflict exits nonzero"             test "$rc" != 0
 check "stale path conflict names the path"           grep -qF ".claude/agents/orphan.md: expected a regular file" "$work/stale-path-conflict.out"
 check "stale conflict writes no wanted projection"   test ! -e "$P/.claude/agents/alpha.md"
 check "stale conflict writes no Codex projection"    test ! -e "$P/.codex/agents/alpha.toml"
 
-P="$work/check-projection-root-file"; mkdir -p "$P/.claude" "$P/tools/agent"
+P="$work/check-projection-root-file"; mkdir -p "$P/.claude" "$P/.agents/tools"
 printf 'NOT_A_DIRECTORY\n' > "$P/.claude/agents"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
-( cd "$P" && python tools/agent/generate-subagents.py --check ) >"$work/check-projection-root-file.out" 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
+( cd "$P" && python .agents/tools/generate-subagents.py --check ) >"$work/check-projection-root-file.out" 2>&1; rc=$?
 check "check rejects projection root file"           test "$rc" != 0
 check "check names malformed projection root"       grep -qF ".claude/agents: expected a directory" "$work/check-projection-root-file.out"
 
-P="$work/noncanonical-host-basename"; mkdir -p "$P/.agents/subagents/foo" "$P/tools/agent"
+P="$work/noncanonical-host-basename"; mkdir -p "$P/.agents/subagents/foo" "$P/.agents/tools"
 printf '%s\n' '{"name":"foo","description":"case-only host basename"}' > "$P/.agents/subagents/foo/metadata.json"
 printf 'NONCANONICAL_BASENAME_SENTINEL\n' > "$P/.agents/subagents/foo/instructions.md"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
-( cd "$P" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
+( cd "$P" && python .agents/tools/generate-subagents.py ) >/dev/null 2>&1; rc=$?
 check "basename fixture setup exits 0"               test "$rc" = 0
 python - "$P/.claude/agents/foo.md" "$P/.claude/agents/Foo.md" <<'PY'
 import os
@@ -1001,10 +1001,10 @@ git -C "$P" commit -q --allow-empty -m init
 ( cd "$P" && bash "$H" plan ) >"$work/noncanonical-basename-plan.out" 2>&1; rc=$?
 check "noncanonical basename plan exits 0"           test "$rc" = 0
 check "noncanonical basename plan explains name"    grep -qF "non-portable host filename Foo.md" "$work/noncanonical-basename-plan.out"
-( cd "$P" && python tools/agent/generate-subagents.py --check ) >"$work/noncanonical-basename-check.out" 2>&1; rc=$?
+( cd "$P" && python .agents/tools/generate-subagents.py --check ) >"$work/noncanonical-basename-check.out" 2>&1; rc=$?
 check "check rejects noncanonical basename"         test "$rc" != 0
 check "check explains noncanonical basename"        grep -qF "agent name 'Foo' is not dual-host compatible" "$work/noncanonical-basename-check.out"
-( cd "$P" && python tools/agent/generate-subagents.py ) >"$work/noncanonical-basename-write.out" 2>&1; rc=$?
+( cd "$P" && python .agents/tools/generate-subagents.py ) >"$work/noncanonical-basename-write.out" 2>&1; rc=$?
 check "write rejects noncanonical basename"         test "$rc" != 0
 check "write creates no parallel lowercase file"    python -c 'import os,sys; names=os.listdir(sys.argv[1]); sys.exit(0 if "Foo.md" in names and "foo.md" not in names else 1)' "$P/.claude/agents"
 
@@ -1019,15 +1019,15 @@ check "hidden host plan exits 0"                     test "$rc" = 0
 check "hidden host plan explains filename"          grep -qF "non-portable host filename .hidden.md" "$work/hidden-host-plan.out"
 check "double-hidden host plan explains filename"   grep -qF "non-portable host filename ..double-hidden.md" "$work/hidden-host-plan.out"
 
-P="$work/source-entry-file"; mkdir -p "$P/.agents/subagents/source-file" "$P/tools/agent"
+P="$work/source-entry-file"; mkdir -p "$P/.agents/subagents/source-file" "$P/.agents/tools"
 printf '%s\n' '{"name":"source-file","description":"source entry shape"}' > "$P/.agents/subagents/source-file/metadata.json"
 printf 'SOURCE_ENTRY_PROJECTION_SENTINEL\n' > "$P/.agents/subagents/source-file/instructions.md"
-cp "$repo/tools/agent/generate-subagents.py" "$P/tools/agent/generate-subagents.py"
-( cd "$P" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
+cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
+( cd "$P" && python .agents/tools/generate-subagents.py ) >/dev/null 2>&1; rc=$?
 check "source entry fixture setup exits 0"          test "$rc" = 0
 rm -rf "$P/.agents/subagents/source-file"
 printf 'SOURCE_ENTRY_FILE_SENTINEL\n' > "$P/.agents/subagents/source-file"
-( cd "$P" && python tools/agent/generate-subagents.py ) >"$work/source-entry-file.out" 2>&1; rc=$?
+( cd "$P" && python .agents/tools/generate-subagents.py ) >"$work/source-entry-file.out" 2>&1; rc=$?
 check "source entry file exits nonzero"             test "$rc" != 0
 check "source entry file explains directory shape" grep -qF ".agents/subagents/source-file: expected a directory" "$work/source-entry-file.out"
 check "source entry file stays byte-identical"      grep -qxF "SOURCE_ENTRY_FILE_SENTINEL" "$P/.agents/subagents/source-file"
@@ -1035,11 +1035,11 @@ check "source entry failure preserves projections" fixed_text_in_both "SOURCE_EN
 
 expect_invalid_metadata() {
   local slug="$1" json="$2" needle="$3" root="$work/source-metadata-$1"
-  mkdir -p "$root/.agents/subagents/$slug" "$root/tools/agent"
+  mkdir -p "$root/.agents/subagents/$slug" "$root/.agents/tools"
   printf '%s\n' "$json" > "$root/.agents/subagents/$slug/metadata.json"
   printf 'INVALID_SOURCE_METADATA_SENTINEL\n' > "$root/.agents/subagents/$slug/instructions.md"
-  cp "$repo/tools/agent/generate-subagents.py" "$root/tools/agent/generate-subagents.py"
-  ( cd "$root" && python tools/agent/generate-subagents.py ) >"$work/source-metadata-$slug.out" 2>&1; rc=$?
+  cp "$repo/.agents/tools/generate-subagents.py" "$root/.agents/tools/generate-subagents.py"
+  ( cd "$root" && python .agents/tools/generate-subagents.py ) >"$work/source-metadata-$slug.out" 2>&1; rc=$?
   check "$slug metadata exits nonzero"              test "$rc" != 0
   check "$slug metadata explains type"             grep -qF "$needle" "$work/source-metadata-$slug.out"
   check "$slug metadata writes no projections"     both_absent "$root/.claude/agents/$slug.md" "$root/.codex/agents/$slug.toml"
@@ -1073,7 +1073,7 @@ P="$work/worktree-push-primary"
 Q="$work/worktree-push-peer"
 D="$P/.worktrees/develop-trunk"
 W="$P/.worktrees/push-retry"
-WT_HELPER="$repo/tools/agent/worktree.sh"
+WT_HELPER="$repo/.agents/tools/worktree.sh"
 git init --bare -q "$R"
 git init -q -b main "$P"
 git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
@@ -1288,6 +1288,136 @@ for fixture in target-text identical-copy; do
   check "$fixture contract rerun is idempotent" test -z "$(git -C "$K" status --porcelain)"
 done
 
+legacyize_runtime() {  # <installed-target>
+  local root="$1"
+  mkdir -p "$root/tools"
+  mv "$root/.agents/tools" "$root/tools/agent"
+  python - "$root" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+for path in root.rglob("*"):
+    if ".git" in path.parts or path.is_symlink() or not path.is_file():
+        continue
+    try:
+        before = path.read_text(encoding="utf-8")
+    except UnicodeError:
+        continue
+    after = before.replace(".agents/tools", "tools/agent")
+    if after != before:
+        with open(path, "w", encoding="utf-8", newline="\n") as destination:
+            destination.write(after)
+PY
+}
+
+echo "== legacy runtime migration: hard cut into .agents/tools =="
+G="$work/legacy-runtime-unknown"; mkdir -p "$G"
+git -C "$G" init -q -b main
+git -C "$G" config user.email t@t.t; git -C "$G" config user.name tester
+printf '{"name":"legacy-fixture"}\n' > "$G/package.json"
+git -C "$G" add package.json && git -C "$G" commit -q -m init
+( cd "$G" && bash "$H" init ) >/dev/null 2>&1 || bad "legacy fixture init exited nonzero"
+legacyize_runtime "$G"
+printf 'USER_OWNED_LEGACY_FILE\n' > "$G/tools/agent/custom.keep"
+git -C "$G" add -A && git -C "$G" commit -q -m "legacy runtime fixture"
+before="$(git -C "$G" status --porcelain --untracked-files=all)"
+( cd "$G" && bash "$H" plan ) >"$work/legacy-runtime-plan.out" 2>&1; rc=$?
+check "legacy plan exits 0"                       test "$rc" = 0
+check "legacy plan is read-only"                  test "$(git -C "$G" status --porcelain --untracked-files=all)" = "$before"
+check "legacy plan reports runtime migration"     grep -qF "tools/agent → .agents/tools" "$work/legacy-runtime-plan.out"
+check "legacy plan selects upgrade"               grep -qF "harness-init.sh upgrade" "$work/legacy-runtime-plan.out"
+( cd "$G" && bash "$H" retrofit ) >"$work/legacy-runtime-retrofit.out" 2>&1; rc=$?
+check "legacy retrofit exits 2"                    test "$rc" = 2
+check "legacy retrofit points at upgrade"          grep -qF "run agent-scaffold upgrade" "$work/legacy-runtime-retrofit.out"
+check "legacy retrofit writes nothing"             test -z "$(git -C "$G" status --porcelain --untracked-files=all)"
+( cd "$G" && bash "$H" upgrade --no-example-subagent ) >"$work/legacy-runtime-upgrade.out" 2>&1; rc=$?
+check "legacy upgrade exits 0"                     test "$rc" = 0
+check "legacy worktree command moved"              test -f "$G/.agents/tools/worktree.sh"
+check "legacy generator moved"                     test -f "$G/.agents/tools/generate-subagents.py"
+check "legacy managed files have no wrappers"      sh -c '
+  for path in worktree.sh generate-subagents.py hooks/trunk_edit_guard.sh hooks/authority_doc_budget.sh hooks/format_on_edit.sh hooks/hook-common.sh hooks/hook-paths.py; do
+    test ! -e "$1/tools/agent/$path" || exit 1
+  done
+' _ "$G"
+check "legacy unknown file is preserved"           grep -qxF USER_OWNED_LEGACY_FILE "$G/tools/agent/custom.keep"
+check "legacy unknown directory is preserved"      test -d "$G/tools/agent"
+check "legacy hook commands are removed"           fixed_text_absent_in_both tools/agent/hooks/ "$G/.claude/settings.json" "$G/.codex/hooks.json"
+check "current hook commands are installed"        fixed_text_in_both .agents/tools/hooks/ "$G/.claude/settings.json" "$G/.codex/hooks.json"
+check "legacy package scripts are migrated"        python -c 'import json,sys; s=json.load(open(sys.argv[1]))["scripts"]; raise SystemExit(s.get("gen:subagents") != "python .agents/tools/generate-subagents.py" or s.get("check:agents") != "python .agents/tools/generate-subagents.py --check")' "$G/package.json"
+check "legacy Husky line is removed"               logical_line_count "$G/.husky/pre-commit" "python tools/agent/generate-subagents.py --check" 0
+check "current Husky line is singular"              logical_line_count "$G/.husky/pre-commit" "python .agents/tools/generate-subagents.py --check" 1
+check "legacy LF attributes are removed"           logical_line_count "$G/.gitattributes" "tools/agent/*.sh text eol=lf" 0
+check "current LF attributes are singular"         logical_line_count "$G/.gitattributes" ".agents/tools/*.sh text eol=lf" 1
+check "legacy projection banner is rewritten"      grep -qF "Run: python .agents/tools/generate-subagents.py" "$G/.claude/agents/code-reviewer.md"
+check "legacy managed README command is removed"   fixed_text_absent_in_both "python tools/agent/generate-subagents.py" "$G/.agents/subagents/README.md" "$G/.agents/subagents/README.md"
+check "current managed README command is installed" grep -qF "python .agents/tools/generate-subagents.py" "$G/.agents/subagents/README.md"
+( cd "$G" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+check "migrated legacy runtime verifies"            test "$rc" = 0
+git -C "$G" add -A && git -C "$G" commit -q -m "migrated runtime"
+( cd "$G" && bash "$H" upgrade --no-example-subagent ) >/dev/null 2>&1; rc=$?
+check "legacy migration rerun exits 0"              test "$rc" = 0
+check "legacy migration rerun is idempotent"        test -z "$(git -C "$G" status --porcelain)"
+
+echo "== legacy managed integration without old runtime still requires upgrade =="
+G="$work/legacy-integration-only"; mkdir -p "$G"
+git -C "$G" init -q -b main
+git -C "$G" config user.email t@t.t; git -C "$G" config user.name tester
+printf '{"name":"legacy-integration"}\n' > "$G/package.json"
+git -C "$G" add package.json && git -C "$G" commit -q -m init
+( cd "$G" && bash "$H" init ) >/dev/null 2>&1 || bad "legacy integration fixture init exited nonzero"
+legacyize_runtime "$G"
+mkdir -p "$G/.agents"
+mv "$G/tools/agent" "$G/.agents/tools"
+rmdir "$G/tools"
+git -C "$G" add -A && git -C "$G" commit -q -m "legacy integration fixture"
+before="$(git -C "$G" status --porcelain --untracked-files=all)"
+( cd "$G" && bash "$H" plan ) >"$work/legacy-integration-plan.out" 2>&1; rc=$?
+check "legacy integration plan exits 0"             test "$rc" = 0
+check "legacy integration plan is read-only"        test "$(git -C "$G" status --porcelain --untracked-files=all)" = "$before"
+check "legacy integration plan reports convergence" grep -qF "stale managed commands or documentation" "$work/legacy-integration-plan.out"
+check "legacy integration plan selects upgrade"     grep -qF "harness-init.sh upgrade" "$work/legacy-integration-plan.out"
+( cd "$G" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit ) >"$work/legacy-integration-retrofit.out" 2>&1; rc=$?
+check "legacy integration retrofit exits 2"          test "$rc" = 2
+check "legacy integration points at upgrade"        grep -qF "run agent-scaffold upgrade" "$work/legacy-integration-retrofit.out"
+check "legacy integration stops before doctor"      no_fixed_text "$work/legacy-integration-retrofit.out" "symlink capability denied by the test fixture"
+check "legacy integration retrofit is read-only"    test "$(git -C "$G" status --porcelain --untracked-files=all)" = "$before"
+( cd "$G" && bash "$H" upgrade --no-example-subagent ) >/dev/null 2>&1; rc=$?
+check "legacy integration upgrade exits 0"           test "$rc" = 0
+check "legacy integration README converges"         grep -qF "python .agents/tools/generate-subagents.py" "$G/.agents/subagents/README.md"
+( cd "$G" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+check "legacy integration upgrade verifies"         test "$rc" = 0
+
+echo "== legacy runtime migration: lightweight profile prunes empty top-level tools =="
+G="$work/legacy-runtime-light"; mkdir -p "$G"
+git -C "$G" init -q -b main
+git -C "$G" config user.email t@t.t; git -C "$G" config user.name tester
+git -C "$G" commit -q --allow-empty -m init
+( cd "$G" && bash "$H" init --no-husky ) >/dev/null 2>&1 || bad "legacy light fixture init exited nonzero"
+legacyize_runtime "$G"
+git -C "$G" add -A && git -C "$G" commit -q -m "legacy light runtime fixture"
+( cd "$G" && bash "$H" upgrade --no-worktree --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
+check "legacy light upgrade exits 0"                test "$rc" = 0
+check "legacy light keeps dormant worktree command" test -f "$G/.agents/tools/worktree.sh"
+check "legacy light keeps dormant trunk guard"      test -f "$G/.agents/tools/hooks/trunk_edit_guard.sh"
+check "legacy light removes empty tools root"        test ! -e "$G/tools"
+check "legacy light omits guard wiring"              jcommand_count "$G/.codex/hooks.json" trunk_edit_guard 0
+( cd "$G" && bash "$H" verify --no-worktree ) >/dev/null 2>&1; rc=$?
+check "legacy light migration verifies"             test "$rc" = 0
+
+echo "== legacy runtime migration: conflicting dual paths fail before mutation =="
+G="$work/legacy-runtime-conflict"; mkdir -p "$G/tools/agent" "$G/.agents/tools"
+git -C "$G" init -q -b main
+git -C "$G" config user.email t@t.t; git -C "$G" config user.name tester
+printf 'LEGACY\n' > "$G/tools/agent/worktree.sh"
+printf 'CURRENT\n' > "$G/.agents/tools/worktree.sh"
+git -C "$G" add -A && git -C "$G" commit -q -m "runtime conflict fixture"
+( cd "$G" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" upgrade ) >"$work/legacy-runtime-conflict.out" 2>&1; rc=$?
+check "runtime conflict exits 2"                    test "$rc" = 2
+check "runtime conflict names both paths"           grep -qF "both tools/agent/worktree.sh and .agents/tools/worktree.sh" "$work/legacy-runtime-conflict.out"
+check "runtime conflict stops before doctor"        no_fixed_text "$work/legacy-runtime-conflict.out" "symlink capability denied by the test fixture"
+check "runtime conflict leaves repo unchanged"      test -z "$(git -C "$G" status --porcelain --untracked-files=all)"
+
 echo "== init (greenfield) =="
 # Existing text files need not end with a newline. Every managed append must
 # preserve the old record and add the new record on its own line.
@@ -1298,9 +1428,10 @@ mkdir -p "$S/.husky"
 printf '#!/usr/bin/env bash' > "$S/.husky/pre-commit"
 ( cd "$S" && bash "$H" init ) >/dev/null 2>&1 || bad "init exited nonzero"
 check "no bogus '*' symlink in .claude/skills" test -z "$(ls -A "$S/.claude/skills" 2>/dev/null)"
-check "worktree.sh installed"                test -f "$S/tools/agent/worktree.sh"
-check "trunk_edit_guard.sh installed"        test -f "$S/tools/agent/hooks/trunk_edit_guard.sh"
-check "shared hook parser installed"         test -f "$S/tools/agent/hooks/hook-paths.py"
+check "worktree.sh installed"                test -f "$S/.agents/tools/worktree.sh"
+check "trunk_edit_guard.sh installed"        test -f "$S/.agents/tools/hooks/trunk_edit_guard.sh"
+check "shared hook parser installed"         test -f "$S/.agents/tools/hooks/hook-paths.py"
+check "greenfield install adds no tools root" test ! -e "$S/tools"
 check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" = AGENTS.md
 check "CC PreToolUse matcher"                jmatch "$S/.claude/settings.json" PreToolUse "Edit|MultiEdit|Write|NotebookEdit"
 check "Codex PreToolUse matcher"             jmatch "$S/.codex/hooks.json"     PreToolUse "Edit|Write|apply_patch"
@@ -1308,10 +1439,10 @@ check "original gitignore line stays separate" grep -qxF "dist" "$S/.gitignore"
 check "first gitignore append is separate"     grep -qxF ".claude/settings.local.json" "$S/.gitignore"
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
 check "original attributes line stays separate" grep -qxF "*.txt text" "$S/.gitattributes"
-check ".gitattributes pins LF on scripts"    grep -qxF "tools/agent/*.sh text eol=lf" "$S/.gitattributes"
+check ".gitattributes pins LF on scripts"    grep -qxF ".agents/tools/*.sh text eol=lf" "$S/.gitattributes"
 check ".gitattributes pins Husky LF"         grep -qxF ".husky/pre-commit text eol=lf" "$S/.gitattributes"
 check "original Husky line stays separate"   grep -qxF "#!/usr/bin/env bash" "$S/.husky/pre-commit"
-check "Husky guard append is separate"       grep -qxF "python tools/agent/generate-subagents.py --check" "$S/.husky/pre-commit"
+check "Husky guard append is separate"       grep -qxF "python .agents/tools/generate-subagents.py --check" "$S/.husky/pre-commit"
 git -C "$S" add -A
 # shellcheck disable=SC2016  # sh -c expands its own positional parameters
 check "tracked CLAUDE.md mode is 120000"     sh -c '[ "$(git -C "$1" ls-files -s -- CLAUDE.md | awk '\''{print $1}'\'')" = 120000 ]' _ "$S"
@@ -1323,7 +1454,7 @@ import sys
 
 fixtures = (
     (sys.argv[1], b".claude/settings.local.json\n", b".claude/settings.local.json\r\n"),
-    (sys.argv[2], b"tools/agent/*.sh text eol=lf\n", b"tools/agent/*.sh text eol=lf\r\n"),
+    (sys.argv[2], b".agents/tools/*.sh text eol=lf\n", b".agents/tools/*.sh text eol=lf\r\n"),
 )
 for name, old, new in fixtures:
     path = Path(name)
@@ -1332,15 +1463,15 @@ for name, old, new in fixtures:
     path.write_bytes(data.replace(old, new, 1))
 hook = Path(sys.argv[3])
 hook_data = hook.read_bytes()
-assert b"python tools/agent/generate-subagents.py --check\n" in hook_data
+assert b"python .agents/tools/generate-subagents.py --check\n" in hook_data
 hook.write_bytes(hook_data.replace(b"\n", b"\r"))
 PY
 ( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
 check "retrofit re-run exits 0"              test "$rc" = 0
 check "PostToolUse stays 2 hooks (no dup)"   jcount "$S/.claude/settings.json" PostToolUse 2
 check "CRLF gitignore target stays singular" logical_line_count "$S/.gitignore" ".claude/settings.local.json" 1
-check "CRLF attributes target stays singular" logical_line_count "$S/.gitattributes" "tools/agent/*.sh text eol=lf" 1
-check "CR-only Husky target stays singular" logical_line_count "$S/.husky/pre-commit" "python tools/agent/generate-subagents.py --check" 1
+check "CRLF attributes target stays singular" logical_line_count "$S/.gitattributes" ".agents/tools/*.sh text eol=lf" 1
+check "CR-only Husky target stays singular" logical_line_count "$S/.husky/pre-commit" "python .agents/tools/generate-subagents.py --check" 1
 
 echo "== retrofit propagates subagent import rejection =="
 printf -- '---\nname: import-propagation\ndescription: propagation fixture\n---\n\nCLAUDE_IMPORT_BODY\n' \
@@ -1378,16 +1509,16 @@ check "pre-existing user hook preserved"     grep -q user-custom "$S/.claude/set
 
 echo "== worktree round-trip =="
 git -C "$S" add -A && git -C "$S" commit -q -m harness
-( cd "$S" && bash tools/agent/worktree.sh new demo --type chore ) >/dev/null 2>&1
+( cd "$S" && bash .agents/tools/worktree.sh new demo --type chore ) >/dev/null 2>&1
 check "worktree .worktrees/demo created"     test -d "$S/.worktrees/demo"
 ( cd "$S/.worktrees/demo" && echo hi > note.txt && git add -A && git commit -q -m "feat: note" \
-  && bash tools/agent/worktree.sh "done" --no-push ) >/dev/null 2>&1
+  && bash .agents/tools/worktree.sh "done" --no-push ) >/dev/null 2>&1
 check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
 merge_subject="$(git -C "$S" log -1 --format=%s)"
 check "merge commit landed on main"          test "$merge_subject" = "Merge branch 'chore/demo'"
 
 echo "== trunk guard: block on main + escape hatch =="
-g="$S/tools/agent/hooks/trunk_edit_guard.sh"
+g="$S/.agents/tools/hooks/trunk_edit_guard.sh"
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "blocks a tracked main edit (exit 2)"  test "$rc" = 2
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
@@ -1404,11 +1535,11 @@ case "$(uname -s)" in
     check "native Windows paths remain guarded" test "$rc" = 2
     # Conversion-only coverage for drive, backslash, UNC, and Git Bash forms.
     # shellcheck disable=SC2016  # bash -c expands its own positional parameters
-    check "hook runtime converts drive paths" bash -c 'source "$1"; [[ "$(hook_posix_path "C:\\Temp\\x")" == /c/Temp/x ]]' _ "$S/tools/agent/hooks/hook-common.sh"
+    check "hook runtime converts drive paths" bash -c 'source "$1"; [[ "$(hook_posix_path "C:\\Temp\\x")" == /c/Temp/x ]]' _ "$S/.agents/tools/hooks/hook-common.sh"
     # shellcheck disable=SC2016
-    check "hook runtime preserves UNC shape" bash -c 'source "$1"; [[ "$(hook_posix_path "\\\\server\\share\\x")" == //server/share/x ]]' _ "$S/tools/agent/hooks/hook-common.sh"
+    check "hook runtime preserves UNC shape" bash -c 'source "$1"; [[ "$(hook_posix_path "\\\\server\\share\\x")" == //server/share/x ]]' _ "$S/.agents/tools/hooks/hook-common.sh"
     # shellcheck disable=SC2016
-    check "hook runtime accepts Git Bash paths" bash -c 'source "$1"; [[ "$(hook_posix_path "/c/Temp/x")" == /c/Temp/x ]]' _ "$S/tools/agent/hooks/hook-common.sh"
+    check "hook runtime accepts Git Bash paths" bash -c 'source "$1"; [[ "$(hook_posix_path "/c/Temp/x")" == /c/Temp/x ]]' _ "$S/.agents/tools/hooks/hook-common.sh"
     ;;
 esac
 
@@ -1476,20 +1607,20 @@ check "verify rejects missing format hook despite lookalike" test "$rc" != 0
 check "disabled format profile ignores user lookalike" test "$rc" = 0
 mv "$work/claude-settings.clean.json" "$S/.claude/settings.json"
 mv "$work/codex-hooks.clean.json" "$S/.codex/hooks.json"
-cp "$S/tools/agent/hooks/format_on_edit.sh" "$work/format-on-edit.clean.sh"
-printf '\n# drift fixture\n' >> "$S/tools/agent/hooks/format_on_edit.sh"
+cp "$S/.agents/tools/hooks/format_on_edit.sh" "$work/format-on-edit.clean.sh"
+printf '\n# drift fixture\n' >> "$S/.agents/tools/hooks/format_on_edit.sh"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "verify rejects active script drift" test "$rc" != 0
-mv "$work/format-on-edit.clean.sh" "$S/tools/agent/hooks/format_on_edit.sh"
-cp "$S/tools/agent/generate-subagents.py" "$work/generate-subagents.clean.py"
-printf '\n# generator drift fixture\n' >> "$S/tools/agent/generate-subagents.py"
+mv "$work/format-on-edit.clean.sh" "$S/.agents/tools/hooks/format_on_edit.sh"
+cp "$S/.agents/tools/generate-subagents.py" "$work/generate-subagents.clean.py"
+printf '\n# generator drift fixture\n' >> "$S/.agents/tools/generate-subagents.py"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "verify rejects generator byte drift" test "$rc" != 0
-mv "$work/generate-subagents.clean.py" "$S/tools/agent/generate-subagents.py"
-mv "$S/tools/agent/generate-subagents.py" "$work/generate-subagents.missing.py"
+mv "$work/generate-subagents.clean.py" "$S/.agents/tools/generate-subagents.py"
+mv "$S/.agents/tools/generate-subagents.py" "$work/generate-subagents.missing.py"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "verify rejects missing generator" test "$rc" != 0
-mv "$work/generate-subagents.missing.py" "$S/tools/agent/generate-subagents.py"
+mv "$work/generate-subagents.missing.py" "$S/.agents/tools/generate-subagents.py"
 
 echo "== lightweight profile: --no-worktree omits the complete worktree policy =="
 L="$work/lightweight"; mkdir -p "$L"
@@ -1499,8 +1630,8 @@ git -C "$L" config core.symlinks true
 git -C "$L" commit -q --allow-empty -m init
 ( cd "$L" && bash "$H" init --no-worktree --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
 check "no-worktree init exits 0"                 test "$rc" = 0
-check "no-worktree omits worktree.sh"            test ! -e "$L/tools/agent/worktree.sh"
-check "no-worktree omits trunk guard script"     test ! -e "$L/tools/agent/hooks/trunk_edit_guard.sh"
+check "no-worktree omits worktree.sh"            test ! -e "$L/.agents/tools/worktree.sh"
+check "no-worktree omits trunk guard script"     test ! -e "$L/.agents/tools/hooks/trunk_edit_guard.sh"
 check "Claude config omits trunk guard"          jcommand_count "$L/.claude/settings.json" trunk_edit_guard 0
 check "Codex config omits trunk guard"           jcommand_count "$L/.codex/hooks.json" trunk_edit_guard 0
 check "authority hook remains wired"             jcommand_count "$L/.claude/settings.json" authority_doc_budget 1
@@ -1518,7 +1649,7 @@ check "no-worktree retrofit re-run exits 0"       test "$rc" = 0
 check "no-worktree retrofit is idempotent"        test -z "$(git -C "$L" status --porcelain)"
 ( cd "$L" && bash "$H" upgrade --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
 check "default upgrade re-enables worktree flow" test "$rc" = 0
-check "re-enabled worktree.sh is installed"      test -f "$L/tools/agent/worktree.sh"
+check "re-enabled worktree.sh is installed"      test -f "$L/.agents/tools/worktree.sh"
 check "re-enabled Claude guard is wired once"    jcommand_count "$L/.claude/settings.json" trunk_edit_guard 1
 check "re-enabled AGENTS block has hard rule"    grep -qF "Worktree-per-change (hard rule)" "$L/AGENTS.md"
 
@@ -1555,10 +1686,10 @@ check "hand-authored agent adopted into SSOT"     test -f "$A/.agents/subagents/
 check "adopted metadata keeps the tools"          grep -q Read "$A/.agents/subagents/custom-rev/metadata.json"
 check "CC projection regenerated with banner"     grep -q "do not edit by hand" "$A/.claude/agents/custom-rev.md"
 check "Codex projection generated"                test -f "$A/.codex/agents/custom-rev.toml"
-( cd "$A" && python tools/agent/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
+( cd "$A" && python .agents/tools/generate-subagents.py --check ) >/dev/null 2>&1; rc=$?
 check "subagent projections in sync after adopt"  test "$rc" = 0
 printf -- '---\nname: ghost\ndescription: no source\n---\n\nbody\n' > "$A/.claude/agents/ghost.md"
-( cd "$A" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1
+( cd "$A" && python .agents/tools/generate-subagents.py ) >/dev/null 2>&1
 check "sourceless hand-authored projection not pruned" test -f "$A/.claude/agents/ghost.md"
 
 echo "== upgrade reconciles only managed hooks (no jq, no format hook) =="
@@ -1574,19 +1705,19 @@ for path, matcher, user in ((sys.argv[1], "Edit", "user-extra.sh"), (sys.argv[2]
         {"type": "command", "command": user},
         {"type": "command", "command": "python scripts/check_authority_doc_budget_custom.py"},
         {"type": "command", "command": "bash tools/custom/trunk_edit_guard_backup.sh"},
-        {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh.backup"},
-        {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh~"},
-        {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh+backup"},
-        {"type": "command", "command": "bash vendor/@tools/agent/hooks/format_on_edit.sh"},
-        {"type": "command", "command": "bash pkg:tools/agent/hooks/format_on_edit.sh"},
-        {"type": "command", "command": "bash tools/agent/hooks/format_on_edit.sh"},
-        {"type": "command", "command": "bash \\\"tools/agent/hooks/authority_doc_budget.sh\\\""},
-        {"type": "command", "command": "(tools/agent/hooks/trunk_edit_guard.sh)"},
-        {"type": "command", "command": "bash Tools/Agent/Hooks/format_on_edit.sh"},
-        {"type": "command", "command": "old/tools/agent/hooks/trunk_edit_guard.sh"},
+        {"type": "command", "command": "bash .agents/tools/hooks/format_on_edit.sh.backup"},
+        {"type": "command", "command": "bash .agents/tools/hooks/format_on_edit.sh~"},
+        {"type": "command", "command": "bash .agents/tools/hooks/format_on_edit.sh+backup"},
+        {"type": "command", "command": "bash vendor/@.agents/tools/hooks/format_on_edit.sh"},
+        {"type": "command", "command": "bash pkg:.agents/tools/hooks/format_on_edit.sh"},
+        {"type": "command", "command": "bash .agents/tools/hooks/format_on_edit.sh"},
+        {"type": "command", "command": "bash \\\".agents/tools/hooks/authority_doc_budget.sh\\\""},
+        {"type": "command", "command": "(.agents/tools/hooks/trunk_edit_guard.sh)"},
+        {"type": "command", "command": "bash .AgEnTs/ToOlS/HoOkS/format_on_edit.sh"},
+        {"type": "command", "command": "old/.agents/tools/hooks/trunk_edit_guard.sh"},
     ]}], "PostToolUse": [{"matcher": matcher, "hooks": [
-        {"type": "command", "command": "old/tools/agent/hooks/format_on_edit.sh"},
-        {"type": "command", "command": "old/tools/agent/hooks/authority_doc_budget.sh"},
+        {"type": "command", "command": "old/.agents/tools/hooks/format_on_edit.sh"},
+        {"type": "command", "command": "old/.agents/tools/hooks/authority_doc_budget.sh"},
     ]}]}}
     with open(path, "w", encoding="utf-8") as f:
         json.dump(value, f)
@@ -1600,12 +1731,12 @@ check "upgrade preserves guard lookalikes"     fixed_text_in_both trunk_edit_gua
 check "upgrade preserves dotted suffix"        fixed_text_in_both format_on_edit.sh.backup "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves tilde suffix"         fixed_text_in_both format_on_edit.sh~ "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves plus suffix"          fixed_text_in_both format_on_edit.sh+backup "$U/.claude/settings.json" "$U/.codex/hooks.json"
-check "upgrade preserves at-prefixed segment"  fixed_text_in_both vendor/@tools/agent/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
-check "upgrade preserves colon-prefixed path"  fixed_text_in_both pkg:tools/agent/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
-if [ -e "$U/Tools/Agent/Hooks/format_on_edit.sh" ]; then
-  check "case-equivalent managed path is removed" fixed_text_absent_in_both Tools/Agent/Hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves at-prefixed segment"  fixed_text_in_both vendor/@.agents/tools/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves colon-prefixed path"  fixed_text_in_both pkg:.agents/tools/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
+if [ -e "$U/.AgEnTs/ToOlS/HoOkS/format_on_edit.sh" ]; then
+  check "case-equivalent managed path is removed" fixed_text_absent_in_both .AgEnTs/ToOlS/HoOkS/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 else
-  check "case-distinct user path is preserved" fixed_text_in_both Tools/Agent/Hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
+  check "case-distinct user path is preserved" fixed_text_in_both .AgEnTs/ToOlS/HoOkS/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 fi
 check "upgrade preserves unrelated config"     grep -q keep-me "$U/.claude/settings.json"
 check "--no-format-hook removes Claude managed format" jcommand_count "$U/.claude/settings.json" format_on_edit 0
@@ -1620,12 +1751,12 @@ check "light upgrade removes Claude guard"       jcommand_count "$U/.claude/sett
 check "light upgrade removes Codex guard"        jcommand_count "$U/.codex/hooks.json" trunk_edit_guard 0
 check "light upgrade keeps authority hook"       jcommand_count "$U/.codex/hooks.json" authority_doc_budget 1
 check "light upgrade removes managed hard rule"  no_fixed_text "$U/AGENTS.md" "Worktree-per-change (hard rule)"
-check "light upgrade preserves dormant script"   test -f "$U/tools/agent/worktree.sh"
+check "light upgrade preserves dormant script"   test -f "$U/.agents/tools/worktree.sh"
 check "light upgrade preserves existing worktree ignore" grep -qxF ".worktrees/" "$U/.gitignore"
 check "light upgrade preserves existing escape ignore"   grep -qxF ".claude/allow-trunk-edit" "$U/.gitignore"
 ( cd "$U" && bash "$H" verify --no-worktree --no-format-hook ) >/dev/null 2>&1; rc=$?
 check "light upgrade verifies with matching flags" test "$rc" = 0
-printf '\n# dormant drift fixture\n' >> "$U/tools/agent/worktree.sh"
+printf '\n# dormant drift fixture\n' >> "$U/.agents/tools/worktree.sh"
 ( cd "$U" && bash "$H" verify --no-worktree --no-format-hook ) >/dev/null 2>&1; rc=$?
 check "light verify ignores dormant worktree script drift" test "$rc" = 0
 
@@ -1646,23 +1777,23 @@ check "hooks:null retrofit wires the trunk guard"        grep -q trunk_edit_guar
 # must still be adopted by --import (the banner test keys on "Generated from
 # .agents/subagents/", not the loose phrase). Reuses the adopt repo $A.
 printf -- '---\nname: phrase-rev\ndescription: mentions the banner phrase\n---\n\nRule: do not edit by hand-written config.\n' > "$A/.claude/agents/phrase-rev.md"
-( cd "$A" && python tools/agent/generate-subagents.py --import ) >/dev/null 2>&1
+( cd "$A" && python .agents/tools/generate-subagents.py --import ) >/dev/null 2>&1
 check "hand-authored agent w/ banner phrase in prose still adopted (M3)" test -f "$A/.agents/subagents/phrase-rev/metadata.json"
 
 # M1: metadata.json without a non-empty description must fail fast, not emit "None".
-DN="$work/nodesc"; mkdir -p "$DN/.agents/subagents/x" "$DN/tools/agent"
-cp "$repo/tools/agent/generate-subagents.py" "$DN/tools/agent/generate-subagents.py"
+DN="$work/nodesc"; mkdir -p "$DN/.agents/subagents/x" "$DN/.agents/tools"
+cp "$repo/.agents/tools/generate-subagents.py" "$DN/.agents/tools/generate-subagents.py"
 printf '{"name":"x"}' > "$DN/.agents/subagents/x/metadata.json"
 printf 'body\n' > "$DN/.agents/subagents/x/instructions.md"
-( cd "$DN" && python tools/agent/generate-subagents.py ) >/dev/null 2>&1; rc=$?
+( cd "$DN" && python .agents/tools/generate-subagents.py ) >/dev/null 2>&1; rc=$?
 check "metadata without description fails fast (M1)"     test "$rc" != 0
 
 # m1: malformed metadata.json gives a friendly, named error — no raw python traceback.
-MJ="$work/badjson"; mkdir -p "$MJ/.agents/subagents/y" "$MJ/tools/agent"
-cp "$repo/tools/agent/generate-subagents.py" "$MJ/tools/agent/generate-subagents.py"
+MJ="$work/badjson"; mkdir -p "$MJ/.agents/subagents/y" "$MJ/.agents/tools"
+cp "$repo/.agents/tools/generate-subagents.py" "$MJ/.agents/tools/generate-subagents.py"
 printf '{not json' > "$MJ/.agents/subagents/y/metadata.json"
 printf 'body\n' > "$MJ/.agents/subagents/y/instructions.md"
-( cd "$MJ" && python tools/agent/generate-subagents.py ) >"$work/badjson.out" 2>&1; rc=$?
+( cd "$MJ" && python .agents/tools/generate-subagents.py ) >"$work/badjson.out" 2>&1; rc=$?
 check "malformed metadata.json exits nonzero (m1)"       test "$rc" != 0
 check "malformed metadata.json names subagent + reason (m1)" grep -qF "subagent 'y': metadata.json is not valid JSON" "$work/badjson.out"
 # shellcheck disable=SC2016  # $1 is sh -c's own positional; the outer shell must NOT expand it

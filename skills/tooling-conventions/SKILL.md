@@ -8,7 +8,7 @@ compatibility: Bundled checks require Bash 3.2 or newer plus awk, grep, and find
 
 Keep a project's `tools/` (or `scripts/`, `bin/`) directory from rotting into a pile of top-level scripts nobody can route. The goal is **a gate on every increment**, not a one-time cleanup: each new or moved script gets classified, placed, contracted, and registered. Battle-tested on a large embedded codebase; the principles are general.
 
-Deep tables, the full script contract, and worked examples live in `reference.md`. A generic reconciliation checker (`manifest-check.sh`) and a lean manifest schema (`manifest.schema.md`) ship alongside.
+Load only the needed category: [`references/surface-taxonomy.md`](references/surface-taxonomy.md), [`references/script-contract.md`](references/script-contract.md), [`references/path-migrations.md`](references/path-migrations.md), or [`references/verification.md`](references/verification.md). A generic reconciliation checker (`manifest-check.sh`) and a lean manifest schema (`manifest.schema.md`) ship alongside.
 
 ## When To Use
 
@@ -37,9 +37,9 @@ Every committed script gets exactly one **surface** label — chosen by what it 
 | `break-glass` | rare, no daily caller, but a **real recovery / one-off migration** that must stay discoverable | top level, with a `trigger` note |
 | `paused` | built but not yet enabled | with an `activation_gate` note |
 | `legacy` | superseded, kept for archaeology | `internal/` or `<domain>/legacy/`, with a `replacement` note |
-| `package` / `native` / `template` / `vendor` | multi-file impl package / compiled-target source / render template / controlled third-party binary | see `reference.md` |
+| `package` / `native` / `template` / `vendor` | multi-file impl package / compiled-target source / render template / controlled third-party binary | see [`surface-taxonomy.md`](references/surface-taxonomy.md) |
 
-`break-glass`, `paused`, and `legacy` are **three different "non-daily" meanings** — never dump them into one `internal/` bucket. Full table + placement detail: `reference.md`.
+`break-glass`, `paused`, and `legacy` are **three different "non-daily" meanings** — never dump them into one `internal/` bucket. Full table + placement detail: [`references/surface-taxonomy.md`](references/surface-taxonomy.md).
 
 **Top level holds only:** each domain's headline entry, genuinely high-frequency dev tools, and break-glass scripts. Everything else sinks into `<domain>/`.
 
@@ -51,7 +51,7 @@ Every committed script gets exactly one **surface** label — chosen by what it 
 2. **target-state ⊕ artifact** — mutates the same class of state ∧ produces the same class of output.
 3. **hazard ⊕ verification** — same failure/rollback model ∧ the same smoke/gate proves success.
 
-Any axis differs → **keep them separate** and sink shared logic into a lib. A noun-domain whose jobs differ in altitude stays a **multi-command toolkit**, not a mega-CLI — folding low-level recovery / batch / ledger paths under one high-level happy-path entry *hides* them. (Example in `reference.md`.)
+Any axis differs → **keep them separate** and sink shared logic into a lib. A noun-domain whose jobs differ in altitude stays a **multi-command toolkit**, not a mega-CLI — folding low-level recovery / batch / ledger paths under one high-level happy-path entry *hides* them. See [`references/surface-taxonomy.md`](references/surface-taxonomy.md).
 
 ## 3. Placement decision tree (where a new script goes)
 
@@ -82,7 +82,7 @@ These are worth auditing (see §5):
 - **Stable logs**: multi-step scripts use a stable prefix (e.g. `[deploy]`); errors to stderr.
 - **Manifest registration**: adding/moving/removing any public/installed/break-glass/paused/legacy command surface updates the manifest in the **same commit** (§5).
 
-Recommended (not gated): `shellcheck`; `cmd_<verb>` subcommand style; a 3–4 line header contract (purpose / 2–3 real usages / surface + audience / hazard + dry-run); prefer `--dry-run` over `--yes`; keep a deprecation shim for external surfaces for ≥1 release. Details: `reference.md`.
+Recommended (not gated): `shellcheck`; `cmd_<verb>` subcommand style; a 3–4 line header contract (purpose / 2–3 real usages / surface + audience / hazard + dry-run); prefer `--dry-run` over `--yes`; keep a deprecation shim for external surfaces for ≥1 release. Details: [`references/script-contract.md`](references/script-contract.md).
 
 ## 5. Surface manifest = source of truth
 
@@ -96,7 +96,7 @@ Small projects can skip the manifest and just apply §1–§4 by judgment; adopt
 
 ## 6. Move = contract change
 
-Moving/renaming/deleting a script syncs every mechanical reference **in the same commit**: docs, sibling skills, service/unit files, build files + other callers, the manifest + its human view, and a decision on whether to leave a deprecation shim (external/QA surfaces: keep one for ≥1 release; internal: move freely). Re-check the script's own `REPO_ROOT`/path derivation after a move. Checklist + verification commands: `reference.md`.
+Moving/renaming/deleting a script syncs every mechanical reference **in the same commit**: docs, sibling skills, service/unit files, build files + other callers, the manifest + its human view, and a decision on whether to leave a deprecation shim (external/QA surfaces: keep one for ≥1 release; internal: move freely). Re-check the script's own `REPO_ROOT`/path derivation after a move. Checklist: [`references/path-migrations.md`](references/path-migrations.md).
 
 ## Workflow
 
@@ -104,4 +104,4 @@ Moving/renaming/deleting a script syncs every mechanical reference **in the same
 2. **Add** → classify the surface (§1), run the placement tree (§3), apply the Mandatory contract (§4), and register it in the manifest (§5).
 3. **Move/delete** → run the move checklist (§6) and update the manifest in the same commit.
 4. **Audit** → run `manifest-check.sh`; for sprawl, report each top-level script's surface and whether it should sink into a domain dir or merge into an existing headline (§2–§3). Report candidates; don't mass-move without confirmation.
-5. Verify with the minimal set (`bash -n` / in-memory Python compile / `--help` / `--dry-run` / domain tests / `manifest-check.sh` / grep for stale references) — see `reference.md`.
+5. Verify with the minimal set (`bash -n` / in-memory Python compile / `--help` / `--dry-run` / domain tests / `manifest-check.sh` / grep for stale references) — see [`references/verification.md`](references/verification.md).

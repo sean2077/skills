@@ -2,9 +2,9 @@
 # Generate Claude Code (.claude/agents/*.md) and Codex (.codex/agents/*.toml)
 # subagent files from the authoritative source in .agents/subagents/.
 #
-#   python tools/agent/generate-subagents.py           # write projections
-#   python tools/agent/generate-subagents.py --check   # exit 1 on drift (CI / pre-commit)
-#   python tools/agent/generate-subagents.py --import  # adopt hand-authored host agents into sources
+#   python .agents/tools/generate-subagents.py           # write projections
+#   python .agents/tools/generate-subagents.py --check   # exit 1 on drift (CI / pre-commit)
+#   python .agents/tools/generate-subagents.py --import  # adopt hand-authored host agents into sources
 #
 # Source per subagent: .agents/subagents/<name>/{metadata.json, instructions.md}.
 # Generated files are marked "do not edit by hand" — edit the source and re-run.
@@ -24,6 +24,10 @@ SOURCE_DIR = os.path.join(ROOT, ".agents", "subagents")
 CLAUDE_DIR = os.path.join(ROOT, ".claude", "agents")
 CODEX_DIR = os.path.join(ROOT, ".codex", "agents")
 DO_NOT_EDIT = (
+    "Generated from .agents/subagents/%s; do not edit by hand. "
+    "Run: python .agents/tools/generate-subagents.py"
+)
+LEGACY_DO_NOT_EDIT = (
     "Generated from .agents/subagents/%s; do not edit by hand. "
     "Run: python tools/agent/generate-subagents.py"
 )
@@ -64,14 +68,17 @@ def rel(p):
 
 
 def is_generated_projection(path, text):
-    """Recognize only this file's canonical, position-bound ownership marker."""
+    """Recognize current or migration-only legacy position-bound ownership markers."""
     name, ext = os.path.splitext(os.path.basename(path))
-    marker = DO_NOT_EDIT.replace("%s", name)
+    markers = [template.replace("%s", name) for template in (DO_NOT_EDIT, LEGACY_DO_NOT_EDIT)]
     if ext == ".toml":
-        return text.startswith("# %s\n" % marker)
+        return any(text.startswith("# %s\n" % marker) for marker in markers)
     if ext == ".md":
-        pattern = r"\A---\n[\s\S]*?\n---\n\n<!-- %s -->\n" % re.escape(marker)
-        return re.match(pattern, text) is not None
+        return any(
+            re.match(r"\A---\n[\s\S]*?\n---\n\n<!-- %s -->\n" % re.escape(marker), text)
+            is not None
+            for marker in markers
+        )
     return False
 
 
@@ -843,7 +850,7 @@ def main(argv):
             print("generate-subagents --check: DRIFT in %d file(s):" % len(drift), file=sys.stderr)
             for d in drift:
                 print("  - %s" % d, file=sys.stderr)
-            print("Run: python tools/agent/generate-subagents.py", file=sys.stderr)
+            print("Run: python .agents/tools/generate-subagents.py", file=sys.stderr)
             return 1
         print(
             "generate-subagents --check: %d file(s) in sync (%d subagent(s))" % (len(wanted), len(subagents))

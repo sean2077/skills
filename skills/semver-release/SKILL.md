@@ -8,7 +8,7 @@ compatibility: Requires git and a clean release-capable checkout; publishing add
 
 Cut a clean semantic-version release: infer the bump from conventional commits, update the changelog and version file, tag, optionally publish a forge release, and push. This is the natural sequel to per-commit work done with the `conventional-commit` skill.
 
-Detailed bump rules, changelog format, and prerelease/promote handling live in `reference.md` — read it when finalizing a prerelease or when the changelog write is non-trivial.
+Load only the category needed: tag and bump rules live in [`references/version-selection.md`](references/version-selection.md), ecosystem synchronization in [`references/version-files.md`](references/version-files.md), changelog mechanics in [`references/changelog.md`](references/changelog.md), and beta/rc finalization in [`references/prerelease-promotion.md`](references/prerelease-promotion.md).
 
 ## When To Use
 
@@ -79,12 +79,12 @@ Infer the bump (highest match wins):
 
 Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
 
-Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. A first-ever release has no HEAD-reachable valid SemVer base → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease and promote-to-final mechanics: `reference.md`.
+Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. A first-ever release has no HEAD-reachable valid SemVer base → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease selection: [`references/version-selection.md`](references/version-selection.md); promote-to-final mechanics: [`references/prerelease-promotion.md`](references/prerelease-promotion.md).
 
 ### 3. Write release files
 
-- **`CHANGELOG.md`** — insert a new `## [vX.Y.Z] — YYYY-MM-DD` section, conventional-commit grouped (Added / Fixed / Changed / Docs / Chore, breaking changes called out on top). Format + write strategy: `reference.md`. Edit in place; never overwrite the whole file.
-- **Version file(s)** — write the ecosystem-canonical release value, including prerelease identity where the ecosystem supports it. Update coupled lockfiles (`package-lock.json`, `Cargo.lock`) through the ecosystem tool when applicable. Ecosystem synchronization must not create the release commit, tag, or push, or refresh unrelated dependencies. If the project pins its version in more than one place (a code constant, manifest + lockfile, docs badge), update **all** of them — `git grep -F <old-version>` to find them. The exact mapping and promote-to-final behavior are in `reference.md` → *Version-file sync*.
+- **`CHANGELOG.md`** — insert a new `## [vX.Y.Z] — YYYY-MM-DD` section, conventional-commit grouped (Added / Fixed / Changed / Docs / Chore, breaking changes called out on top). Format + write strategy: [`references/changelog.md`](references/changelog.md). Edit in place; never overwrite the whole file.
+- **Version file(s)** — write the ecosystem-canonical release value, including prerelease identity where the ecosystem supports it. Update coupled lockfiles (`package-lock.json`, `Cargo.lock`) through the ecosystem tool when applicable. Ecosystem synchronization must not create the release commit, tag, or push, or refresh unrelated dependencies. If the project pins its version in more than one place (a code constant, manifest + lockfile, docs badge), update **all** of them — `git grep -F <old-version>` to find them. Exact mapping and bounded synchronization: [`references/version-files.md`](references/version-files.md).
 - Optionally a per-release notes doc if the project keeps one.
 
 Get the date from the environment (`date +%F`); do not guess it.
@@ -119,7 +119,7 @@ glab release create vX.Y.Z --notes-file <changelog-section.md>                  
 
 If neither CLI is available/authenticated, leave the tag pushed and report that the release still needs creating.
 
-To pull one version's section (the CI contract in model **a**, or the `--notes-file` body in model **b**), see `reference.md` → "Extract one version's section".
+To pull one version's section (the CI contract in model **a**, or the `--notes-file` body in model **b**), see [`references/changelog.md`](references/changelog.md) → "Extract one version's section".
 
 ## Output Contract
 

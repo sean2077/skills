@@ -2,7 +2,7 @@
 # check-agent-scaffold.sh — quality gate for the agent-scaffold skill.
 #
 # Asserts the bundled scripts are syntactically valid and that the three hook
-# scripts share the `tools/agent/hooks/` install-depth resolver — `proj` three
+# scripts share the `.agents/tools/hooks/` install-depth resolver — `proj` three
 # levels up plus a `git rev-parse --show-toplevel` fallback — and keep the
 # Bash-3.2/real-symlink cross-platform contract.
 #
@@ -81,19 +81,36 @@ grep -qF '<!-- agent-scaffold:worktree:start -->' "$sk/templates/AGENTS.root.md"
 grep -qF 'HARNESS_ENABLE_WORKTREE' "$sk/harness-init.sh" \
   || fail "hook reconciliation no longer filters the optional trunk guard"
 
-# 5. dogfood drift: if this repo installed the harness (tools/agent/ exists), the
+# Legacy runtime text is allowed only where upgrade recognizes, explains, or tests
+# the hard-cut migration. Active contracts and current command examples must not drift back.
+legacy_runtime="tools""/agent"
+while IFS= read -r legacy_file; do
+  case "$legacy_file" in
+    .agents/tools/generate-subagents.py | \
+    .oma/* | \
+    CHANGELOG.md | \
+    scripts/e2e-agent-scaffold.sh | \
+    skills/agent-scaffold/SKILL.md | \
+    skills/agent-scaffold/harness-init.sh | \
+    skills/agent-scaffold/references/harness-migration.md | \
+    skills/agent-scaffold/templates/generate-subagents.py) ;;
+    *) fail "stale active legacy runtime reference: $legacy_file" ;;
+  esac
+done < <(git -C "$repo" grep -lF "$legacy_runtime" -- . 2>/dev/null || true)
+
+# 5. dogfood drift: if this repo installed the harness (.agents/tools/ exists), the
 #    installed copies must stay byte-identical to the skill templates they came from.
-if [ -d "$repo/tools/agent" ]; then
+if [ -d "$repo/.agents/tools" ]; then
   for pair in \
-    "worktree.sh:tools/agent/worktree.sh" \
-    "trunk_edit_guard.sh:tools/agent/hooks/trunk_edit_guard.sh" \
-    "authority_doc_budget.sh:tools/agent/hooks/authority_doc_budget.sh" \
-    "format_on_edit.sh:tools/agent/hooks/format_on_edit.sh" \
-    "hook-common.sh:tools/agent/hooks/hook-common.sh" \
-    "hook-paths.py:tools/agent/hooks/hook-paths.py" \
+    "worktree.sh:.agents/tools/worktree.sh" \
+    "trunk_edit_guard.sh:.agents/tools/hooks/trunk_edit_guard.sh" \
+    "authority_doc_budget.sh:.agents/tools/hooks/authority_doc_budget.sh" \
+    "format_on_edit.sh:.agents/tools/hooks/format_on_edit.sh" \
+    "hook-common.sh:.agents/tools/hooks/hook-common.sh" \
+    "hook-paths.py:.agents/tools/hooks/hook-paths.py" \
     "relink-skills.sh:.agents/relink-skills.sh" \
     "symlink-manager.py:.agents/symlink-manager.py" \
-    "generate-subagents.py:tools/agent/generate-subagents.py"; do
+    "generate-subagents.py:.agents/tools/generate-subagents.py"; do
     inst="$repo/${pair##*:}"
     if [ ! -f "$inst" ]; then
       fail "dogfood harness file missing: ${pair##*:} (run: agent-scaffold upgrade)"
@@ -112,9 +129,9 @@ fi
 
 # 6. subagent projection drift: this repo dogfoods the generator, so CI stands in for the
 #    pre-commit --check guard (no package.json/husky here). No sources -> clean exit 0.
-if [ -f "$repo/tools/agent/generate-subagents.py" ] && command -v python >/dev/null 2>&1; then
-  ( cd "$repo" && python tools/agent/generate-subagents.py --check >/dev/null 2>&1 ) \
-    || fail "subagent projection drift (run: python tools/agent/generate-subagents.py)"
+if [ -f "$repo/.agents/tools/generate-subagents.py" ] && command -v python >/dev/null 2>&1; then
+  ( cd "$repo" && python .agents/tools/generate-subagents.py --check >/dev/null 2>&1 ) \
+    || fail "subagent projection drift (run: python .agents/tools/generate-subagents.py)"
 fi
 
 if [ "$fails" -eq 0 ]; then
