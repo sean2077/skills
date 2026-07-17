@@ -36,6 +36,18 @@ The migration is intentionally a hard cut with no compatibility wrappers:
 - custom CI, documentation, or command strings are user-owned and are not rewritten by broad text
   replacement. Update any reported stale callers before relying on the new commands.
 
+### Retiring the managed formatter hook
+
+The scaffold no longer installs or wires `format_on_edit.sh`; formatter choice, scope, working
+directory, ignore rules, and failure policy belong to the target project. `upgrade` removes the
+retired `.agents/tools/hooks/format_on_edit.sh` / `tools/agent/hooks/format_on_edit.sh` runtime and
+their exact managed hook entries while preserving basename lookalikes and unrelated user hooks.
+Move any desired formatter behavior to a project-owned path outside `.agents/tools/` and wire it
+using [the host-integration recipe](host-integration.md#project-owned-formatting-hooks).
+
+`--no-format-hook` remains accepted for one compatibility cycle as a deprecated no-op so existing
+automation can migrate without an immediate command-line break. New commands should omit it.
+
 `verify` rejects known legacy runtime files, legacy managed hook wiring, the legacy default
 package/Husky drift commands, and legacy harness-added LF rules. It does not reject an unrelated
 user-owned `tools/agent/` directory whose known managed filenames are absent.

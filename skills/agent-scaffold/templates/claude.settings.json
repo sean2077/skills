@@ -17,10 +17,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'root=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$root\" ] || root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v cygpath >/dev/null 2>&1 && root=\"$(cygpath -u \"$root\")\"; bash \"$root/.agents/tools/hooks/format_on_edit.sh\"'"
-          },
-          {
-            "type": "command",
             "command": "bash -lc 'root=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$root\" ] || root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v cygpath >/dev/null 2>&1 && root=\"$(cygpath -u \"$root\")\"; bash \"$root/.agents/tools/hooks/authority_doc_budget.sh\"'"
           }
         ]

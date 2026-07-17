@@ -61,9 +61,9 @@ Run from inside the target repository:
 bash <skill-dir>/harness-init.sh <mode> [flags]
 ```
 
-Useful flags: `--no-worktree`, `--no-format-hook`, `--no-husky`,
-`--no-example-subagent`, `--example-subagent`, and `--force-scripts` (implied by
-`upgrade`). Repeat profile flags on later `upgrade` and `verify` runs.
+Useful flags: `--no-worktree`, `--no-husky`, `--no-example-subagent`,
+`--example-subagent`, and `--force-scripts` (implied by `upgrade`). Repeat
+profile flags on later `upgrade` and `verify` runs.
 
 ## Workflow
 

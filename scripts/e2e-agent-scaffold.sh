@@ -1332,6 +1332,21 @@ git -C "$G" config user.email t@t.t; git -C "$G" config user.name tester
 printf '{"name":"legacy-fixture"}\n' > "$G/package.json"
 git -C "$G" add package.json && git -C "$G" commit -q -m init
 ( cd "$G" && bash "$H" init ) >/dev/null 2>&1 || bad "legacy fixture init exited nonzero"
+printf '# retired managed formatter fixture\n' > "$G/.agents/tools/hooks/format_on_edit.sh"
+python - "$G/.claude/settings.json" "$G/.codex/hooks.json" <<'PY'
+import json, sys
+
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as source:
+        data = json.load(source)
+    data["hooks"]["PostToolUse"][0]["hooks"].append({
+        "type": "command",
+        "command": "bash .agents/tools/hooks/format_on_edit.sh",
+    })
+    with open(path, "w", encoding="utf-8") as target:
+        json.dump(data, target, indent=2, ensure_ascii=False)
+        target.write("\n")
+PY
 legacyize_runtime "$G"
 printf 'USER_OWNED_LEGACY_FILE\n' > "$G/tools/agent/custom.keep"
 git -C "$G" add -A && git -C "$G" commit -q -m "legacy runtime fixture"
@@ -1349,6 +1364,7 @@ check "legacy retrofit writes nothing"             test -z "$(git -C "$G" status
 check "legacy upgrade exits 0"                     test "$rc" = 0
 check "legacy worktree command moved"              test -f "$G/.agents/tools/worktree.sh"
 check "legacy generator moved"                     test -f "$G/.agents/tools/generate-subagents.py"
+check "retired formatter is not migrated forward"  test ! -e "$G/.agents/tools/hooks/format_on_edit.sh"
 # shellcheck disable=SC2016  # the inner sh expands its positional $1 and loop variable
 check "legacy managed files have no wrappers"      sh -c '
   for path in worktree.sh generate-subagents.py hooks/trunk_edit_guard.sh hooks/authority_doc_budget.sh hooks/format_on_edit.sh hooks/hook-common.sh hooks/hook-paths.py; do
@@ -1446,6 +1462,7 @@ check "no bogus '*' symlink in .claude/skills" test -z "$(ls -A "$S/.claude/skil
 check "worktree.sh installed"                test -f "$S/.agents/tools/worktree.sh"
 check "trunk_edit_guard.sh installed"        test -f "$S/.agents/tools/hooks/trunk_edit_guard.sh"
 check "shared hook parser installed"         test -f "$S/.agents/tools/hooks/hook-paths.py"
+check "formatter hook remains project-owned" test ! -e "$S/.agents/tools/hooks/format_on_edit.sh"
 check "greenfield install adds no tools root" test ! -e "$S/tools"
 check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" = AGENTS.md
 check "CC PreToolUse matcher"                jmatch "$S/.claude/settings.json" PreToolUse "Edit|MultiEdit|Write|NotebookEdit"
@@ -1483,7 +1500,7 @@ hook.write_bytes(hook_data.replace(b"\n", b"\r"))
 PY
 ( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
 check "retrofit re-run exits 0"              test "$rc" = 0
-check "PostToolUse stays 2 hooks (no dup)"   jcount "$S/.claude/settings.json" PostToolUse 2
+check "PostToolUse stays 1 hook (no dup)"    jcount "$S/.claude/settings.json" PostToolUse 1
 check "CRLF gitignore target stays singular" logical_line_count "$S/.gitignore" ".claude/settings.local.json" 1
 check "CRLF attributes target stays singular" logical_line_count "$S/.gitattributes" ".agents/tools/*.sh text eol=lf" 1
 check "CR-only Husky target stays singular" logical_line_count "$S/.husky/pre-commit" "python .agents/tools/generate-subagents.py --check" 1
@@ -1685,8 +1702,10 @@ fi
 check "verify reports harness OK (exit 0)"   test "$rc" = 0
 
 echo "== verify rejects active-profile drift and hook mismatches =="
-( cd "$S" && bash "$H" verify --no-format-hook ) >/dev/null 2>&1; rc=$?
-check "verify rejects unexpected format hook" test "$rc" != 0
+( cd "$S" && bash "$H" verify --no-format-hook ) >"$work/deprecated-format-flag.out" 2>&1; rc=$?
+check "deprecated format flag remains a compatible no-op" test "$rc" = 0
+check "deprecated format flag explains project ownership" \
+  grep -qF "formatter hooks are now project-owned" "$work/deprecated-format-flag.out"
 cp "$S/.claude/settings.json" "$work/claude-settings.clean.json"
 cp "$S/.codex/hooks.json" "$work/codex-hooks.clean.json"
 python - "$S/.claude/settings.json" "$S/.codex/hooks.json" <<'PY'
@@ -1694,31 +1713,37 @@ import json, sys
 for path in sys.argv[1:]:
     with open(path, encoding="utf-8") as source:
         data = json.load(source)
-    for event, groups in list(data.get("hooks", {}).items()):
-        for group in groups or []:
-            group["hooks"] = [
-                hook for hook in group.get("hooks", [])
-                if "format_on_edit" not in str(hook.get("command", ""))
-            ]
     data["hooks"]["PostToolUse"][0]["hooks"].append({
         "type": "command",
-        "command": "python scripts/check_format_on_edit_custom.py",
+        "command": "bash .agents/hooks/format-on-edit.sh",
     })
     with open(path, "w", encoding="utf-8") as target:
         json.dump(data, target, indent=2, ensure_ascii=False)
         target.write("\n")
 PY
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
-check "verify rejects missing format hook despite lookalike" test "$rc" != 0
-( cd "$S" && bash "$H" verify --no-format-hook ) >/dev/null 2>&1; rc=$?
-check "disabled format profile ignores user lookalike" test "$rc" = 0
+check "verify preserves a project-owned formatter hook" test "$rc" = 0
+python - "$S/.claude/settings.json" "$S/.codex/hooks.json" <<'PY'
+import json, sys
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as source:
+        data = json.load(source)
+    data["hooks"]["PostToolUse"][0]["hooks"].append({
+        "type": "command",
+        "command": "bash .agents/tools/hooks/format_on_edit.sh",
+    })
+    with open(path, "w", encoding="utf-8") as target:
+        json.dump(data, target, indent=2, ensure_ascii=False)
+        target.write("\n")
+PY
+( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
+check "verify rejects retired managed formatter wiring" test "$rc" != 0
 mv "$work/claude-settings.clean.json" "$S/.claude/settings.json"
 mv "$work/codex-hooks.clean.json" "$S/.codex/hooks.json"
-cp "$S/.agents/tools/hooks/format_on_edit.sh" "$work/format-on-edit.clean.sh"
-printf '\n# drift fixture\n' >> "$S/.agents/tools/hooks/format_on_edit.sh"
+printf '# retired managed formatter fixture\n' > "$S/.agents/tools/hooks/format_on_edit.sh"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
-check "verify rejects active script drift" test "$rc" != 0
-mv "$work/format-on-edit.clean.sh" "$S/.agents/tools/hooks/format_on_edit.sh"
+check "verify rejects retired managed formatter runtime" test "$rc" != 0
+rm -f "$S/.agents/tools/hooks/format_on_edit.sh"
 cp "$S/.agents/tools/generate-subagents.py" "$work/generate-subagents.clean.py"
 printf '\n# generator drift fixture\n' >> "$S/.agents/tools/generate-subagents.py"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
@@ -1799,17 +1824,19 @@ printf -- '---\nname: ghost\ndescription: no source\n---\n\nbody\n' > "$A/.claud
 ( cd "$A" && python .agents/tools/generate-subagents.py ) >/dev/null 2>&1
 check "sourceless hand-authored projection not pruned" test -f "$A/.claude/agents/ghost.md"
 
-echo "== upgrade reconciles only managed hooks (no jq, no format hook) =="
-U="$work/upgrade"; mkdir -p "$U/.claude" "$U/.codex"
+echo "== upgrade retires the managed formatter and reconciles only owned hooks =="
+U="$work/upgrade"; mkdir -p "$U/.claude" "$U/.codex" "$U/.agents/hooks"
 git -C "$U" init -q -b main
 git -C "$U" config user.email t@t.t; git -C "$U" config user.name tester
 git -C "$U" config core.symlinks true
 git -C "$U" commit -q --allow-empty -m init
+printf '# project-owned formatter fixture\n' > "$U/.agents/hooks/format-on-edit.sh"
 python - "$U/.claude/settings.json" "$U/.codex/hooks.json" <<'PY'
 import json, sys
 for path, matcher, user in ((sys.argv[1], "Edit", "user-extra.sh"), (sys.argv[2], "apply_patch", "user-cx.sh")):
     value = {"model": "keep-me", "hooks": {"PreToolUse": [{"matcher": matcher, "hooks": [
         {"type": "command", "command": user},
+        {"type": "command", "command": "bash .agents/hooks/format-on-edit.sh"},
         {"type": "command", "command": "python scripts/check_authority_doc_budget_custom.py"},
         {"type": "command", "command": "bash tools/custom/trunk_edit_guard_backup.sh"},
         {"type": "command", "command": "bash .agents/tools/hooks/format_on_edit.sh.backup"},
@@ -1829,10 +1856,14 @@ for path, matcher, user in ((sys.argv[1], "Edit", "user-extra.sh"), (sys.argv[2]
     with open(path, "w", encoding="utf-8") as f:
         json.dump(value, f)
 PY
-( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-format-hook --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-format-hook --no-husky --no-example-subagent ) >"$work/upgrade-retired-format.out" 2>&1; rc=$?
 check "upgrade without jq exits 0"             test "$rc" = 0
+check "upgrade accepts the deprecated format flag" \
+  grep -qF "formatter hooks are now project-owned" "$work/upgrade-retired-format.out"
 check "upgrade preserves Claude user hook"     grep -q user-extra "$U/.claude/settings.json"
 check "upgrade preserves Codex user hook"      grep -q user-cx "$U/.codex/hooks.json"
+check "upgrade preserves project formatter file" grep -qF "project-owned formatter fixture" "$U/.agents/hooks/format-on-edit.sh"
+check "upgrade preserves project formatter wiring" fixed_text_in_both .agents/hooks/format-on-edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves authority lookalikes" fixed_text_in_both check_authority_doc_budget_custom.py "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves guard lookalikes"     fixed_text_in_both trunk_edit_guard_backup.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves dotted suffix"        fixed_text_in_both format_on_edit.sh.backup "$U/.claude/settings.json" "$U/.codex/hooks.json"
@@ -1840,14 +1871,14 @@ check "upgrade preserves tilde suffix"         fixed_text_in_both format_on_edit
 check "upgrade preserves plus suffix"          fixed_text_in_both format_on_edit.sh+backup "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves at-prefixed segment"  fixed_text_in_both vendor/@.agents/tools/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves colon-prefixed path"  fixed_text_in_both pkg:.agents/tools/hooks/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
-if [ -e "$U/.AgEnTs/ToOlS/HoOkS/format_on_edit.sh" ]; then
+if [ -d "$U/.AgEnTs/ToOlS/HoOkS" ]; then
   check "case-equivalent managed path is removed" fixed_text_absent_in_both .AgEnTs/ToOlS/HoOkS/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 else
   check "case-distinct user path is preserved" fixed_text_in_both .AgEnTs/ToOlS/HoOkS/format_on_edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 fi
 check "upgrade preserves unrelated config"     grep -q keep-me "$U/.claude/settings.json"
-check "--no-format-hook removes Claude managed format" jcommand_count "$U/.claude/settings.json" format_on_edit 0
-check "--no-format-hook removes Codex managed format"  jcommand_count "$U/.codex/hooks.json" format_on_edit 0
+check "upgrade removes Claude retired formatter" jcommand_count "$U/.claude/settings.json" format_on_edit 0
+check "upgrade removes Codex retired formatter"  jcommand_count "$U/.codex/hooks.json" format_on_edit 0
 check "Claude trunk guard appears once"        jcommand_count "$U/.claude/settings.json" trunk_edit_guard 1
 check "Codex authority hook appears once"       jcommand_count "$U/.codex/hooks.json" authority_doc_budget 1
 ( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-worktree --no-format-hook --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?

@@ -18,11 +18,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; bash \"$root/.agents/tools/hooks/format_on_edit.sh\"'",
-            "statusMessage": "Running format-on-edit hook"
-          },
-          {
-            "type": "command",
             "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; bash \"$root/.agents/tools/hooks/authority_doc_budget.sh\"'",
             "statusMessage": "Checking AGENTS.md budget"
           }
