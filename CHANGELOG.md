@@ -6,7 +6,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Breaking
+## [v2.0.0] — 2026-07-17
+
+### ⚠ Breaking
 
 - `agent-scaffold` replaces the identical `init` / `retrofit` commands with one idempotent
   `apply` mode. `--profile default|light` replaces the negative worktree selector, and
@@ -80,5 +82,6 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v2.0.0...HEAD
+[v2.0.0]: https://github.com/sean2077/skills/compare/v1.0.0...v2.0.0
 [v1.0.0]: https://github.com/sean2077/skills/releases/tag/v1.0.0
