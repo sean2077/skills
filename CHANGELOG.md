@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v3.0.1] — 2026-07-17
+
 ### Fixed
 
 - E2E temporary-directory guards now use explicit control flow and version-compatible
@@ -139,7 +141,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v3.0.1...HEAD
+[v3.0.1]: https://github.com/sean2077/skills/compare/v3.0.0...v3.0.1
 [v3.0.0]: https://github.com/sean2077/skills/compare/v2.0.0...v3.0.0
 [v2.0.0]: https://github.com/sean2077/skills/compare/v1.0.0...v2.0.0
 [v1.0.0]: https://github.com/sean2077/skills/releases/tag/v1.0.0
