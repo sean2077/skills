@@ -1,164 +1,63 @@
 ---
 name: project-docs-organizer
-description: Build, restructure, or clean up project documentation systems. Use when the user asks to create or organize README files, docs/ or doc/ trees, onboarding docs, maintainer docs, ADRs, specs, plans, tooling docs, standards, runbooks, archives, or documentation navigation for a software project.
-compatibility: Requires filesystem access to the target project; git is used when repository history or status matters.
+description: 'Design, reorganize, or prune a software project documentation system: README and docs trees, onboarding, architecture, ADRs, specs, plans, runbooks, reference, archives, and navigation. Use when readers cannot find or trust project docs. Not for application source layout, tool-command governance (use tooling-conventions), or AGENTS.md/CLAUDE.md harness policy (use agent-scaffold).'
 ---
 
 # Project Docs Organizer
 
-Create or reorganize a project's documentation system so readers can quickly find the right entry point, maintainers can evolve the docs safely, and stale material does not keep competing with current guidance.
+Make project documentation easier to find, trust, and maintain. The target project owns
+its information architecture; this skill supplies decision rules and optional patterns,
+not a universal directory template.
 
-## When To Use
+## Invariants
 
-Use this skill when the user wants to:
-
-- create or restructure a project's `README`, `docs/`, or `doc/` tree
-- design onboarding, maintainer, ADR, spec, plan, runbook, or archive zones
-- clean up documentation sprawl, or fix doc navigation and cross-links
-
-Do not use this skill for:
-
-- application source layout (that is normal architecture)
-- governing the `scripts/`/`tools/` directory itself or a script surface manifest (use `tooling-conventions`) — this skill organizes *docs about* tools, not the tools
-- the `AGENTS.md`/`CLAUDE.md` agent-contract tree or its line budget (use `agent-scaffold`)
-- a single throwaway note that needs no place in the documentation system
-
-## Core Rules
-
-- Use the user's explicitly requested documentation location when provided.
-- If the user does not force a location, prefer the existing documentation directory. If none exists, use `docs/`; use `doc/` only when that is already the established project convention.
-- For a simple project, keep documentation in the root `README.md` unless multiple audiences, lifecycle stages, or document types justify a dedicated docs tree.
-- For a complex project, create or normalize a dedicated documentation directory.
-- Keep the root `README.md` and the documentation directory `README.md` as overview and navigation surfaces only. Do not put detailed guides, specifications, ADR content, tool manuals, or long operational procedures there.
-- Prefer a small, coherent documentation system over a large taxonomy. Add zones only when there is real content or a near-term place for incoming content.
-- Preserve accurate content, but aggressively remove organizational clutter: rename, split, merge, move, or delete existing docs when the evidence supports it.
+- Honor a user-selected location and preserve a coherent established convention.
+- Prefer the smallest structure that solves observed navigation or ownership problems.
+- Keep entry-point READMEs focused on orientation and routing; move durable detail to
+  canonical topic pages.
+- Give each durable fact one authoritative home and update every active route to it.
+- Create directories only for real content or committed near-term work; do not generate
+  empty taxonomy scaffolding.
+- Delete only with evidence that content is stale, duplicated, superseded, or migrated.
+  Archive only when retention has a named value or requirement.
 
 ## Workflow
 
-1. Inventory current documentation surfaces:
-   - root `README.md`
-   - `docs/`, `doc/`, `documentation/`, `wiki/`, and similarly named directories
-   - ADR, RFC, spec, roadmap, planning, operations, tool, architecture, and generated-doc locations
-   - links from package metadata, site config, CI, AGENTS/CLAUDE files, and contribution docs
-2. Classify the project:
-   - **Simple**: one main audience, low setup complexity, little long-lived planning or operations history.
-   - **Complex**: multiple audiences, active maintenance workflow, architecture or ADR history, operational docs, tooling standards, or many existing docs.
-3. Choose the documentation root:
-   - `user-forced path > existing documentation directory > docs > doc`
-4. Design the smallest complete information architecture using the major-area and subcategory numbering rules below.
-5. Move, split, merge, or delete existing docs into the new structure.
-6. Update all navigation links and cross-references.
-7. Report changed structure, deleted/merged docs, deletion evidence, and remaining documentation risks.
+1. Resolve the target project root (the Git top level when Git-backed), then inventory its
+   root README, documentation roots, contribution and authority docs, site generators,
+   package metadata, CI links, and topic-specific doc locations.
+2. Identify actual audiences, document lifecycles, canonical sources, and retrieval
+   failures. Distinguish stable guidance from active decisions and historical records.
+3. Read [`information-architecture.md`](references/information-architecture.md) and choose
+   the smallest fitting model: README-only, named sections, generated-site structure, or
+   an optional numbered system.
+4. Build a move/merge/delete map before editing. For numbered systems only, read
+   [`numbering-patterns.md`](references/numbering-patterns.md) and
+   [`zone-catalog.md`](references/zone-catalog.md); never introduce numbering merely
+   because the project is large.
+5. Apply the reorganization, consolidating duplicates into canonical pages and keeping
+   project-specific terminology intact.
+6. Follow [`migration-and-links.md`](references/migration-and-links.md) to update navigation,
+   backlinks, configs, and stale path references, then run the repository's doc checks.
+7. Report the resulting entry points, moves/merges/deletions, deletion evidence, checks,
+   and intentionally deferred risks.
 
-## Numbered Zone Rules
+## Completion checks
 
-Use two-digit prefixes for direct children of the documentation root when the project is complex. The two digits are semantic, not just sort order:
+- Each intended audience has an obvious entry point and fastest safe next step.
+- Stable guidance, active planning/decisions, generated content, and retained history are
+  visibly distinguishable where the project needs those classes.
+- Overview pages route rather than duplicate detailed guidance.
+- No live link, config, or authority document points at a moved or deleted path.
+- No empty zone or placeholder exists solely to complete a taxonomy.
+- Every deleted document has explicit evidence and a surviving canonical destination when
+  its useful content was retained.
 
-- First digit: major documentation area.
-- Second digit: subcategory inside that major area.
-- `0x`: hot entry area. First-contact material and high-frequency navigation.
-- `1x`, `2x`, ... `8x`: main documentation areas.
-- `9x`: system area. Archives, deprecated material, generated-doc policy, documentation maintenance metadata, and migration records.
-- `x0`: overview, index, or default landing page for that major area.
-- `x1` to `x8`: stable subcategories under that major area.
-- `x9`: local overflow, legacy, or rare catch-all for that major area. Use sparingly; do not confuse it with the global `9x` system area.
+## On-demand references
 
-Keep one conceptual class per numbered directory. If a major area has multiple real subcategories, do not collapse everything into only `10/20/30/...` landing folders.
-
-Inside a numbered subcategory, add numeric prefixes only when local reading order matters. Otherwise use plain names.
-
-Good:
-
-```text
-docs/
-├── README.md
-├── 00-start-here/
-├── 01-quickstart/
-├── 20-development-overview/
-├── 21-architecture/
-├── 22-codebase/
-├── 23-local-development/
-├── 30-iteration-overview/
-├── 31-planning-roadmap/
-├── 32-adrs/
-├── 33-specs-rfcs/
-├── 40-tooling-overview/
-├── 41-development-tools/
-├── 42-agent-mcp-tools/
-├── 43-ci-build-release-tools/
-├── 90-system-overview/
-└── 91-archive/
-```
-
-The first digit alone is **not** a sufficient classification — `20-development/ 30-iteration/ 40-tooling-standards/` collapses each major area into one landing folder and loses the subcategory semantics; prefer real subcategories (`21-architecture/ 22-codebase/ 32-adrs/ 33-specs-rfcs/ 41-development-tools/ 44-coding-standards/`). Add nested numeric prefixes (`00-`, `01-`) inside a subcategory only when readers must consume the files in sequence. Worked before/after examples: [`references/numbering-patterns.md`](references/numbering-patterns.md).
-
-## Default Zone Model
-
-Use an audience-plus-lifecycle taxonomy by default; create only the subcategories the project actually needs. The major areas are:
-
-- `0x` — hot entry: start-here, quickstart, first-run
-- `1x` — user-facing docs
-- `2x` — development and long-term maintainer docs
-- `3x` — iteration: planning/roadmap, ADRs, specs/RFCs, risk & decision logs
-- `4x` — tooling and standards (keep tools here even when used mainly by operators or release managers)
-- `5x` — operations
-- `6x` — reference
-- `9x` — system: archive, deprecated, generated, doc-migrations
-
-**Before designing a complex docs tree, read [`references/zone-catalog.md`](references/zone-catalog.md)** for the full `00`–`94` zone catalog (every subcategory and its purpose). If a project needs fewer zones, collapse them; if more, choose the next unused first digit and keep the one-class-per-zone rule.
-
-## README Rules
-
-Root `README.md` should answer:
-
-- What is this project?
-- Who is it for?
-- How do I get to the right docs?
-- What is the fastest safe start?
-- Where do contributors and maintainers go next?
-
-Documentation root `README.md` should answer:
-
-- What major areas and subcategories exist?
-- Which reader should start where?
-- Which docs are stable guidance versus planning or historical records?
-- Which docs are generated, archived, deprecated, or system-owned?
-
-Do not use either README as a dumping ground for detailed setup, architecture, ADRs, specs, tool manuals, or runbooks. Move those details into the right zone and link to them.
-
-## Reorganization Authority
-
-When organizing existing docs, act decisively:
-
-- Rename unclear files and directories to reader-oriented names.
-- Split mixed-purpose documents when different audiences or lifecycles are competing.
-- Merge duplicate or near-duplicate docs into one canonical page.
-- Move planning, ADR, and spec material out of stable user/developer guidance.
-- Move tool installation, usage, explanation, and standards into the `4x` tooling and standards area.
-- Update backlinks, indexes, README navigation, and config references after every move.
-
-Deletion is allowed only with evidence. A doc may be deleted when it is stale, duplicated, superseded, or replaced by a clearer canonical page, and when links/navigation have been migrated. If uncertain, archive under `90-system/` or leave a short migration note instead of deleting.
-
-Final output must list:
-
-- new documentation root and zone structure
-- files moved, split, merged, or deleted
-- deletion evidence for each deleted doc
-- updated navigation surfaces
-- remaining risks or intentionally deferred cleanup
-
-## Acceptance Checks
-
-Before claiming completion:
-
-- A simple project has a focused root `README.md` and no unnecessary docs tree.
-- A complex project has a docs root chosen by the required priority order.
-- Direct children of the docs root use two-digit prefixes where the first digit is the major area and the second digit is the subcategory.
-- Complex projects with real subcategories do not collapse major areas into only `10/20/30/...` landing folders.
-- Root and docs-root READMEs contain only overview and navigation.
-- Developer maintainer material lives under `2x`.
-- Planning, ADR, spec, and roadmap material lives under `3x`.
-- Tool installation, usage, explanation, CI/devtools, and standards live under `4x`.
-- Archives, deprecated docs, and documentation-system metadata live under `9x`.
-- Cross-links and discovery surfaces are updated.
-- Deleted docs have explicit evidence and no live references.
+| Need | Reference |
+|---|---|
+| Choose between README-only, named, generated-site, or numbered organization | [`information-architecture.md`](references/information-architecture.md) |
+| Avoid collapsed categories or meaningless numeric ordering | [`numbering-patterns.md`](references/numbering-patterns.md) |
+| Select optional semantic zones for a genuinely numbered documentation system | [`zone-catalog.md`](references/zone-catalog.md) |
+| Plan moves/deletions and verify navigation, backlinks, and stale paths | [`migration-and-links.md`](references/migration-and-links.md) |

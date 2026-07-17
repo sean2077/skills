@@ -8,7 +8,11 @@
 set -uo pipefail
 
 usage() { sed -n '2,7p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
-case "${1:-}" in -h|--help) usage 0 ;; "") ;; *) usage 2 ;; esac
+case "$#" in
+  0) ;;
+  1) case "$1" in -h|--help) usage 0 ;; *) usage 2 ;; esac ;;
+  *) usage 2 ;;
+esac
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 skill="$repo/skills/agent-scaffold"
@@ -19,6 +23,15 @@ fail() { printf 'FAIL: %s\n' "$*"; fails=$((fails + 1)); }
 
 [ -d "$skill" ] || { echo "agent-scaffold skill not present — nothing to check"; exit 0; }
 command -v python >/dev/null 2>&1 || fail "python unavailable (required by agent-scaffold)"
+
+for entrypoint in \
+  "$repo/scripts/e2e-agent-scaffold.sh" \
+  "$repo/scripts/tests/e2e-agent-scaffold-preflight.sh"; do
+  bash "$entrypoint" --not-a-real-option >/dev/null 2>&1
+  [ "$?" = 2 ] || fail "unknown option does not exit 2: ${entrypoint#"$repo"/}"
+  bash "$entrypoint" --help --not-a-real-option >/dev/null 2>&1
+  [ "$?" = 2 ] || fail "help masks an unknown option: ${entrypoint#"$repo"/}"
+done
 
 if ! python "$core" --manifest "$manifest" assets validate >/dev/null 2>&1; then
   fail "managed-assets manifest is invalid or references a missing source"
@@ -78,6 +91,20 @@ for config in claude.settings.json codex.hooks.json; do
 done
 grep -qF '<!-- agent-scaffold:worktree:start -->' "$skill/assets/scaffold/AGENTS.harness.md" \
   || fail "AGENTS.harness.md lost the profile boundary"
+
+worktree_helper="$skill/assets/runtime/worktree.sh"
+grep -qF 'removed clean detached release worktree' "$worktree_helper" \
+  || fail "worktree.sh lost guarded detached-release cleanup"
+if grep -qF 'git worktree remove --force' "$worktree_helper" >/dev/null 2>&1; then
+  fail "worktree.sh tells users to force-remove release worktrees"
+fi
+grep -qF 'files atomic-replace' "$skill/agent-scaffold.sh" \
+  || fail "agent-scaffold.sh lost same-directory atomic state replacement"
+grep -qF 'agent-scaffold-link-' "$skill/assets/runtime/symlink-manager.py" \
+  || fail "symlink-manager.py lost unique temporary link names"
+if grep -qF 'shutil.rmtree(path)' "$skill/assets/runtime/symlink-manager.py" >/dev/null 2>&1; then
+  fail "symlink-manager.py recursively removes an untrusted projection path"
+fi
 
 # The public surface has one ordinary mutating mode.
 if grep -Eq '<init\|retrofit|\b(init|retrofit)\b.*Mode|Modes:.*(init|retrofit)' \

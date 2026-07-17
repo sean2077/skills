@@ -1,28 +1,34 @@
 #!/usr/bin/env bash
-# manifest-check.sh — reconcile a tools/ surface manifest against the scripts on disk.
+# manifest-check.sh — reconcile a command-surface manifest against scripts on disk.
 #
-# Generic companion to the tooling-conventions skill. No deps beyond bash/awk/grep/find.
+# Generic companion to the tooling-conventions skill. Requires Bash plus standard GNU
+# command-line tools available on the supported Git Bash/macOS/Linux hosts.
 # The manifest is a TSV with (at least) a `path` and a `surface` column, identified by
-# header name — so it works with any superset schema (see manifest.schema.md).
+# header name — so it works with any superset schema (see references/manifest-schema.md).
 #
 # Checks (row FAIL findings honor `audit_level=warn`; global failures stay blocking):
-#   FAIL  duplicate manifest paths or an invalid surface label
+#   FAIL  duplicate paths, invalid labels, or contradictory `entry_for` semantics
 #   FAIL  a manifest row points at a missing file
 #   FAIL  a command file on disk (.sh, or executable .py) has no manifest row
 #   FAIL  shell syntax error (bash -n) / python compile error (in-memory compile)
-#   warn  a public/installed entry has no detectable -h/--help handler
+#   FAIL  when `verify` exists, public/installed rows lack declared CLI-contract evidence
 #
 # Usage:
-#   bash manifest-check.sh [path/to/manifest.tsv]      # default: tools/tools-manifest.tsv
+#   bash manifest-check.sh [--] [path/to/manifest.tsv] # default: tools/tools-manifest.tsv
 # Env:
 #   TOOLS_DIR            scan root for the reverse drift check (default: dir of the manifest)
-#   MANIFEST_CHECK_SKIP  extended regex of tools-relative paths to ignore in the reverse scan
+#   MANIFEST_CHECK_SKIP  extended regex of scan-root-relative paths to ignore in the reverse scan
 #                        (default: internal/ vendor/ tests/ legacy/ + dotfiles + _underscore dirs)
 set -euo pipefail
 
-case "${1:-}" in -h | --help) sed -n '2,19p' "$0" | sed 's/^# \?//'; exit 0 ;; esac
+usage() { sed -n '2,21p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
+case "$#" in
+    0) MANIFEST="tools/tools-manifest.tsv" ;;
+    1) case "$1" in -h | --help) usage 0 ;; -*) usage 2 ;; *) MANIFEST="$1" ;; esac ;;
+    2) [[ "$1" == "--" ]] || usage 2; MANIFEST="$2" ;;
+    *) usage 2 ;;
+esac
 
-MANIFEST="${1:-tools/tools-manifest.tsv}"
 [[ -f "$MANIFEST" ]] || { echo "manifest not found: $MANIFEST" >&2; exit 2; }
 SCAN_DIR="${TOOLS_DIR:-$(dirname "$MANIFEST")}"
 [[ -d "$SCAN_DIR" ]] || { echo "scan directory not found: $SCAN_DIR" >&2; exit 2; }
@@ -49,6 +55,8 @@ col_any() {
 }
 ip="$(col_any path)"; is="$(col_any surface surface_current)"
 ia="$(col_any audit_level || true)"
+ie="$(col_any entry_for || true)"
+iv="$(col_any verify || true)"
 [[ -n "$ip" && -n "$is" ]] || { echo "manifest must have a 'path' and a 'surface' (or 'surface_current') column" >&2; exit 2; }
 
 # Bash treats tab as IFS whitespace, so `read -a` collapses empty TSV fields.
@@ -62,21 +70,67 @@ tsv_field() { # <line> <1-based-index>; result in REPLY
     REPLY="${value%%$'\t'*}"
 }
 
-SEEN_FILE="$(mktemp)"
-INVENTORY_FILE="$(mktemp)"
-trap 'rm -f "$SEEN_FILE" "$INVENTORY_FILE"' EXIT
+TEMP_PARENT="$(cd "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P)" \
+    || { echo "temporary-directory parent is unavailable: ${TMPDIR:-/tmp}" >&2; exit 2; }
+TEMP_PREFIX="${TEMP_PARENT%/}/tooling-manifest."
+TEMP_DIR="$(mktemp -d "${TEMP_PREFIX}XXXXXX")" \
+    || { echo "failed to create temporary directory under $TEMP_PARENT" >&2; exit 2; }
+TEMP_SUFFIX="${TEMP_DIR#"$TEMP_PREFIX"}"
+[[ "$TEMP_DIR" == "$TEMP_PREFIX"* && -n "$TEMP_SUFFIX" && -d "$TEMP_DIR" ]] \
+    || { echo "mktemp returned an unsafe temporary directory: ${TEMP_DIR:-<empty>}" >&2; exit 2; }
+SEEN_FILE="$TEMP_DIR/seen"
+INVENTORY_FILE="$TEMP_DIR/inventory"
+: > "$SEEN_FILE"
+# shellcheck disable=SC2329  # invoked by the EXIT trap
+cleanup() {
+    local suffix="${TEMP_DIR#"$TEMP_PREFIX"}"
+    if [[ "$TEMP_DIR" == "$TEMP_PREFIX"* && -n "$suffix" && -d "$TEMP_DIR" ]]; then
+        rm -rf -- "$TEMP_DIR"
+    fi
+}
+trap cleanup EXIT
 seen_count=0
+row_number=0
+
+declares_help_contract() { # <verify-field>
+    local evidence="$1"
+    case "$evidence" in
+        *cli-contract* | *help-contract*) return 0 ;;
+    esac
+    printf '%s\n' "$evidence" | grep -qF -- '--help' \
+        && printf '%s\n' "$evidence" | grep -qiE -- 'unknown|invalid[ -]+arg|exit[ =:()-]*2'
+}
 
 # Forward drift + per-file contract/syntax. Build the SEEN set of registered paths.
 while IFS= read -r line || [[ -n "$line" ]]; do
+    row_number=$((row_number + 1))
     line="${line%$'\r'}"
+    ((row_number == 1)) && continue
+    [[ -z "$line" ]] && continue
     tsv_field "$line" "$ip"; p="$REPLY"
     tsv_field "$line" "$is"; s="$REPLY"
     a="enforce"
     if [[ -n "$ia" ]]; then tsv_field "$line" "$ia"; a="${REPLY:-enforce}"; fi
-    [[ -z "$p" || "$p" == "path" ]] && continue
+    e=""
+    if [[ -n "$ie" ]]; then tsv_field "$line" "$ie"; e="$REPLY"; fi
+    v=""
+    if [[ -n "$iv" ]]; then tsv_field "$line" "$iv"; v="$REPLY"; fi
+    if [[ -z "$p" ]]; then
+        fail "manifest row $row_number has an empty path"
+        continue
+    fi
+    case "$p" in
+        /* | [A-Za-z]:* | . | ./* | ../* | */. | */./* | */.. | */../* | *//* | *\\*)
+            fail "invalid manifest path (must be normalized and relative): $p"
+            continue
+            ;;
+    esac
+    case "$a" in
+        enforce | warn) : ;;
+        *) fail "invalid audit_level for $p: $a"; continue ;;
+    esac
     duplicate=0
-    if grep -qxF "$p" "$SEEN_FILE" 2>/dev/null; then
+    if grep -qxF -- "$p" "$SEEN_FILE" 2>/dev/null; then
         fail "duplicate manifest path: $p"
         duplicate=1
     else
@@ -87,10 +141,32 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         public | installed | helper | break-glass | paused | legacy | package | native | template | vendor) : ;;
         *) fail "invalid manifest surface for $p: ${s:-<empty>}"; continue ;;
     esac
+    if [[ -n "$ie" ]]; then
+        case "$s" in
+            public | installed | break-glass | paused | legacy)
+                [[ -n "$e" ]] || row_issue "$a" "$s entry must declare entry_for: $p"
+                ;;
+            helper)
+                [[ -z "$e" ]] || row_issue "$a" "helper entry_for must be blank (not an independent entry): $p"
+                ;;
+        esac
+    fi
     if ((duplicate)); then continue; fi
     f="$SCAN_DIR/$p"
     if [[ ! -e "$f" ]]; then row_issue "$a" "manifest row → missing file: $p"; continue; fi
-    [[ "$p" == */ ]] && continue                       # package/native directory row
+    case "$s" in
+        package | native)
+            [[ "$p" == */ && -d "$f" ]] \
+                || row_issue "$a" "$s directory path must end in / and name a directory: $p"
+            continue
+            ;;
+        *)
+            if [[ "$p" == */ ]]; then
+                row_issue "$a" "$s path must not use directory-row syntax: $p"
+                continue
+            fi
+            ;;
+    esac
     case "$p" in *.sh | *.py) : ;; *) continue ;; esac # syntax/help apply only to command files
     case "$p" in
         *.sh) bash -n "$f" 2>/dev/null || row_issue "$a" "shell syntax error: $p" ;;
@@ -99,8 +175,10 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     esac
     case "$s" in
         public | installed)
-            grep -qE -- '(^|[^a-zA-Z])-h([^a-zA-Z]|$)|--help' "$f" ||
-                warn "$s entry has no detectable -h/--help handler: $p" ;;
+            if [[ -n "$iv" ]] && ! declares_help_contract "$v"; then
+                row_issue "$a" "$s entry verify must declare --help=0 and unknown-arg=2 evidence (or a cli-contract test): $p"
+            fi
+            ;;
     esac
 done < "$MANIFEST"
 
@@ -122,7 +200,7 @@ while IFS= read -r f; do
     rel="${f#"$SCAN_DIR"/}"
     [[ "$rel" =~ $SKIP_RE ]] && continue
     [[ "$f" == *.py ]] && ! is_python_cli "$f" && continue # index-aware on core.filemode=false
-    grep -qxF "$rel" "$SEEN_FILE" 2>/dev/null || fail "unregistered command surface (no manifest row): $rel"
+    grep -qxF -- "$rel" "$SEEN_FILE" 2>/dev/null || fail "unregistered command surface (no manifest row): $rel"
 done < "$INVENTORY_FILE"
 
 echo "---"

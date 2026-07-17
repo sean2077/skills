@@ -55,6 +55,40 @@ class ManagedAssetsTests(unittest.TestCase):
                 CORE.load_manifest(path)
 
 
+class AtomicWriteTests(unittest.TestCase):
+    def test_atomic_replace_commits_exact_bytes_without_fixed_temp_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "candidate"
+            target = root / "AGENTS.md"
+            unrelated = root / "AGENTS.md.tmp"
+            source.write_bytes(b"new\ncontent\n")
+            target.write_bytes(b"old\n")
+            unrelated.mkdir()
+            (unrelated / "sentinel").write_text("keep\n", encoding="utf-8")
+
+            CORE.atomic_replace_file(source, target)
+
+            self.assertEqual(b"new\ncontent\n", target.read_bytes())
+            self.assertEqual("keep\n", (unrelated / "sentinel").read_text(encoding="utf-8"))
+            self.assertEqual([], list(root.glob(".AGENTS.md.agent-scaffold-*")))
+
+    def test_atomic_replace_failure_preserves_previous_target_and_cleans_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "candidate"
+            target = root / ".gitignore"
+            source.write_bytes(b"new\n")
+            target.write_bytes(b"old\n")
+
+            with mock.patch.object(CORE.os, "replace", side_effect=OSError("interrupted")):
+                with self.assertRaisesRegex(CORE.CoreError, "atomic replace failed"):
+                    CORE.atomic_replace_file(source, target)
+
+            self.assertEqual(b"old\n", target.read_bytes())
+            self.assertEqual([], list(root.glob("..gitignore.agent-scaffold-*")))
+
+
 class TargetInspectionTests(unittest.TestCase):
     def test_agents_render_cli_emits_platform_independent_lf(self):
         manifest = CORE.load_manifest()

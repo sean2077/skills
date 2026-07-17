@@ -11,12 +11,13 @@
 #   new <name> [--type feat|fix|docs|chore] [--trunk <branch>]
 #       Branch <type>/<name> + worktree .worktrees/<name> cut from the trunk tip.
 #   done [--dir <wt>] [--trunk <branch>] [--message <msg>] [--no-push] [--keep-branch]
-#       Merge the current (or --dir) worktree's branch back into its local trunk
+#       Merge the current (or --dir) feature branch back into its local trunk
 #       (--no-ff), ff-only push trunk, then remove the worktree + branch and prune.
+#       A clean detached release worktree is removed through the same guarded path.
 #       A rejected push keeps retry state; --no-push explicitly cleans up locally.
 #       A branch with zero new commits skips the merge.
 #   release <ref>
-#       Detached ref/tag-pinned worktree .worktrees/release-<ref> for packaging.
+#       Detached ref/tag-pinned worktree with a portable ref + commit basename.
 #   list
 #       git worktree list (verbatim).
 #
@@ -33,12 +34,25 @@ usage() { sed -n '2,/^# ---8<---/p' "$0" | sed '/^# ---8<---/d; s/^# \?//'; exit
 log()  { printf '\033[1;34m[worktree]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[worktree] ABORT:\033[0m %s\n' "$*" >&2; exit 2; }
 
-[[ $# -ge 1 ]] || usage 1
+[[ $# -ge 1 ]] || usage 2
 CMD="$1"; shift
+case "$CMD" in
+    new|release|done|list) ;;
+    -h|--help) [[ $# -eq 0 ]] || usage 2; usage 0 ;;
+    *) die "unknown subcommand: $CMD (new/done/release/list)" ;;
+esac
+if [[ $# -eq 1 && ( "$1" == -h || "$1" == --help ) ]]; then
+    usage 0
+fi
 
-# Repo anchors: COMMON_GIT = shared git dir; ROOT = main worktree (share source).
-COMMON_GIT="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
-    || die "not inside a git repository"
+# Repo anchors come from the installed helper, not the caller's current directory.
+# COMMON_GIT = shared git dir; ROOT = main worktree (share source).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)" \
+    || die "could not resolve the installed helper directory"
+HELPER_REPO="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
+    || die "worktree helper is not installed inside a git repository"
+COMMON_GIT="$(git -C "$HELPER_REPO" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
+    || die "could not resolve the repository common git directory"
 ROOT="$(dirname "$COMMON_GIT")"
 WT_BASE="$ROOT/.worktrees"
 TRUNK_DEFAULT="${WORKTREE_TRUNK:-main}"
@@ -88,9 +102,8 @@ cmd_new() {
     local NAME="" TYPE="feat" TRUNK=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --type)  TYPE="$2"; shift ;;
-            --trunk) TRUNK="$2"; shift ;;
-            -h|--help) usage 0 ;;
+            --type)  [[ $# -ge 2 ]] || die "--type requires feat|fix|docs|chore"; TYPE="$2"; shift ;;
+            --trunk) [[ $# -ge 2 ]] || die "--trunk requires a branch"; TRUNK="$2"; shift ;;
             -*) die "unknown flag: $1" ;;
             *)  [[ -z "$NAME" ]] || die "only one <name> accepted"; NAME="$1" ;;
         esac
@@ -111,20 +124,36 @@ cmd_new() {
 }
 
 cmd_release() {
-    local REF="${1:-}"; [[ -n "$REF" ]] || die "usage: release <ref>"
-    git -C "$ROOT" rev-parse -q --verify "$REF^{commit}" >/dev/null 2>&1 || die "no such ref: $REF"
-    local WTDIR="$WT_BASE/release-${REF//\//-}"
+    [[ $# -eq 1 ]] || die "usage: release <ref>"
+    local REF="$1" RESOLVED COMMIT COMMIT_SHORT SAFE_REF WTDIR
+    RESOLVED="$(git -C "$ROOT" rev-parse -q --verify "$REF" 2>/dev/null)" \
+        || die "no such ref: $REF"
+    COMMIT="$(git -C "$ROOT" rev-parse -q --verify "$RESOLVED^{commit}" 2>/dev/null)" \
+        || die "ref does not resolve to a commit: $REF"
+    COMMIT_SHORT="$(git -C "$ROOT" rev-parse --short=12 "$COMMIT")" \
+        || die "could not abbreviate commit for ref: $REF"
+    SAFE_REF="$(printf '%s' "$REF" \
+        | sed 's/[^A-Za-z0-9._-]/-/g; s/--*/-/g; s/^-//; s/-$//' \
+        | cut -c1-40)"
+    [[ -n "$SAFE_REF" ]] || SAFE_REF=ref
+    WTDIR="$WT_BASE/release-$SAFE_REF-$COMMIT_SHORT"
     [[ ! -e "$WTDIR" ]] || die "already exists: $WTDIR"
     ensure_worktrees_ignored
-    git -C "$ROOT" worktree add --detach "$WTDIR" "$REF"
+    git -C "$ROOT" worktree add --detach "$WTDIR" "$COMMIT"
     share_dirs "$WTDIR"
-    log "ready: $WTDIR  (detached @ $REF) — when packaging is done: git worktree remove --force $WTDIR"
+    log "ready: $WTDIR  (detached @ $REF) — when packaging is done: bash \"$ROOT/.agents/tools/worktree.sh\" done --dir \"$WTDIR\""
 }
 
 worktree_is_registered() {
-    local TARGET="$1" REGISTRY FIELD FOUND=1
-    REGISTRY="$(mktemp "${TMPDIR:-/tmp}/agent-scaffold-worktrees.XXXXXX")" \
+    local TARGET="$1" REGISTRY FIELD FOUND=1 temp_parent temp_prefix temp_suffix
+    temp_parent="$(cd "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P)" \
+        || die "temporary-directory parent is unavailable: ${TMPDIR:-/tmp}"
+    temp_prefix="${temp_parent%/}/agent-scaffold-worktrees."
+    REGISTRY="$(mktemp "${temp_prefix}XXXXXX")" \
         || die "could not create temporary worktree registry file"
+    temp_suffix="${REGISTRY#"$temp_prefix"}"
+    [[ "$REGISTRY" == "$temp_prefix"* && -n "$temp_suffix" && -f "$REGISTRY" ]] \
+        || die "mktemp returned an unsafe worktree registry path: ${REGISTRY:-<empty>}"
     if ! git worktree list --porcelain -z >"$REGISTRY"; then
         rm -f "$REGISTRY"
         die "could not inspect the worktree registry after remove failed"
@@ -163,25 +192,34 @@ cmd_done() {
     local WT="$PWD" TRUNK="" MSG="" PUSH=1 KEEP=0
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --dir)         WT="$2"; shift ;;
-            --trunk)       TRUNK="$2"; shift ;;
-            --message)     MSG="$2"; shift ;;
+            --dir)         [[ $# -ge 2 ]] || die "--dir requires a worktree path"; WT="$2"; shift ;;
+            --trunk)       [[ $# -ge 2 ]] || die "--trunk requires a branch"; TRUNK="$2"; shift ;;
+            --message)     [[ $# -ge 2 ]] || die "--message requires text"; MSG="$2"; shift ;;
             --no-push)     PUSH=0 ;;
             --keep-branch) KEEP=1 ;;
-            -h|--help)     usage 0 ;;
             *) die "unknown flag: $1" ;;
         esac
         shift
     done
     WT="$(git -C "$WT" rev-parse --show-toplevel)" || die "--dir is not inside a git repository"
-    local BRANCH; BRANCH="$(git -C "$WT" symbolic-ref --short -q HEAD)" \
-        || die "detached HEAD (clean a release worktree with 'git worktree remove' directly)"
+    [[ -z "$(git -C "$WT" status --porcelain)" ]] || die "worktree is dirty, commit/stash first:
+$(git -C "$WT" status --short | head -10)"
+    local BRANCH branch_rc=0
+    if BRANCH="$(git -C "$WT" symbolic-ref --short -q HEAD)"; then
+        :
+    else
+        branch_rc=$?
+        [[ $branch_rc -eq 1 ]] || die "could not resolve the worktree branch"
+        cd "$ROOT"
+        remove_done_worktree "$WT"
+        git worktree prune
+        log "done. removed clean detached release worktree: $WT"
+        return 0
+    fi
     case "$BRANCH" in
         main|master|release/*|maintenance/*)
             die "this is a trunk worktree ($BRANCH) — done only finishes feature/fix worktrees" ;;
     esac
-    [[ -z "$(git -C "$WT" status --porcelain)" ]] || die "worktree is dirty, commit/stash first:
-$(git -C "$WT" status --short | head -10)"
     [[ -n "$TRUNK" ]] || TRUNK="$TRUNK_DEFAULT"
     git -C "$ROOT" show-ref --verify -q "refs/heads/$TRUNK" || die "trunk '$TRUNK' does not exist, pass --trunk"
     local PD; PD="$(primary_dir_for_trunk "$TRUNK")"
@@ -220,7 +258,5 @@ case "$CMD" in
     new)       cmd_new "$@" ;;
     release)   cmd_release "$@" ;;
     done)      cmd_done "$@" ;;
-    list)      git worktree list ;;
-    -h|--help) usage 0 ;;
-    *) die "unknown subcommand: $CMD (new/done/release/list)" ;;
+    list)      [[ $# -eq 0 ]] || die "list accepts no arguments"; git worktree list ;;
 esac

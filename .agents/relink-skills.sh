@@ -12,7 +12,11 @@
 set -euo pipefail
 
 usage() { sed -n '2,10p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
-case "${1:-}" in -h | --help) usage 0 ;; "") ;; *) usage 2 ;; esac
+case "$#" in
+  0) ;;
+  1) case "$1" in -h | --help) usage 0 ;; *) usage 2 ;; esac ;;
+  *) usage 2 ;;
+esac
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 manager="$repo_root/.agents/symlink-manager.py"

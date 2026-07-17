@@ -1,27 +1,44 @@
-# Release Changelog
+# Release Notes and Committed Changelogs
 
-Read this when creating, updating, or extracting a release section from CHANGELOG.md.
+Read this when the repository maintains a committed changelog or direct publication needs a
+prepared release-notes file. Skip it when an existing workflow owns note generation end to end.
 
-## CHANGELOG.md
+## Detect the release-note authority
 
-### Location and header
+Inspect release docs, existing changelog or fragment directories, and tag workflows before
+editing. The repository's existing release-note contract wins:
 
-`<repo-root>/CHANGELOG.md`. Create it if missing with this header (then add releases below it, newest first):
+- update its committed changelog in its current location and format;
+- add or compile fragments through the repository's documented tool;
+- let the tag workflow or forge generate notes when that is the established owner; or
+- prepare a temporary notes file for direct publication without committing a new doc system.
+
+Do not create `CHANGELOG.md` solely because this skill ran. Create or adopt a committed changelog
+only when repository policy, the user, or an existing publication consumer requires it.
+
+## Build the selected notes
+
+Use the planner's `release_notes_base` through `HEAD` range. Group commits according to the
+repository's format and preserve user-facing wording, required issue links, migration impact,
+and breaking-change notices. Omit internal-only detail unless the project normally publishes it.
+
+For a stable promotion after same-version prereleases, follow
+[`prerelease-promotion.md`](prerelease-promotion.md): consolidate the full previous-stable-to-HEAD
+range when the committed changelog model needs one final section.
+
+## Fallback committed changelog
+
+Use this only when the project explicitly chooses a committed changelog but has no established
+shape. Place it at the project-selected path; `<repo-root>/CHANGELOG.md` is a conventional fallback,
+not a required location.
 
 ```markdown
 # Changelog
 
-All notable changes to this project are documented here. Format roughly follows
-[Keep a Changelog](https://keepachangelog.com/), with conventional-commit grouping.
-```
-
-### Per-release entry
-
-```markdown
 ## [vX.Y.Z] — YYYY-MM-DD
 
 ### ⚠ Breaking
-- <short description of the breaking change and its impact>
+- <impact and migration note>
 
 ### Added
 - <feat subject> (`<short-hash>`)
@@ -30,40 +47,15 @@ All notable changes to this project are documented here. Format roughly follows
 - <fix subject> (`<short-hash>`)
 
 ### Changed
-- <refactor / perf subject> (`<short-hash>`)
-
-### Docs
-- <docs subject> (`<short-hash>`)
-
-### Chore
-- <chore / build / test / style / ci subject> (`<short-hash>`)
+- <refactor or perf subject> (`<short-hash>`)
 ```
 
-Rules:
+- Omit empty sections and add project-relevant sections such as Docs or Chore only when useful.
+- Keep one canonical release section and preserve the file's existing newest-first/oldest-first order.
+- Use an unambiguous Git short hash; do not hard-code seven characters when repository scale
+  requires a longer abbreviation.
+- Insert with a bounded edit; never overwrite an existing changelog wholesale.
 
-- Type → section: `feat`→Added, `fix`→Fixed, `refactor`/`perf`→Changed, `docs`→Docs, `chore`/`build`/`test`/`style`/`ci`→Chore. Breaking changes get the top **⚠ Breaking** section.
-- **Omit empty sections** (no `_(none)_` placeholders).
-- Keep the subject verbatim, including scope (`fix(api): …` stays `fix(api): …`).
-- 7-char short hash (`git rev-parse --short`).
-- Within a section, newest commit first.
-
-### Write strategy
-
-Do not overwrite the whole file with `>`:
-
-1. Read the current `CHANGELOG.md` (if absent, create with header + this entry).
-2. Use an edit that keeps the header block intact and inserts the new section **immediately after the header**, above the previous newest release.
-
-### Extract one version's section (release-note contract)
-
-A tag-triggered release CI — or a `--notes-file` body — pulls just the current version's block out of `CHANGELOG.md`. The stable contract is "from `## [vX.Y.Z]` up to the next `## [`":
-
-```bash
-awk -v v="vX.Y.Z" '
-  $0 ~ "^## \\[" v "\\]" { p=1; print; next }
-  p && /^## \[/          { exit }
-  p                      { print }
-' CHANGELOG.md > release-notes.md
-```
-
-Keep the heading shape exactly `## [vX.Y.Z] — YYYY-MM-DD` so this extraction — and common GitHub release actions / GitLab `release:` jobs — reliably finds the block.
+If a consumer adopts this fallback heading, extract one version from `## [vX.Y.Z]` to the next
+`## [` into a temporary notes file. Otherwise use the consumer's actual parser contract rather
+than reshaping the changelog merely to fit this example.

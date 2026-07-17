@@ -33,16 +33,20 @@ die()  { printf '%s[harness] ABORT:%s %s\n' "$c_red" "$c_off" "$*" >&2; exit 2; 
 usage() { sed -n '2,/^# ---8<---/p' "$0" | sed '/^# ---8<---/d; s/^# \?//'; exit "${1:-0}"; }
 
 [[ $# -ge 1 ]] || usage 2
+if [[ "$1" == -h || "$1" == --help ]]; then
+  [[ $# -eq 1 ]] || usage 2
+  usage 0
+fi
 MODE="$1"
 shift
 case "$MODE" in
   apply|plan|doctor|verify|upgrade) ;;
-  -h|--help) usage 0 ;;
   *) die "unknown mode: $MODE (apply|plan|doctor|verify|upgrade)" ;;
 esac
 
 PROFILE=default
 JSON_OUTPUT=0
+HELP_OUTPUT=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --profile)
@@ -52,7 +56,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --profile=*) PROFILE="${1#*=}" ;;
     --json) JSON_OUTPUT=1 ;;
-    -h|--help) usage 0 ;;
+    -h|--help) HELP_OUTPUT=1 ;;
     *) die "unknown flag: $1" ;;
   esac
   shift
@@ -61,6 +65,7 @@ case "$PROFILE" in default|light) ;; *) die "unknown profile: $PROFILE (default|
 if [[ "$JSON_OUTPUT" == 1 ]]; then
   case "$MODE" in plan|doctor|verify) ;; *) die "--json is available only for plan, doctor, and verify" ;; esac
 fi
+[[ "$HELP_OUTPUT" == 0 ]] || usage 0
 
 WORKTREE_FLOW=1
 [[ "$PROFILE" == light ]] && WORKTREE_FLOW=0
@@ -70,8 +75,22 @@ FORCE_SCRIPTS=0
 TARGET="$(git rev-parse --show-toplevel 2>/dev/null)" \
   || die "not inside a git repository — run from within the target project"
 
-TMPDIR_H="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_H"' EXIT
+TEMP_PARENT="$(cd "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P)" \
+  || die "temporary-directory parent is unavailable: ${TMPDIR:-/tmp}"
+TEMP_PREFIX="${TEMP_PARENT%/}/agent-scaffold."
+TMPDIR_H="$(mktemp -d "${TEMP_PREFIX}XXXXXX")" \
+  || die "failed to create a temporary directory under $TEMP_PARENT"
+TEMP_SUFFIX="${TMPDIR_H#"$TEMP_PREFIX"}"
+[[ "$TMPDIR_H" == "$TEMP_PREFIX"* && -n "$TEMP_SUFFIX" && -d "$TMPDIR_H" ]] \
+  || die "mktemp returned an unsafe temporary directory: ${TMPDIR_H:-<empty>}"
+# shellcheck disable=SC2329  # invoked by the EXIT trap
+cleanup_temp_dir() {
+  local suffix="${TMPDIR_H#"$TEMP_PREFIX"}"
+  if [[ "$TMPDIR_H" == "$TEMP_PREFIX"* && -n "$suffix" && -d "$TMPDIR_H" ]]; then
+    rm -rf -- "$TMPDIR_H"
+  fi
+}
+trap cleanup_temp_dir EXIT
 
 PYTHON_CMD=()
 python_compatible() {
@@ -96,6 +115,7 @@ resolve_python() {
 run_python() { PYTHONUTF8=1 "${PYTHON_CMD[@]}" "$@"; }
 resolve_python || die "python 3.8+ is required (set PYTHON_BIN, or install python/python3/py -3)"
 run_core() { run_python "$CORE" --manifest "$MANIFEST" "$@"; }
+atomic_replace_file() { run_core files atomic-replace --source "$1" --target "$2"; }
 
 asset_field() {  # <asset-id> <field>
   run_core assets get --id "$1" --field "$2"
@@ -109,7 +129,7 @@ copy_script() {  # <source> <destination> <executable:0|1>
     cmp -s "$source" "$destination" \
       || die "${destination#"$TARGET"/}: managed runtime drift requires upgrade"
   else
-    cp "$source" "$destination"
+    atomic_replace_file "$source" "$destination"
   fi
   if [[ "$executable" == 1 ]]; then
     chmod +x "$destination" 2>/dev/null || true
@@ -119,19 +139,28 @@ copy_script() {  # <source> <destination> <executable:0|1>
 copy_if_missing() {  # <source> <destination>
   local source="$1" destination="$2"
   mkdir -p "$(dirname "$destination")"
-  [[ -e "$destination" ]] || cp "$source" "$destination"
+  [[ -e "$destination" ]] || atomic_replace_file "$source" "$destination"
 }
 
 ensure_line() {  # <file> <logical-line>
-  local file="$1" line="$2" matches
+  local file="$1" line="$2" matches=0 candidate
   mkdir -p "$(dirname "$file")"
-  touch "$file"
-  matches="$(tr '\r' '\n' < "$file" | grep -cxF "$line" || true)"
-  [[ "$matches" -gt 0 ]] && return
-  if [[ -s "$file" && -n "$(tail -c 1 "$file")" ]]; then
-    printf '\n' >> "$file"
+  if [[ -f "$file" ]]; then
+    matches="$(tr '\r' '\n' < "$file" | grep -cxF "$line" || true)"
   fi
-  printf '%s\n' "$line" >> "$file"
+  [[ "$matches" -gt 0 ]] && return
+  candidate="$(mktemp "$TMPDIR_H/ensure-line.XXXXXX")" \
+    || die "could not allocate a line-update candidate"
+  if [[ -f "$file" ]]; then
+    cp "$file" "$candidate"
+  else
+    : > "$candidate"
+  fi
+  if [[ -s "$candidate" && -n "$(tail -c 1 "$candidate")" ]]; then
+    printf '\n' >> "$candidate"
+  fi
+  printf '%s\n' "$line" >> "$candidate"
+  atomic_replace_file "$candidate" "$file"
 }
 
 prepare_hook_addition() {  # <source> <output>
@@ -147,7 +176,7 @@ write_hook_config() {  # <host-label> <existing-file> <addition-file> <host>
     log "$label hooks already wired (no change)"
   else
     mkdir -p "$(dirname "$existing")"
-    mv "$output" "$existing"
+    atomic_replace_file "$output" "$existing"
     ok "$label hooks wired → ${existing#"$TARGET"/}"
   fi
 }
@@ -171,7 +200,7 @@ ensure_agents_md() {
   render_agents_template > "$rendered"
   awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$rendered" > "$block"
   if [[ ! -e "$agents" ]]; then
-    cp "$rendered" "$agents"
+    atomic_replace_file "$rendered" "$agents"
     ok "AGENTS.md created with the managed harness block; project prose stays author-owned"
   elif grep -qF '<!-- agent-scaffold:start' "$agents"; then
     awk -v block_file="$block" '
@@ -183,12 +212,14 @@ ensure_agents_md() {
     if cmp -s "$agents" "$candidate"; then
       log "AGENTS.md harness block already current (no change)"
     else
-      mv "$candidate" "$agents"
+      atomic_replace_file "$candidate" "$agents"
       log "AGENTS.md harness block refreshed (project prose preserved)"
     fi
   else
-    printf '\n' >> "$agents"
-    cat "$block" >> "$agents"
+    cp "$agents" "$candidate"
+    printf '\n' >> "$candidate"
+    cat "$block" >> "$candidate"
+    atomic_replace_file "$candidate" "$agents"
     ok "AGENTS.md exists — appended the harness block (review placement)"
   fi
 }
@@ -223,7 +254,7 @@ do_install() {
   log "target repo: $TARGET   mode: $MODE   profile: $PROFILE"
 
   if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then
-    cp "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
+    atomic_replace_file "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
     cmp -s "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md" \
       || die "could not adopt CLAUDE.md prose into AGENTS.md byte-for-byte"
     adopted_claude=1

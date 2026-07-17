@@ -9,7 +9,7 @@ bash -n <script.sh>                 # shell syntax
 python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")' path/to/script.py  # python syntax, no bytecode file
 <script> --help                     # exit 0 + usage
 <script> --dry-run ...              # dangerous scripts: prove the no-op path
-bash manifest-check.sh <manifest>   # reconcile manifest vs disk (this skill's checker)
+bash <skill-dir>/scripts/manifest-check.sh <manifest>   # reconcile manifest vs disk
 rg -n '<old-path>' <docs> <skills> <units>   # after a move: no stale active references
 # plus any domain test the project already has
 ```

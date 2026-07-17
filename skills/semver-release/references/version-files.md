@@ -12,7 +12,7 @@ manifest that says `0.5.0` can occupy or mislabel the final version.
 |---|---|---|---|
 | Node | `package.json` version `1.2.0-beta.1` | `1.2.0` | update the package lock with the repository's package manager |
 | Rust | `Cargo.toml` version `1.2.0-beta.1` | `1.2.0` | let Cargo update `Cargo.lock` when the package is represented there |
-| Python | PEP 440 `1.2.0b1` (`alpha.N` → `aN`, `beta.N` → `bN`, `rc.N` → `rcN`) | `1.2.0` | update the authoritative static version field; respect dynamic-version tooling |
+| Python | PEP 440 `1.2.0b1` / `1.2.0rc1` (`alpha.N` → `aN`, `beta.N` → `bN`, `rc.N` → `rcN`) | `1.2.0` | update the authoritative static version field; respect dynamic-version tooling |
 | C/C++ (CMake) | keep `project(... VERSION 1.2.0)` numeric and update the repo's separate suffix field to `beta.1` | clear the suffix | stop and ask if the project has no defined suffix mechanism but ships prerelease artifacts |
 | generic `VERSION` | follow the repo's documented format; default to `1.2.0-beta.1` when it is package-facing | `1.2.0` | update any generated mirrors through their authoritative command |
 

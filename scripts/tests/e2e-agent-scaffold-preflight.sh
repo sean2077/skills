@@ -9,7 +9,11 @@
 set -uo pipefail
 
 usage() { sed -n '2,8p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
-case "${1:-}" in -h | --help) usage 0 ;; esac
+case "$#" in
+  0) ;;
+  1) case "$1" in -h | --help) usage 0 ;; *) usage 2 ;; esac ;;
+  *) usage 2 ;;
+esac
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 H="$repo/skills/agent-scaffold/agent-scaffold.sh"
@@ -57,7 +61,22 @@ no_generated_harness() {
   done
 }
 
-work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+temp_parent="$(cd "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P)" \
+  || { echo "temporary-directory parent is unavailable: ${TMPDIR:-/tmp}" >&2; exit 1; }
+temp_prefix="${temp_parent%/}/agent-scaffold-preflight."
+work="$(mktemp -d "${temp_prefix}XXXXXX")" \
+  || { echo "failed to create temporary directory under $temp_parent" >&2; exit 1; }
+temp_suffix="${work#"$temp_prefix"}"
+[ "$work" != "$temp_suffix" ] && [ -n "$temp_suffix" ] && [ -d "$work" ] \
+  || { echo "mktemp returned an unsafe temporary directory: ${work:-<empty>}" >&2; exit 1; }
+# shellcheck disable=SC2329  # invoked by the EXIT trap
+cleanup() {
+  local suffix="${work#"$temp_prefix"}"
+  if [ "$work" != "$suffix" ] && [ -n "$suffix" ] && [ -d "$work" ]; then
+    rm -rf -- "$work"
+  fi
+}
+trap cleanup EXIT
 echo "== generator CLI rejects unknown options before help or writes =="
 GOPT="$work/generator-options"; mkdir -p "$GOPT/.agents/tools"
 cp "$repo/.agents/tools/generate-subagents.py" "$GOPT/.agents/tools/generate-subagents.py"
@@ -753,15 +772,15 @@ check "noncanonical extension explains lowercase"    grep -qF "host agent extens
 check "noncanonical extension writes no SSOT"         test ! -e "$P/.agents/subagents"
 check "noncanonical extension preserves host input"  test "$(git hash-object "$P/.claude/agents/alias.MD")" = "$alias_before"
 
-P="$work/projection-temp-conflict"; mkdir -p "$P/.claude/agents" "$P/.codex/agents/alpha.toml.tmp" "$P/.agents/tools"
-printf -- '---\nname: alpha\ndescription: temporary projection conflict\n---\n\nTEMP_CONFLICT_SENTINEL\n' > "$P/.claude/agents/alpha.md"
+P="$work/projection-temp-preservation"; mkdir -p "$P/.claude/agents" "$P/.codex/agents/alpha.toml.tmp" "$P/.agents/tools"
+printf -- '---\nname: alpha\ndescription: temporary projection preservation\n---\n\nTEMP_PRESERVATION_SENTINEL\n' > "$P/.claude/agents/alpha.md"
+printf 'unrelated project data\n' > "$P/.codex/agents/alpha.toml.tmp/sentinel.txt"
 cp "$repo/.agents/tools/generate-subagents.py" "$P/.agents/tools/generate-subagents.py"
-temp_before="$(git hash-object "$P/.claude/agents/alpha.md")"
-( cd "$P" && python .agents/tools/generate-subagents.py --import ) >"$work/projection-temp-conflict.out" 2>&1; rc=$?
-check "projection temp conflict exits nonzero"        test "$rc" != 0
-check "projection temp conflict names the path"      grep -qF ".codex/agents/alpha.toml.tmp: temporary write path already exists" "$work/projection-temp-conflict.out"
-check "projection temp conflict writes no SSOT"      test ! -e "$P/.agents/subagents"
-check "projection temp preserves host input"         test "$(git hash-object "$P/.claude/agents/alpha.md")" = "$temp_before"
+( cd "$P" && python .agents/tools/generate-subagents.py --import ) >"$work/projection-temp-preservation.out" 2>&1; rc=$?
+check "projection ignores unrelated legacy temp path" test "$rc" = 0
+check "projection writes adopted SSOT"               test -f "$P/.agents/subagents/alpha/metadata.json"
+check "projection writes Codex output"               test -f "$P/.codex/agents/alpha.toml"
+check "projection preserves unrelated temp directory" test -f "$P/.codex/agents/alpha.toml.tmp/sentinel.txt"
 
 P="$work/stale-path-conflict"; mkdir -p "$P/.agents/subagents/alpha" "$P/.claude/agents/orphan.md" "$P/.agents/tools"
 printf '%s\n' '{"name":"alpha","description":"stale path preflight"}' > "$P/.agents/subagents/alpha/metadata.json"

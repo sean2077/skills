@@ -13,7 +13,11 @@
 set -uo pipefail
 
 usage() { sed -n '2,11p' "$0" | sed 's/^# \?//'; exit "${1:-0}"; }
-case "${1:-}" in -h | --help) usage 0 ;; esac
+case "$#" in
+  0) ;;
+  1) case "$1" in -h | --help) usage 0 ;; *) usage 2 ;; esac ;;
+  *) usage 2 ;;
+esac
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 H="$repo/skills/agent-scaffold/agent-scaffold.sh"
@@ -64,7 +68,22 @@ no_generated_harness() {
   done
 }
 
-work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+temp_parent="$(cd "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P)" \
+  || { echo "temporary-directory parent is unavailable: ${TMPDIR:-/tmp}" >&2; exit 1; }
+temp_prefix="${temp_parent%/}/agent-scaffold-e2e."
+work="$(mktemp -d "${temp_prefix}XXXXXX")" \
+  || { echo "failed to create temporary directory under $temp_parent" >&2; exit 1; }
+temp_suffix="${work#"$temp_prefix"}"
+[ "$work" != "$temp_suffix" ] && [ -n "$temp_suffix" ] && [ -d "$work" ] \
+  || { echo "mktemp returned an unsafe temporary directory: ${work:-<empty>}" >&2; exit 1; }
+# shellcheck disable=SC2329  # invoked by the EXIT trap
+cleanup() {
+  local suffix="${work#"$temp_prefix"}"
+  if [ "$work" != "$suffix" ] && [ -n "$suffix" ] && [ -d "$work" ]; then
+    rm -rf -- "$work"
+  fi
+}
+trap cleanup EXIT
 S="$work/scratch space-雪"; mkdir -p "$S"
 git -C "$S" init -q -b main
 git -C "$S" config user.email t@t.t; git -C "$S" config user.name tester
@@ -72,6 +91,30 @@ git -C "$S" config core.symlinks true
 git -C "$S" config core.autocrlf true
 git -C "$S" config core.filemode false
 git -C "$S" commit -q --allow-empty -m init
+
+echo "== temporary-directory failures stop before target mutation =="
+MKTEMP_BIN="$work/mktemp-bin"; mkdir -p "$MKTEMP_BIN"
+cat > "$MKTEMP_BIN/mktemp" <<'EOF'
+#!/usr/bin/env bash
+case "${FAKE_MKTEMP_MODE:-fail}" in
+  fail) exit 37 ;;
+  unsafe) printf '%s\n' "$FAKE_MKTEMP_UNSAFE" ;;
+  *) exit 38 ;;
+esac
+EOF
+chmod +x "$MKTEMP_BIN/mktemp"
+temp_before="$(git -C "$S" status --porcelain=v1 --untracked-files=all)"
+( cd "$S" && PATH="$MKTEMP_BIN:$PATH" FAKE_MKTEMP_MODE=fail bash "$H" apply ) \
+  >"$work/mktemp-fail.out" 2>&1; rc=$?
+check "mktemp failure exits 2" test "$rc" = 2
+check "mktemp failure is explained" grep -qF "failed to create a temporary directory" "$work/mktemp-fail.out"
+check "mktemp failure leaves target unchanged" test "$(git -C "$S" status --porcelain=v1 --untracked-files=all)" = "$temp_before"
+( cd "$S" && PATH="$MKTEMP_BIN:$PATH" FAKE_MKTEMP_MODE=unsafe FAKE_MKTEMP_UNSAFE="$work" bash "$H" apply ) \
+  >"$work/mktemp-unsafe.out" 2>&1; rc=$?
+check "unsafe mktemp path exits 2" test "$rc" = 2
+check "unsafe mktemp path is explained" grep -qF "mktemp returned an unsafe temporary directory" "$work/mktemp-unsafe.out"
+check "unsafe mktemp path preserves E2E root" test -d "$S"
+check "unsafe mktemp path leaves target unchanged" test "$(git -C "$S" status --porcelain=v1 --untracked-files=all)" = "$temp_before"
 
 echo "== unsupported host: fail before mutation, never copy =="
 N="$work/no-links"; mkdir -p "$N"
@@ -292,12 +335,15 @@ P="$work/worktree-push-primary"
 Q="$work/worktree-push-peer"
 D="$P/.worktrees/develop-trunk"
 W="$P/.worktrees/push-retry"
-WT_HELPER="$repo/.agents/tools/worktree.sh"
 git init --bare -q "$R"
 git init -q -b main "$P"
 git -C "$P" config user.email t@t.t; git -C "$P" config user.name tester
+WT_HELPER="$P/.agents/tools/worktree.sh"
+mkdir -p "$(dirname "$WT_HELPER")"
+cp "$repo/skills/agent-scaffold/assets/runtime/worktree.sh" "$WT_HELPER"
+chmod +x "$WT_HELPER"
 printf 'base\n' > "$P/base.txt"
-git -C "$P" add base.txt && git -C "$P" commit -q -m "base"
+git -C "$P" add base.txt .agents/tools/worktree.sh && git -C "$P" commit -q -m "base"
 git -C "$P" remote add origin "$R"
 git -C "$P" push -q -u origin main
 main_oid="$(git -C "$P" rev-parse main)"
@@ -431,6 +477,66 @@ if [ "$symlink_rc" != 0 ]; then
   echo "FAIL: $fails agent-scaffold e2e assertion(s) failed"; exit 1
 fi
 
+echo "== managed directory symlinks cannot redirect writes outside the repo =="
+K="$work/managed-root-symlink"; OUTSIDE="$work/managed-root-outside"
+mkdir -p "$K/.claude" "$OUTSIDE"
+git -C "$K" init -q -b main
+git -C "$K" config user.email t@t.t; git -C "$K" config user.name tester
+git -C "$K" config core.symlinks true
+printf 'outside sentinel\n' > "$OUTSIDE/sentinel.txt"
+python - "$K" "$OUTSIDE" <<'PY'
+import os
+from pathlib import Path
+import sys
+
+root, outside = map(Path, sys.argv[1:])
+os.symlink(
+    os.path.relpath(outside, root / ".claude"),
+    root / ".claude/skills",
+    target_is_directory=True,
+)
+PY
+git -C "$K" add -A && git -C "$K" commit -q -m "managed root symlink fixture"
+outside_before="$(git hash-object "$OUTSIDE/sentinel.txt")"
+( cd "$K" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" apply ) \
+  >"$work/managed-root-symlink.out" 2>&1; rc=$?
+check "managed root symlink exits 2" test "$rc" = 2
+check "managed root symlink is explicit" grep -qF "managed directory must not be a symlink" "$work/managed-root-symlink.out"
+check "managed root rejection precedes capability probe" \
+  no_fixed_text "$work/managed-root-symlink.out" "symlink capability denied by the test fixture"
+check "external sentinel survives managed root rejection" \
+  test "$(git hash-object "$OUTSIDE/sentinel.txt")" = "$outside_before"
+check "managed root rejection leaves repo unchanged" test -z "$(git -C "$K" status --porcelain --untracked-files=all)"
+
+echo "== subagent generator rejects symlinked projection roots =="
+K="$work/generator-root-symlink"; OUTSIDE="$work/generator-root-outside"
+mkdir -p "$K/.agents/tools" "$K/.agents/subagents/alpha" "$K/.claude" "$K/.codex" "$OUTSIDE"
+cp "$repo/skills/agent-scaffold/assets/runtime/generate-subagents.py" "$K/.agents/tools/generate-subagents.py"
+printf '%s\n' '{"name":"alpha","description":"root containment fixture"}' > "$K/.agents/subagents/alpha/metadata.json"
+printf 'CONTAINED_SOURCE\n' > "$K/.agents/subagents/alpha/instructions.md"
+printf 'outside sentinel\n' > "$OUTSIDE/sentinel.txt"
+python - "$K" "$OUTSIDE" <<'PY'
+import os
+from pathlib import Path
+import sys
+
+root, outside = map(Path, sys.argv[1:])
+os.symlink(
+    os.path.relpath(outside, root / ".codex"),
+    root / ".codex/agents",
+    target_is_directory=True,
+)
+PY
+outside_before="$(git hash-object "$OUTSIDE/sentinel.txt")"
+( cd "$K" && python .agents/tools/generate-subagents.py ) \
+  >"$work/generator-root-symlink.out" 2>&1; rc=$?
+check "generator symlinked root exits nonzero" test "$rc" != 0
+check "generator symlinked root is explicit" \
+  grep -qF ".codex/agents: managed directory must not be a symlink" "$work/generator-root-symlink.out"
+check "generator leaves external sentinel byte-identical" \
+  test "$(git hash-object "$OUTSIDE/sentinel.txt")" = "$outside_before"
+check "generator writes no sibling projection" test ! -e "$K/.claude/agents/alpha.md"
+
 echo "== symlinked hook configs: reject before capability probe or mutation =="
 K="$work/symlinked-hook-config"; mkdir -p "$K/.claude" "$K/shared"
 git -C "$K" init -q -b main
@@ -537,6 +643,32 @@ check "resident skill README routes to depth" grep -qF 'references/harness-layou
 check "resident subagent README stays thin" test "$(wc -l < "$S/.agents/subagents/README.md" | tr -d ' ')" -le 26
 check "resident subagent README routes to example" grep -qF 'references/subagents.md' "$S/.agents/subagents/README.md"
 
+echo "== installed command entry points fail closed =="
+( cd "$S" && bash "$H" --help --not-a-real-option ) >"$work/harness-help-unknown.out" 2>&1; rc=$?
+check "harness help does not mask unknown arguments" test "$rc" = 2
+( cd "$S" && bash "$H" apply --help --not-a-real-option ) >"$work/harness-mode-help-unknown.out" 2>&1; rc=$?
+check "mode help does not mask unknown arguments" test "$rc" = 2
+( cd "$S" && bash "$H" apply --help ) >/dev/null 2>&1; rc=$?
+check "pure mode help exits 0" test "$rc" = 0
+WT_CLI="$S/.agents/tools/worktree.sh"
+for args in \
+  "--help --not-a-real-option" \
+  "list unexpected" \
+  "release HEAD unexpected" \
+  "new --type" \
+  "done --dir"; do
+  # shellcheck disable=SC2086  # deliberate argument-vector fixtures
+  ( cd "$S" && bash "$WT_CLI" $args ) >"$work/worktree-invalid.out" 2>&1; rc=$?
+  check "worktree rejects invalid arguments: $args" test "$rc" = 2
+done
+( cd "$S" && bash "$WT_CLI" list --help ) >/dev/null 2>&1; rc=$?
+check "pure worktree subcommand help exits 0" test "$rc" = 0
+( cd "$S" && bash .agents/relink-skills.sh --help --not-a-real-option ) \
+  >"$work/relink-help-unknown.out" 2>&1; rc=$?
+check "relink help does not mask unknown arguments" test "$rc" = 2
+( cd "$S" && bash .agents/relink-skills.sh --help ) >/dev/null 2>&1; rc=$?
+check "pure relink help exits 0" test "$rc" = 0
+
 ( cd "$S" && bash "$H" plan --json ) >"$work/plan.json" 2>&1; rc=$?
 check "plan JSON exits 0" test "$rc" = 0
 check "plan JSON has stable schema and check fields" python - "$work/plan.json" <<'PY'
@@ -622,12 +754,49 @@ check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
 merge_subject="$(git -C "$S" log -1 --format=%s)"
 check "merge commit landed on main"          test "$merge_subject" = "Merge branch 'chore/demo'"
 
+echo "== detached release worktree uses guarded done cleanup =="
+release_out="$work/worktree-release-create.out"
+( cd "$S" && bash .agents/tools/worktree.sh release ':/harness' ) >"$release_out" 2>&1; rc=$?
+RELEASE_WT="$(sed -n 's/^.*ready: \(.*\)  (detached.*/\1/p' "$release_out" | tail -1)"
+check "release worktree creation exits 0" test "$rc" = 0
+check "release worktree is created" test -d "$RELEASE_WT"
+check "release worktree is detached" test -z "$(git -C "$RELEASE_WT" symbolic-ref -q HEAD 2>/dev/null)"
+case "$(basename "$RELEASE_WT")" in
+  *[!A-Za-z0-9._-]*) portable_release_path=0 ;;
+  *) portable_release_path=1 ;;
+esac
+check "release revision expression gets a portable basename" test "$portable_release_path" = 1
+release_cleanup_command="$(sed -n 's/^.*done: //p' "$release_out" | tail -1)"
+release_cleanup_command="${release_cleanup_command%$'\r'}"
+CANONICAL_S="$(git -C "$S" rev-parse --show-toplevel)"
+check "release cleanup command quotes helper path" \
+  grep -qF "bash \"$CANONICAL_S/.agents/tools/worktree.sh\"" "$release_out"
+check "release cleanup command quotes worktree path" \
+  grep -qF -- "--dir \"$RELEASE_WT\"" "$release_out"
+printf 'package output\n' > "$RELEASE_WT/package-output.txt"
+release_dirty_out="$work/worktree-release-dirty.out"
+bash -c "$release_cleanup_command" >"$release_dirty_out" 2>&1; rc=$?
+check "dirty release cleanup exits 2" test "$rc" = 2
+check "dirty release worktree remains" test -d "$RELEASE_WT"
+check "dirty release cleanup explains refusal" grep -qF "worktree is dirty" "$release_dirty_out"
+rm -f -- "$RELEASE_WT/package-output.txt"
+release_done_out="$work/worktree-release-done.out"
+bash -c "$release_cleanup_command" >"$release_done_out" 2>&1; rc=$?
+check "clean release cleanup exits 0" test "$rc" = 0
+check "clean release worktree is removed" test ! -d "$RELEASE_WT"
+check "release cleanup uses guarded path" grep -qF "removed clean detached release worktree" "$release_done_out"
+check "release workflow never recommends force removal" no_fixed_text "$release_out" "--force"
+
 echo "== worktree cleanup never force-deletes post-preflight data =="
 WS="$work/worktree-cleanup-safety"; mkdir -p "$WS"
 git -C "$WS" init -q -b main
 git -C "$WS" config user.email t@t.t; git -C "$WS" config user.name tester
+WS_WT_HELPER="$WS/.agents/tools/worktree.sh"
+mkdir -p "$(dirname "$WS_WT_HELPER")"
+cp "$repo/skills/agent-scaffold/assets/runtime/worktree.sh" "$WS_WT_HELPER"
+chmod +x "$WS_WT_HELPER"
 printf 'base\n' > "$WS/base.txt"
-git -C "$WS" add base.txt && git -C "$WS" commit -q -m base
+git -C "$WS" add base.txt .agents/tools/worktree.sh && git -C "$WS" commit -q -m base
 printf '.worktrees/\ntest-bin/\n' > "$WS/.git/info/exclude"
 mkdir -p "$WS/test-bin"
 cat > "$WS/test-bin/git" <<'SH'
@@ -652,7 +821,7 @@ exec "$REAL_GIT" "$@"
 SH
 chmod +x "$WS/test-bin/git"
 WT_REMOVE_LOG="$WS/.git/worktree-remove.log"; : > "$WT_REMOVE_LOG"
-( cd "$WS" && bash "$WT_HELPER" new partial-remove --type fix ) >/dev/null 2>&1
+( cd "$WS" && bash "$WS_WT_HELPER" new partial-remove --type fix ) >/dev/null 2>&1
 PARTIAL_WT="$WS/.worktrees/partial-remove"
 printf 'partial\n' > "$PARTIAL_WT/change.txt"
 git -C "$PARTIAL_WT" add change.txt && git -C "$PARTIAL_WT" commit -q -m "partial removal"
@@ -660,7 +829,7 @@ git -C "$PARTIAL_WT" add change.txt && git -C "$PARTIAL_WT" commit -q -m "partia
   cd "$WS" || exit 1
   REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
     PATH="$WS/test-bin:$PATH" SIMULATE_PARTIAL_REMOVE=1 \
-    bash "$WT_HELPER" "done" --dir "$PARTIAL_WT" --no-push
+    bash "$WS_WT_HELPER" "done" --dir "$PARTIAL_WT" --no-push
 ) >"$work/worktree-partial-remove.out" 2>&1; rc=$?
 check "unregistered partial removal still completes cleanup" test "$rc" = 0
 check "partial removal explains the unregistered state" grep -qF "already unregistered" "$work/worktree-partial-remove.out"
@@ -668,7 +837,7 @@ check "partial removal keeps non-empty residue" test -f "$PARTIAL_WT/locked-resi
 check "partial removal drops the merged branch" test -z "$(git -C "$WS" branch --list fix/partial-remove)"
 check "partial removal is absent from the registry" no_fixed_text <(git -C "$WS" worktree list --porcelain) "partial-remove"
 
-( cd "$WS" && bash "$WT_HELPER" new post-preflight --type fix ) >/dev/null 2>&1
+( cd "$WS" && bash "$WS_WT_HELPER" new post-preflight --type fix ) >/dev/null 2>&1
 POST_WT="$WS/.worktrees/post-preflight"
 printf 'post\n' > "$POST_WT/change.txt"
 git -C "$POST_WT" add change.txt && git -C "$POST_WT" commit -q -m "post-preflight write"
@@ -676,7 +845,7 @@ git -C "$POST_WT" add change.txt && git -C "$POST_WT" commit -q -m "post-preflig
   cd "$WS" || exit 1
   REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
     PATH="$WS/test-bin:$PATH" SIMULATE_POST_PREFLIGHT_WRITE=1 \
-    bash "$WT_HELPER" "done" --dir "$POST_WT" --no-push
+    bash "$WS_WT_HELPER" "done" --dir "$POST_WT" --no-push
 ) >"$work/worktree-post-preflight.out" 2>&1; rc=$?
 check "post-preflight data aborts worktree cleanup" test "$rc" = 2
 check "post-preflight data survives" test -f "$POST_WT/precious-untracked.txt"
@@ -684,6 +853,30 @@ check "registered failure keeps the feature branch" test -n "$(git -C "$WS" bran
 check "registered failure remains in the registry" grep -qF "post-preflight" <(git -C "$WS" worktree list --porcelain)
 check "registered failure explains force-removal refusal" grep -qF "refusing force removal" "$work/worktree-post-preflight.out"
 check "cleanup never invokes worktree remove --force" no_fixed_text "$WT_REMOVE_LOG" "--force"
+
+( cd "$WS" && bash "$WS_WT_HELPER" new unsafe-registry --type fix ) >/dev/null 2>&1
+UNSAFE_REGISTRY_WT="$WS/.worktrees/unsafe-registry"
+printf 'registry\n' > "$UNSAFE_REGISTRY_WT/change.txt"
+git -C "$UNSAFE_REGISTRY_WT" add change.txt && git -C "$UNSAFE_REGISTRY_WT" commit -q -m "unsafe registry temp"
+registry_sentinel="$WS/.git/registry-sentinel.txt"
+printf 'must remain byte-identical\n' > "$registry_sentinel"
+registry_before="$(git hash-object "$registry_sentinel")"
+(
+  cd "$WS" || exit 1
+  REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
+    PATH="$MKTEMP_BIN:$WS/test-bin:$PATH" SIMULATE_POST_PREFLIGHT_WRITE=1 \
+    FAKE_MKTEMP_MODE=unsafe FAKE_MKTEMP_UNSAFE="$registry_sentinel" \
+    bash "$WS_WT_HELPER" "done" --dir "$UNSAFE_REGISTRY_WT" --no-push
+) >"$work/worktree-unsafe-registry.out" 2>&1; rc=$?
+check "unsafe registry temp exits 2" test "$rc" = 2
+check "unsafe registry temp is rejected" \
+  grep -qF "mktemp returned an unsafe worktree registry path" "$work/worktree-unsafe-registry.out"
+check "unsafe registry temp preserves sentinel" \
+  test "$(git hash-object "$registry_sentinel")" = "$registry_before"
+check "unsafe registry temp keeps post-preflight data" \
+  test -f "$UNSAFE_REGISTRY_WT/precious-untracked.txt"
+check "unsafe registry temp keeps registration" \
+  grep -qF "unsafe-registry" <(git -C "$WS" worktree list --porcelain)
 
 echo "== trunk guard: block on main + escape hatch =="
 g="$S/.agents/tools/hooks/trunk_edit_guard.sh"
@@ -743,10 +936,14 @@ rm -rf "$S/docs/budget-fixture"
 echo "== relink coexistence with an npx-installed skill =="
 mkdir -p "$S/.agents/skills/proj-skill"; printf -- '---\nname: proj-skill\n---\n' > "$S/.agents/skills/proj-skill/SKILL.md"
 mkdir -p "$S/.claude/skills/vendor-skill"; echo x > "$S/.claude/skills/vendor-skill/SKILL.md"
+mkdir -p "$S/.claude/skills/.proj-skill.agent-scaffold-link"
+printf 'unrelated project data\n' > "$S/.claude/skills/.proj-skill.agent-scaffold-link/sentinel.txt"
 ( cd "$S" && bash .agents/relink-skills.sh ) >/dev/null 2>&1
 check "project skill symlinked into .claude/skills" test -L "$S/.claude/skills/proj-skill"
 { test -d "$S/.claude/skills/vendor-skill" && ! test -L "$S/.claude/skills/vendor-skill"; }; rc=$?
 check "npx-installed real dir left untouched" test "$rc" = 0
+check "legacy temp-name directory left untouched" \
+  test -f "$S/.claude/skills/.proj-skill.agent-scaffold-link/sentinel.txt"
 
 echo "== relink: capability loss fails without a copy or vendor mutation =="
 rm -rf "$S/.claude/skills/proj-skill"

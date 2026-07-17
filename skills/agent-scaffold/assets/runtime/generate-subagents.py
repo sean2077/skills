@@ -14,7 +14,9 @@
 import json
 import os
 import re
+import stat
 import sys
+import tempfile
 
 ROOT = os.path.abspath(
     (os.environ.get("AGENT_SCAFFOLD_PREFLIGHT_REPO") if "--preflight-import" in sys.argv[1:] else None)
@@ -52,11 +54,25 @@ def write_text(p, content):
     # newline="\n": never let text mode translate to CRLF on Windows. The repo is
     # LF-only (.gitattributes + CI CRLF check) and read_text() normalizes CRLF->LF
     # before --check compares, so a CRLF write would be a silent false-green.
-    # tmp + os.replace makes the write atomic (no half-file on a crash mid-write).
-    tmp = p + ".tmp"
-    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
-        f.write(content)
-    os.replace(tmp, p)
+    # A unique sibling + os.replace makes the write atomic without claiming a
+    # deterministic project-owned temp path.
+    mode = stat.S_IMODE(os.stat(p).st_mode) if os.path.isfile(p) else 0o644
+    descriptor, tmp = tempfile.mkstemp(
+        prefix=".%s.agent-scaffold-" % os.path.basename(p),
+        dir=os.path.dirname(p),
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, p)
+    finally:
+        try:
+            os.remove(tmp)
+        except FileNotFoundError:
+            pass
 
 
 def rel(p):
@@ -233,6 +249,7 @@ def jstr(s):
 
 
 def load_subagents():
+    preflight_directory(SOURCE_DIR)
     if os.path.lexists(SOURCE_DIR) and not is_dir(SOURCE_DIR):
         raise SystemExit("%s: expected a directory" % rel(SOURCE_DIR))
     if not is_dir(SOURCE_DIR):
@@ -246,12 +263,17 @@ def load_subagents():
             continue
         if name.startswith("_"):
             continue
+        if os.path.islink(d):
+            raise SystemExit("%s: managed source directory must not be a symlink" % rel(d))
         if not is_dir(d):
             raise SystemExit("%s: expected a directory" % rel(d))
         meta_path = os.path.join(d, "metadata.json")
         instr_path = os.path.join(d, "instructions.md")
         if not os.path.exists(meta_path) or not os.path.exists(instr_path):
             raise SystemExit("subagent '%s' is missing metadata.json or instructions.md" % name)
+        for source_path in (meta_path, instr_path):
+            if os.path.islink(source_path) or not os.path.isfile(source_path):
+                raise SystemExit("%s: expected a regular non-symlink file" % rel(source_path))
         try:
             meta = json.loads(read_text(meta_path))
         except ValueError as e:
@@ -345,6 +367,8 @@ def host_agent_paths(directory, extension):
         if filename.endswith(extension):
             name = filename[: -len(extension)]
             validate_agent_name(name, "%s filename" % rel(path))
+            if os.path.islink(path):
+                raise SystemExit("%s: managed projection must not be a symlink" % rel(path))
             paths.append(path)
     return paths
 
@@ -705,10 +729,20 @@ def validate_unique_names(subagents):
 
 
 def preflight_directory(path):
+    root = os.path.abspath(ROOT)
     current = os.path.abspath(path)
-    while current != ROOT:
-        if os.path.lexists(current) and not is_dir(current):
-            raise SystemExit("%s: expected a directory" % rel(current))
+    try:
+        inside = os.path.commonpath((root, current)) == root
+    except ValueError:
+        inside = False
+    if not inside:
+        raise SystemExit("managed path escapes the repository: %s" % path)
+    while current != root:
+        if os.path.lexists(current):
+            if os.path.islink(current):
+                raise SystemExit("%s: managed directory must not be a symlink" % rel(current))
+            if not is_dir(current):
+                raise SystemExit("%s: expected a directory" % rel(current))
         parent = os.path.dirname(current)
         if parent == current:
             break
@@ -746,9 +780,6 @@ def preflight_projection_targets(wanted, adopted_paths):
                     "%s: hand-authored projection conflicts with existing .agents/subagents/%s; "
                     "resolve or remove it before projection" % (rel(path), name)
                 )
-        temporary = path + ".tmp"
-        if os.path.lexists(temporary):
-            raise SystemExit("%s: temporary write path already exists" % rel(temporary))
 
 
 def preflight_stale(stale):
