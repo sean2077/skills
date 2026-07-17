@@ -13,7 +13,6 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 | `worktree.sh` | `.agents/tools/worktree.sh` | default profile only: worktree-per-change lifecycle (new/done/release/list) |
 | `trunk_edit_guard.sh` | `.agents/tools/hooks/trunk_edit_guard.sh` | default profile only: PreToolUse trunk-edit blocker (dual-host `proj=` resolver) |
 | `authority_doc_budget.sh` | `.agents/tools/hooks/authority_doc_budget.sh` | PostToolUse AGENTS.md line-budget advisor |
-| `format_on_edit.sh` | `.agents/tools/hooks/format_on_edit.sh` | PostToolUse formatter (default Prettier; env-overridable) |
 | `hook-common.sh` + `hook-paths.py` | `.agents/tools/hooks/` | shared Python JSON parser + Git Bash/native path normalization |
 | `relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
 | `symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, migration, sync, and verification |
@@ -28,6 +27,10 @@ it installs. The installer (`harness-init.sh`) reads from `templates/` and write
 | `subagent.metadata.json` + `subagent.instructions.md` | `.agents/subagents/code-reviewer/` (init) | deletable example, exercises the source → projection round-trip |
 | `husky.pre-commit` | merged into `.husky/pre-commit` (npm/husky projects) | only the `--check` drift line is harness-owned |
 | `gitignore.snippet` | appended to `.gitignore` | always `.claude/settings.local.json`; default profile also adds `.worktrees/` and `.claude/allow-trunk-edit` |
+
+Formatter, linter, test, and code-generation hooks are project policy rather than bundled runtime.
+Keep their implementations outside `.agents/tools/` and wire them as user-owned hook entries; see
+[host integration](host-integration.md#project-owned-formatting-hooks).
 
 The vendored scripts derive their own paths (git-common-dir / `$BASH_SOURCE`), so they are
 layout-independent once they land at the paths above. **They are intentionally tuned for the

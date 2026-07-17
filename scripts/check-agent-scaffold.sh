@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-agent-scaffold.sh — quality gate for the agent-scaffold skill.
 #
-# Asserts the bundled scripts are syntactically valid and that the three hook
+# Asserts the bundled scripts are syntactically valid and that the two hook
 # scripts share the `.agents/tools/hooks/` install-depth resolver — `proj` three
 # levels up plus a `git rev-parse --show-toplevel` fallback — and keep the
 # Bash-3.2/real-symlink cross-platform contract.
@@ -37,7 +37,7 @@ else
 fi
 
 # 3. hooks must source the shared runtime; it owns the 3-level + git fallback
-for h in trunk_edit_guard authority_doc_budget format_on_edit; do
+for h in trunk_edit_guard authority_doc_budget; do
   f="$sk/templates/$h.sh"
   [ -f "$f" ] || { fail "missing hook template: $h.sh"; continue; }
   grep -qF 'hook-common.sh' "$f" || fail "$h.sh does not source hook-common.sh"
@@ -74,7 +74,11 @@ fi
 # dispatch (Windows commonly checks files out with core.filemode=false).
 for cfg in claude.settings.json codex.hooks.json; do
   grep -q '"command": "bash ' "$sk/templates/$cfg" || fail "$cfg does not invoke hooks via bash"
+  ! grep -qF 'format_on_edit.sh' "$sk/templates/$cfg" \
+    || fail "$cfg still wires the retired managed formatter hook"
 done
+[ ! -e "$sk/templates/format_on_edit.sh" ] \
+  || fail "retired format_on_edit.sh still ships as a template"
 grep -q -- '--no-worktree' "$sk/harness-init.sh" || fail "harness-init.sh lost the lightweight profile flag"
 grep -qF '<!-- agent-scaffold:worktree:start -->' "$sk/templates/AGENTS.root.md" \
   || fail "AGENTS.root.md lost the optional worktree policy boundary"
@@ -105,7 +109,6 @@ if [ -d "$repo/.agents/tools" ]; then
     "worktree.sh:.agents/tools/worktree.sh" \
     "trunk_edit_guard.sh:.agents/tools/hooks/trunk_edit_guard.sh" \
     "authority_doc_budget.sh:.agents/tools/hooks/authority_doc_budget.sh" \
-    "format_on_edit.sh:.agents/tools/hooks/format_on_edit.sh" \
     "hook-common.sh:.agents/tools/hooks/hook-common.sh" \
     "hook-paths.py:.agents/tools/hooks/hook-paths.py" \
     "relink-skills.sh:.agents/relink-skills.sh" \
@@ -125,6 +128,8 @@ if [ -d "$repo/.agents/tools" ]; then
         ;;
     esac
   done
+  [ ! -e "$repo/.agents/tools/hooks/format_on_edit.sh" ] \
+    || fail "dogfood harness retains the retired managed formatter hook"
 fi
 
 # 6. subagent projection drift: this repo dogfoods the generator, so CI stands in for the

@@ -11,6 +11,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `agent-scaffold` now installs its shared runtime under `.agents/tools/` instead of
   `tools/agent/`. `upgrade` performs a hard-cut migration of known managed files and
   references; no compatibility wrappers are installed.
+- `agent-scaffold` no longer installs or wires a generic format-on-edit hook. `upgrade`
+  removes the retired managed runtime and wiring; formatter hooks are now project-owned
+  and documented as an on-demand integration recipe.
 
 ### Changed
 

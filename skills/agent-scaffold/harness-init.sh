@@ -16,7 +16,7 @@
 #
 # Flags:
 #   --no-worktree          omit the worktree lifecycle, trunk-edit guard, and managed worktree policy
-#   --no-format-hook        do not wire format_on_edit.sh; remove an older managed entry (script still copied)
+#   --no-format-hook        deprecated no-op; formatter hooks are project-owned
 #   --no-husky              do not set up the .husky/pre-commit drift guard
 #   --no-example-subagent   do not seed the example code-reviewer subagent (init)
 #   --example-subagent      seed it even on retrofit/upgrade
@@ -43,12 +43,12 @@ usage() { sed -n '2,/^# ---8<---/p' "$0" | sed '/^# ---8<---/d; s/^# \?//'; exit
 MODE="$1"; shift
 case "$MODE" in init|retrofit|plan|doctor|verify|upgrade) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|plan|doctor|verify|upgrade)";; esac
 
-WORKTREE_FLOW=1; FORMAT_HOOK=1; HUSKY=1; FORCE_SCRIPTS=0
+WORKTREE_FLOW=1; HUSKY=1; FORCE_SCRIPTS=0; LEGACY_NO_FORMAT_HOOK=0
 EXAMPLE_SUBAGENT="auto"   # auto → on for init, off otherwise
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-worktree) WORKTREE_FLOW=0 ;;
-    --no-format-hook) FORMAT_HOOK=0 ;;
+    --no-format-hook) LEGACY_NO_FORMAT_HOOK=1 ;;
     --no-husky) HUSKY=0 ;;
     --no-example-subagent) EXAMPLE_SUBAGENT=0 ;;
     --example-subagent) EXAMPLE_SUBAGENT=1 ;;
@@ -59,6 +59,8 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 [[ "$MODE" == upgrade ]] && FORCE_SCRIPTS=1
+[[ "$LEGACY_NO_FORMAT_HOOK" == 1 ]] && \
+  warn "--no-format-hook is deprecated and ignored; formatter hooks are now project-owned"
 if [[ "$EXAMPLE_SUBAGENT" == auto ]]; then
   [[ "$MODE" == init ]] && EXAMPLE_SUBAGENT=1 || EXAMPLE_SUBAGENT=0
 fi
@@ -174,8 +176,6 @@ with open(os.environ["HARNESS_ADD"]) as f:
 disabled = []
 if os.environ.get("HARNESS_ENABLE_WORKTREE") != "1":
     disabled.append("trunk_edit_guard")
-if os.environ.get("HARNESS_ENABLE_FORMAT") != "1":
-    disabled.append("format_on_edit")
 for event, groups in list(data.get("hooks", {}).items()):
     kept = []
     for group in groups or []:
@@ -325,7 +325,7 @@ merge_hooks() {
 prepare_hook_addition() {
   local src="$1" out="$2"
   HARNESS_ADD="$src" HARNESS_OUT="$out" \
-    HARNESS_ENABLE_WORKTREE="$WORKTREE_FLOW" HARNESS_ENABLE_FORMAT="$FORMAT_HOOK" \
+    HARNESS_ENABLE_WORKTREE="$WORKTREE_FLOW" \
     run_python -c "$PY_FILTER_HOOKS"
 }
 
@@ -414,6 +414,8 @@ if updated != content:
 }
 
 runtime_pairs() {
+  # format_on_edit.sh is retired. Keep its old path in the migration inventory
+  # for one compatibility cycle so upgrade can remove legacy installed copies.
   printf '%s\n' \
     "worktree.sh:worktree.sh" \
     "trunk_edit_guard.sh:hooks/trunk_edit_guard.sh" \
@@ -434,7 +436,7 @@ has_legacy_runtime() {
   return 1
 }
 
-legacy_hook_wiring_present() {
+stale_managed_hook_wiring_present() {
   local config
   for config in "$TARGET/.claude/settings.json" "$TARGET/.codex/hooks.json"; do
     [[ -f "$config" ]] || continue
@@ -460,8 +462,9 @@ try:
 except OSError:
     insensitive = False
 owned = re.compile(
-    r"(?:^|[/\s\"\x27;&|()<>])tools/agent/hooks/"
-    r"(?:trunk_edit_guard|authority_doc_budget|format_on_edit)\.sh"
+    r"(?:^|[/\s\"\x27;&|()<>])(?:"
+    r"tools/agent/hooks/(?:trunk_edit_guard|authority_doc_budget|format_on_edit)\.sh"
+    r"|\.agents/tools/hooks/format_on_edit\.sh)"
     r"(?=$|[\s\"\x27;&|()<>])",
     re.IGNORECASE if insensitive else 0,
 )
@@ -521,7 +524,9 @@ raise SystemExit(0 if "tools/agent/" in managed else 1)
 
 has_legacy_managed_installation() {
   has_legacy_runtime && return 0
-  legacy_hook_wiring_present && return 0
+  stale_managed_hook_wiring_present && return 0
+  [[ -e "$TARGET/$RUNTIME_ROOT/hooks/format_on_edit.sh" \
+    || -L "$TARGET/$RUNTIME_ROOT/hooks/format_on_edit.sh" ]] && return 0
   legacy_package_scripts_present && return 0
   legacy_managed_docs_present && return 0
   if [[ -f "$TARGET/.husky/pre-commit" ]] \
@@ -592,6 +597,14 @@ migrate_legacy_runtime() {
     rmdir "$TARGET/tools" 2>/dev/null || true
     ok "legacy $LEGACY_RUNTIME_ROOT runtime migrated to $RUNTIME_ROOT (no compatibility wrappers)"
   fi
+}
+
+remove_retired_format_hook() {
+  [[ "$MODE" == upgrade ]] || return 0
+  local retired="$TARGET/$RUNTIME_ROOT/hooks/format_on_edit.sh"
+  [[ -e "$retired" || -L "$retired" ]] || return 0
+  rm -f -- "$retired"
+  ok "retired managed format hook removed; project-owned hooks belong outside $RUNTIME_ROOT"
 }
 render_agents_template() {
   awk -v include_worktree="$WORKTREE_FLOW" '
@@ -792,6 +805,7 @@ do_install() {
 
   # 2. vendored scripts
   migrate_legacy_runtime
+  remove_retired_format_hook
   if [[ "$WORKTREE_FLOW" == 1 ]]; then
     copy_script "$TPL/worktree.sh"            "$TARGET/.agents/tools/worktree.sh"
     copy_script "$TPL/trunk_edit_guard.sh"    "$TARGET/.agents/tools/hooks/trunk_edit_guard.sh"
@@ -799,7 +813,6 @@ do_install() {
     log "worktree flow disabled — lifecycle script and trunk guard are not installed or refreshed"
   fi
   copy_script "$TPL/authority_doc_budget.sh" "$TARGET/.agents/tools/hooks/authority_doc_budget.sh"
-  copy_script "$TPL/format_on_edit.sh"      "$TARGET/.agents/tools/hooks/format_on_edit.sh"
   copy_script "$TPL/hook-common.sh"         "$TARGET/.agents/tools/hooks/hook-common.sh"
   copy_script "$TPL/hook-paths.py"          "$TARGET/.agents/tools/hooks/hook-paths.py"
   copy_script "$TPL/relink-skills.sh"       "$TARGET/.agents/relink-skills.sh"
@@ -1042,7 +1055,7 @@ do_verify() {
   local fails=0 pass="  ${c_green}✓${c_off}" fail="  ${c_red}✗${c_off}"
   log "verifying harness in $TARGET"
 
-  local required=".agents/tools/hooks/authority_doc_budget.sh .agents/tools/hooks/format_on_edit.sh \
+  local required=".agents/tools/hooks/authority_doc_budget.sh \
            .agents/tools/hooks/hook-common.sh .agents/tools/hooks/hook-paths.py \
            .agents/relink-skills.sh .agents/symlink-manager.py"
   if [[ "$WORKTREE_FLOW" == 1 ]]; then
@@ -1062,6 +1075,14 @@ do_verify() {
       fails=$((fails+1))
     fi
   done < <(runtime_pairs)
+
+  local retired_format="$TARGET/$RUNTIME_ROOT/hooks/format_on_edit.sh"
+  if [[ -e "$retired_format" || -L "$retired_format" ]]; then
+    printf '%s retired managed runtime remains: %s/hooks/format_on_edit.sh\n' "$fail" "$RUNTIME_ROOT"
+    fails=$((fails+1))
+  else
+    printf '%s retired managed format hook is absent\n' "$pass"
+  fi
 
   local cc_expected="$TMPDIR_H/verify-cc-add.json" cx_expected="$TMPDIR_H/verify-cx-add.json"
   prepare_hook_addition "$TPL/claude.settings.json" "$cc_expected"
@@ -1123,7 +1144,6 @@ do_verify() {
   for pair in "worktree.sh:.agents/tools/worktree.sh" \
               "trunk_edit_guard.sh:.agents/tools/hooks/trunk_edit_guard.sh" \
               "authority_doc_budget.sh:.agents/tools/hooks/authority_doc_budget.sh" \
-              "format_on_edit.sh:.agents/tools/hooks/format_on_edit.sh" \
               "hook-common.sh:.agents/tools/hooks/hook-common.sh" \
               "hook-paths.py:.agents/tools/hooks/hook-paths.py" \
               "relink-skills.sh:.agents/relink-skills.sh" \

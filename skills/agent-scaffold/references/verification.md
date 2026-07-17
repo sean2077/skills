@@ -24,9 +24,9 @@ jq -e '.hooks.PreToolUse[0].matcher=="Edit|MultiEdit|Write|NotebookEdit"' .claud
 jq -e '.hooks.PreToolUse[0].matcher=="Edit|Write|apply_patch"'              .codex/hooks.json
 grep -q '^\.worktrees/$' .gitignore
 
-# idempotent re-run — PostToolUse stays 2 hooks, not 4
+# idempotent re-run — the managed PostToolUse entry stays singular
 bash "$H" retrofit
-jq -e '[.hooks.PostToolUse[0].hooks[].command]|length==2' .claude/settings.json
+jq -e '[.hooks.PostToolUse[0].hooks[].command]|length==1' .claude/settings.json
 
 # retrofit-merge preserves a pre-existing user hook
 jq '.hooks.PreToolUse[0].hooks += [{"type":"command","command":"user-custom.sh"}]' .claude/settings.json > t && mv t .claude/settings.json

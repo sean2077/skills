@@ -58,7 +58,7 @@ point**, not a detail dump. `.agents/tools/hooks/authority_doc_budget.sh`
 | `.agents/subagents/<name>/{metadata.json,instructions.md}` | subagent source | ✅ |
 | `.claude/skills/<name>` | symlink → `.agents/skills/<name>` (CC discovery; Codex reads `.agents/` directly) | ✅ |
 | `.claude/agents/*.md`, `.codex/agents/*.toml` | **generated** subagent projections — do NOT hand-edit | ✅ |
-| `.agents/tools/hooks/` | shared hook impls (doc budget / format + optional trunk guard) | ✅ |
+| `.agents/tools/hooks/` | scaffold-managed hook runtime (doc budget + optional trunk guard) | ✅ |
 | `.agents/tools/worktree.sh` | worktree lifecycle | ✅ <!-- agent-scaffold:worktree-only --> |
 | `.claude/allow-trunk-edit` | worktree escape hatch | ❌ ignored <!-- agent-scaffold:worktree-only --> |
 | `.claude/settings.local.json` | personal overrides | ❌ ignored |
