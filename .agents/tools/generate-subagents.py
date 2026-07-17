@@ -27,10 +27,6 @@ DO_NOT_EDIT = (
     "Generated from .agents/subagents/%s; do not edit by hand. "
     "Run: python .agents/tools/generate-subagents.py"
 )
-LEGACY_DO_NOT_EDIT = (
-    "Generated from .agents/subagents/%s; do not edit by hand. "
-    "Run: python tools/agent/generate-subagents.py"
-)
 DUAL_HOST_NAME = re.compile(r"^[a-z]+(?:-[a-z]+)*$")
 WINDOWS_RESERVED_NAMES = {"con", "prn", "aux", "nul"}
 NICKNAME_CANDIDATE = re.compile(r"^[A-Za-z0-9 _-]+$")
@@ -68,16 +64,15 @@ def rel(p):
 
 
 def is_generated_projection(path, text):
-    """Recognize current or migration-only legacy position-bound ownership markers."""
+    """Recognize the current position-bound ownership marker."""
     name, ext = os.path.splitext(os.path.basename(path))
-    markers = [template.replace("%s", name) for template in (DO_NOT_EDIT, LEGACY_DO_NOT_EDIT)]
+    marker = DO_NOT_EDIT.replace("%s", name)
     if ext == ".toml":
-        return any(text.startswith("# %s\n" % marker) for marker in markers)
+        return text.startswith("# %s\n" % marker)
     if ext == ".md":
-        return any(
+        return (
             re.match(r"\A---\n[\s\S]*?\n---\n\n<!-- %s -->\n" % re.escape(marker), text)
             is not None
-            for marker in markers
         )
     return False
 

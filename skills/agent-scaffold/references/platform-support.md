@@ -37,7 +37,7 @@ this sequence before running a mutating installer mode:
    probes must pass:
 
    ```bash
-   bash <skill-dir>/harness-init.sh doctor
+   bash <skill-dir>/agent-scaffold.sh doctor
    ```
 
 4. If Git previously checked a tracked link out as a small target-text file, setting
@@ -58,12 +58,12 @@ this sequence before running a mutating installer mode:
    symlink. For installed harness skill projections, run `bash .agents/relink-skills.sh` after the
    doctor passes; it replaces recognized target-text placeholders but preserves real conflicts.
 
-5. Run the intended mutating mode (`init`, `retrofit`, or `upgrade`) with the selected profile
-   flags, then repeat those flags for verification. For example:
+5. Run the reported mutating mode (`apply` or `upgrade`) with the selected profile, then repeat the
+   profile for verification. For example:
 
    ```bash
-   bash <skill-dir>/harness-init.sh retrofit
-   bash <skill-dir>/harness-init.sh verify
+   bash <skill-dir>/agent-scaffold.sh apply --profile default
+   bash <skill-dir>/agent-scaffold.sh verify --profile default
    ```
 
    Link creation uses Python `os.symlink`, not MSYS `ln -s`. The installer pins vendored

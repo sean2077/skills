@@ -8,22 +8,38 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking
 
-- `agent-scaffold` now installs its shared runtime under `.agents/tools/` instead of
-  `tools/agent/`. `upgrade` performs a hard-cut migration of known managed files and
-  references; no compatibility wrappers are installed.
-- `agent-scaffold` no longer installs or wires a generic format-on-edit hook. `upgrade`
-  removes the retired managed runtime and wiring; formatter hooks are now project-owned
-  and documented as an on-demand integration recipe.
-- `agent-scaffold` now installs only harness-owned runtime and contract content. Generic
-  `code-reviewer` sources, Husky/`package.json` wiring, project overview prose, nested
-  `AGENTS.md` skeletons, and comment-only `.codex/config.toml` files are reference-only;
-  the resident skill/subagent READMEs are thin routers. Existing project-owned assets are
-  preserved, while `upgrade` rewrites only exact legacy subagent-generator callers.
+- `agent-scaffold` replaces the identical `init` / `retrofit` commands with one idempotent
+  `apply` mode. `--profile default|light` replaces the negative worktree selector, and
+  `upgrade` now refreshes only the current managed layout.
+- The single public entry point is now `agent-scaffold.sh`; the historical
+  `harness-init.sh` name is removed without an alias.
+- Old runtime-path migration, retired formatter cleanup, package/Husky caller rewrites,
+  deprecated no-op selection flags, and their verification fixtures are removed outright.
+  Current modes inspect and reconcile only the current harness contract.
+- `agent-scaffold` installs only harness-owned runtime and contract content. Formatter,
+  example-agent, hook-manager, package, CI, project prose, nested-contract, and Codex
+  settings choices remain project-owned reference recipes.
 
 ### Changed
 
 - Catalog skills now route on-demand depth through category-named `references/*.md`
   files instead of root-level catch-all `reference.md` documents.
+- `agent-scaffold` now uses an internal managed-assets manifest and a deterministic Python
+  core for asset resolution, hook JSON, and read-only reports while retaining one public
+  Bash entry point. Target assets live under `assets/`; installer internals live under
+  `scripts/`.
+- `plan`, `doctor`, and `verify` support schema-versioned `--json` output with stable check
+  IDs, statuses, paths, fixes, profile, and `plan.apply_mode`.
+- `plan` and mutation preflight now share one inspection model. `apply` rejects managed runtime
+  drift that requires `upgrade`, while `verify` checks the complete managed AGENTS block and
+  manifest-owned line invariants in addition to runtime, hooks, links, and projections.
+- The resident `SKILL.md` is reduced to routing, invariants, and workflow. Current retrofit
+  and diagnostic guidance is loaded on demand; maintainer E2E recipes no longer ship as
+  skill reference content.
+- Deterministic core behavior is covered by focused Python unit tests; generator/import and
+  conflict preflights live in an internal failure-domain suite, while the one public E2E command
+  remains responsible for real installation, symlink, worktree, hook, profile, and projection
+  interactions.
 
 ## [v1.0.0] — 2026-06-30
 

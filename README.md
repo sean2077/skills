@@ -35,7 +35,7 @@ If the skills were installed before the compatibility manifest existed, rerun th
 | [semver-release](skills/semver-release/) | Cut a semver release from conventional commits: infer the bump, update CHANGELOG + version file, tag, then hand off to tag-triggered release CI (or publish a GitHub/GitLab release directly). | Git, Release |
 | [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
 | [tooling-conventions](skills/tooling-conventions/) | Govern a project's `tools/`/`scripts/` directory at scale: surface taxonomy, failure-domain aggregation, placement tree, script contract, and a reconciliation-checked surface manifest. Ships `manifest-check.sh`. | Shell, Governance |
-| [agent-scaffold](skills/agent-scaffold/) | Install or retrofit a dual-host (Claude Code + Codex) agent harness: `.agents/` SSOT with mandatory real symlink projections, AGENTS.md/format/subagent governance, and a default-on worktree + trunk-guard workflow that lighter projects can omit with `--no-worktree`. Includes a preflight `doctor`; unsupported symlink hosts fail before mutation and never receive copy fallbacks. | Shell, Python, Governance |
+| [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, merge-owned hooks, subagent projection, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
 
 ## Structure
 
@@ -45,7 +45,7 @@ skills/
     ├── SKILL.md            # Single source of truth for every installer
     ├── references/         # Optional: category-named, on-demand detail (no catch-all document)
     │   └── <category>.md
-    └── *.sh / templates/   # Optional: scripts/templates a skill ships (agent-scaffold, tooling-conventions)
+    └── scripts/ / assets/  # Optional: deterministic helpers and output resources
 scripts/
 ├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 ├── test_validate_skills.py  # Focused fixtures for category reference routing and naming

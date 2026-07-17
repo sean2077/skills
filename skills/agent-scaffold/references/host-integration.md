@@ -1,6 +1,16 @@
 # Agent Scaffold Host Integration
 
-Read this only when changing hook behavior, Claude Code or Codex wiring, managed JSON reconciliation, trust, or project-owned hook integration.
+Read this only when changing managed hook behavior, Claude Code or Codex wiring, JSON
+reconciliation, or trust. For project-owned format-on-edit, read
+[format hooks](format-hooks.md).
+
+## Contents
+
+- [Hook semantics](#hook-semantics)
+- [Dual-host wiring](#dual-host-wiring)
+- [Hook configuration reconciliation](#hook-configuration-reconciliation)
+- [Codex trust gate](#codex-trust-gate)
+- [Integration troubleshooting](#integration-troubleshooting)
 
 ## Hook semantics
 
@@ -12,7 +22,7 @@ nested/sibling repos pass through; gitignored paths are exempt. A damaged/missin
 
 ### trunk_edit_guard.sh — PreToolUse, blocking
 
-- Installed and wired only by the default profile; `--no-worktree` removes the managed wiring.
+- Installed and wired only by `--profile default`; `--profile light` removes the managed wiring.
 - **Exit 0** allow · **exit 2** block (message on stderr) · any other exit = non-blocking error (fails open).
 - Blocks an edit to a file in a worktree whose branch is a **trunk** (`main` / `master` / `release/*` / `maintenance/*`), unless an escape hatch is active.
 - **Escape hatches** (only when the user explicitly authorizes a trunk edit):
@@ -34,7 +44,7 @@ The PreToolUse examples below describe the default worktree profile; the lightwe
 omits them entirely while retaining the authority-document PostToolUse hook.
 
 **Claude Code — `.claude/settings.json` shape** (the canonical full command strings live in
-`templates/claude.settings.json`):
+`assets/host/claude.settings.json`):
 
 ```json
 {
@@ -73,16 +83,14 @@ proj="$(hook_posix_path "$raw")"
 
 ## Hook configuration reconciliation
 
-Retrofit/upgrade must refresh our hook commands without clobbering user hooks or retaining stale
-N-1 strings. The Python reconciler parses JSON, removes only commands that invoke the exact owned
+Apply/upgrade refresh managed hook commands without clobbering user hooks. The Python reconciler
+parses JSON, removes only commands that invoke the exact owned
 paths under `.agents/tools/hooks/` (`trunk_edit_guard.sh` and `authority_doc_budget.sh`), then merges
-the current templates by event + matcher and deduplicates exact commands. The retired
-`format_on_edit.sh` identity remains cleanup-owned for one migration cycle: `upgrade` removes its
-old managed command, but no replacement is installed. Legacy launchers and path prefixes still
-reconcile; basename lookalikes elsewhere remain user-owned.
+the current assets by event + matcher and deduplicates exact commands. Basename lookalikes and
+every command outside those exact current paths remain project-owned.
 Case-equivalent spellings reconcile only when the target filesystem resolves them to the same
-installed hook; case-distinct paths remain user-owned. `--no-worktree` omits the guard and removes
-its older managed entries while leaving every user command and unrelated config key intact. Empty
+installed hook; case-distinct paths remain user-owned. `--profile light` omits the guard and removes
+its managed entry while leaving every user command and unrelated config key intact. Empty
 managed events are removed rather than written as empty matcher groups. Python is a harness
 prerequisite, so this path has no jq-dependent behavior or unsafe paste fallback.
 
@@ -127,36 +135,4 @@ only when the project needs actual settings.
   It converges owned identities while preserving user hooks.
 - **The trunk guard blocks every edit**: start a worktree with
   `bash .agents/tools/worktree.sh new <name>`. Use the two-hour escape hatch only with explicit
-  authorization, or select `upgrade --no-worktree` when the project does not use this governance.
-
-## Project-owned formatting hooks
-
-Agent Scaffold deliberately does **not** install or wire a formatter. Formatter selection, file
-scope, working directory, generated-file exclusions, monorepo routing, and failure policy vary by
-project and stay under that project's ownership.
-
-When format-on-edit is useful:
-
-1. Implement it at a project-owned path outside `.agents/tools/`, such as
-   `.agents/hooks/format-on-edit.sh` or an existing command under `tools/`.
-2. Let that implementation consume the raw tool-call JSON on stdin. It may source
-   `.agents/tools/hooks/hook-common.sh` and call `hook_extract_paths` for the scaffold's
-   cross-platform path parsing, but it owns every formatting decision.
-3. Add user-owned PostToolUse entries to both host configs. For example, after choosing
-   `.agents/hooks/format-on-edit.sh`:
-
-Claude Code command field:
-
-```json
-"command": "bash -lc 'root=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$root\" ] || root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; command -v cygpath >/dev/null 2>&1 && root=\"$(cygpath -u \"$root\")\"; bash \"$root/.agents/hooks/format-on-edit.sh\"'"
-```
-
-Codex command field:
-
-```json
-"command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null)\" || exit 0; bash \"$root/.agents/hooks/format-on-edit.sh\"'"
-```
-
-The installer preserves these commands because they do not target its managed
-`.agents/tools/hooks/` identities. Test and verify the formatter through the project's own gates;
-`agent-scaffold verify` checks only scaffold-owned runtime and wiring.
+  authorization, or select `apply --profile light` when the project does not use this governance.

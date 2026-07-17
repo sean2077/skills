@@ -9,7 +9,6 @@ exit 2 before the requested mutation starts.
 from __future__ import annotations
 
 import argparse
-import filecmp
 import os
 import shutil
 import subprocess
@@ -101,27 +100,13 @@ def within_repo(repo: Path, relative: str) -> Path:
     return candidate
 
 
-def trees_identical(left: Path, right: Path) -> bool:
-    if left.is_file() and right.is_file():
-        return filecmp.cmp(left, right, shallow=False)
-    if not left.is_dir() or not right.is_dir():
-        return False
-    comparison = filecmp.dircmp(left, right)
-    if comparison.left_only or comparison.right_only or comparison.funny_files:
-        return False
-    if any(not filecmp.cmp(left / name, right / name, shallow=False) for name in comparison.common_files):
-        return False
-    return all(trees_identical(left / name, right / name) for name in comparison.common_dirs)
-
-
-def safe_migration(link: Path, resolved_target: Path, target: str) -> bool:
+def is_target_text_placeholder(link: Path, target: str) -> bool:
     if link.is_file() and not link.is_symlink():
         try:
-            if link.read_text(encoding="utf-8").strip() == target:
-                return True
+            return link.read_text(encoding="utf-8").strip() == target
         except (OSError, UnicodeError):
-            pass
-    return trees_identical(link, resolved_target)
+            return False
+    return False
 
 
 def managed_skill_target(value: str) -> bool:
@@ -147,8 +132,8 @@ def validate_destination(
         raise ContractError(f"projection conflict: {link} is a symlink to {current!r}, expected {target!r}")
     if not link.exists():
         return "create"
-    if safe_migration(link, resolved_target, target):
-        return "migrate-copy"
+    if is_target_text_placeholder(link, target):
+        return "materialize-placeholder"
     raise ContractError(
         f"projection conflict: {link} exists and differs from the authoritative source; "
         "move or merge it manually"
@@ -281,18 +266,18 @@ def sync_skills(repo: Path) -> None:
                 stale.append(link)
 
     made = 0
-    migrated = 0
+    materialized = 0
     for link in stale:
         link.unlink()
     for link, source, target, action in planned:
         if create_relative_link(link, source, target, action):
             made += 1
-            if action == "migrate-copy":
-                migrated += 1
+            if action == "materialize-placeholder":
+                materialized += 1
 
     print(
         f"relink: {len(sources)} skills · {made} link(s) (re)created · "
-        f"{len(stale)} stale pruned · {migrated} legacy copy/copies migrated"
+        f"{len(stale)} stale pruned · {materialized} target-text placeholder(s) materialized"
     )
 
 

@@ -20,6 +20,7 @@ The CI gates must stay green — `.github/workflows/validate.yml` runs them on p
 python -m pip install -r requirements-validation.txt  # pinned StrictYAML + official skills-ref
 python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 python scripts/test_validate_skills.py # category-reference validation fixtures
+python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
 npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
