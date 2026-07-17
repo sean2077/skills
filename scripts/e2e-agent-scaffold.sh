@@ -74,9 +74,11 @@ temp_prefix="${temp_parent%/}/agent-scaffold-e2e."
 work="$(mktemp -d "${temp_prefix}XXXXXX")" \
   || { echo "failed to create temporary directory under $temp_parent" >&2; exit 1; }
 temp_suffix="${work#"$temp_prefix"}"
-[ "$work" != "$temp_suffix" ] && [ -n "$temp_suffix" ] && [ -d "$work" ] \
-  || { echo "mktemp returned an unsafe temporary directory: ${work:-<empty>}" >&2; exit 1; }
-# shellcheck disable=SC2329  # invoked by the EXIT trap
+if [ "$work" = "$temp_suffix" ] || [ -z "$temp_suffix" ] || [ ! -d "$work" ]; then
+  echo "mktemp returned an unsafe temporary directory: ${work:-<empty>}" >&2
+  exit 1
+fi
+# shellcheck disable=SC2317,SC2329  # invoked by the EXIT trap; code differs by ShellCheck version
 cleanup() {
   local suffix="${work#"$temp_prefix"}"
   if [ "$work" != "$suffix" ] && [ -n "$suffix" ] && [ -d "$work" ]; then

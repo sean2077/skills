@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- E2E temporary-directory guards now use explicit control flow and version-compatible
+  ShellCheck annotations for cleanup functions invoked indirectly by `EXIT` traps.
+
 ## [v3.0.0] — 2026-07-17
 
 ### ⚠ Breaking
