@@ -25,9 +25,9 @@ The migration is intentionally a hard cut with no compatibility wrappers:
 - active-profile files are then refreshed from the current templates; optional dormant worktree
   files remain dormant under the new runtime home until a later default-profile upgrade refreshes
   them;
-- exact managed hook commands, default package scripts, the Husky drift line, generated ownership
-  banners, LF attributes, the managed AGENTS block, `.agents/subagents/README.md`, and installer
-  messages converge to the new path;
+- exact managed hook commands, exact legacy package/Husky callers, generated ownership banners,
+  LF attributes, the managed AGENTS block, `.agents/subagents/README.md`, and installer messages
+  converge to the new path;
 - if both old and new copies of a known file exist with different content, preflight exits 2 before
   any target mutation; resolve the two owners and rerun;
 - unknown files below `tools/agent/` are never deleted or moved. The installer removes only known
@@ -35,6 +35,22 @@ The migration is intentionally a hard cut with no compatibility wrappers:
   `tools/agent/`, and `tools/`;
 - custom CI, documentation, or command strings are user-owned and are not rewritten by broad text
   replacement. Update any reported stale callers before relying on the new commands.
+
+### Project-owned examples and integrations
+
+The scaffold no longer seeds a `code-reviewer`, selects Husky, adds package scripts, or creates a
+comment-only `.codex/config.toml`. Project prose and nested `AGENTS.md` structure likewise come from
+the on-demand authority-document reference rather than root/nested content templates.
+
+Upgrade preserves every existing reviewer source, hook-manager file, current package script, Codex
+config, and project-authored authority prose. Those assets may have started from an older scaffold,
+but their location and policy now belong to the target project. Only exact commands that still point
+at the retired `tools/agent/generate-subagents.py` path are migrated to `.agents/tools/` so they do
+not break; no new integration is added.
+
+`--no-husky`, `--no-example-subagent`, and `--example-subagent` remain accepted for one
+compatibility cycle as deprecated no-ops. New commands should omit them and load
+[`subagents.md`](subagents.md) when an example or drift-integration recipe is needed.
 
 ### Retiring the managed formatter hook
 
@@ -48,8 +64,8 @@ using [the host-integration recipe](host-integration.md#project-owned-formatting
 `--no-format-hook` remains accepted for one compatibility cycle as a deprecated no-op so existing
 automation can migrate without an immediate command-line break. New commands should omit it.
 
-`verify` rejects known legacy runtime files, legacy managed hook wiring, the legacy default
-package/Husky drift commands, and legacy harness-added LF rules. It does not reject an unrelated
+`verify` rejects known legacy runtime files, legacy managed hook wiring, legacy package/Husky
+commands that still call the retired runtime path, and legacy harness-added LF rules. It does not reject an unrelated
 user-owned `tools/agent/` directory whose known managed filenames are absent.
 
 ## Retrofitting an in-flight project

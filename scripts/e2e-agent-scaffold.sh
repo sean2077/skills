@@ -78,10 +78,10 @@ git -C "$N" init -q -b main
 git -C "$N" config user.email t@t.t; git -C "$N" config user.name tester
 git -C "$N" config core.symlinks true
 git -C "$N" commit -q --allow-empty -m init
-( cd "$N" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" init --no-husky ) >/dev/null 2>&1; rc=$?
+( cd "$N" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" init ) >/dev/null 2>&1; rc=$?
 check "unsupported init exits 2"                    test "$rc" = 2
 check "unsupported init leaves no partial harness" no_partial_harness "$N"
-( cd "$N" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" init --no-worktree --no-husky ) >/dev/null 2>&1; rc=$?
+( cd "$N" && AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" init --no-worktree ) >/dev/null 2>&1; rc=$?
 check "unsupported light init exits 2"              test "$rc" = 2
 check "unsupported light init leaves no residue"   no_partial_harness "$N"
 before="$( { find "$N" -type f; find "$N" -type l; } | sort )"
@@ -357,7 +357,7 @@ for fixture in claude-syntax codex-root codex-hooks claude-command codex-constan
   git -C "$J" add "$rel" && git -C "$J" commit -q -m "invalid $fixture hook fixture"
   (
     cd "$J" || exit 1
-    AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit --no-husky
+    AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit
   ) >"$work/invalid-$fixture-hooks.out" 2>&1; rc=$?
   check "$fixture invalid hook config exits 2"              test "$rc" = 2
   check "$fixture invalid hook config names the error"      grep -qF "$expected" "$work/invalid-$fixture-hooks.out"
@@ -374,7 +374,7 @@ printf '%s\n' '{"hooks":{"PreToolUse":[{"matcher":"x","hooks":"bad"}]}}' > "$J/.
 git -C "$J" add .claude/settings.json && git -C "$J" commit -q -m "invalid nested hook fixture"
 (
   cd "$J" || exit 1
-  AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit --no-husky
+  AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit
 ) >"$work/invalid-nested-hooks.out" 2>&1; rc=$?
 check "nested invalid hook config exits 2"              test "$rc" = 2
 check "nested invalid hook config names the field"      grep -qF ".claude/settings.json: hooks.PreToolUse[0].hooks must be an array" "$work/invalid-nested-hooks.out"
@@ -390,7 +390,7 @@ printf '%s\n' '{"label":"\ud83d\ude00","hooks":null}' > "$J/.claude/settings.jso
 git -C "$J" add .claude/settings.json && git -C "$J" commit -q -m "valid Unicode hook fixture"
 (
   cd "$J" || exit 1
-  AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit --no-husky
+  AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 bash "$H" retrofit
 ) >"$work/valid-unicode-hooks.out" 2>&1; rc=$?
 check "valid Unicode pair reaches capability probe" test "$rc" = 2
 check "valid Unicode pair is not rejected as JSON" no_fixed_text "$work/valid-unicode-hooks.out" "invalid JSON"
@@ -1153,7 +1153,7 @@ agents_before="$(git hash-object "$K/AGENTS.md")"
 claude_before="$(git hash-object "$K/CLAUDE.md")"
 (
   cd "$K" || exit 1
-  bash "$H" retrofit --no-husky --no-example-subagent
+  bash "$H" retrofit
 ) >"$work/preflight-contract-conflict.out" 2>&1; rc=$?
 check "contract conflict exits 2" test "$rc" = 2
 check "contract conflict is explicit" grep -qF "projection conflict" "$work/preflight-contract-conflict.out"
@@ -1176,7 +1176,7 @@ for fixture in target-text identical-copy; do
   (
     cd "$K" || exit 1
     AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 \
-      bash "$H" retrofit --no-husky --no-example-subagent
+      bash "$H" retrofit
   ) >"$work/preflight-contract-$fixture.out" 2>&1; rc=$?
   check "$fixture migration reaches the capability probe" \
     grep -qF "symlink capability denied by the test fixture" "$work/preflight-contract-$fixture.out"
@@ -1197,7 +1197,7 @@ printf '%s\n' \
 git -C "$K" add -A && git -C "$K" commit -q -m "subagent conflict fixture"
 (
   cd "$K" || exit 1
-  bash "$H" retrofit --no-husky --no-example-subagent
+  bash "$H" retrofit
 ) >"$work/preflight-subagent-conflict.out" 2>&1; rc=$?
 check "subagent conflict exits nonzero" test "$rc" != 0
 check "subagent conflict is explicit" \
@@ -1213,7 +1213,7 @@ printf -- '---\nname: dual\n---\n\nCONFLICTING\n' > "$K/.claude/skills/dual/SKIL
 git -C "$K" add -A && git -C "$K" commit -q -m "skill conflict fixture"
 (
   cd "$K" || exit 1
-  bash "$H" retrofit --no-husky --no-example-subagent
+  bash "$H" retrofit
 ) >"$work/preflight-skill-conflict.out" 2>&1; rc=$?
 check "skill projection conflict exits 2" test "$rc" = 2
 check "skill projection conflict is explicit" grep -qF "projection conflict" "$work/preflight-skill-conflict.out"
@@ -1254,7 +1254,7 @@ before="$(git hash-object "$K/shared/settings.json")"
 (
   cd "$K" || exit 1
   AGENT_SCAFFOLD_TEST_DENY_SYMLINKS=1 \
-    bash "$H" retrofit --no-worktree --no-husky --no-example-subagent
+    bash "$H" retrofit --no-worktree
 ) >"$work/symlinked-hook-config.out" 2>&1; rc=$?
 check "symlinked hook config exits 2" test "$rc" = 2
 check "symlinked hook config names unsupported boundary" \
@@ -1281,7 +1281,7 @@ for fixture in target-text identical-copy; do
   git -C "$K" add -A && git -C "$K" commit -q -m "$fixture contract fixture"
   (
     cd "$K" || exit 1
-    bash "$H" retrofit --no-worktree --no-husky --no-example-subagent
+    bash "$H" retrofit --no-worktree
   ) >"$work/positive-contract-$fixture.out" 2>&1; rc=$?
   check "$fixture contract retrofit exits 0" test "$rc" = 0
   check "$fixture contract becomes a real link" test -L "$K/CLAUDE.md"
@@ -1290,13 +1290,13 @@ for fixture in target-text identical-copy; do
   check "$fixture contract has one managed block" \
     test "$(grep -cF '<!-- agent-scaffold:start' "$K/AGENTS.md")" = 1
   git -C "$K" add -A
-  (cd "$K" && bash "$H" verify --no-worktree --no-husky --no-example-subagent) \
+  (cd "$K" && bash "$H" verify --no-worktree) \
     >"$work/positive-contract-$fixture-verify.out" 2>&1; rc=$?
   check "$fixture contract verifies" test "$rc" = 0
   mode="$(git -C "$K" ls-files -s -- CLAUDE.md | awk '{print $1}')"
   check "$fixture contract stages as a symlink" test "$mode" = 120000
   git -C "$K" commit -q -m "$fixture contract installed"
-  (cd "$K" && bash "$H" retrofit --no-worktree --no-husky --no-example-subagent) \
+  (cd "$K" && bash "$H" retrofit --no-worktree) \
     >"$work/positive-contract-$fixture-rerun.out" 2>&1; rc=$?
   check "$fixture contract rerun exits 0" test "$rc" = 0
   check "$fixture contract rerun is idempotent" test -z "$(git -C "$K" status --porcelain)"
@@ -1332,6 +1332,32 @@ git -C "$G" config user.email t@t.t; git -C "$G" config user.name tester
 printf '{"name":"legacy-fixture"}\n' > "$G/package.json"
 git -C "$G" add package.json && git -C "$G" commit -q -m init
 ( cd "$G" && bash "$H" init ) >/dev/null 2>&1 || bad "legacy fixture init exited nonzero"
+mkdir -p "$G/.agents/subagents/code-reviewer" "$G/.husky"
+printf '%s\n' \
+  '{"name":"code-reviewer","description":"Project-owned legacy reviewer."}' \
+  > "$G/.agents/subagents/code-reviewer/metadata.json"
+printf 'Review the requested change set without editing files.\n' \
+  > "$G/.agents/subagents/code-reviewer/instructions.md"
+( cd "$G" && python .agents/tools/generate-subagents.py ) >/dev/null 2>&1 \
+  || bad "legacy project-owned reviewer fixture did not generate"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'python .agents/tools/generate-subagents.py --check' \
+  > "$G/.husky/pre-commit"
+python - "$G/package.json" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+data = json.loads(path.read_text(encoding="utf-8"))
+data["scripts"] = {
+    "test": "keep",
+    "gen:subagents": "python .agents/tools/generate-subagents.py",
+    "check:agents": "python .agents/tools/generate-subagents.py --check",
+}
+path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+PY
 printf '# retired managed formatter fixture\n' > "$G/.agents/tools/hooks/format_on_edit.sh"
 python - "$G/.claude/settings.json" "$G/.codex/hooks.json" <<'PY'
 import json, sys
@@ -1360,7 +1386,7 @@ check "legacy plan selects upgrade"               grep -qF "harness-init.sh upgr
 check "legacy retrofit exits 2"                    test "$rc" = 2
 check "legacy retrofit points at upgrade"          grep -qF "run agent-scaffold upgrade" "$work/legacy-runtime-retrofit.out"
 check "legacy retrofit writes nothing"             test -z "$(git -C "$G" status --porcelain --untracked-files=all)"
-( cd "$G" && bash "$H" upgrade --no-example-subagent ) >"$work/legacy-runtime-upgrade.out" 2>&1; rc=$?
+( cd "$G" && bash "$H" upgrade ) >"$work/legacy-runtime-upgrade.out" 2>&1; rc=$?
 check "legacy upgrade exits 0"                     test "$rc" = 0
 check "legacy worktree command moved"              test -f "$G/.agents/tools/worktree.sh"
 check "legacy generator moved"                     test -f "$G/.agents/tools/generate-subagents.py"
@@ -1376,17 +1402,19 @@ check "legacy unknown directory is preserved"      test -d "$G/tools/agent"
 check "legacy hook commands are removed"           fixed_text_absent_in_both tools/agent/hooks/ "$G/.claude/settings.json" "$G/.codex/hooks.json"
 check "current hook commands are installed"        fixed_text_in_both .agents/tools/hooks/ "$G/.claude/settings.json" "$G/.codex/hooks.json"
 check "legacy package scripts are migrated"        python -c 'import json,sys; s=json.load(open(sys.argv[1]))["scripts"]; raise SystemExit(s.get("gen:subagents") != "python .agents/tools/generate-subagents.py" or s.get("check:agents") != "python .agents/tools/generate-subagents.py --check")' "$G/package.json"
+check "unrelated package scripts are preserved"    python -c 'import json,sys; raise SystemExit(json.load(open(sys.argv[1]))["scripts"].get("test") != "keep")' "$G/package.json"
 check "legacy Husky line is removed"               logical_line_count "$G/.husky/pre-commit" "python tools/agent/generate-subagents.py --check" 0
 check "current Husky line is singular"              logical_line_count "$G/.husky/pre-commit" "python .agents/tools/generate-subagents.py --check" 1
 check "legacy LF attributes are removed"           logical_line_count "$G/.gitattributes" "tools/agent/*.sh text eol=lf" 0
 check "current LF attributes are singular"         logical_line_count "$G/.gitattributes" ".agents/tools/*.sh text eol=lf" 1
+check "project-owned reviewer source is preserved" grep -qF "Project-owned legacy reviewer" "$G/.agents/subagents/code-reviewer/metadata.json"
 check "legacy projection banner is rewritten"      grep -qF "Run: python .agents/tools/generate-subagents.py" "$G/.claude/agents/code-reviewer.md"
 check "legacy managed README command is removed"   fixed_text_absent_in_both "python tools/agent/generate-subagents.py" "$G/.agents/subagents/README.md" "$G/.agents/subagents/README.md"
 check "current managed README command is installed" grep -qF "python .agents/tools/generate-subagents.py" "$G/.agents/subagents/README.md"
 ( cd "$G" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "migrated legacy runtime verifies"            test "$rc" = 0
 git -C "$G" add -A && git -C "$G" commit -q -m "migrated runtime"
-( cd "$G" && bash "$H" upgrade --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$G" && bash "$H" upgrade ) >/dev/null 2>&1; rc=$?
 check "legacy migration rerun exits 0"              test "$rc" = 0
 check "legacy migration rerun is idempotent"        test -z "$(git -C "$G" status --porcelain)"
 
@@ -1413,7 +1441,7 @@ check "legacy integration retrofit exits 2"          test "$rc" = 2
 check "legacy integration points at upgrade"        grep -qF "run agent-scaffold upgrade" "$work/legacy-integration-retrofit.out"
 check "legacy integration stops before doctor"      no_fixed_text "$work/legacy-integration-retrofit.out" "symlink capability denied by the test fixture"
 check "legacy integration retrofit is read-only"    test "$(git -C "$G" status --porcelain --untracked-files=all)" = "$before"
-( cd "$G" && bash "$H" upgrade --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$G" && bash "$H" upgrade ) >/dev/null 2>&1; rc=$?
 check "legacy integration upgrade exits 0"           test "$rc" = 0
 check "legacy integration README converges"         grep -qF "python .agents/tools/generate-subagents.py" "$G/.agents/subagents/README.md"
 ( cd "$G" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
@@ -1424,10 +1452,10 @@ G="$work/legacy-runtime-light"; mkdir -p "$G"
 git -C "$G" init -q -b main
 git -C "$G" config user.email t@t.t; git -C "$G" config user.name tester
 git -C "$G" commit -q --allow-empty -m init
-( cd "$G" && bash "$H" init --no-husky ) >/dev/null 2>&1 || bad "legacy light fixture init exited nonzero"
+( cd "$G" && bash "$H" init ) >/dev/null 2>&1 || bad "legacy light fixture init exited nonzero"
 legacyize_runtime "$G"
 git -C "$G" add -A && git -C "$G" commit -q -m "legacy light runtime fixture"
-( cd "$G" && bash "$H" upgrade --no-worktree --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$G" && bash "$H" upgrade --no-worktree ) >/dev/null 2>&1; rc=$?
 check "legacy light upgrade exits 0"                test "$rc" = 0
 check "legacy light keeps dormant worktree command" test -f "$G/.agents/tools/worktree.sh"
 check "legacy light keeps dormant trunk guard"      test -f "$G/.agents/tools/hooks/trunk_edit_guard.sh"
@@ -1454,9 +1482,11 @@ echo "== init (greenfield) =="
 # preserve the old record and add the new record on its own line.
 printf 'dist' > "$S/.gitignore"
 printf '*.txt text' > "$S/.gitattributes"
-printf '{"name":"fixture"}\n' > "$S/package.json"
+printf '{"name":"fixture","scripts":{"test":"keep"}}\n' > "$S/package.json"
 mkdir -p "$S/.husky"
 printf '#!/usr/bin/env bash' > "$S/.husky/pre-commit"
+package_before="$(git hash-object "$S/package.json")"
+husky_before="$(git hash-object "$S/.husky/pre-commit")"
 ( cd "$S" && bash "$H" init ) >/dev/null 2>&1 || bad "init exited nonzero"
 check "no bogus '*' symlink in .claude/skills" test -z "$(ls -A "$S/.claude/skills" 2>/dev/null)"
 check "worktree.sh installed"                test -f "$S/.agents/tools/worktree.sh"
@@ -1472,15 +1502,37 @@ check "first gitignore append is separate"     grep -qxF ".claude/settings.local
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
 check "original attributes line stays separate" grep -qxF "*.txt text" "$S/.gitattributes"
 check ".gitattributes pins LF on scripts"    grep -qxF ".agents/tools/*.sh text eol=lf" "$S/.gitattributes"
-check ".gitattributes pins Husky LF"         grep -qxF ".husky/pre-commit text eol=lf" "$S/.gitattributes"
-check "original Husky line stays separate"   grep -qxF "#!/usr/bin/env bash" "$S/.husky/pre-commit"
-check "Husky guard append is separate"       grep -qxF "python .agents/tools/generate-subagents.py --check" "$S/.husky/pre-commit"
+check ".gitattributes leaves Husky project-owned" no_exact_line "$S/.gitattributes" ".husky/pre-commit text eol=lf"
+check "project-owned Husky hook is byte-identical" test "$(git hash-object "$S/.husky/pre-commit")" = "$husky_before"
+check "project-owned package.json is byte-identical" test "$(git hash-object "$S/package.json")" = "$package_before"
+check "package scripts are not scaffolded" no_fixed_text "$S/package.json" "generate-subagents.py"
+check "greenfield creates no Codex config" test ! -e "$S/.codex/config.toml"
+check "greenfield creates no example source" test ! -e "$S/.agents/subagents/code-reviewer"
+check "greenfield creates no example projection" both_absent "$S/.claude/agents/code-reviewer.md" "$S/.codex/agents/code-reviewer.toml"
+check "AGENTS.md contains no project overview" no_fixed_text "$S/AGENTS.md" "## Project Overview"
+check "AGENTS.md starts at the managed boundary" grep -qF '<!-- agent-scaffold:start' "$S/AGENTS.md"
+# shellcheck disable=SC2016  # backticks are literal Markdown in the expected table row
+check "managed table keeps its closing cell spacing" grep -qF '| `.agents/tools/worktree.sh` | worktree lifecycle | ✅ |' "$S/AGENTS.md"
+check "resident skill README stays thin" test "$(wc -l < "$S/.agents/skills/README.md" | tr -d ' ')" -le 24
+check "resident skill README routes to depth" grep -qF 'references/harness-layout.md' "$S/.agents/skills/README.md"
+check "resident subagent README stays thin" test "$(wc -l < "$S/.agents/subagents/README.md" | tr -d ' ')" -le 26
+check "resident subagent README routes to example" grep -qF 'references/subagents.md' "$S/.agents/subagents/README.md"
+
+echo "== retired selection flags remain compatible no-ops for one cycle =="
+( cd "$S" && bash "$H" verify --no-husky --no-example-subagent ) >"$work/retired-selection-flags.out" 2>&1; rc=$?
+check "retired no-* flags keep verify green" test "$rc" = 0
+check "retired Husky flag explains project ownership" grep -qF -- "--no-husky is deprecated and ignored" "$work/retired-selection-flags.out"
+check "retired no-example flag routes to references" grep -qF -- "--no-example-subagent is deprecated and ignored" "$work/retired-selection-flags.out"
+( cd "$S" && bash "$H" verify --example-subagent ) >"$work/retired-example-flag.out" 2>&1; rc=$?
+check "retired example flag keeps verify green" test "$rc" = 0
+check "retired example flag routes to references" grep -qF -- "--example-subagent is deprecated and ignored" "$work/retired-example-flag.out"
+check "retired example flag creates no reviewer" test ! -e "$S/.agents/subagents/code-reviewer"
 git -C "$S" add -A
 # shellcheck disable=SC2016  # sh -c expands its own positional parameters
 check "tracked CLAUDE.md mode is 120000"     sh -c '[ "$(git -C "$1" ls-files -s -- CLAUDE.md | awk '\''{print $1}'\'')" = 120000 ]' _ "$S"
 
 echo "== idempotent re-run =="
-python - "$S/.gitignore" "$S/.gitattributes" "$S/.husky/pre-commit" <<'PY'
+python - "$S/.gitignore" "$S/.gitattributes" <<'PY'
 from pathlib import Path
 import sys
 
@@ -1493,17 +1545,14 @@ for name, old, new in fixtures:
     data = path.read_bytes()
     assert data.count(old) == 1
     path.write_bytes(data.replace(old, new, 1))
-hook = Path(sys.argv[3])
-hook_data = hook.read_bytes()
-assert b"python .agents/tools/generate-subagents.py --check\n" in hook_data
-hook.write_bytes(hook_data.replace(b"\n", b"\r"))
 PY
 ( cd "$S" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
 check "retrofit re-run exits 0"              test "$rc" = 0
 check "PostToolUse stays 1 hook (no dup)"    jcount "$S/.claude/settings.json" PostToolUse 1
 check "CRLF gitignore target stays singular" logical_line_count "$S/.gitignore" ".claude/settings.local.json" 1
 check "CRLF attributes target stays singular" logical_line_count "$S/.gitattributes" ".agents/tools/*.sh text eol=lf" 1
-check "CR-only Husky target stays singular" logical_line_count "$S/.husky/pre-commit" "python .agents/tools/generate-subagents.py --check" 1
+check "rerun preserves project-owned Husky hook" test "$(git hash-object "$S/.husky/pre-commit")" = "$husky_before"
+check "rerun preserves project-owned package.json" test "$(git hash-object "$S/package.json")" = "$package_before"
 
 echo "== retrofit propagates subagent import rejection =="
 printf -- '---\nname: import-propagation\ndescription: propagation fixture\n---\n\nCLAUDE_IMPORT_BODY\n' \
@@ -1760,7 +1809,7 @@ git -C "$L" init -q -b main
 git -C "$L" config user.email t@t.t; git -C "$L" config user.name tester
 git -C "$L" config core.symlinks true
 git -C "$L" commit -q --allow-empty -m init
-( cd "$L" && bash "$H" init --no-worktree --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$L" && bash "$H" init --no-worktree ) >/dev/null 2>&1; rc=$?
 check "no-worktree init exits 0"                 test "$rc" = 0
 check "no-worktree omits worktree.sh"            test ! -e "$L/.agents/tools/worktree.sh"
 check "no-worktree omits trunk guard script"     test ! -e "$L/.agents/tools/hooks/trunk_edit_guard.sh"
@@ -1776,10 +1825,10 @@ check "no-worktree verify accepts light profile" test "$rc" = 0
 ( cd "$L" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "default verify detects omitted workflow"  test "$rc" != 0
 git -C "$L" add -A && git -C "$L" commit -q -m "light harness"
-( cd "$L" && bash "$H" retrofit --no-worktree --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$L" && bash "$H" retrofit --no-worktree ) >/dev/null 2>&1; rc=$?
 check "no-worktree retrofit re-run exits 0"       test "$rc" = 0
 check "no-worktree retrofit is idempotent"        test -z "$(git -C "$L" status --porcelain)"
-( cd "$L" && bash "$H" upgrade --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$L" && bash "$H" upgrade ) >/dev/null 2>&1; rc=$?
 check "default upgrade re-enables worktree flow" test "$rc" = 0
 check "re-enabled worktree.sh is installed"      test -f "$L/.agents/tools/worktree.sh"
 check "re-enabled Claude guard is wired once"    jcommand_count "$L/.claude/settings.json" trunk_edit_guard 1
@@ -1811,7 +1860,7 @@ git -C "$A" config user.email t@t.t; git -C "$A" config user.name tester
 git -C "$A" commit -q --allow-empty -m init
 printf -- '---\nname: custom-rev\ndescription: hand-authored reviewer\ntools: Read, Grep\n---\n\nReview the diff and report.\n' > "$A/.claude/agents/custom-rev.md"
 git -C "$A" add -A && git -C "$A" commit -q -m "hand-authored subagent"
-( cd "$A" && bash "$H" retrofit --no-husky ) >/dev/null 2>&1; rc=$?
+( cd "$A" && bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
 check "retrofit exits 0"                          test "$rc" = 0
 check "adopted without creating a package.json"   test ! -f "$A/package.json"
 check "hand-authored agent adopted into SSOT"     test -f "$A/.agents/subagents/custom-rev/metadata.json"
@@ -1824,13 +1873,36 @@ printf -- '---\nname: ghost\ndescription: no source\n---\n\nbody\n' > "$A/.claud
 ( cd "$A" && python .agents/tools/generate-subagents.py ) >/dev/null 2>&1
 check "sourceless hand-authored projection not pruned" test -f "$A/.claude/agents/ghost.md"
 
-echo "== upgrade retires the managed formatter and reconciles only owned hooks =="
-U="$work/upgrade"; mkdir -p "$U/.claude" "$U/.codex" "$U/.agents/hooks"
+echo "== upgrade retires managed formatter state and preserves project-owned integrations =="
+U="$work/upgrade"; mkdir -p \
+  "$U/.claude" "$U/.codex" "$U/.agents/hooks" \
+  "$U/.agents/subagents/code-reviewer" "$U/.husky"
 git -C "$U" init -q -b main
 git -C "$U" config user.email t@t.t; git -C "$U" config user.name tester
 git -C "$U" config core.symlinks true
 git -C "$U" commit -q --allow-empty -m init
 printf '# project-owned formatter fixture\n' > "$U/.agents/hooks/format-on-edit.sh"
+printf '%s\n' \
+  '# project-owned Codex settings' \
+  'model_reasoning_effort = "high"' \
+  > "$U/.codex/config.toml"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'python .agents/tools/generate-subagents.py --check' \
+  > "$U/.husky/pre-commit"
+printf '%s\n' \
+  '{"name":"code-reviewer","description":"Project-owned upgrade reviewer."}' \
+  > "$U/.agents/subagents/code-reviewer/metadata.json"
+printf 'Preserve this project-owned reviewer instruction.\n' \
+  > "$U/.agents/subagents/code-reviewer/instructions.md"
+printf '%s\n' \
+  '{"name":"upgrade-fixture","scripts":{"test":"keep","check:agents":"python .agents/tools/generate-subagents.py --check"}}' \
+  > "$U/package.json"
+codex_config_before="$(git hash-object "$U/.codex/config.toml")"
+husky_upgrade_before="$(git hash-object "$U/.husky/pre-commit")"
+package_upgrade_before="$(git hash-object "$U/package.json")"
+reviewer_metadata_before="$(git hash-object "$U/.agents/subagents/code-reviewer/metadata.json")"
+reviewer_instructions_before="$(git hash-object "$U/.agents/subagents/code-reviewer/instructions.md")"
 python - "$U/.claude/settings.json" "$U/.codex/hooks.json" <<'PY'
 import json, sys
 for path, matcher, user in ((sys.argv[1], "Edit", "user-extra.sh"), (sys.argv[2], "apply_patch", "user-cx.sh")):
@@ -1856,7 +1928,7 @@ for path, matcher, user in ((sys.argv[1], "Edit", "user-extra.sh"), (sys.argv[2]
     with open(path, "w", encoding="utf-8") as f:
         json.dump(value, f)
 PY
-( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-format-hook --no-husky --no-example-subagent ) >"$work/upgrade-retired-format.out" 2>&1; rc=$?
+( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-format-hook ) >"$work/upgrade-retired-format.out" 2>&1; rc=$?
 check "upgrade without jq exits 0"             test "$rc" = 0
 check "upgrade accepts the deprecated format flag" \
   grep -qF "formatter hooks are now project-owned" "$work/upgrade-retired-format.out"
@@ -1864,6 +1936,14 @@ check "upgrade preserves Claude user hook"     grep -q user-extra "$U/.claude/se
 check "upgrade preserves Codex user hook"      grep -q user-cx "$U/.codex/hooks.json"
 check "upgrade preserves project formatter file" grep -qF "project-owned formatter fixture" "$U/.agents/hooks/format-on-edit.sh"
 check "upgrade preserves project formatter wiring" fixed_text_in_both .agents/hooks/format-on-edit.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
+check "upgrade preserves project Codex config" test "$(git hash-object "$U/.codex/config.toml")" = "$codex_config_before"
+check "upgrade preserves current Husky integration" test "$(git hash-object "$U/.husky/pre-commit")" = "$husky_upgrade_before"
+check "upgrade preserves current package integration" test "$(git hash-object "$U/package.json")" = "$package_upgrade_before"
+check "upgrade preserves reviewer metadata" test "$(git hash-object "$U/.agents/subagents/code-reviewer/metadata.json")" = "$reviewer_metadata_before"
+check "upgrade preserves reviewer instructions" test "$(git hash-object "$U/.agents/subagents/code-reviewer/instructions.md")" = "$reviewer_instructions_before"
+check "upgrade seeds no additional example source" test "$(find "$U/.agents/subagents" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 1
+check "upgrade generates Claude reviewer projection" test -f "$U/.claude/agents/code-reviewer.md"
+check "upgrade generates Codex reviewer projection" test -f "$U/.codex/agents/code-reviewer.toml"
 check "upgrade preserves authority lookalikes" fixed_text_in_both check_authority_doc_budget_custom.py "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves guard lookalikes"     fixed_text_in_both trunk_edit_guard_backup.sh "$U/.claude/settings.json" "$U/.codex/hooks.json"
 check "upgrade preserves dotted suffix"        fixed_text_in_both format_on_edit.sh.backup "$U/.claude/settings.json" "$U/.codex/hooks.json"
@@ -1881,7 +1961,7 @@ check "upgrade removes Claude retired formatter" jcommand_count "$U/.claude/sett
 check "upgrade removes Codex retired formatter"  jcommand_count "$U/.codex/hooks.json" format_on_edit 0
 check "Claude trunk guard appears once"        jcommand_count "$U/.claude/settings.json" trunk_edit_guard 1
 check "Codex authority hook appears once"       jcommand_count "$U/.codex/hooks.json" authority_doc_budget 1
-( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-worktree --no-format-hook --no-husky --no-example-subagent ) >/dev/null 2>&1; rc=$?
+( cd "$U" && HARNESS_NO_JQ=1 bash "$H" upgrade --no-worktree --no-format-hook ) >/dev/null 2>&1; rc=$?
 check "default-to-light upgrade exits 0"         test "$rc" = 0
 check "light upgrade preserves Claude user hook" grep -q user-extra "$U/.claude/settings.json"
 check "light upgrade preserves Codex user hook"  grep -q user-cx "$U/.codex/hooks.json"
@@ -1892,6 +1972,9 @@ check "light upgrade removes managed hard rule"  no_fixed_text "$U/AGENTS.md" "W
 check "light upgrade preserves dormant script"   test -f "$U/.agents/tools/worktree.sh"
 check "light upgrade preserves existing worktree ignore" grep -qxF ".worktrees/" "$U/.gitignore"
 check "light upgrade preserves existing escape ignore"   grep -qxF ".claude/allow-trunk-edit" "$U/.gitignore"
+check "light upgrade still preserves Codex config" test "$(git hash-object "$U/.codex/config.toml")" = "$codex_config_before"
+check "light upgrade still preserves Husky integration" test "$(git hash-object "$U/.husky/pre-commit")" = "$husky_upgrade_before"
+check "light upgrade still preserves package integration" test "$(git hash-object "$U/package.json")" = "$package_upgrade_before"
 ( cd "$U" && bash "$H" verify --no-worktree --no-format-hook ) >/dev/null 2>&1; rc=$?
 check "light upgrade verifies with matching flags" test "$rc" = 0
 printf '\n# dormant drift fixture\n' >> "$U/.agents/tools/worktree.sh"
@@ -1906,7 +1989,7 @@ git -C "$HN" init -q -b main
 git -C "$HN" config user.email t@t.t; git -C "$HN" config user.name tester
 git -C "$HN" commit -q --allow-empty -m init
 printf '{"hooks": null, "model": "opus"}' > "$HN/.claude/settings.json"
-( cd "$HN" && HARNESS_NO_JQ=1 bash "$H" retrofit --no-husky ) >/dev/null 2>&1; rc=$?
+( cd "$HN" && HARNESS_NO_JQ=1 bash "$H" retrofit ) >/dev/null 2>&1; rc=$?
 check "retrofit over hooks:null (python path) exits 0"   test "$rc" = 0
 check "hooks:null retrofit preserves user's other keys"  grep -q '"model"' "$HN/.claude/settings.json"
 check "hooks:null retrofit wires the trunk guard"        grep -q trunk_edit_guard "$HN/.claude/settings.json"

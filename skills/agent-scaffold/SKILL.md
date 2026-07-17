@@ -50,7 +50,7 @@ Run from inside the target repository:
 
 | Mode | Purpose |
 |---|---|
-| `init` | Greenfield install; seeds an example subagent unless disabled |
+| `init` | Greenfield install of the managed harness contract and runtime |
 | `retrofit` | Merge into an existing `.claude` / `.codex` / AGENTS setup |
 | `plan` | Read-only preview of create, merge, adopt, and migration decisions |
 | `doctor` | Read-only prerequisite and real-symlink capability check |
@@ -61,9 +61,9 @@ Run from inside the target repository:
 bash <skill-dir>/harness-init.sh <mode> [flags]
 ```
 
-Useful flags: `--no-worktree`, `--no-husky`, `--no-example-subagent`,
-`--example-subagent`, and `--force-scripts` (implied by `upgrade`). Repeat
-profile flags on later `upgrade` and `verify` runs.
+Useful flags: `--no-worktree` and `--force-scripts` (implied by `upgrade`).
+Repeat profile flags on later `upgrade` and `verify` runs. Formatter,
+hook-manager/package, and example-subagent choices are project-owned recipes.
 
 ## Workflow
 
@@ -76,8 +76,8 @@ profile flags on later `upgrade` and `verify` runs.
 3. Run the selected mode. Mutating modes preflight deterministic contract,
    projection, import, hook-config, runtime-layout, and symlink conflicts before
    the first target write.
-4. For `init`, fill the root contract TODOs. Add nested authority documents only
-   for real local differences; use
+4. For `init`, add project overview or command prose outside the managed block
+   only when useful. Add nested authority documents only for real local differences; use
    [`references/authority-docs.md`](references/authority-docs.md).
 5. Run `verify` and report created versus merged assets, any stopped preflight,
    and the Codex trust reminder. The installer installs and runs the subagent
@@ -102,5 +102,5 @@ Read only the category required by the current task:
 The harness requires **git, Python 3.8+, and Bash 3.2+**. Windows support is Git
 Bash only and requires native file and directory symlink privilege. Bundled shell
 and Python files stay LF-only. Python owns link materialization, hook JSON
-handling, and subagent projection; Node is optional and only enables package/Husky
-conveniences.
+handling, and subagent projection. Node and package-manager integration are not
+required or selected by the scaffold.

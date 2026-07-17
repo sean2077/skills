@@ -86,12 +86,12 @@ its older managed entries while leaving every user command and unrelated config 
 managed events are removed rather than written as empty matcher groups. Python is a harness
 prerequisite, so this path has no jq-dependent behavior or unsafe paste fallback.
 
-Writes are atomic (`> tmp && mv`). `package.json` script keys (`gen:subagents`, `check:agents`,
-optional `prepare: husky`) are merged the same way — added only when absent.
+Writes are atomic (`> tmp && mv`). Package scripts, CI jobs, and hook-manager configuration are
+project-owned; see [subagent drift integration](subagents.md#project-owned-drift-integration).
 
-**Idempotency keys:** managed hook identity + current `.command`/`.matcher`; `.gitignore`/`.husky/pre-commit`
-lines by `grep -qxF`; `package.json` scripts by key presence; the `AGENTS.md` harness section by
-the `<!-- agent-scaffold:start … end -->` markers.
+**Idempotency keys:** managed hook identity + current `.command`/`.matcher`; `.gitignore` lines by
+`grep -qxF`; the `AGENTS.md` harness section by the
+`<!-- agent-scaffold:start … end -->` markers.
 
 ## Codex trust gate
 
@@ -109,6 +109,11 @@ silently skipped, so the harness looks half-installed on the Codex side. Trust o
 
 `verify` cannot read your `~/.codex/config.toml` reliably across machines, so it always prints
 the trust reminder rather than asserting trust.
+
+The scaffold creates `.codex/hooks.json` because that file carries managed dual-host wiring. It
+does **not** create `.codex/config.toml`: a comment-only placeholder changes no behavior, while real
+project-scoped Codex settings vary by repository. Existing config files are preserved; create one
+only when the project needs actual settings.
 
 ## Integration troubleshooting
 

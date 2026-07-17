@@ -14,6 +14,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `agent-scaffold` no longer installs or wires a generic format-on-edit hook. `upgrade`
   removes the retired managed runtime and wiring; formatter hooks are now project-owned
   and documented as an on-demand integration recipe.
+- `agent-scaffold` now installs only harness-owned runtime and contract content. Generic
+  `code-reviewer` sources, Husky/`package.json` wiring, project overview prose, nested
+  `AGENTS.md` skeletons, and comment-only `.codex/config.toml` files are reference-only;
+  the resident skill/subagent READMEs are thin routers. Existing project-owned assets are
+  preserved, while `upgrade` rewrites only exact legacy subagent-generator callers.
 
 ### Changed
 
