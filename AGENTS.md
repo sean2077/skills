@@ -25,7 +25,6 @@ npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 bash scripts/e2e-agent-scaffold.sh      # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
-shellcheck skills/agent-scaffold/templates/husky.pre-commit
 ```
 
 ## Architecture
@@ -102,7 +101,7 @@ point**, not a detail dump. `.agents/tools/hooks/authority_doc_budget.sh`
 | `.claude/settings.local.json` | personal overrides | ❌ ignored |
 
 - **Add a skill**: edit `.agents/skills/` → run `bash .agents/relink-skills.sh` → commit source + symlink.
-- **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
+- **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. Wire `--check` into the project's own CI or hook manager when desired.
 - **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
 
 **Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a

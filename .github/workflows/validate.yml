@@ -268,8 +268,7 @@ jobs:
             diff -ru "$source_refs" "$installed_refs"
           done
 
-      - name: Shellcheck bundled scripts and extensionless Husky hook
+      - name: Shellcheck bundled scripts
         if: always() && runner.os == 'Linux'
         run: |
           find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
-          shellcheck skills/agent-scaffold/templates/husky.pre-commit

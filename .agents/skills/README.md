@@ -1,57 +1,20 @@
-# .agents/skills/ — authoritative skill source (CC + Codex)
+# .agents/skills/ — project skill SSOT
 
-This directory is the **single source of truth** for this project's own skills.
-Both runtimes consume the same `SKILL.md` files, by different discovery paths:
+Project-authored skills live here. Claude Code discovers matching real symlinks
+under `.claude/skills/`; Codex reads `.agents/skills/` directly.
 
-| | Claude Code | Codex |
-|---|---|---|
-| Source | `.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
-| Discovery | `.claude/skills/<name>` (symlink) | reads `.agents/skills/` directly |
-| After a change | run `bash .agents/relink-skills.sh` | nothing extra |
+## Change a project skill
 
-## Add / rename / remove a skill
+1. Edit `.agents/skills/<name>/SKILL.md` and any local resources.
+2. Run `bash .agents/relink-skills.sh`.
+3. Commit the source and `.claude/skills/<name>` symlink together.
 
-1. Create or edit `.agents/skills/<name>/SKILL.md` (+ optional `references/`, `scripts/`).
-2. Run `bash .agents/relink-skills.sh` (idempotent — preflights real links, (re)creates `.claude/skills/<name>`, and prunes stale managed links; never copies).
-3. `git add .agents/skills/<name> .claude/skills/<name>`.
+Rules:
 
-Directories named `_*` (e.g. `_shared/`) are support material — they are **not** skills
-and are skipped by the relinker.
+- Do not hand-edit `.claude/skills/` projections.
+- Keep third-party skills separate; install them with `npx skills`.
+- Prefix support-only directories with `_`; the relinker skips them.
+- Same-name project and third-party skills are an ownership conflict.
 
-## SKILL.md shape
-
-```markdown
----
-name: <kebab-case>            # must match the directory name
-description: "<one line: what it does + when to use it>"
-# optional:
-# argument-hint: "<args summary>"
-# metadata: { requires: { bins: ["bash", "node"] } }
----
-
-# <name>
-
-## Router            # intent → sub-step map (if multi-mode)
-## <workflow steps>  # concise; deep material goes in references/, read on demand
-```
-
-Keep `SKILL.md` lean: routing + invariants + step skeleton. Push long checklists,
-templates, and worked examples into `references/` so they load only when needed.
-Name each file after one category using lowercase kebab-case (for example,
-`references/host-integration.md`); do not create a catch-all `reference.md`,
-`misc.md`, `all.md`, or `references/README.md`. Link every category directly
-from `SKILL.md` so the host can load only what the current task needs.
-
-## Coexistence with `npx skills` (third-party skills)
-
-This directory is for **project-authored** skills. Third-party skills install
-separately via `npx skills add <repo> -a claude-code -a codex`; they land as
-**real directories** in `.claude/skills/` (and Codex's own path). The relinker
-only manages **symlinks**, so it leaves those installed directories untouched.
-Keep your project skill names distinct from installed ones to avoid a clash.
-
-## Conventions
-
-- Skills describe **repeatable agent workflows for this project**, not one-off tasks.
-- `.claude/skills/` holds **only symlinks** for project skills — never real skill files there.
-- Don't hand-edit symlinks; let `relink-skills.sh` own them.
+For full authoring conventions, naming, and coexistence details, load the
+`agent-scaffold` skill's `references/harness-layout.md` on demand.

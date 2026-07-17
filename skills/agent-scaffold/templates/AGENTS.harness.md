@@ -1,22 +1,3 @@
-# PROJECT — Agent Contract
-
-> `AGENTS.md` is the canonical agent contract; `CLAUDE.md` is a symlink to it. It is
-> shared by Claude Code and Codex. Keep it an **entry point**, not a detail dump —
-> put detail in `docs/` and link back; inline only important, frequently-needed points.
-
-## Project Overview
-
-<!-- TODO: one paragraph — what this project is, who it's for, the headline tech. -->
-
-## Development Commands
-
-<!-- TODO: the handful of commands an agent runs most (build / test / lint / run). -->
-
-## Architecture
-
-<!-- TODO: the load-bearing modules and how they relate. Keep it an INDEX that links
-     into docs/ for depth, not a full tour. -->
-
 <!-- agent-scaffold:start — managed by the agent-scaffold skill. Edit project prose OUTSIDE these markers; `agent-scaffold upgrade` refreshes this block. -->
 ## Agent Harness (Claude Code + Codex)
 
@@ -64,7 +45,7 @@ point**, not a detail dump. `.agents/tools/hooks/authority_doc_budget.sh`
 | `.claude/settings.local.json` | personal overrides | ❌ ignored |
 
 - **Add a skill**: edit `.agents/skills/` → run `bash .agents/relink-skills.sh` → commit source + symlink.
-- **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. A pre-commit `--check` guards the two sides from drifting.
+- **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. Wire `--check` into the project's own CI or hook manager when desired.
 - **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
 
 **Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a

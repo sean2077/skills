@@ -20,6 +20,8 @@ bash "$H" init
 [ -z "$(ls -A .claude/skills)" ]                                             # no bogus '*' symlink
 test -f .agents/tools/worktree.sh && test -f .agents/tools/hooks/trunk_edit_guard.sh
 test -L CLAUDE.md && [ "$(readlink CLAUDE.md)" = AGENTS.md ]
+test ! -e .agents/subagents/code-reviewer && test ! -e .codex/config.toml
+! grep -qF '## Project Overview' AGENTS.md                                    # project prose is not scaffolded
 jq -e '.hooks.PreToolUse[0].matcher=="Edit|MultiEdit|Write|NotebookEdit"' .claude/settings.json
 jq -e '.hooks.PreToolUse[0].matcher=="Edit|Write|apply_patch"'              .codex/hooks.json
 grep -q '^\.worktrees/$' .gitignore
@@ -44,14 +46,15 @@ test ! -d .worktrees/demo && git log --oneline | grep -q "Merge branch 'chore/de
 printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | CLAUDE_PROJECT_DIR="$PWD" bash .agents/tools/hooks/trunk_edit_guard.sh; echo "exit=$?"   # 2
 printf '{"tool_input":{"file_path":"%s/README.md"}}' "$PWD" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$PWD" bash .agents/tools/hooks/trunk_edit_guard.sh; echo "exit=$?"  # 0
 
-# subagents: generator + drift guard (python — no package.json needed)
+# subagents: generator + manual drift check (python — no package.json needed)
 bash "$H" upgrade
 python .agents/tools/generate-subagents.py --check      # exit 0, in sync
-# opt-in npm convenience + husky hook on a Node project:
-echo '{"name":"scratch","version":"1.0.0"}' > package.json
+# project integration stays untouched:
+echo '{"name":"scratch","version":"1.0.0","scripts":{"test":"echo keep"}}' > package.json
+mkdir -p .husky && printf '#!/usr/bin/env sh\necho keep\n' > .husky/pre-commit
 bash "$H" upgrade
-grep -q 'generate-subagents.py --check' .husky/pre-commit
-jq -e '.scripts["check:agents"]' package.json
+grep -q 'echo keep' .husky/pre-commit
+jq -e '.scripts.test=="echo keep" and (.scripts["check:agents"]|not)' package.json
 
 # authority budget advises over-budget
 seq 1 400 | sed 's/^/line /' > AGENTS.md
@@ -71,7 +74,7 @@ rm -rf /tmp/scratch-light && mkdir -p /tmp/scratch-light && cd /tmp/scratch-ligh
 git init -q -b main && git config user.email t@t.t && git config user.name tester
 git commit --allow-empty -qm init
 bash "$H" plan --no-worktree | grep -qF 'retrofit --no-worktree'   # copyable apply command keeps the flag
-bash "$H" init --no-worktree --no-husky --no-example-subagent
+bash "$H" init --no-worktree
 test ! -e .agents/tools/worktree.sh && test ! -e .agents/tools/hooks/trunk_edit_guard.sh
 ! grep -q trunk_edit_guard .claude/settings.json && ! grep -q trunk_edit_guard .codex/hooks.json
 ! grep -qF 'Worktree-per-change (hard rule)' AGENTS.md

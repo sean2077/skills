@@ -7,7 +7,7 @@
 #   bash harness-init.sh <init|retrofit|plan|doctor|verify|upgrade> [flags]
 #
 # Modes:
-#   init       greenfield — lay down the full harness (seeds an example subagent)
+#   init       greenfield — lay down the full harness
 #   retrofit   merge into a project that already has some .claude/.codex/AGENTS.md
 #   plan       read-only — preview what init/retrofit would create/merge/migrate
 #   doctor     read-only — verify git + real file/directory symlink capability
@@ -17,9 +17,9 @@
 # Flags:
 #   --no-worktree          omit the worktree lifecycle, trunk-edit guard, and managed worktree policy
 #   --no-format-hook        deprecated no-op; formatter hooks are project-owned
-#   --no-husky              do not set up the .husky/pre-commit drift guard
-#   --no-example-subagent   do not seed the example code-reviewer subagent (init)
-#   --example-subagent      seed it even on retrofit/upgrade
+#   --no-husky              deprecated no-op; hook-manager/package integration is project-owned
+#   --no-example-subagent   deprecated no-op; examples now live in references/subagents.md
+#   --example-subagent      deprecated no-op; examples now live in references/subagents.md
 #   --force-scripts         overwrite already-installed vendored scripts (implied by upgrade)
 #   -h, --help              this help
 # Optional-profile flags are per invocation; repeat them on later upgrade/verify runs.
@@ -43,15 +43,14 @@ usage() { sed -n '2,/^# ---8<---/p' "$0" | sed '/^# ---8<---/d; s/^# \?//'; exit
 MODE="$1"; shift
 case "$MODE" in init|retrofit|plan|doctor|verify|upgrade) ;; -h|--help) usage 0 ;; *) die "unknown mode: $MODE (init|retrofit|plan|doctor|verify|upgrade)";; esac
 
-WORKTREE_FLOW=1; HUSKY=1; FORCE_SCRIPTS=0; LEGACY_NO_FORMAT_HOOK=0
-EXAMPLE_SUBAGENT="auto"   # auto → on for init, off otherwise
+WORKTREE_FLOW=1; FORCE_SCRIPTS=0; LEGACY_NO_FORMAT_HOOK=0
+LEGACY_NO_HUSKY=0; LEGACY_EXAMPLE_SUBAGENT_FLAG=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-worktree) WORKTREE_FLOW=0 ;;
     --no-format-hook) LEGACY_NO_FORMAT_HOOK=1 ;;
-    --no-husky) HUSKY=0 ;;
-    --no-example-subagent) EXAMPLE_SUBAGENT=0 ;;
-    --example-subagent) EXAMPLE_SUBAGENT=1 ;;
+    --no-husky) LEGACY_NO_HUSKY=1 ;;
+    --no-example-subagent|--example-subagent) LEGACY_EXAMPLE_SUBAGENT_FLAG="$1" ;;
     --force-scripts) FORCE_SCRIPTS=1 ;;
     -h|--help) usage 0 ;;
     *) die "unknown flag: $1" ;;
@@ -61,9 +60,10 @@ done
 [[ "$MODE" == upgrade ]] && FORCE_SCRIPTS=1
 [[ "$LEGACY_NO_FORMAT_HOOK" == 1 ]] && \
   warn "--no-format-hook is deprecated and ignored; formatter hooks are now project-owned"
-if [[ "$EXAMPLE_SUBAGENT" == auto ]]; then
-  [[ "$MODE" == init ]] && EXAMPLE_SUBAGENT=1 || EXAMPLE_SUBAGENT=0
-fi
+[[ "$LEGACY_NO_HUSKY" == 1 ]] && \
+  warn "--no-husky is deprecated and ignored; hook-manager and package integration are now project-owned"
+[[ -n "$LEGACY_EXAMPLE_SUBAGENT_FLAG" ]] && \
+  warn "$LEGACY_EXAMPLE_SUBAGENT_FLAG is deprecated and ignored; subagent examples now live in references/subagents.md"
 
 # ---- resolve target repo ---------------------------------------------------
 TARGET="$(git rev-parse --show-toplevel 2>/dev/null)" || die "not inside a git repository — run from within the target project"
@@ -396,6 +396,28 @@ if after != before:
         destination.write(after)
 '
 }
+replace_managed_line() {  # <file> <owned-old-line> <owned-new-line>; upgrade only
+  local file="$1" before="$2" after="$3"
+  [[ "$MODE" == upgrade && -f "$file" ]] || return 0
+  HARNESS_LINE_FILE="$file" HARNESS_LINE_BEFORE="$before" HARNESS_LINE_AFTER="$after" run_python -c '
+import os
+path = os.environ["HARNESS_LINE_FILE"]
+before = os.environ["HARNESS_LINE_BEFORE"].encode("utf-8")
+after = os.environ["HARNESS_LINE_AFTER"].encode("utf-8")
+with open(path, "rb") as source:
+    content = source.read()
+parts = content.splitlines(keepends=True)
+updated = []
+for part in parts:
+    body = part.rstrip(b"\r\n")
+    ending = part[len(body):]
+    updated.append(after + ending if body == before else part)
+result = b"".join(updated)
+if result != content:
+    with open(path, "wb") as destination:
+        destination.write(result)
+'
+}
 replace_managed_text() {  # <file> <owned-old-text> <owned-new-text>; upgrade only
   local file="$1" before="$2" after="$3"
   [[ "$MODE" == upgrade && -f "$file" ]] || return 0
@@ -612,10 +634,10 @@ render_agents_template() {
     /<!-- agent-scaffold:worktree:end -->/   { skip=0; next }
     !include_worktree && /<!-- agent-scaffold:worktree-only -->/ { next }
     !skip {
-      gsub(/[[:space:]]*<!-- agent-scaffold:worktree-only -->[[:space:]]*/, "")
+      gsub(/[[:space:]]*<!-- agent-scaffold:worktree-only -->/, "")
       print
     }
-  ' "$TPL/AGENTS.root.md"
+  ' "$TPL/AGENTS.harness.md"
 }
 
 validate_agents_markers() {
@@ -647,14 +669,14 @@ validate_agents_markers() {
   die "AGENTS.md has malformed agent-scaffold markers (expected exactly one ordered start/end pair); repair them manually before $MODE"
 }
 
-# ---- AGENTS.md (init writes template; retrofit injects the marked block) ----
+# ---- AGENTS.md (the scaffold owns only the marked harness block) ------------
 ensure_agents_md() {
-  local agents="$TARGET/AGENTS.md" block="$TMPDIR_H/block.md" rendered="$TMPDIR_H/AGENTS.root.md"
+  local agents="$TARGET/AGENTS.md" block="$TMPDIR_H/block.md" rendered="$TMPDIR_H/AGENTS.harness.md"
   validate_agents_markers
   render_agents_template > "$rendered"
   awk '/<!-- agent-scaffold:start/{f=1} f{print} /<!-- agent-scaffold:end/{f=0}' "$rendered" > "$block"
   if [[ ! -e "$agents" ]]; then
-    cp "$rendered" "$agents"; ok "AGENTS.md created from template (fill the TODO sections)"
+    cp "$rendered" "$agents"; ok "AGENTS.md created with the managed harness block; project prose stays author-owned"
   elif grep -qF '<!-- agent-scaffold:start' "$agents"; then
     awk -v bf="$block" '
       BEGIN { while ((getline l < bf) > 0) blk = blk l "\n" }
@@ -673,18 +695,20 @@ ensure_claude_md_symlink() {
   run_python "$TPL/symlink-manager.py" ensure-contract --repo "$TARGET"
 }
 
-# ---- subagent wiring: pre-commit drift guard + (Node projects) package.json scripts ----
-# The generator itself is python (needs no package.json). package.json scripts are a
-# convenience added only when the project already has one; husky is npm-based, so its
-# path is likewise gated on package.json. Everything else just advises the one line to wire.
+# ---- project-owned subagent integration + legacy command migration ----------
+# The generator is managed runtime. CI, hook-manager, and package-script wiring
+# are project policy; upgrade only repairs exact legacy callers that would break.
 GEN_CHECK='python .agents/tools/generate-subagents.py --check'
 LEGACY_GEN_CHECK='python tools/agent/generate-subagents.py --check'
-PKG_MERGE_PY='
+PKG_MIGRATE_PY='
 import json, os, sys
 p = os.environ["HARNESS_PKG"]
-with open(p) as f:
+with open(p, encoding="utf-8") as f:
     j = json.load(f)
-j.setdefault("scripts", {})
+scripts = j.get("scripts")
+if not isinstance(scripts, dict):
+    sys.stdout.write("unchanged")
+    raise SystemExit(0)
 changed = False
 want = {
     "gen:subagents": "python .agents/tools/generate-subagents.py",
@@ -695,14 +719,11 @@ legacy = {
     "check:agents": "python tools/agent/generate-subagents.py --check",
 }
 for k, v in want.items():
-    if k not in j["scripts"] or j["scripts"].get(k) == legacy[k]:
-        j["scripts"][k] = v
+    if scripts.get(k) == legacy[k]:
+        scripts[k] = v
         changed = True
-if os.environ.get("HARNESS_PREPARE") == "1" and "prepare" not in j["scripts"]:
-    j["scripts"]["prepare"] = "husky"
-    changed = True
 if changed:
-    with open(p, "w") as f:
+    with open(p, "w", encoding="utf-8") as f:
         f.write(json.dumps(j, indent=2, ensure_ascii=False) + "\n")
 sys.stdout.write("updated" if changed else "unchanged")
 '
@@ -744,46 +765,16 @@ is_portable_subagent_name() {
   return 0
 }
 
-wire_subagents() {
-  local pkg="$TARGET/package.json"
-  local hook="$TARGET/.husky/pre-commit" manager="" prepare=0
-  remove_line "$hook" "$LEGACY_GEN_CHECK"
-  # detect a pre-existing non-husky hook manager so we never bolt husky on beside it
-  if [[ -f "$TARGET/lefthook.yml" || -f "$TARGET/lefthook.yaml" || -f "$TARGET/.lefthook.yml" ]]; then manager=lefthook
-  elif [[ -f "$TARGET/.pre-commit-config.yaml" ]]; then manager=pre-commit
-  elif [[ -f "$pkg" ]] && grep -qE '"(simple-git-hooks|yorkie)"' "$pkg" 2>/dev/null; then
-    manager="$(grep -oE 'simple-git-hooks|yorkie' "$pkg" | head -1)"
-  else
-    local nat; nat="$(git -C "$TARGET" rev-parse --git-path hooks/pre-commit 2>/dev/null || true)"
-    if [[ -n "$nat" && -f "$nat" ]]; then manager="existing git pre-commit hook"; fi
-  fi
-
-  if [[ -n "$manager" ]]; then
-    warn "detected $manager — add '$GEN_CHECK' to your $manager config to guard subagent drift"
-  elif [[ "$HUSKY" == 1 && -f "$pkg" ]]; then
-    # husky path (npm-based, so it needs a package.json): create/extend .husky/pre-commit
-    if [[ ! -f "$hook" ]]; then
-      mkdir -p "$TARGET/.husky"
-      cp "$TPL/husky.pre-commit" "$hook"
-    else
-      ensure_line "$hook" "$GEN_CHECK"
-    fi
-    chmod +x "$hook" 2>/dev/null || true
-    prepare=1
-    ok ".husky/pre-commit drift guard wired"
-    [[ -d "$TARGET/node_modules/husky" ]] || warn "husky not installed yet — activate the hook with: npm install -D husky && npm run prepare"
-  elif [[ "$HUSKY" == 1 ]]; then
-    warn "no package.json → husky unavailable; add '$GEN_CHECK' to your pre-commit / CI to guard subagent drift"
-  fi
-
-  # package.json convenience scripts — only when the project actually has a package.json
+migrate_legacy_subagent_integrations() {
+  [[ "$MODE" == upgrade ]] || return 0
+  local pkg="$TARGET/package.json" hook="$TARGET/.husky/pre-commit" result=""
+  replace_managed_line "$hook" "$LEGACY_GEN_CHECK" "$GEN_CHECK"
   if [[ -f "$pkg" ]]; then
-    if HARNESS_PKG="$pkg" HARNESS_PREPARE="$prepare" run_python -c "$PKG_MERGE_PY" >/dev/null; then
-      log "package.json: ensured gen:subagents / check:agents scripts"
-    else
-      warn "could not update package.json scripts"
-    fi
+    result="$(HARNESS_PKG="$pkg" run_python -c "$PKG_MIGRATE_PY")" \
+      || die "could not migrate legacy package.json subagent commands"
+    [[ "$result" == updated ]] && ok "legacy package.json subagent commands migrated; future integration is project-owned"
   fi
+  return 0
 }
 
 # ---- the install path (shared by init / retrofit / upgrade) ----------------
@@ -832,7 +823,6 @@ do_install() {
   prepare_hook_addition "$TPL/codex.hooks.json"     "$cx_add"
   write_hook_config "Claude Code" "$TARGET/.claude/settings.json" "$cc_add"
   write_hook_config "Codex"       "$TARGET/.codex/hooks.json"     "$cx_add"
-  copy_if_missing "$TPL/codex.config.toml" "$TARGET/.codex/config.toml"
 
   # 5. ignore + attributes
   local gi="$TARGET/.gitignore"
@@ -855,34 +845,22 @@ do_install() {
   ensure_line "$ga" ".agents/tools/hooks/*.py text eol=lf"
   ensure_line "$ga" ".agents/relink-skills.sh text eol=lf"
   ensure_line "$ga" ".agents/*.py text eol=lf"
-  ensure_line "$ga" ".husky/pre-commit text eol=lf"
+  touch "$TARGET/.agents/subagents/.gitkeep"
 
-  # 6. example subagent (so the source → projection round-trip is demonstrable)
-  if [[ "$EXAMPLE_SUBAGENT" == 1 ]]; then
-    if find "$TARGET/.agents/subagents" -mindepth 1 -maxdepth 1 -type d ! -name '_*' 2>/dev/null | grep -q .; then
-      log "subagents already exist — skipping example seed"
-    else
-      mkdir -p "$TARGET/.agents/subagents/code-reviewer"
-      cp "$TPL/subagent.metadata.json"   "$TARGET/.agents/subagents/code-reviewer/metadata.json"
-      cp "$TPL/subagent.instructions.md" "$TARGET/.agents/subagents/code-reviewer/instructions.md"
-      ok "seeded example subagent .agents/subagents/code-reviewer (delete it once you add your own)"
-    fi
-  fi
-  [[ "$EXAMPLE_SUBAGENT" == 1 ]] || touch "$TARGET/.agents/subagents/.gitkeep"
-
-  # 7. relink skills (idempotent)
+  # 6. relink skills (idempotent)
   bash "$TARGET/.agents/relink-skills.sh"
 
-  # 8. subagent generator + drift guard (python is a harness prerequisite)
+  # 7. subagent generator + project-owned drift integration
   copy_script "$TPL/generate-subagents.py" "$TARGET/.agents/tools/generate-subagents.py"
-  wire_subagents
+  migrate_legacy_subagent_integrations
   # --import first: adopt any hand-authored .claude/agents/*.md or .codex/agents/*.toml
   # into the .agents/ SSOT (no-op when there are none), then project everything back.
   # Importing first also stops the projection step from pruning a hand-authored agent as a
   # sourceless "orphan"; any ownership or parse conflict propagates and aborts the install.
   run_python "$TARGET/.agents/tools/generate-subagents.py" --import
+  log "project-owned subagent drift guard: wire '$GEN_CHECK' into CI or a hook manager when useful (references/subagents.md)"
 
-  # 9. closing notes
+  # 8. closing notes
   echo
   ok "harness $MODE complete."
   log "Codex trust: project-level .codex/ only loads for a TRUSTED project. Trust once:"
@@ -890,9 +868,9 @@ do_install() {
   log "    [projects.\"$TARGET\"]"
   log "    trust_level = \"trusted\""
   if [[ "$WORKTREE_FLOW" == 1 ]]; then
-    log "next: fill the AGENTS.md TODO sections; start changes with bash .agents/tools/worktree.sh new <name>."
+    log "next: add project-owned AGENTS.md prose outside the managed block when useful; start changes with bash .agents/tools/worktree.sh new <name>."
   else
-    log "next: fill the AGENTS.md TODO sections; use the project's existing branch/change workflow."
+    log "next: add project-owned AGENTS.md prose outside the managed block when useful; use the project's existing branch/change workflow."
   fi
 }
 
@@ -913,7 +891,7 @@ do_plan() {
     printf '  %s CLAUDE.md   real file retired → symlink to AGENTS.md (prose preserved in AGENTS.md)\n' "$MIG"
   else
     if [[ ! -e "$agents" ]]; then
-      printf '  %s AGENTS.md   from template (fill the TODO sections)\n' "$NEW"
+      printf '  %s AGENTS.md   create the managed harness block; project prose remains author-owned\n' "$NEW"
     elif grep -qF '<!-- agent-scaffold:start' "$agents" 2>/dev/null; then
       printf '  %s AGENTS.md   refresh only the agent-scaffold block; your prose untouched\n' "$MRG"
     else

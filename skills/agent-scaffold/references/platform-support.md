@@ -67,5 +67,5 @@ this sequence before running a mutating installer mode:
    ```
 
    Link creation uses Python `os.symlink`, not MSYS `ln -s`. The installer pins vendored
-   shell/Python files and `.husky/pre-commit` to LF; capability failure exits 2 before target
-   writes and leaves no copy or partial harness.
+   shell/Python files to LF; project-owned hook-manager files keep their existing line endings.
+   Capability failure exits 2 before target writes and leaves no copy or partial harness.

@@ -58,7 +58,7 @@ done
 
 # 4b. shipped scripts must be LF-only — CRLF breaks bash under Windows/Git Bash, and
 #     these are copied verbatim into consumer projects (cross-platform design goal).
-for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.py "$sk/templates/husky.pre-commit"; do
+for f in "$sk/harness-init.sh" "$sk"/templates/*.sh "$sk"/templates/*.py; do
   [ -f "$f" ] || continue
   [ -n "$(tr -dc '\015' < "$f")" ] && fail "CRLF line endings — must be LF (Windows/Git Bash): ${f#"$repo"/}"
 done
@@ -80,10 +80,23 @@ done
 [ ! -e "$sk/templates/format_on_edit.sh" ] \
   || fail "retired format_on_edit.sh still ships as a template"
 grep -q -- '--no-worktree' "$sk/harness-init.sh" || fail "harness-init.sh lost the lightweight profile flag"
-grep -qF '<!-- agent-scaffold:worktree:start -->' "$sk/templates/AGENTS.root.md" \
-  || fail "AGENTS.root.md lost the optional worktree policy boundary"
+grep -qF '<!-- agent-scaffold:worktree:start -->' "$sk/templates/AGENTS.harness.md" \
+  || fail "AGENTS.harness.md lost the optional worktree policy boundary"
 grep -qF 'HARNESS_ENABLE_WORKTREE' "$sk/harness-init.sh" \
   || fail "hook reconciliation no longer filters the optional trunk guard"
+
+# Project-specific prose, examples, settings, and hook-manager choices belong in
+# on-demand references, not the installed template surface.
+for retired in \
+  AGENTS.root.md AGENTS.nested.md codex.config.toml husky.pre-commit \
+  subagent.metadata.json subagent.instructions.md; do
+  [ ! -e "$sk/templates/$retired" ] \
+    || fail "project-owned artifact still ships as a template: $retired"
+done
+grep -qF 'optional example' "$sk/templates/agents-subagents.README.md" \
+  || fail "thin subagent README no longer routes to the reference-only example"
+grep -qF 'full authoring conventions' "$sk/templates/agents-skills.README.md" \
+  || fail "thin skill README no longer routes to authoring depth"
 
 # Legacy runtime text is allowed only where upgrade recognizes, explains, or tests
 # the hard-cut migration. Active contracts and current command examples must not drift back.
@@ -97,6 +110,7 @@ while IFS= read -r legacy_file; do
     skills/agent-scaffold/SKILL.md | \
     skills/agent-scaffold/harness-init.sh | \
     skills/agent-scaffold/references/harness-migration.md | \
+    skills/agent-scaffold/references/subagents.md | \
     skills/agent-scaffold/templates/generate-subagents.py) ;;
     *) fail "stale active legacy runtime reference: $legacy_file" ;;
   esac
