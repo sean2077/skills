@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "mode": "plan",
+  "target": "<target>",
+  "profile": "light",
+  "apply_mode": "upgrade",
+  "ok": false,
+  "checks": [
+    {
+      "id": "runtime.example",
+      "status": "refresh",
+      "path": ".agents/tools/example.py",
+      "fix": null
+    },
+    {
+      "id": "host.example",
+      "status": "attention",
+      "path": ".host/hooks.json",
+      "fix": "repair the JSON",
+      "detail": "invalid JSON"
+    }
+  ]
+}

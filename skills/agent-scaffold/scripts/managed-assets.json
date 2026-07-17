@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "id": "contract.agents",
+      "source": "assets/scaffold/AGENTS.harness.md",
+      "target": "AGENTS.md",
+      "strategy": "managed-block",
+      "profiles": ["default", "light"],
+      "executable": false
+    },
+    {
+      "id": "host.claude-hooks",
+      "source": "assets/host/claude.settings.json",
+      "target": ".claude/settings.json",
+      "strategy": "merge-json",
+      "profiles": ["default", "light"],
+      "executable": false
+    },
+    {
+      "id": "host.codex-hooks",
+      "source": "assets/host/codex.hooks.json",
+      "target": ".codex/hooks.json",
+      "strategy": "merge-json",
+      "profiles": ["default", "light"],
+      "executable": false
+    },
+    {
+      "id": "runtime.worktree",
+      "source": "assets/runtime/worktree.sh",
+      "target": ".agents/tools/worktree.sh",
+      "strategy": "copy",
+      "profiles": ["default"],
+      "executable": true
+    },
+    {
+      "id": "runtime.trunk-guard",
+      "source": "assets/runtime/hooks/trunk_edit_guard.sh",
+      "target": ".agents/tools/hooks/trunk_edit_guard.sh",
+      "strategy": "copy",
+      "profiles": ["default"],
+      "executable": true
+    },
+    {
+      "id": "runtime.authority-budget",
+      "source": "assets/runtime/hooks/authority_doc_budget.sh",
+      "target": ".agents/tools/hooks/authority_doc_budget.sh",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": true
+    },
+    {
+      "id": "runtime.hook-common",
+      "source": "assets/runtime/hooks/hook-common.sh",
+      "target": ".agents/tools/hooks/hook-common.sh",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": true
+    },
+    {
+      "id": "runtime.hook-paths",
+      "source": "assets/runtime/hooks/hook-paths.py",
+      "target": ".agents/tools/hooks/hook-paths.py",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": true
+    },
+    {
+      "id": "runtime.relink-skills",
+      "source": "assets/runtime/relink-skills.sh",
+      "target": ".agents/relink-skills.sh",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": true
+    },
+    {
+      "id": "runtime.symlink-manager",
+      "source": "assets/runtime/symlink-manager.py",
+      "target": ".agents/symlink-manager.py",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": true
+    },
+    {
+      "id": "runtime.subagent-generator",
+      "source": "assets/runtime/generate-subagents.py",
+      "target": ".agents/tools/generate-subagents.py",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": true
+    },
+    {
+      "id": "seed.skills-readme",
+      "source": "assets/scaffold/agents-skills.README.md",
+      "target": ".agents/skills/README.md",
+      "strategy": "seed",
+      "profiles": ["default", "light"],
+      "executable": false
+    },
+    {
+      "id": "seed.subagents-readme",
+      "source": "assets/scaffold/agents-subagents.README.md",
+      "target": ".agents/subagents/README.md",
+      "strategy": "seed",
+      "profiles": ["default", "light"],
+      "executable": false
+    }
+  ],
+  "line_invariants": [
+    {
+      "id": "contract.gitignore-personal",
+      "target": ".gitignore",
+      "profiles": ["default", "light"],
+      "lines": [".claude/settings.local.json"]
+    },
+    {
+      "id": "contract.gitignore-worktree",
+      "target": ".gitignore",
+      "profiles": ["default"],
+      "lines": [".worktrees/", ".claude/allow-trunk-edit"]
+    },
+    {
+      "id": "contract.gitattributes",
+      "target": ".gitattributes",
+      "profiles": ["default", "light"],
+      "lines": [
+        ".agents/tools/*.sh text eol=lf",
+        ".agents/tools/hooks/*.sh text eol=lf",
+        ".agents/tools/*.py text eol=lf",
+        ".agents/tools/hooks/*.py text eol=lf",
+        ".agents/relink-skills.sh text eol=lf",
+        ".agents/*.py text eol=lf"
+      ]
+    }
+  ]
+}

@@ -2,33 +2,42 @@
 
 Read this only when changing installed file placement, optional profiles, SSOT projections, or third-party skill coexistence.
 
+## Contents
+
+- [Bundled files: provenance + landing](#bundled-files-provenance--landing)
+- [Light profile](#light-profile)
+- [The `.agents/` SSOT model](#the-agents-ssot-model)
+- [Project-owned skill authoring](#project-owned-skill-authoring)
+- [Coexistence with `npx skills`](#coexistence-with-npx-skills)
+- [Runtime workflow troubleshooting](#runtime-workflow-troubleshooting)
+
 ## Bundled files: provenance + landing
 
-`npx skills` installs each skill as a self-contained directory — a skill cannot reference
-files from a sibling skill at runtime, so this skill carries its **own** copy of every script
-it installs. The installer (`harness-init.sh`) reads from `templates/` and writes into the target.
+`npx skills` installs each skill as a self-contained directory, so this skill carries every file
+it installs. `scripts/managed-assets.json` is the internal source of truth for source, target,
+strategy, profile, executable intent, and required `.gitignore` / `.gitattributes` lines.
+`agent-scaffold.sh` resolves that manifest rather than maintaining another file list.
 
-| `templates/` file | Lands at (target) | Notes |
+| Bundled asset | Lands at (target) | Notes |
 |---|---|---|
-| `worktree.sh` | `.agents/tools/worktree.sh` | default profile only: worktree-per-change lifecycle (new/done/release/list) |
-| `trunk_edit_guard.sh` | `.agents/tools/hooks/trunk_edit_guard.sh` | default profile only: PreToolUse trunk-edit blocker (dual-host `proj=` resolver) |
-| `authority_doc_budget.sh` | `.agents/tools/hooks/authority_doc_budget.sh` | PostToolUse AGENTS.md line-budget advisor |
-| `hook-common.sh` + `hook-paths.py` | `.agents/tools/hooks/` | shared Python JSON parser + Git Bash/native path normalization |
-| `relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
-| `symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, migration, sync, and verification |
-| `generate-subagents.py` | `.agents/tools/generate-subagents.py` | subagent projection + `--check` drift mode (python) |
-| `claude.settings.json` | merged into `.claude/settings.json` | CC hook block (merge source) |
-| `codex.hooks.json` | merged into `.codex/hooks.json` | Codex hook block (merge source) |
-| `AGENTS.harness.md` | `AGENTS.md` (init) / harness block injected (retrofit) | only the `<!-- agent-scaffold:start … end -->` block is scaffold-owned |
-| `agents-skills.README.md` | `.agents/skills/README.md` (create if missing) | lean resident commands + ownership boundary |
-| `agents-subagents.README.md` | `.agents/subagents/README.md` (create if missing) | lean resident commands + ownership boundary |
-| `gitignore.snippet` | appended to `.gitignore` | always `.claude/settings.local.json`; default profile also adds `.worktrees/` and `.claude/allow-trunk-edit` |
+| `assets/runtime/worktree.sh` | `.agents/tools/worktree.sh` | default profile only: worktree-per-change lifecycle |
+| `assets/runtime/hooks/trunk_edit_guard.sh` | `.agents/tools/hooks/trunk_edit_guard.sh` | default profile only: PreToolUse trunk-edit blocker |
+| `assets/runtime/hooks/authority_doc_budget.sh` | `.agents/tools/hooks/authority_doc_budget.sh` | PostToolUse AGENTS.md line-budget advisor |
+| `assets/runtime/hooks/hook-common.sh` + `hook-paths.py` | `.agents/tools/hooks/` | shared path parsing and normalization |
+| `assets/runtime/relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
+| `assets/runtime/symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, sync, and verification |
+| `assets/runtime/generate-subagents.py` | `.agents/tools/generate-subagents.py` | subagent projection + `--check` drift mode |
+| `assets/host/claude.settings.json` | merged into `.claude/settings.json` | Claude Code managed hook source |
+| `assets/host/codex.hooks.json` | merged into `.codex/hooks.json` | Codex managed hook source |
+| `assets/scaffold/AGENTS.harness.md` | managed block in `AGENTS.md` | only the marker-bounded block is scaffold-owned |
+| `assets/scaffold/agents-skills.README.md` | `.agents/skills/README.md` if missing | lean ownership boundary |
+| `assets/scaffold/agents-subagents.README.md` | `.agents/subagents/README.md` if missing | lean ownership boundary |
 
 Project prose, nested authority-document structure, subagent examples, Codex settings,
 package scripts, and CI/hook-manager integration are reference recipes rather than installed
 templates. Existing project-owned copies are preserved on upgrade. Formatter, linter, test, and
 code-generation hooks likewise stay outside `.agents/tools/`; see
-[host integration](host-integration.md#project-owned-formatting-hooks) and
+[format hooks](format-hooks.md) and
 [subagents](subagents.md#project-owned-drift-integration).
 
 The vendored scripts derive their own paths (git-common-dir / `$BASH_SOURCE`), so they are
@@ -38,16 +47,15 @@ layout-independent once they land at the paths above. **They are intentionally t
 resolver to a shallower path: the git-toplevel fallback is what makes the hooks work under Codex
 (which has no `$CLAUDE_PROJECT_DIR`), and `scripts/check-agent-scaffold.sh` guards this invariant.
 
-### Optional lightweight profile
+### Light profile
 
-`--no-worktree` disables worktree governance while retaining the rest of the harness. A clean
-install omits `worktree.sh`, `trunk_edit_guard.sh`, their dual-host hook entries, the managed
-worktree section in `AGENTS.md`, and new worktree-specific ignore lines. A default→light upgrade
+`--profile light` omits worktree governance while retaining the rest of the harness. A clean apply
+omits `worktree.sh`, `trunk_edit_guard.sh`, their dual-host hook entries, the managed worktree
+section in `AGENTS.md`, and new worktree-specific ignore lines. A default-to-light apply
 removes only the managed guard/policy; existing script copies and unmarked `.gitignore` lines are
-preserved as dormant/user-owned content. The option is per-invocation: repeat it for `plan`,
-`retrofit`/`upgrade`, and `verify`. Omitting it on a later upgrade selects the default profile and
-re-enables worktree governance. `verify` fails on wiring mismatches or script drift in the selected
-profile; dormant worktree scripts left by a default→light transition are outside that comparison.
+preserved as dormant project-owned content. Select the profile on every `plan`, mutating, and
+`verify` call. `verify` checks only active-profile assets; dormant default-profile scripts are
+outside the light-profile comparison.
 
 ## The `.agents/` SSOT model
 
@@ -64,7 +72,7 @@ profile; dormant worktree scripts left by a default→light transition are outsi
   the generated files — they carry a "do not edit" banner. `--check` exits 1 on drift; wire it
   into pre-commit / CI (`python .agents/tools/generate-subagents.py --check`). `--import` does the
   reverse — adopt hand-authored host agents into sources
-  ([harness-migration.md](harness-migration.md#retrofitting-an-in-flight-project)).
+  ([retrofit.md](retrofit.md#adopt-hand-authored-host-agents)).
 - **Drift guard**: the scaffold supplies `python .agents/tools/generate-subagents.py --check`, but
   the project decides whether it belongs in CI, Husky, pre-commit, lefthook, another manager, or
   nowhere. The installer prints the command and leaves project integration untouched.
@@ -103,8 +111,8 @@ Two mechanisms live side by side, partitioned by **managed target (ours) vs othe
   **real directories** in `.claude/skills/`. `relink-skills.sh` never touches unrelated real
   directories or symlinks. A same-name project source is a conflict: it is preserved and the
   relinker exits 2 rather than silently choosing one owner.
-- **Legacy migration**: a Git target-text placeholder or byte-identical historical copy is safe to
-  replace with a real relative link; drifted content is always preserved as a reported conflict.
+- **Real-link repair**: a Git target-text placeholder can be materialized as its tracked relative
+  link; drifted content is preserved as a reported conflict.
 
 ## Runtime workflow troubleshooting
 

@@ -67,7 +67,9 @@ jobs:
 
       - name: Check agent-scaffold invariants
         if: always()
-        run: bash scripts/check-agent-scaffold.sh
+        run: |
+          python scripts/tests/test_agent_scaffold_core.py
+          bash scripts/check-agent-scaffold.sh
 
       - name: Exercise tooling manifest reconciliation
         if: always()

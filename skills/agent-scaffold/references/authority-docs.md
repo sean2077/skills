@@ -10,7 +10,7 @@ frequently-needed points. The `authority_doc_budget.sh` hook advises when a cont
 line budget (root 320 / nested 120). Nested contracts carry `<!-- Parent: ... -->` pointing to the
 nearest existing ancestor contract and stay subordinate to the root.
 
-**Retrofit never overwrites a hand-authored `AGENTS.md`.** The installer manages only the marked
+**Apply never overwrites a hand-authored `AGENTS.md`.** The installer manages only the marked
 block:
 
 - No `AGENTS.md` → create it with only the managed harness block.
@@ -21,7 +21,7 @@ block:
 
 Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade`
 refreshes everything between them. The template's inner worktree boundary is installer-owned:
-`--no-worktree` removes that complete policy and its worktree-only layout rows.
+`--profile light` removes that complete policy and its worktree-only layout rows.
 
 ### Project-owned root prose
 
@@ -47,9 +47,9 @@ scaffold-owned content:
 Place that prose before or after the managed block. The scaffold never fills, refreshes, or judges
 those project sections.
 
-When the contract lives in a **real `CLAUDE.md`** with no `AGENTS.md` yet, retrofit adopts that
+When the contract lives in a **real `CLAUDE.md`** with no `AGENTS.md` yet, apply adopts that
 prose as the `AGENTS.md` SSOT and replaces `CLAUDE.md` with the symlink — see
-[`harness-migration.md`](harness-migration.md#adopting-a-real-claudemd).
+[`retrofit.md`](retrofit.md#adopt-an-existing-claudemd).
 
 ### Creating nested AGENTS.md on demand
 
