@@ -1,126 +1,65 @@
 ---
 name: semver-release
-description: Cut a semantic-version release from conventional commits — infer the MAJOR/MINOR/PATCH bump since the last tag, update CHANGELOG.md and the project version file, create the release commit and annotated tag, optionally publish a GitHub/GitLab release, and push. Use when the user wants to release, tag a version, bump the version, or update the changelog for a release; handles prerelease (beta/rc) and promoting a prerelease to final. Not for per-commit messages (use conventional-commit) or pushing feature branches.
-compatibility: Requires git and a clean release-capable checkout; publishing additionally requires authenticated gh or glab.
+description: 'Cut and publish a semantic-version release from conventional commits: select or validate the target version, prepare project-owned release notes and version files, create the release commit and tag, push, and verify the forge release. Use for releases, tags, version bumps, prereleases, or promoting beta/rc to stable. Not for one ordinary commit (use conventional-commit) or pushing a feature branch.'
 ---
 
 # Semver Release
 
-Cut a clean semantic-version release: infer the bump from conventional commits, update the changelog and version file, tag, optionally publish a forge release, and push. This is the natural sequel to per-commit work done with the `conventional-commit` skill.
-
-Load only the category needed: tag and bump rules live in [`references/version-selection.md`](references/version-selection.md), ecosystem synchronization in [`references/version-files.md`](references/version-files.md), changelog mechanics in [`references/changelog.md`](references/changelog.md), and beta/rc finalization in [`references/prerelease-promotion.md`](references/prerelease-promotion.md).
-
-## When To Use
-
-Use this skill when the user wants to:
-
-- release / 发版 / tag a version / bump the version / publish a release
-- update `CHANGELOG.md` for a release and tag it
-- finalize a prerelease (beta/rc) into a stable version
-
-Do not use this skill for:
-
-- writing a single commit message (use `conventional-commit`)
-- pushing a feature branch or opening a PR/MR
-- rewriting history or moving an existing tag
+Drive one release from read-only planning through a verified forge release. Keep generic
+Git and SemVer analysis deterministic; leave version authorities, build commands, signing,
+and artifact publication under the target repository's policy.
 
 ## Invariants
 
-- **Tags this skill creates** use `vX.Y.Z` or `vX.Y.Z-<pre>.N` (e.g. `v1.2.0`, `v0.3.0-beta.1`, `v1.0.0-rc.2`). Reject `v1.0`, `0.1.0`, underscores, and build-metadata suffixes on new tags; historical base tags are validated against full SemVer 2.0.0 in step 2.
-- **Version file stays semantically in sync with the tag.** Node and Rust manifests use the full SemVer value (`1.2.0-beta.1`); Python uses the equivalent PEP 440 value (`1.2.0b1` / `1.2.0rc1`) only for the built-in `alpha.N` / `beta.N` / `rc.N` mappings. Any other label requires an explicit repository-defined Python mapping; without one, stop before writing release files, committing, tagging, or pushing. CMake's `project(... VERSION ...)` stays numeric and any project-defined prerelease suffix is updated separately. Never publish a prerelease package whose manifest still identifies it as the final release.
-- **A tag push is not the finish line.** A tag-triggered release CI (if the repo has one) turns the push into the release; verify the forge release actually appeared and the release commit is on the trunk.
-- **Build/publish from a clean trunk**, not a dirty working tree. Refuse a detached HEAD.
-- **Never move or overwrite an existing tag.** If the target tag exists, stop and report.
+- A valid exact version supplied by the user is the target; infer a bump only when the user
+  did not choose one. Surface conflicts, but do not reopen an explicit release choice.
+- Plan without mutation first. Do not edit release files until the base, target, release
+  workflow, and version authority are unambiguous.
+- Release from a clean attached trunk or repository-approved release line/worktree.
+- Preserve the repository's release-note authority: committed changelog, fragments,
+  generated notes, or forge-native notes. Do not invent a root changelog by default.
+- Keep every package/version identity semantically aligned with the tag.
+- Stage the exact release snapshot, run its gates, and return to a clean tree before tagging.
+- Never move, replace, or recreate an existing tag.
+- A pushed tag is not completion: verify the release workflow or direct forge release, its
+  commit identity, and final URL.
 
 ## Workflow
 
-### 1. Preflight
+1. Read repository release policy and inspect the branch, worktree, remotes, version sources,
+   changelog, signing requirements, and forge workflows. Fetch tags before selecting a base.
+2. Run the bundled read-only analyzer (Python 3.8+):
 
-```bash
-git status --porcelain          # must be empty
-git rev-parse --abbrev-ref HEAD # refuse detached HEAD
-git fetch --tags origin
-git rev-parse --is-shallow-repository
-```
+   ```bash
+   python <skill-dir>/scripts/release-plan.py --repo <repo-root> --json [--target vX.Y.Z]
+   ```
 
-If the branch is not the trunk (`main`/`master`) or a `release/*` line, call that out before continuing. If the shallow-repository check prints `true`, list apparent roots with `git rev-list --max-parents=0 HEAD` and inspect each raw commit with `git cat-file -p <root>`. A true root has no parent header; stop before base selection only if an apparent HEAD root has a raw `parent` header. A repository can remain shallow because of an unrelated ref, so the repository-level flag alone must not block the release.
+   Resolve every `attention` result before mutation. If Python is unavailable or a custom
+   release model exceeds the analyzer, follow [`version-selection.md`](references/version-selection.md)
+   manually and report the unsupported boundary.
+3. Follow the repository-owned release-note pipeline. Read
+   [`changelog.md`](references/changelog.md) only when the project maintains a committed
+   changelog or needs a prepared notes file. Synchronize only authoritative project version
+   files using [`version-files.md`](references/version-files.md). For stable promotion after
+   alpha/beta/rc tags, also read
+   [`prerelease-promotion.md`](references/prerelease-promotion.md). Get the date from the
+   environment rather than guessing it.
+4. Run repository release gates. Stage every release file and no unrelated path; verify with
+   `git diff --cached --check` and short status, create `release: vX.Y.Z`, then require a clean
+   tree. Create the repository-required signed tag or the default annotated tag, push the
+   release branch/trunk, and push the tag without force.
+5. Follow [`publishing.md`](references/publishing.md): prefer an existing tag-triggered workflow;
+   otherwise create the forge release from the already-pushed tag using the selected project
+   release notes or repository-approved generated notes.
+6. Verify local, remote-branch, peeled-tag, CI, and forge-release commit identities, then report
+   the selected version and rationale, files changed, commit, tag, checks, and release URL.
 
-### 2. Choose base and version
+## On-demand references
 
-List every `v`-prefixed candidate whose tag commit is HEAD-reachable:
-
-```bash
-git tag --merged HEAD --list 'v[0-9]*'
-```
-
-Strip exactly one leading `v`, validate every candidate as strict SemVer 2.0.0, then rank all valid candidates by SemVer 2.0.0 precedence. Collect the full set and do not sort or truncate before validation. Git's version sort is configurable and is not a SemVer selector. Peel tied tag objects with `git rev-parse '<tag>^{commit}'`. When highest-precedence tags differ only by build metadata, use their shared commit as `<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity.
-
-Defensively confirm the selected base before collecting commits:
-
-```bash
-git merge-base --is-ancestor <base> HEAD
-```
-
-Exit status 1 means the selected base is not actually HEAD-reachable; any other nonzero status is a Git error. Stop in either case.
-
-Collect commits since the base, subjects **and** bodies, to infer the bump:
-
-```bash
-git log <base>..HEAD --pretty='%h %s%n%b%n---'
-```
-
-Infer the bump (highest match wins):
-
-| Trigger in any commit | Bump |
+| Need | Reference |
 |---|---|
-| `!` before the subject colon (e.g. `feat!:`) or an uppercase `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | **MAJOR** |
-| any `feat:` / `feat(scope):` | **MINOR** |
-| only `fix:` / `perf:` / `refactor:` / `docs:` / `chore:` / `test:` / `build:` / `style:` / `ci:` | **PATCH** |
-
-Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
-
-Confirm the computed next version with the user when it is ambiguous or when they may want a prerelease. A first-ever release has no HEAD-reachable valid SemVer base → default `v0.1.0` (or the version file's current value), changelog base = repo root. Prerelease selection: [`references/version-selection.md`](references/version-selection.md); promote-to-final mechanics: [`references/prerelease-promotion.md`](references/prerelease-promotion.md).
-
-### 3. Write release files
-
-- **`CHANGELOG.md`** — insert a new `## [vX.Y.Z] — YYYY-MM-DD` section, conventional-commit grouped (Added / Fixed / Changed / Docs / Chore, breaking changes called out on top). Format + write strategy: [`references/changelog.md`](references/changelog.md). Edit in place; never overwrite the whole file.
-- **Version file(s)** — write the ecosystem-canonical release value, including prerelease identity where the ecosystem supports it. Update coupled lockfiles (`package-lock.json`, `Cargo.lock`) through the ecosystem tool when applicable. Ecosystem synchronization must not create the release commit, tag, or push, or refresh unrelated dependencies. If the project pins its version in more than one place (a code constant, manifest + lockfile, docs badge), update **all** of them — `git grep -F <old-version>` to find them. Exact mapping and bounded synchronization: [`references/version-files.md`](references/version-files.md).
-- Optionally a per-release notes doc if the project keeps one.
-
-Get the date from the environment (`date +%F`); do not guess it.
-
-### 4. Commit, tag, push
-
-```bash
-git add -- CHANGELOG.md <all-version-files> <all-coupled-lockfiles> [release-notes]
-git diff --cached --check
-git status --short # every file changed for the release must be staged
-git commit -m "release: vX.Y.Z"
-git status --porcelain # must be empty before tagging
-git tag -a vX.Y.Z -m "Release vX.Y.Z"
-git push origin <branch>
-git push origin vX.Y.Z
-```
-
-Review the short status before committing: every file changed for the release must be staged, including lockfiles and generated version mirrors, with no unstaged or untracked release output and no unrelated path. If the staged set is not the exact intended release snapshot, stop and correct it before committing or tagging.
-
-### 5. Publish the release
-
-Two models — detect which the repo uses and prefer the first:
-
-**a. Tag-triggered release CI (preferred when present).** If the repo has a workflow that fires on a version tag — `.github/workflows/*` with `on: push: tags: ['v*']`, or `.gitlab-ci.yml` with a job gated on `$CI_COMMIT_TAG` — then **pushing the tag in step 4 is the finish line**: CI builds the release and extracts this version's CHANGELOG section as the release note. The skill's contract with that CI is the section's shape (`## [vX.Y.Z] — …` up to the next `## [`); keep it clean and do **not** also create the release by hand (that races/duplicates CI). After the push, confirm the workflow ran and the release appeared.
-
-**b. No release CI — create it directly.** Only when no tag-triggered workflow exists, create the release from the **pushed tag** (don't let the forge cut a second tag), body = the new CHANGELOG section:
-
-```bash
-gh release create vX.Y.Z   --title vX.Y.Z --notes-file <changelog-section.md>   # GitHub
-glab release create vX.Y.Z --notes-file <changelog-section.md>                  # GitLab
-```
-
-If neither CLI is available/authenticated, leave the tag pushed and report that the release still needs creating.
-
-To pull one version's section (the CI contract in model **a**, or the `--notes-file` body in model **b**), see [`references/changelog.md`](references/changelog.md) → "Extract one version's section".
-
-## Output Contract
-
-Report: the chosen version + bump level and why, the changelog section written, the version-file change(s), the pushed commit and tag, and the forge release URL (or that it was left to tag-triggered CI / skipped / failed). If anything blocked the release (dirty tree, existing tag, ambiguous bump), stop and report it rather than guessing.
+| Manual SemVer validation, reachable-base selection, bump inference, or unsupported models | [`version-selection.md`](references/version-selection.md) |
+| Node, Rust, Python, CMake, generic version files, and bounded lock synchronization | [`version-files.md`](references/version-files.md) |
+| Maintain a committed changelog or prepare a release-notes file | [`changelog.md`](references/changelog.md) |
+| Consolidate same-version prerelease history into a stable release | [`prerelease-promotion.md`](references/prerelease-promotion.md) |
+| Choose tag-triggered CI versus direct publication and verify the remote result | [`publishing.md`](references/publishing.md) |

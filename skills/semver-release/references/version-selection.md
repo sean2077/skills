@@ -2,6 +2,23 @@
 
 Read this when selecting a release base, inferring a bump, choosing a prerelease, or checking unsupported release models.
 
+## Analyzer first
+
+After fetching tags, prefer the bundled read-only analyzer:
+
+```bash
+python <skill-dir>/scripts/release-plan.py --repo <repo-root> --json [--target vX.Y.Z]
+```
+
+It checks clean/attached state, incomplete shallow history, reachable strict-SemVer tags,
+equal-precedence build-metadata ambiguity, conventional-commit bump signals, target availability,
+and prerelease decisions. Resolve its `attention` entries before mutation. The manual rules below
+are the fallback and the review contract for the analyzer.
+
+When the user supplied an exact valid target, keep it as the selected version. Compare it with
+the inferred bump and report any mismatch, but ask only when the requested value is invalid,
+already exists, not newer than the reachable base, or conflicts with project release policy.
+
 ## Choosing the next version
 
 ### Bump inference (highest match wins)
@@ -51,11 +68,12 @@ Peel each tied tag object with `git rev-parse '<tag>^{commit}'`. When highest-pr
 
 Before using the result, run `git merge-base --is-ancestor <base> HEAD`. Status 1 means it is not HEAD-reachable; another nonzero status is a Git error. Stop instead of choosing a different tag by incidental list order.
 
-- For a **prerelease** (`v0.5.0-beta.2`): base = the previous HEAD-reachable valid SemVer tag (including an earlier prerelease of the same version). The CHANGELOG appends a new section; older prerelease sections stay (fragmentation is expected during a preview round).
+- For a **prerelease** (`v0.5.0-beta.2`): base = the previous HEAD-reachable valid SemVer tag (including an earlier prerelease of the same version). Release notes cover that incremental range. If the project maintains a committed changelog, append its next section and retain earlier prerelease sections during the preview round.
 - For a **stable** `vX.Y.Z` when same-`X.Y.Z` prereleases exist: see **Promote-and-merge** below.
 - First-ever release means there is no HEAD-reachable valid SemVer base: base = repo root (`git log` with no range, or `--root`); default start tag `v0.1.0` or the version file's current value.
 
-## Out of scope
+## Unsupported models
 
-- **Signed / GPG tags** — this skill creates an annotated tag (`git tag -a`). If the project requires signed tags, swap in `git tag -s` (with a configured signing key) by hand.
+- **Signed / GPG tags** — follow the repository's signing policy; the generic analyzer does not
+  create or verify signatures.
 - **Monorepo / multi-package versioning** — version-file sync assumes one project version. For independently-versioned packages in one repo, run the release per package (or use a dedicated monorepo release tool); this skill does not coordinate multiple version lines under one tag.

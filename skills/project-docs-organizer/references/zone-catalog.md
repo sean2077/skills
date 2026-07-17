@@ -1,10 +1,11 @@
-# Project Documentation Zone Catalog
+# Optional Documentation Zone Catalog
 
-Read this when choosing the complete numbered zone model for a complex documentation tree.
+Read this only when the project has deliberately chosen semantic numbered zones and needs a
+catalog of candidate categories. Create only categories backed by real content.
 
-## Default zone catalog
+## Candidate zone catalog
 
-Use an audience-plus-lifecycle taxonomy by default:
+Adapt this audience-plus-lifecycle taxonomy to the project instead of copying it wholesale:
 
 - `00-start-here`: docs map and first-contact overview.
 - `01-quickstart`: fastest safe path to install, run, or understand the project.

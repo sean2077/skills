@@ -40,6 +40,9 @@ GROUPING_MANIFEST = REPO / ".claude-plugin" / "plugin.json"
 # Coarse repo-local prose budget, not a host token limit. It scales with the
 # catalog so adding a well-scoped skill does not consume another skill's share.
 METADATA_PROSE_CHARS_PER_SKILL = 512
+ALLOWED_FRONTMATTER_FIELDS = {"name", "description"}
+RESIDENT_SKILL_MAX_LINES = 100
+RESIDENT_SKILL_MAX_CHARS = 8000
 
 errors: list[str] = []
 warnings: list[str] = []
@@ -91,6 +94,8 @@ def validate_category_references(skill_dir: Path, skill_text: str) -> None:
         if references_dir.is_dir()
         else set()
     )
+    if reference_files and not re.search(r"(?mi)^## On-demand references\s*$", skill_text):
+        errors.append(f"{skill_name}: SKILL.md must route references under `## On-demand references`")
     linked: set[Path] = set()
     for relative in REFERENCE_LINK.findall(skill_text):
         relative_path = Path(relative)
@@ -118,9 +123,43 @@ def validate_category_references(skill_dir: Path, skill_text: str) -> None:
             errors.append(f"{skill_name}: catch-all reference filename is forbidden: {relative}")
         if path not in linked:
             errors.append(f"{skill_name}: orphan reference is not linked directly from SKILL.md: {relative}")
+        try:
+            reference_text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            errors.append(f"{skill_name}: cannot read reference {relative}: {exc}")
+        else:
+            if not re.search(r"(?m)^Read this (?:only )?(?:when|for|after)\b", reference_text[:600]):
+                errors.append(
+                    f"{skill_name}: reference must state its conditional load boundary near the top: {relative}"
+                )
 
     if linked and not references_dir.is_dir():
         errors.append(f"{skill_name}: SKILL.md links references/ but the directory does not exist")
+
+
+def validate_resident_contract(skill_dir: Path, skill_text: str, frontmatter: dict[str, object]) -> None:
+    """Keep resident skill context routing-oriented and host-neutral."""
+    skill_name = skill_dir.name
+    extra_fields = sorted(set(frontmatter) - ALLOWED_FRONTMATTER_FIELDS)
+    if extra_fields:
+        errors.append(
+            f"{skill_name}: frontmatter fields must be only name + description; extra={extra_fields}"
+        )
+    line_count = len(skill_text.splitlines())
+    if line_count > RESIDENT_SKILL_MAX_LINES:
+        errors.append(
+            f"{skill_name}: resident SKILL.md is {line_count} lines "
+            f"(>{RESIDENT_SKILL_MAX_LINES}); route detail to categorized references"
+        )
+    if len(skill_text) > RESIDENT_SKILL_MAX_CHARS:
+        errors.append(
+            f"{skill_name}: resident SKILL.md is {len(skill_text)} chars "
+            f"(>{RESIDENT_SKILL_MAX_CHARS}); route detail to categorized references"
+        )
+    if re.search(r"(?mi)^## When To Use\s*$", skill_text):
+        errors.append(
+            f"{skill_name}: trigger boundaries belong in frontmatter description, not a resident `When To Use` section"
+        )
 
 
 def main() -> int:
@@ -154,6 +193,8 @@ def main() -> int:
             errors.append(f"{dir_name}: {exc}")
             continue
 
+        validate_resident_contract(d, text, fm)
+
         name = fm.get("name", "")
         if isinstance(name, str):
             metadata_prose_chars += len(name)
@@ -171,12 +212,6 @@ def main() -> int:
             errors.append(f"{dir_name}: frontmatter is missing a non-empty `description`")
         elif len(desc) > 1024:
             errors.append(f"{dir_name}: description is {len(desc)} chars (>1024 specification limit)")
-
-        compatibility = fm.get("compatibility")
-        if compatibility is not None and (
-            not isinstance(compatibility, str) or not 1 <= len(compatibility) <= 500
-        ):
-            errors.append(f"{dir_name}: `compatibility` must be a non-empty string of at most 500 characters")
 
         # Claude Code substitutes `$ARGUMENTS`; the moustache form is never expanded.
         if "{{ARGUMENTS}}" in text:
@@ -205,6 +240,7 @@ def main() -> int:
     validate_tooling_conventions_contract()
     validate_conventional_commit_contract()
     validate_semver_release_contract()
+    validate_project_docs_organizer_contract()
 
     # Reverse coverage: a README link must point at a real skill directory.
     for m in re.finditer(r"\(skills/([A-Za-z0-9_-]+)/\)", readme):
@@ -294,13 +330,15 @@ def validate_agent_scaffold_contract() -> None:
 
 
 def validate_tooling_conventions_contract() -> None:
-    """Keep Python syntax checks compile-accurate without bytecode residue."""
+    """Keep tooling checks deterministic without turning optional policy into a template."""
     skill_dir = SKILLS_DIR / "tooling-conventions"
     paths = {
         "SKILL.md": skill_dir / "SKILL.md",
         "references/verification.md": skill_dir / "references" / "verification.md",
-        "manifest.schema.md": skill_dir / "manifest.schema.md",
-        "manifest-check.sh": skill_dir / "manifest-check.sh",
+        "references/manifest-schema.md": skill_dir / "references" / "manifest-schema.md",
+        "references/script-contract.md": skill_dir / "references" / "script-contract.md",
+        "references/surface-taxonomy.md": skill_dir / "references" / "surface-taxonomy.md",
+        "scripts/manifest-check.sh": skill_dir / "scripts" / "manifest-check.sh",
     }
     if any(not path.exists() for path in paths.values()):
         return
@@ -309,70 +347,118 @@ def validate_tooling_conventions_contract() -> None:
         "python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), "
         "sys.argv[1], \"exec\")'"
     )
-    for label in ("references/verification.md", "manifest-check.sh"):
+    for label in ("references/verification.md", "scripts/manifest-check.sh"):
         if memory_compile not in texts[label]:
             errors.append(f"tooling-conventions/{label}: in-memory Python compile command is missing")
-    if "in-memory Python compile" not in texts["SKILL.md"]:
-        errors.append("tooling-conventions/SKILL.md: no-bytecode Python verification route is missing")
     stale = [label for label, value in texts.items() if "py_compile" in value]
     if stale:
         errors.append(f"tooling-conventions: py_compile bytecode-producing guidance remains in {stale}")
 
-    workflow = REPO / ".github" / "workflows" / "validate.yml"
-    workflow_text = workflow.read_text(encoding="utf-8") if workflow.exists() else ""
+    fixture = REPO / "scripts" / "tests" / "test-tooling-manifest.sh"
+    fixture_text = fixture.read_text(encoding="utf-8") if fixture.exists() else ""
     fixture_contract = (
         "valid path-雪.py",
+        "-dash.sh",
         "manifest check left Python bytecode residue",
         "return 1",
+        "invalid manifest path (must be normalized and relative)",
+        "invalid audit_level for tool.sh: maybe",
+        "expected invalid CLI arguments to exit 2",
+        "failed to create temporary directory",
+        "expected an unsafe temporary-directory result",
     )
-    missing_fixture = [value for value in fixture_contract if value not in workflow_text]
+    missing_fixture = [value for value in fixture_contract if value not in fixture_text]
     if missing_fixture:
         errors.append(
             "tooling-conventions: bytecode-residue CI fixture is incomplete: "
             f"{missing_fixture}"
         )
+    workflow = REPO / ".github" / "workflows" / "validate.yml"
+    workflow_text = workflow.read_text(encoding="utf-8") if workflow.exists() else ""
+    if "bash scripts/tests/test-tooling-manifest.sh" not in workflow_text:
+        errors.append("tooling-conventions: CI does not run the focused manifest-check suite")
+    stale_compatibility = ("≥1 release", "at least one release")
+    combined = "".join(texts.values()) + fixture_text
+    found_stale = [value for value in stale_compatibility if value in combined]
+    if found_stale:
+        errors.append(f"tooling-conventions: generic compatibility-cycle guidance remains: {found_stale}")
+    project_owned_contract = {
+        "SKILL.md": ("target repository owns names and roots", "When the repository has enough commands"),
+        "references/manifest-schema.md": ("Adapt this lean schema", "smaller repos can apply"),
+        "references/script-contract.md": ("Manifest registration, when adopted", "Do not create a manifest solely"),
+        "references/surface-taxonomy.md": ("<tool-root>", "project-owned domain directory"),
+    }
+    for label, required_values in project_owned_contract.items():
+        missing_values = [value for value in required_values if value not in texts[label]]
+        if missing_values:
+            errors.append(
+                f"tooling-conventions/{label}: project-owned root/manifest boundary lost fixtures: "
+                f"{missing_values}"
+            )
 
 
 def validate_conventional_commit_contract() -> None:
-    """Keep commit mode from staging changes on a detached HEAD."""
-    skill = SKILLS_DIR / "conventional-commit" / "SKILL.md"
-    if not skill.exists():
+    """Keep commit mode rooted and prevent staging changes on a detached HEAD."""
+    skill_dir = SKILLS_DIR / "conventional-commit"
+    skill = skill_dir / "SKILL.md"
+    staging = skill_dir / "references" / "staging-safety.md"
+    if not skill.exists() or not staging.exists():
         return
     skill_text = skill.read_text(encoding="utf-8")
+    staging_text = staging.read_text(encoding="utf-8")
     match = re.search(r"(?ms)^## Workflow[ \t]*\r?\n(.*?)(?=^## |\Z)", skill_text)
     workflow = match.group(1) if match else ""
-    preflight = "git symbolic-ref --quiet --short HEAD"
-    detached = (
-        "On exit status 1, stop before staging and report that commit mode requires "
-        "an attached branch because HEAD is detached."
-    )
-    git_error = "On any other nonzero status, stop before staging and report the Git preflight error."
-    stage = "stage the intended files"
-    required = (preflight, detached, git_error, stage)
+    root = "git rev-parse --show-toplevel"
+    preflight = "git -C <repo-root> symbolic-ref --quiet --short HEAD"
+    detached = "Exit status 1 means detached HEAD"
+    git_error = "any other nonzero status is a Git preflight"
+    stage = "stage the exact intended"
+    required = (root, preflight, detached, git_error, stage)
     missing = [value for value in required if value not in workflow]
     ordered = not missing and [workflow.index(value) for value in required] == sorted(
         workflow.index(value) for value in required
     )
     if missing or not ordered:
         errors.append("conventional-commit: attached-HEAD preflight must precede commit-mode staging")
+    reference_contract = (
+        "git -C <repo-root> status --short",
+        "git -C <repo-root> add -A -- .",
+        "Exit status 1 means HEAD is detached",
+        "Any other nonzero status is a Git error",
+        "git diff --cached --name-only",
+        "git diff --cached --check",
+        "unrelated paths are already staged",
+    )
+    missing_reference = [value for value in reference_contract if value not in staging_text]
+    if missing_reference:
+        errors.append(
+            "conventional-commit/references/staging-safety.md: staging boundary lost fixtures: "
+            f"{missing_reference}"
+        )
 
 
 def validate_semver_release_contract() -> None:
     """Guard bump inference and package identity across release ecosystems."""
-    skill = SKILLS_DIR / "semver-release" / "SKILL.md"
+    skill_dir = SKILLS_DIR / "semver-release"
+    skill = skill_dir / "SKILL.md"
     reference_paths = {
-        "references/version-selection.md": SKILLS_DIR / "semver-release" / "references" / "version-selection.md",
-        "references/version-files.md": SKILLS_DIR / "semver-release" / "references" / "version-files.md",
-        "references/changelog.md": SKILLS_DIR / "semver-release" / "references" / "changelog.md",
-        "references/prerelease-promotion.md": SKILLS_DIR / "semver-release" / "references" / "prerelease-promotion.md",
+        "references/version-selection.md": skill_dir / "references" / "version-selection.md",
+        "references/version-files.md": skill_dir / "references" / "version-files.md",
+        "references/changelog.md": skill_dir / "references" / "changelog.md",
+        "references/prerelease-promotion.md": skill_dir / "references" / "prerelease-promotion.md",
+        "references/publishing.md": skill_dir / "references" / "publishing.md",
     }
-    if not skill.exists() or any(not path.exists() for path in reference_paths.values()):
+    planner = skill_dir / "scripts" / "release-plan.py"
+    if not skill.exists() or not planner.exists() or any(not path.exists() for path in reference_paths.values()):
         return
     skill_text = skill.read_text(encoding="utf-8")
     reference_texts = {label: path.read_text(encoding="utf-8") for label, path in reference_paths.items()}
     selection_text = reference_texts["references/version-selection.md"]
     version_files_text = reference_texts["references/version-files.md"]
     promotion_text = reference_texts["references/prerelease-promotion.md"]
+    changelog_text = reference_texts["references/changelog.md"]
+    publishing_text = reference_texts["references/publishing.md"]
+    planner_text = planner.read_text(encoding="utf-8")
     combined = skill_text + "".join(reference_texts.values())
     bump_contract = (
         "BREAKING CHANGE:",
@@ -380,24 +466,16 @@ def validate_semver_release_contract() -> None:
         "case-insensitive",
         "remains uppercase",
     )
-    for label, text in (("SKILL.md", skill_text), ("references/version-selection.md", selection_text)):
-        missing_bump = [value for value in bump_contract if value not in text]
-        if missing_bump:
-            errors.append(f"semver-release/{label}: bump inference contract lost fixtures: {missing_bump}")
+    missing_bump = [value for value in bump_contract if value not in selection_text]
+    if missing_bump:
+        errors.append(
+            "semver-release/references/version-selection.md: bump inference contract lost fixtures: "
+            f"{missing_bump}"
+        )
     required = ("1.2.0-beta.1", "1.2.0b1", "1.2.0rc1", "project(... VERSION 1.2.0)")
     missing = [value for value in required if value not in combined]
     if missing:
         errors.append(f"semver-release: prerelease ecosystem contract lost fixtures: {missing}")
-    python_boundary_skill = (
-        "explicit repository-defined Python mapping",
-        "stop before writing release files, committing, tagging, or pushing",
-    )
-    missing_python_skill = [value for value in python_boundary_skill if value not in skill_text]
-    if missing_python_skill:
-        errors.append(
-            "semver-release/SKILL.md: Python prerelease mapping boundary lost fixtures: "
-            f"{missing_python_skill}"
-        )
     python_boundary_reference = (
         "`alpha.N` → `aN`",
         "`beta.N` → `bN`",
@@ -419,32 +497,31 @@ def validate_semver_release_contract() -> None:
         "SemVer 2.0.0 precedence",
         "no HEAD-reachable valid SemVer base",
     )
-    for label, text in (("SKILL.md", skill_text), ("references/version-selection.md", selection_text)):
-        missing_base = [value for value in shared_base_contract if value not in text]
-        if missing_base:
-            errors.append(f"semver-release/{label}: base-selection contract lost fixtures: {missing_base}")
+    missing_base = [value for value in shared_base_contract if value not in selection_text]
+    if missing_base:
+        errors.append(
+            "semver-release/references/version-selection.md: base-selection contract lost fixtures: "
+            f"{missing_base}"
+        )
     equal_precedence = (
         "When highest-precedence tags differ only by build metadata, use their shared commit as "
         "`<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity."
     )
     peel_commit = "git rev-parse '<tag>^{commit}'"
-    for label, text in (("SKILL.md", skill_text), ("references/version-selection.md", selection_text)):
-        if equal_precedence not in text:
-            errors.append(f"semver-release/{label}: equal-precedence base rule is missing")
-        if peel_commit not in text:
-            errors.append(f"semver-release/{label}: annotated-tag commit resolution is missing")
-    skill_base_contract = (
-        "git rev-parse --is-shallow-repository",
-        "git rev-list --max-parents=0 HEAD",
-        "git cat-file -p <root>",
-        "git tag --merged HEAD --list 'v[0-9]*'",
-        "git merge-base --is-ancestor <base> HEAD",
-        "do not sort or truncate before validation",
-        "stop before base selection only if an apparent HEAD root has a raw `parent` header",
+    if equal_precedence not in selection_text:
+        errors.append("semver-release/references/version-selection.md: equal-precedence base rule is missing")
+    if peel_commit not in selection_text:
+        errors.append("semver-release/references/version-selection.md: annotated-tag commit resolution is missing")
+    skill_router_contract = (
+        "scripts/release-plan.py",
+        "--json",
+        "--target vX.Y.Z",
+        "Resolve every `attention` result before mutation",
+        "A valid exact version supplied by the user is the target",
     )
-    missing_skill_base = [value for value in skill_base_contract if value not in skill_text]
-    if missing_skill_base:
-        errors.append(f"semver-release/SKILL.md: base-selection workflow lost fixtures: {missing_skill_base}")
+    missing_skill_router = [value for value in skill_router_contract if value not in skill_text]
+    if missing_skill_router:
+        errors.append(f"semver-release/SKILL.md: read-only planner route lost fixtures: {missing_skill_router}")
     reference_base_contract = (
         "`v01.2.3` and `v1.2.3-rc.01` are invalid",
         "`v1.1.0-rc.1 < v1.1.0`",
@@ -466,12 +543,11 @@ def validate_semver_release_contract() -> None:
     if promotion_contract not in promotion_text:
         errors.append("semver-release/references/prerelease-promotion.md: stable-base contract is missing")
     release_stage_contract = (
-        "git add -- CHANGELOG.md <all-version-files> <all-coupled-lockfiles> [release-notes]",
+        "Stage every release file and no unrelated path",
         "git diff --cached --check",
-        "every file changed for the release must be staged",
-        'git commit -m "release: vX.Y.Z"',
-        "git status --porcelain # must be empty before tagging",
-        'git tag -a vX.Y.Z -m "Release vX.Y.Z"',
+        "create `release: vX.Y.Z`",
+        "require a clean",
+        "push the tag without force",
     )
     missing_stage = [value for value in release_stage_contract if value not in skill_text]
     stage_ordered = not missing_stage and [skill_text.index(value) for value in release_stage_contract] == sorted(
@@ -482,11 +558,10 @@ def validate_semver_release_contract() -> None:
             "semver-release/SKILL.md: complete release snapshot must be staged and clean before tagging"
         )
     sync_invariant = (
-        "Ecosystem synchronization must not create the release commit, tag, or push, "
-        "or refresh unrelated dependencies."
+        "Ecosystem tools synchronize release files; they do not own the release commit, tag, or push, and"
     )
-    if sync_invariant not in skill_text:
-        errors.append("semver-release/SKILL.md: bounded ecosystem synchronization invariant is missing")
+    if sync_invariant not in version_files_text:
+        errors.append("semver-release/references/version-files.md: bounded synchronization invariant is missing")
     npm_sync_contract = (
         "existing `package-lock.json`",
         "`preversion`, `version`, and `postversion`",
@@ -516,6 +591,69 @@ def validate_semver_release_contract() -> None:
     ] == sorted(version_files_text.index(value) for value in cargo_sync_contract)
     if missing_cargo_sync or not cargo_sync_ordered:
         errors.append("semver-release/references/version-files.md: bounded Cargo synchronization contract is missing")
+    publishing_contract = (
+        "Tag-triggered release workflow",
+        "Direct forge release",
+        "gh release create vX.Y.Z",
+        "--verify-tag",
+        "local and remote tags exist and peel to that release commit",
+        "A release commit, pushed tag, CI run, forge release, and",
+    )
+    missing_publishing = [value for value in publishing_contract if value not in publishing_text]
+    if missing_publishing:
+        errors.append(
+            "semver-release/references/publishing.md: publication ownership or verification lost fixtures: "
+            f"{missing_publishing}"
+        )
+    planner_contract = (
+        "schema_version",
+        "parse_semver",
+        "compare_semver",
+        "complete-head-history",
+        "reachable-semver-base",
+        "BREAKING_FOOTER_RE",
+        "requested_tag",
+        "selected_tag",
+        "release_notes_base",
+        "The script never fetches, edits, commits, tags, or pushes.",
+    )
+    missing_planner = [value for value in planner_contract if value not in planner_text]
+    if missing_planner:
+        errors.append(
+            "semver-release/scripts/release-plan.py: deterministic planner contract lost fixtures: "
+            f"{missing_planner}"
+        )
+    changelog_authority_contract = (
+        "repository's existing release-note contract wins",
+        "Do not create `CHANGELOG.md` solely because this skill ran",
+        "Fallback committed changelog",
+    )
+    missing_changelog_authority = [
+        value for value in changelog_authority_contract if value not in changelog_text
+    ]
+    if missing_changelog_authority:
+        errors.append(
+            "semver-release/references/changelog.md: project-owned release-note boundary "
+            f"lost fixtures: {missing_changelog_authority}"
+        )
+    planner_tests = REPO / "scripts" / "tests" / "test_semver_release_plan.py"
+    planner_test_text = planner_tests.read_text(encoding="utf-8") if planner_tests.exists() else ""
+    test_contract = (
+        "test_infers_patch_without_mutating_repository",
+        "test_breaking_footer_infers_major",
+        "test_prerelease_requires_target",
+        "test_equal_precedence_tags_on_different_commits_are_ambiguous",
+        "test_no_commits_after_base_blocks_explicit_target",
+        "test_unclassified_commit_requires_an_explicit_target",
+        "test_equal_precedence_build_tags_on_one_commit_share_the_base",
+        "test_known_prerelease_order_selects_the_stable_base",
+        "test_numbered_prerelease_can_advance_explicitly",
+        "test_detached_head_requires_attention",
+        "test_real_shallow_boundary_blocks_base_selection",
+    )
+    missing_tests = [value for value in test_contract if value not in planner_test_text]
+    if missing_tests:
+        errors.append(f"semver-release: release planner regression suite is incomplete: {missing_tests}")
     for line in version_files_text.splitlines():
         command = line.strip()
         if re.match(r"^npm version(?:\s|$)", command) and (
@@ -534,6 +672,68 @@ def validate_semver_release_contract() -> None:
         errors.append("semver-release/SKILL.md: partial release staging command remains")
     if "Prerelease suffixes generally do **not** go into the version file" in combined:
         errors.append("semver-release: stale tag-only prerelease guidance remains")
+
+
+def validate_project_docs_organizer_contract() -> None:
+    """Keep documentation structure project-owned and numbering optional."""
+    skill_dir = SKILLS_DIR / "project-docs-organizer"
+    paths = {
+        "SKILL.md": skill_dir / "SKILL.md",
+        "references/information-architecture.md": skill_dir / "references" / "information-architecture.md",
+        "references/numbering-patterns.md": skill_dir / "references" / "numbering-patterns.md",
+        "references/zone-catalog.md": skill_dir / "references" / "zone-catalog.md",
+        "references/migration-and-links.md": skill_dir / "references" / "migration-and-links.md",
+    }
+    if any(not path.exists() for path in paths.values()):
+        return
+    texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
+    skill_text = texts["SKILL.md"]
+    project_owned_contract = (
+        "The target project owns",
+        "smallest structure",
+        "preserve a coherent established convention",
+        "never introduce numbering merely",
+        "No empty zone or placeholder",
+    )
+    missing = [value for value in project_owned_contract if value not in skill_text]
+    if missing:
+        errors.append(
+            "project-docs-organizer/SKILL.md: project-owned information architecture lost fixtures: "
+            f"{missing}"
+        )
+    stale_template_rules = (
+        "## Default Zone Model",
+        "Use two-digit prefixes for direct children of the documentation root when the project is complex",
+    )
+    found_stale = [value for value in stale_template_rules if value in skill_text]
+    if found_stale:
+        errors.append(
+            "project-docs-organizer/SKILL.md: numbered template is still resident/default: "
+            f"{found_stale}"
+        )
+    if "Use numbering only when" not in texts["references/information-architecture.md"]:
+        errors.append(
+            "project-docs-organizer/references/information-architecture.md: optional numbering gate is missing"
+        )
+    if not texts["references/zone-catalog.md"].startswith("# Optional Documentation Zone Catalog"):
+        errors.append("project-docs-organizer/references/zone-catalog.md: zone catalog is not marked optional")
+    migration_contract = (
+        "Build the migration map",
+        "Before deleting",
+        "rg -n -F 'old/path.md' <project-root>",
+        "external wikis or issue trackers",
+        "git diff --check",
+    )
+    missing_migration = [
+        value for value in migration_contract if value not in texts["references/migration-and-links.md"]
+    ]
+    if missing_migration:
+        errors.append(
+            "project-docs-organizer/references/migration-and-links.md: migration evidence lost fixtures: "
+            f"{missing_migration}"
+        )
+    if "Resolve the target project root" not in skill_text:
+        errors.append("project-docs-organizer/SKILL.md: target-root resolution is missing")
 
 
 def validate_grouping_manifest(skill_dirs: list[Path]) -> None:
@@ -572,8 +772,17 @@ def report() -> int:
     return 0
 
 
-if __name__ == "__main__":
-    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+def cli(argv: list[str]) -> int:
+    """Run the no-argument validator CLI without masking invalid options."""
+    if argv in (["-h"], ["--help"]):
         print(__doc__)
-        sys.exit(0)
-    sys.exit(main())
+        return 0
+    if argv:
+        print("usage: python scripts/validate_skills.py [-h|--help]", file=sys.stderr)
+        print(f"error: unknown or invalid argument(s): {' '.join(argv)}", file=sys.stderr)
+        return 2
+    return main()
+
+
+if __name__ == "__main__":
+    sys.exit(cli(sys.argv[1:]))

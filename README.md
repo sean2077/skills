@@ -31,10 +31,10 @@ If the skills were installed before the compatibility manifest existed, rerun th
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
-| [conventional-commit](skills/conventional-commit/) | Generate a Conventional Commits message using the repository's historical language convention, defaulting to English when unclear, and create one local commit when requested. | Git |
-| [semver-release](skills/semver-release/) | Cut a semver release from conventional commits: infer the bump, update CHANGELOG + version file, tag, then hand off to tag-triggered release CI (or publish a GitHub/GitLab release directly). | Git, Release |
-| [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation systems: README-only for simple projects, major/subcategory numbered docs zones for complex projects. | Documentation |
-| [tooling-conventions](skills/tooling-conventions/) | Govern a project's `tools/`/`scripts/` directory at scale: surface taxonomy, failure-domain aggregation, placement tree, script contract, and a reconciliation-checked surface manifest. Ships `manifest-check.sh`. | Shell, Governance |
+| [conventional-commit](skills/conventional-commit/) | Create one scoped local Conventional Commit or return one history-aware message-only subject while preserving unrelated index state. | Git |
+| [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, project-owned version synchronization, and verified CI or direct forge publication. | Git, Python, Release |
+| [project-docs-organizer](skills/project-docs-organizer/) | Build or reorganize project documentation around observed audiences and retrieval problems; numbered zones are an optional project-owned pattern. | Documentation |
+| [tooling-conventions](skills/tooling-conventions/) | Govern committed command surfaces with project-owned placement, failure-domain boundaries, safe script contracts, and optional manifest reconciliation. | Shell, Governance |
 | [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, merge-owned hooks, subagent projection, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
 
 ## Structure
@@ -49,6 +49,7 @@ skills/
 scripts/
 ├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 ├── test_validate_skills.py  # Focused fixtures for category reference routing and naming
+├── tests/                    # Focused regression suites and fixtures for skill-specific behavior
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 └── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 requirements-validation.txt  # pinned official skills-ref + StrictYAML validation dependency
@@ -58,11 +59,19 @@ requirements-validation.txt  # pinned official skills-ref + StrictYAML validatio
 └── validate.yml            # Runs the checks on push / PR
 ```
 
-Reference filenames are descriptive lowercase kebab-case. Link every category directly from its
-resident `SKILL.md`; do not add root-level `reference.md` files or catch-alls such as `misc.md`,
-`all.md`, or `references/README.md`.
+Reference filenames are descriptive lowercase kebab-case. Link every category directly under the
+resident `SKILL.md` `On-demand references` router, and state its conditional load boundary near
+the top. Do not add root-level `reference.md` files or catch-alls such as `misc.md`, `all.md`, or
+`references/README.md`.
 
 `npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
+
+## Development and releases
+
+Run the catalog's pinned validation, official spec, discovery, shell, and behavioral gates from
+the [development commands](AGENTS.md#development-commands). Release-facing changes accumulate in
+the [changelog](CHANGELOG.md); the repository's SemVer workflow owns the final version, tag, and
+forge publication.
 
 ## License
 

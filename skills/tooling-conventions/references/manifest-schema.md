@@ -1,6 +1,11 @@
-# Surface manifest — lean schema
+# Tool Surface Manifest Schema
 
-A machine-readable, one-row-per-command-surface index of a project's tooling, kept in sync with reality by `manifest-check.sh`. This is the **source of truth**; a human-readable `README` view (a rendered table) is optional and derived. Use a **tab-separated** file (e.g. `tools/tools-manifest.tsv`) — tabs survive paths/notes that contain spaces and commas.
+Read this when a growing repository needs a machine-readable tool-surface inventory.
+
+Adapt this lean schema to the project instead of copying unused columns. Keep one row per
+command surface and reconcile it with `scripts/manifest-check.sh`. A human-readable README
+view is optional and derived. Use a tab-separated file such as `tools/tools-manifest.tsv`;
+tabs preserve paths and notes containing spaces or commas.
 
 Adopt this once a repo's script or contributor count makes drift likely; smaller repos can apply the skill's §1–§4 by judgment without a manifest.
 
@@ -14,8 +19,12 @@ Adopt this once a repo's script or contributor count makes drift likely; smaller
 | `audience` | who runs it: `dev` \| `ci` \| `operator` \| `release` \| `end-user` \| `runtime` |
 | `entry_for` | the independent operator job this entry owns. **Blank ⇒ it is not an independent entry ⇒ it should be a `helper`, not `public`.** |
 | `hazard` | `none` \| `low` \| `med` \| `high`, with a short parenthetical (e.g. `med(auto-rollback)`) |
-| `verify` | how success is proven (a command or smoke), or `-` |
+| `verify` | how success is proven (a command or smoke), or `-`; public/installed command rows name `--help=0` + unknown-arg `=2` evidence or a project `cli-contract` test |
 | `notes` | freeform: usage boundary, gotchas, why it isn't sunk into a helper |
+
+Keep `path` normalized and relative to the checker scan root: use `/` separators, no
+absolute/drive paths, `.`/`..` segments, or duplicate separators. End `package` and
+`native` directory rows with `/`; use file syntax for every other surface.
 
 ## Optional columns (only where meaningful)
 
@@ -35,14 +44,24 @@ Keep the column set small. Add a column only when the audit or a reviewer actual
 
 ```tsv
 path	surface	domain	audience	entry_for	hazard	verify	notes
-build.sh	public	build	dev	build the project	none	bash -n; --help	domain headline
-release.sh	public	release	release	cut + publish a release	med(tags/pushes)	dry-run	headline; calls release/changelog.py
+build.sh	public	build	dev	build the project	none	cli-contract test (--help=0; unknown=2)	domain headline
+release.sh	public	release	release	cut + publish a release	med(tags/pushes)	cli-contract + dry-run	headline; calls release/changelog.py
 release/changelog.py	helper	release	release		none	in-memory compile	called_by release.sh
-deploy.sh	public	deploy	operator	deploy a build to a target	high(rollback)	smoke + health check	goes through the upgrade path only
+deploy.sh	public	deploy	operator	deploy a build to a target	high(rollback)	cli-contract + smoke + health check	goes through the upgrade path only
 recover.sh	break-glass	provision	operator	sole identity-recovery path	high	manual	trigger: device shows wrong-machine
 provision/	package	provision	dev		none	-	python provisioning package (modules not registered individually)
 vendor/jq-linux-arm64	vendor	vendor	runtime		none	checksum	source=stedolan/jq version=1.7 checksum=sha256:…
 ```
+
+Use `cli-contract test (--help=0; unknown=2)` (or the actual project test command with
+equivalent wording) in `verify` when that evidence exists. The generic checker validates this
+declaration but deliberately does not execute arbitrary project commands: a broken help parser
+must not turn a static inventory audit into a deployment or device mutation.
+
+When the optional checker sees `entry_for`, it rejects blank independent entries and nonblank
+helpers. When it sees `verify`, it requires the declaration above for public/installed command
+files. Omitting an unused column omits its corresponding semantic check; adapt the schema rather
+than adding empty ceremony.
 
 ## Which scripts get a row
 

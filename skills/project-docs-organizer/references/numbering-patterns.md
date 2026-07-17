@@ -1,10 +1,11 @@
-# Project Documentation Numbering Patterns
+# Optional Documentation Numbering Patterns
 
-Read this when a proposed numbered tree may collapse distinct subcategories or misuse numeric prefixes.
+Read this only after the project has chosen a numbered tree and the proposed structure may
+collapse distinct subcategories or misuse numeric prefixes.
 
 ## Numbering pitfalls
 
-Worked examples for the numbering rules in `SKILL.md` → *Numbered Zone Rules*.
+Use these examples only after the information-architecture decision selects numbering.
 
 **Don't let the first digit be the only classification** — collapsing every major area into a single landing folder loses the subcategory semantics:
 

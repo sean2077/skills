@@ -12,8 +12,11 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
@@ -45,6 +48,18 @@ REQUIRED_ASSETS = {
 WORKTREE_START = "<!-- agent-scaffold:worktree:start -->"
 WORKTREE_END = "<!-- agent-scaffold:worktree:end -->"
 WORKTREE_ONLY = "<!-- agent-scaffold:worktree-only -->"
+MANAGED_DIRECTORY_BOUNDARIES = (
+    ".agents",
+    ".agents/skills",
+    ".agents/subagents",
+    ".agents/tools",
+    ".agents/tools/hooks",
+    ".claude",
+    ".claude/agents",
+    ".claude/skills",
+    ".codex",
+    ".codex/agents",
+)
 
 
 class CoreError(Exception):
@@ -90,13 +105,65 @@ def load_json(path: Path, display_name: Optional[str] = None) -> Any:
 
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    with temporary.open("w", encoding="utf-8", newline="\n") as destination:
-        json.dump(value, destination, indent=2, ensure_ascii=False)
-        destination.write("\n")
-        destination.flush()
-        os.fsync(destination.fileno())
-    os.replace(str(temporary), str(path))
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=".{0}.agent-scaffold-".format(path.name), dir=str(path.parent)
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as destination:
+            json.dump(value, destination, indent=2, ensure_ascii=False)
+            destination.write("\n")
+            destination.flush()
+            os.fsync(destination.fileno())
+        os.replace(str(temporary), str(path))
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def atomic_replace_file(source: Path, target: Path) -> None:
+    """Copy source into a unique target-directory sibling, then replace target."""
+    if source.is_symlink() or not source.is_file():
+        raise CoreError("atomic source must be a regular file: {0}".format(source))
+    if os.path.lexists(str(target)) and (target.is_symlink() or not target.is_file()):
+        raise CoreError("atomic target must be missing or a regular file: {0}".format(target))
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else 0o644
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=".{0}.agent-scaffold-".format(target.name),
+            dir=str(target.parent),
+        )
+        temporary = Path(temporary_name)
+        try:
+            with source.open("rb") as input_file, os.fdopen(descriptor, "wb") as output_file:
+                shutil.copyfileobj(input_file, output_file)
+                output_file.flush()
+                os.fsync(output_file.fileno())
+            os.chmod(str(temporary), mode)
+            os.replace(str(temporary), str(target))
+            try:
+                parent_descriptor = os.open(str(target.parent), os.O_RDONLY)
+            except OSError:
+                parent_descriptor = None
+            if parent_descriptor is not None:
+                try:
+                    os.fsync(parent_descriptor)
+                except OSError:
+                    pass
+                finally:
+                    os.close(parent_descriptor)
+        finally:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+    except CoreError:
+        raise
+    except OSError as exc:
+        raise CoreError("atomic replace failed for {0}: {1}".format(target, exc))
 
 
 def _safe_relative(value: Any, field: str, asset_id: str) -> str:
@@ -552,7 +619,7 @@ def host_agent_inventory(target: Path) -> List[str]:
     inventory: List[str] = []
     for relative in (Path(".claude/agents"), Path(".codex/agents")):
         root = target / relative
-        if not root.is_dir():
+        if root.is_symlink() or not root.is_dir():
             continue
         inventory.extend(path.relative_to(target).as_posix() for path in sorted(root.iterdir()))
     return inventory
@@ -562,7 +629,7 @@ def host_agent_candidates(target: Path) -> List[str]:
     candidates: List[str] = []
     for relative, suffix in ((Path(".claude/agents"), ".md"), (Path(".codex/agents"), ".toml")):
         root = target / relative
-        if not root.is_dir():
+        if root.is_symlink() or not root.is_dir():
             continue
         for path in sorted(root.iterdir()):
             if path.is_file() and path.suffix == suffix and not is_current_generated_projection(path):
@@ -572,6 +639,24 @@ def host_agent_candidates(target: Path) -> List[str]:
 
 def build_plan(target: Path, profile: str, manifest: Dict[str, Any]) -> Dict[str, Any]:
     checks: List[Dict[str, Any]] = []
+    boundary_conflict = False
+    for relative in MANAGED_DIRECTORY_BOUNDARIES:
+        directory = target / relative
+        if os.path.lexists(str(directory)) and (
+            directory.is_symlink() or not directory.is_dir()
+        ):
+            boundary_conflict = True
+            checks.append(
+                check_record(
+                    "boundary.{0}".format(relative.lstrip(".").replace("/", "-")),
+                    "attention",
+                    relative,
+                    "replace the managed path boundary with a real directory",
+                    "managed directory must not be a symlink or non-directory path",
+                )
+            )
+    if boundary_conflict:
+        return report("plan", target, profile, checks, "apply")
     contract = asset_by_id(manifest, "contract.agents")
     agents = target / contract["target"]
     contract_source = SKILL_DIR / contract["source"]
@@ -843,6 +928,22 @@ def build_verify(
     symlink_manager: Path,
 ) -> Dict[str, Any]:
     checks: List[Dict[str, Any]] = []
+    for relative in MANAGED_DIRECTORY_BOUNDARIES:
+        directory = target / relative
+        if os.path.lexists(str(directory)) and (
+            directory.is_symlink() or not directory.is_dir()
+        ):
+            checks.append(
+                check_record(
+                    "boundary.{0}".format(relative.lstrip(".").replace("/", "-")),
+                    "fail",
+                    relative,
+                    "replace the managed path boundary with a real directory",
+                    "managed directory must not be a symlink or non-directory path",
+                )
+            )
+    if checks:
+        return report("verify", target, profile, checks, None)
     for item in active_assets(manifest, profile):
         if item["strategy"] != "copy":
             continue
@@ -1039,6 +1140,13 @@ def command_agents(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_files(args: argparse.Namespace) -> int:
+    if args.files_command == "atomic-replace":
+        atomic_replace_file(Path(args.source), Path(args.target))
+        return 0
+    raise CoreError("unknown files command")
+
+
 def command_preflight(args: argparse.Namespace) -> int:
     target = Path(args.target).resolve()
     manifest = load_manifest(Path(args.manifest))
@@ -1117,6 +1225,12 @@ def build_parser() -> argparse.ArgumentParser:
     agents_render.add_argument("--source", required=True)
     agents_render.add_argument("--profile", choices=sorted(PROFILES), required=True)
 
+    files = subparsers.add_parser("files")
+    files_sub = files.add_subparsers(dest="files_command", required=True)
+    files_replace = files_sub.add_parser("atomic-replace")
+    files_replace.add_argument("--source", required=True)
+    files_replace.add_argument("--target", required=True)
+
     preflight = subparsers.add_parser("preflight")
     preflight.add_argument("--target", required=True)
     preflight.add_argument("--profile", choices=sorted(PROFILES), required=True)
@@ -1144,6 +1258,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return command_hooks(args)
         if args.command == "agents":
             return command_agents(args)
+        if args.command == "files":
+            return command_files(args)
         if args.command == "preflight":
             return command_preflight(args)
         if args.command == "report":

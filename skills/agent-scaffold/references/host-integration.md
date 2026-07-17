@@ -94,8 +94,11 @@ its managed entry while leaving every user command and unrelated config key inta
 managed events are removed rather than written as empty matcher groups. Python is a harness
 prerequisite, so this path has no jq-dependent behavior or unsafe paste fallback.
 
-Writes are atomic (`> tmp && mv`). Package scripts, CI jobs, and hook-manager configuration are
-project-owned; see [subagent drift integration](subagents.md#project-owned-drift-integration).
+Harness-owned runtime, hook JSON, authority-contract, ignore, and attributes updates are written
+to unique siblings in the destination directory, flushed, and atomically replaced. An interrupted
+candidate write therefore leaves the previous project file intact; fixed project-owned `.tmp`
+paths are never claimed. Package scripts, CI jobs, and hook-manager configuration are project-owned;
+see [subagent drift integration](subagents.md#project-owned-drift-integration).
 
 **Idempotency keys:** managed hook identity + current `.command`/`.matcher`; `.gitignore` lines by
 `grep -qxF`; the `AGENTS.md` harness section by the

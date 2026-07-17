@@ -6,6 +6,56 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### ⚠ Breaking
+
+- `tooling-conventions` moves its reusable checker from `manifest-check.sh` to
+  `scripts/manifest-check.sh` and its schema guidance into
+  `references/manifest-schema.md`; no compatibility wrapper is retained.
+
+### Changed
+
+- `conventional-commit`, `semver-release`, `project-docs-organizer`, and
+  `tooling-conventions` now keep only invariants, workflow skeletons, output contracts,
+  and explicit on-demand routers resident in `SKILL.md`.
+- `semver-release` adds a read-only, JSON-capable planner for strict reachable SemVer
+  bases, shallow-history boundaries, conventional-commit bumps, prerelease promotion,
+  explicit targets, and tag ambiguity.
+- Release-note ownership is now project-defined; committed changelogs, fragments,
+  generated notes, and forge-native notes remain valid, and the planner exposes the
+  generic `release_notes_base` range instead of a changelog-specific field.
+- Its planner regression suite now covers first releases, empty release ranges,
+  unclassified histories, canonical prerelease precedence, same-commit build metadata,
+  explicit prerelease advancement, invalid targets, detached HEAD, and real shallow clones.
+- `project-docs-organizer` now treats information architecture and numbered zones as
+  project-owned choices instead of imposing a complex-project template.
+- Catalog validation now enforces lean resident budgets, metadata-only trigger boundaries,
+  direct on-demand routing, and conditional load declarations for references.
+- Validation and agent-scaffold test entry points now reject unknown arguments before
+  doing work, and E2E temporary-directory setup fails closed.
+- The optional tooling manifest checker now rejects masked/extra CLI arguments, path
+  traversal and non-normalized rows, invalid audit levels, malformed directory rows,
+  and temporary-directory setup failures.
+- Recursive temporary-directory cleanup now requires a canonical parent, an entry-specific
+  prefix, and a non-empty generated suffix; agent-scaffold and tooling regression suites
+  inject both creation failures and forged broad paths before target mutation.
+- Public scaffold, worktree, relink, validation, manifest, and release-planner entry points
+  now reject help mixed with invalid arguments, missing flag values, and extra positional
+  arguments before performing their default work.
+- Scaffold-managed runtime, hook JSON, authority-contract, ignore, attributes, subagent, and
+  symlink updates now use unique destination-local candidates and atomic replacement. Managed
+  directory symlinks are rejected before traversal so they cannot redirect writes outside the
+  repository, and unrelated legacy temp-name paths remain untouched.
+- The installed worktree helper now anchors repository operations to its own location, so commands
+  remain correct when invoked from outside the repository. Detached release worktrees use portable
+  ref-plus-commit directory names and the guarded `worktree.sh done` cleanup path; dirty release
+  outputs remain in place, unsafe temporary registry paths fail closed, and no workflow recommends
+  force removal.
+- The optional tooling manifest checker now enforces `entry_for` surface semantics and declared
+  public/installed CLI-contract evidence when those columns are present; a source comment that
+  merely mentions `--help` no longer creates false assurance.
+- Repository onboarding now links the complete development gates and changelog, with focused
+  regression suites documented as a general catalog testing surface.
+
 ## [v2.0.0] — 2026-07-17
 
 ### ⚠ Breaking

@@ -1,14 +1,19 @@
 # Prerelease Promotion
 
-Read this when promoting beta or rc tags into a stable release and consolidating their changelog history.
+Read this when promoting alpha, beta, or rc tags into a stable release and selecting the
+final release-note range, version identity, and any committed-changelog consolidation.
 
-## Promote-and-merge (prerelease → stable)
+## Promotion range and identity
 
 When tagging a **stable** `vX.Y.Z` and same-`X.Y.Z` prerelease tags already exist (`vX.Y.Z-beta.N` / `-rc.N` / `-alpha.N`):
 
-- **changelog base** = the previous HEAD-reachable stable release, or repo root if none exists (skip all same-`X.Y.Z` prereleases), so the final section covers the whole span in one place.
-- **CHANGELOG write is replace-style**: delete the same-`X.Y.Z` prerelease sections and insert one new `## [vX.Y.Z] — YYYY-MM-DD` covering the full previous-stable..HEAD range. A reader sees one consolidated `[vX.Y.Z]` section instead of stitching `beta.1`/`beta.2`/`rc.1` together.
+- **release-notes base** = the previous HEAD-reachable stable release, or repo root if none exists (skip all same-`X.Y.Z` prereleases), so final notes cover the whole span once regardless of their storage or publication owner.
 - rewrite prerelease-aware manifests from their prerelease value to the final value (for example `1.2.0-rc.2` / `1.2.0rc2` → `1.2.0`); CMake clears its separate suffix while retaining numeric `X.Y.Z`.
+
+When the project maintains a committed changelog with one section per prerelease, use a
+replace-style update: delete the same-`X.Y.Z` prerelease sections and insert one final section
+covering the previous-stable-to-HEAD range. Preserve the project's existing heading and category
+format rather than forcing the fallback example from `changelog.md`.
 
 Illustration:
 

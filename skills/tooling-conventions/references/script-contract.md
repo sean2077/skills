@@ -12,10 +12,13 @@ Read this when implementing or auditing the mandatory and recommended behavior o
 - **Secrets** — never commit keys; never print secret values; no `set -x` that would leak them; temp files `0600`; `trap '…' EXIT` to shred/cleanup; deliverables pass a secrets/leak gate before shipping.
 - **Atomic + idempotent** — state-file writes: `.tmp` + fsync/close + atomic rename. Install / desired-state / config-migration steps are idempotent (no ledger needed; re-running converges).
 - **Logging** — multi-step scripts use a stable bracketed prefix; errors go to stderr.
-- **Manifest registration** — adding/moving/removing any public/installed/break-glass/paused/legacy command surface updates the manifest (and its human view) in the same commit, or the reconciliation audit fails. New scripts default to "enforced".
+- **Manifest registration, when adopted** — if the target repository already owns a tool
+  manifest, adding/moving/removing any public/installed/break-glass/paused/legacy surface
+  updates it in the same commit. Do not create a manifest solely to satisfy this reference.
 
 ### Recommended (judgment, not gated)
 
 - `shellcheck` when available; `cmd_<verb>` subcommand dispatch; JSON output only when something automated consumes it.
 - A header contract on public/installed shell entries: ① one-line purpose ② 2–3 *real* usage lines ③ surface + audience ④ hazard / dry-run note. Native sources, package modules, and templates don't need the same header — register them in the domain/target docs instead.
-- Prefer `--dry-run` over `--yes`. Keep a deprecation shim for external/QA surfaces for at least one release; internal surfaces can move without a shim.
+- Prefer `--dry-run` over `--yes`. Keep compatibility behavior only when the target project's
+  verified active consumers require it; the generic skill does not create or retain shims.
