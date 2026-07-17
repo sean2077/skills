@@ -58,6 +58,10 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
 - Local subdirectory installs need an explicit path prefix: use
   `npx skills add ./skills/agent-scaffold`, not `npx skills add skills/agent-scaffold`, because
   the latter is parsed as the GitHub repository `skills/agent-scaffold`.
+- With the pinned CLI, `npx skills add <source> --help` performs an install; inspect options with
+  top-level `npx skills --help` instead. Never run project-scope `skills remove` from this catalog
+  root because it can delete product `skills/*`. Refresh globals from outside the repo with
+  `npx skills@1.5.17 update <names...> -g -y`, then compare installed files with the tagged source.
 
 <!-- agent-scaffold:start — managed by the agent-scaffold skill. Edit project prose OUTSIDE these markers; `agent-scaffold upgrade` refreshes this block. -->
 ## Agent Harness (Claude Code + Codex)

@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Docs
+
+- Catalog maintenance now documents the pinned `npx skills` help/removal hazard and the safe,
+  repository-external global-update workflow.
+
 ## [v3.0.1] — 2026-07-17
 
 ### Fixed
