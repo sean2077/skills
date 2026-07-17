@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v3.0.2] — 2026-07-17
+
 ### Docs
 
 - Catalog maintenance now documents the pinned `npx skills` help/removal hazard and the safe,
@@ -146,7 +148,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v3.0.1...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v3.0.2...HEAD
+[v3.0.2]: https://github.com/sean2077/skills/compare/v3.0.1...v3.0.2
 [v3.0.1]: https://github.com/sean2077/skills/compare/v3.0.0...v3.0.1
 [v3.0.0]: https://github.com/sean2077/skills/compare/v2.0.0...v3.0.0
 [v2.0.0]: https://github.com/sean2077/skills/compare/v1.0.0...v2.0.0
