@@ -638,6 +638,9 @@ check "greenfield creates no example source" test ! -e "$S/.agents/subagents/cod
 check "greenfield creates no example projection" both_absent "$S/.claude/agents/code-reviewer.md" "$S/.codex/agents/code-reviewer.toml"
 check "AGENTS.md contains no project overview" no_fixed_text "$S/AGENTS.md" "## Project Overview"
 check "AGENTS.md starts at the managed boundary" grep -qF '<!-- agent-scaffold:start' "$S/AGENTS.md"
+check "AGENTS.md keeps third-party policy project-owned" grep -qF "Third-party skills** follow project-owned placement and installation policy" "$S/AGENTS.md"
+# shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
+check "AGENTS.md omits unconditional third-party placement" no_fixed_text "$S/AGENTS.md" 'they land as real dirs in `.claude/skills/`'
 # shellcheck disable=SC2016  # backticks are literal Markdown in the expected table row
 check "managed table keeps its closing cell spacing" grep -qF '| `.agents/tools/worktree.sh` | worktree lifecycle | ✅ |' "$S/AGENTS.md"
 check "resident skill README stays thin" test "$(wc -l < "$S/.agents/skills/README.md" | tr -d ' ')" -le 24

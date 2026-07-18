@@ -8,7 +8,7 @@ Read this only when changing installed file placement, optional profiles, SSOT p
 - [Light profile](#light-profile)
 - [The `.agents/` SSOT model](#the-agents-ssot-model)
 - [Project-owned skill authoring](#project-owned-skill-authoring)
-- [Coexistence with `npx skills`](#coexistence-with-npx-skills)
+- [Project-owned third-party policy](#project-owned-third-party-policy)
 - [Runtime workflow troubleshooting](#runtime-workflow-troubleshooting)
 
 ## Bundled files: provenance + landing
@@ -102,15 +102,20 @@ checklists and worked examples in descriptive lowercase-kebab-case reference fil
 from `SKILL.md`; avoid catch-alls such as `reference.md`, `misc.md`, or `references/README.md`.
 Directories prefixed with `_` are support material and are skipped by the relinker.
 
-## Coexistence with `npx skills`
+## Project-owned third-party policy
 
-Two mechanisms live side by side, partitioned by **managed target (ours) vs other entry (theirs)**:
+Where third-party skills live and how they are installed is project-owned policy. A project may
+allow vendor-native directories under `.claude/skills/`, or require locked vendor dependencies to
+live under `.agents/skills/` and use the same projection path as project-authored skills. The
+scaffold does not choose between those policies.
+
+The runtime still partitions entries by **managed target (ours) vs unrelated entry (theirs)**:
 
 - **Project-authored** skills/subagents live in `.agents/` and project into `.claude/`/`.codex/`.
-- **Third-party** skills install via `npx skills add <repo> -a claude-code -a codex` and land as
-  **real directories** in `.claude/skills/`. `relink-skills.sh` never touches unrelated real
-  directories or symlinks. A same-name project source is a conflict: it is preserved and the
-  relinker exits 2 rather than silently choosing one owner.
+- **Unrelated entries** in `.claude/skills/` are preserved by `relink-skills.sh`; preserving them
+  is a runtime safety property, not permission to keep them under a stricter project policy.
+- **Same-name ownership** is always a conflict: the existing entry is preserved and the relinker
+  exits 2 rather than silently choosing one owner.
 - **Real-link repair**: a Git target-text placeholder can be materialized as its tracked relative
   link; drifted content is preserved as a reported conflict.
 

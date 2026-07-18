@@ -91,6 +91,14 @@ for config in claude.settings.json codex.hooks.json; do
 done
 grep -qF '<!-- agent-scaffold:worktree:start -->' "$skill/assets/scaffold/AGENTS.harness.md" \
   || fail "AGENTS.harness.md lost the profile boundary"
+grep -qF 'Third-party skills** follow project-owned placement and installation policy' \
+  "$skill/assets/scaffold/AGENTS.harness.md" \
+  || fail "AGENTS.harness.md lost project-owned third-party policy wording"
+# shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
+if grep -qF 'they land as real dirs in `.claude/skills/`' \
+  "$skill/assets/scaffold/AGENTS.harness.md" >/dev/null 2>&1; then
+  fail "AGENTS.harness.md publishes an unconditional third-party placement policy"
+fi
 
 worktree_helper="$skill/assets/runtime/worktree.sh"
 grep -qF 'removed clean detached release worktree' "$worktree_helper" \
