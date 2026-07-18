@@ -46,7 +46,7 @@ point**, not a detail dump. `.agents/tools/hooks/authority_doc_budget.sh`
 
 - **Add a skill**: edit `.agents/skills/` → run `bash .agents/relink-skills.sh` → commit source + symlink.
 - **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. Wire `--check` into the project's own CI or hook manager when desired.
-- **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
+- **Third-party skills** follow project-owned placement and installation policy. The relinker manages only names sourced from `.agents/skills/`, preserves unrelated entries, and fails on same-name ownership conflicts.
 
 **Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a
 **trusted** project; until trusted it is silently skipped. Trust once: run `codex`

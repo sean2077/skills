@@ -12,9 +12,9 @@ under `.claude/skills/`; Codex reads `.agents/skills/` directly.
 Rules:
 
 - Do not hand-edit `.claude/skills/` projections.
-- Keep third-party skills separate; install them with `npx skills`.
+- Define third-party skill placement and installation in the project contract; the harness does not choose that policy.
 - Prefix support-only directories with `_`; the relinker skips them.
-- Same-name project and third-party skills are an ownership conflict.
+- The relinker preserves unrelated entries, but a same-name project and third-party skill is an ownership conflict.
 
-For full authoring conventions, naming, and coexistence details, load the
+For full authoring conventions, naming, and third-party policy details, load the
 `agent-scaffold` skill's `references/harness-layout.md` on demand.
