@@ -110,6 +110,33 @@ class TargetInspectionTests(unittest.TestCase):
         self.assertIn(b"<!-- agent-scaffold:start", completed.stdout)
         self.assertNotIn(b"\r\n", completed.stdout)
 
+    def test_managed_agents_template_uses_semantic_source_lines(self):
+        manifest = CORE.load_manifest()
+        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "contract.agents")["source"]
+        previous_plain_line = None
+        in_fence = False
+
+        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+            stripped = line.lstrip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                previous_plain_line = None
+                continue
+            if in_fence or not stripped:
+                previous_plain_line = None
+                continue
+            if stripped.startswith(("#", "<!--", "|", "- ", "* ", "+ ", "> ")):
+                previous_plain_line = None
+                continue
+            if line != stripped:
+                self.fail(f"managed AGENTS prose continues on indented line {number}")
+            if previous_plain_line is not None:
+                self.fail(
+                    "managed AGENTS prose is hard-wrapped across lines "
+                    f"{previous_plain_line}-{number}"
+                )
+            previous_plain_line = number
+
     def test_plan_accepts_a_contract_target_text_placeholder(self):
         manifest = CORE.load_manifest()
         with tempfile.TemporaryDirectory() as directory:
