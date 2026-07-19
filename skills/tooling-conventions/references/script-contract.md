@@ -1,28 +1,65 @@
-# Tool Script Contract
+# Contextual Command Contract
 
-Read this when implementing or auditing the mandatory and recommended behavior of a committed command.
+Read this when implementing or auditing a committed command after its Job Boundary and Contract
+Profile are known. The Contract Profile decides which cards apply; this is not one mandatory CLI
+or implementation template.
 
-## Complete script contract
+## Always-on safety boundaries
 
-### Mandatory (gate/audit these)
+- Never let unknown or invalid input reach a dangerous default action. Preserve the target
+  project's existing CLI grammar and exit-code convention; when a new authoritative entry has no
+  governing convention, choose and document the smallest interface its real invokers need.
+- Route deploys, releases, credential changes, device mutation, and other hazardous effects through
+  the project's authoritative path. An escape hatch exists only when project policy names its
+  trigger, warning, prohibited environments, owner, and removal condition.
+- Never commit or print secrets. Use the target platform's permission, redaction, temporary-storage,
+  and cleanup mechanisms; do not promise secure erasure that the storage layer cannot provide.
+- Preserve installed paths, service bindings, machine-readable output, and other external command
+  contracts until every active consumer moves in one coordinated change.
 
-- **`--help` + exit-code contract** — authoritative entries invoked directly by humans or automation: `-h/--help` → exit 0; usage / unknown flag → exit 2; runtime/preflight failure → nonzero and **do not proceed** with the dangerous action. Unknown args must never fall through to the default action.
-- **Unified resolver** — if a script selects one of {build preset, profile, config path, target path, install path} from a platform/environment, it `source`s a single shared resolver (one precedence definition: explicit flag > env var > inferred-from-context > default), instead of re-implementing `--platform`/`--env` parsing or hardcoding one value.
-- **Authoritative path for dangerous actions** — deploying code, mutating production/device state (config / service / identity / credentials), or producing a release deliverable goes through the project's blessed upgrade/install/desired-state/image/release path. A temporary escape hatch is allowed only as an **explicit flag + a logged risk warning + never a QA/customer path**.
-- **Secrets** — never commit keys; never print secret values; no `set -x` that would leak them; temp files `0600`; `trap '…' EXIT` to shred/cleanup; deliverables pass a secrets/leak gate before shipping.
-- **Atomic + idempotent** — state-file writes: `.tmp` + fsync/close + atomic rename. Install / desired-state / config-migration steps are idempotent (no ledger needed; re-running converges).
-- **Logging** — multi-step scripts use a stable bracketed prefix; errors go to stderr.
-- **Inventory registration, when adopted** — if the target repository already owns a structural
-  tool inventory, adding, moving, or removing an affected command or registered directory updates
-  it in the same commit. Update Project Tool Policy separately when semantic metadata changes.
-  Do not create an inventory solely to satisfy this reference.
+## Conditional contract cards
 
-### Recommended (judgment, not gated)
+### Invocation and help
 
-- `shellcheck` when available; `cmd_<verb>` subcommand dispatch; JSON output only when something automated consumes it.
-- A header contract on authoritative shell entries: ① one-line purpose ② 2–3 *real* usage lines
-  ③ direct invokers and owned job ④ hazard / dry-run note. Supporting package modules, native
-  sources, and templates do not need the same header—record their build/provenance contract in
-  the project-owned location instead.
-- Prefer `--dry-run` over `--yes`. Keep compatibility behavior only when the target project's
-  verified active consumers require it; the generic skill does not create or retain shims.
+Apply when humans or automation invoke the entry directly. Preserve the project's parser, flags,
+usage format, and exit meanings. Add discoverability for a new interface only when an actual
+invoker needs it; do not retrofit `-h/--help`, subcommands, or a universal exit number merely to
+match this skill.
+
+### Context resolution
+
+Apply when several entries or call sites select the same preset, profile, environment, target, or
+path. Consolidate duplicated precedence into the project's language-native shared resolver or
+configuration authority. Derive precedence from callers and policy rather than imposing a fixed
+flag/environment/inference/default order.
+
+### State mutation and retry
+
+Apply when the command owns persistent state or partial failure matters. Choose the transaction,
+atomic replacement, rollback, checkpoint, idempotency key, or convergence mechanism supported by
+that state owner. Require idempotency only when retry or convergence is part of the observed
+contract; a generic skill does not prescribe `.tmp` files, `fsync`, rename semantics, or a ledger.
+
+### Output and observability
+
+Apply when a human must diagnose multiple steps or a machine consumes output. Preserve structured
+stdout and exit semantics, route diagnostics through the project logger or stderr as appropriate,
+and use prefixes or JSON only when the consumer contract calls for them.
+
+### Preview and confirmation
+
+Apply when a hazardous effect can be previewed faithfully. Do not claim a dry run unless tests prove
+the preview has no forbidden side effects and represents the real selection logic. Confirmation
+flags, interactive prompts, and non-interactive defaults remain project-owned.
+
+### Inventory registration, when adopted
+
+If the target repository already owns a structural tool inventory, adding, moving, or removing an
+affected command or registered directory updates it in the same commit. Update Project Tool Policy
+separately when semantic metadata changes. Do not create an inventory solely to satisfy this
+reference.
+
+## Review outcome
+
+Record the cards selected and rejected with evidence, the existing contracts preserved, failure and
+recovery behavior, and the smallest verification set that proves the chosen outcomes.
