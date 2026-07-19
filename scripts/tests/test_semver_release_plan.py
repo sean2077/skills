@@ -169,6 +169,25 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("clean-worktree", self.attention_ids(report))
 
+    def test_clean_attached_merge_still_requires_attention(self) -> None:
+        self.tag("v1.2.3")
+        self.git("checkout", "-q", "-b", "topic")
+        self.git("commit", "-q", "--allow-empty", "-m", "fix: topic history")
+        self.git("checkout", "-q", "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "fix: main history")
+        self.git("merge", "-q", "--no-commit", "--no-ff", "topic")
+        self.assertEqual(self.git("status", "--porcelain").stdout, "")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 1)
+        self.assertNotIn("clean-worktree", self.attention_ids(report))
+        self.assertIn("operation-state", self.attention_ids(report))
+        operation_check = next(
+            item for item in report["checks"] if item["id"] == "operation-state"  # type: ignore[union-attr]
+        )
+        self.assertEqual(operation_check["operations"], ["merge"])
+
     def test_equal_precedence_tags_on_different_commits_are_ambiguous(self) -> None:
         self.tag("v1.2.3+one")
         self.commit("fix: second release point")

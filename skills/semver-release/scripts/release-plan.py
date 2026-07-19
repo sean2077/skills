@@ -39,6 +39,14 @@ PATCH_TYPES = {
     "style",
     "ci",
 }
+GIT_OPERATION_MARKERS = {
+    "merge": ("MERGE_HEAD",),
+    "rebase/am": ("REBASE_HEAD", "rebase-merge", "rebase-apply"),
+    "cherry-pick": ("CHERRY_PICK_HEAD",),
+    "revert": ("REVERT_HEAD",),
+    "bisect": ("BISECT_HEAD", "BISECT_LOG", "BISECT_START"),
+    "sequencer": ("sequencer",),
+}
 
 
 class GitError(RuntimeError):
@@ -203,6 +211,22 @@ def resolve_repo(path: str) -> Path:
     return Path(top).resolve()
 
 
+def git_path(repo: Path, name: str) -> Path:
+    """Resolve a worktree-aware Git administrative path without assuming `.git/`."""
+    value = run_git(repo, "rev-parse", "--git-path", name).stdout.strip()
+    path = Path(value)
+    return path if path.is_absolute() else repo / path
+
+
+def active_git_operations(repo: Path) -> list[str]:
+    """Return active operation families represented by Git's administrative state."""
+    return [
+        operation
+        for operation, markers in GIT_OPERATION_MARKERS.items()
+        if any(git_path(repo, marker).exists() for marker in markers)
+    ]
+
+
 def build_plan(repo_arg: str, target: Optional[str]) -> dict[str, Any]:
     repo = resolve_repo(repo_arg)
     checks: list[dict[str, Any]] = []
@@ -224,6 +248,21 @@ def build_plan(repo_arg: str, target: Optional[str]) -> dict[str, Any]:
     else:
         add_check("attached-head", "attention", "HEAD is detached")
         require_attention("attached-head", "Release work requires an attached branch before mutation.")
+
+    operations = active_git_operations(repo)
+    if operations:
+        add_check(
+            "operation-state",
+            "attention",
+            "A Git operation is in progress",
+            operations=operations,
+        )
+        require_attention(
+            "operation-state",
+            "Finish or abort the active Git operation before release planning.",
+        )
+    else:
+        add_check("operation-state", "ok", "No Git operation is in progress")
 
     porcelain = run_git(repo, "status", "--porcelain").stdout
     dirty_paths = [line for line in porcelain.splitlines() if line]

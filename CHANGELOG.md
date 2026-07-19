@@ -23,6 +23,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and requires inspection of the actual cached patch before commit.
 - Ordinary commit mode now stops on in-progress merge, rebase, cherry-pick, revert, bisect, and
   unresolved-conflict states even when `HEAD` remains attached.
+- `semver-release` now rejects active Git operations in its read-only plan even when the branch is
+  attached and the porcelain worktree status is empty.
 
 ## [v4.0.0] — 2026-07-19
 

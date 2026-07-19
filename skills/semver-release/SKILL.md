@@ -15,7 +15,8 @@ and artifact publication under the target repository's policy.
   did not choose one. Surface conflicts, but do not reopen an explicit release choice.
 - Plan without mutation first. Do not edit release files until the base, target, release
   workflow, and version authority are unambiguous.
-- Release from a clean attached trunk or repository-approved release line/worktree.
+- Release from a clean attached trunk or repository-approved release line/worktree with no
+  merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress.
 - Preserve the repository's release-note authority: committed changelog, fragments,
   generated notes, or forge-native notes. Do not invent a root changelog by default.
 - Keep every package/version identity semantically aligned with the tag.

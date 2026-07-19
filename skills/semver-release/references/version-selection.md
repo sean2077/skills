@@ -10,10 +10,15 @@ After fetching tags, prefer the bundled read-only analyzer:
 python <skill-dir>/scripts/release-plan.py --repo <repo-root> --json [--target vX.Y.Z]
 ```
 
-It checks clean/attached state, incomplete shallow history, reachable strict-SemVer tags,
-equal-precedence build-metadata ambiguity, conventional-commit bump signals, target availability,
-and prerelease decisions. Resolve its `attention` entries before mutation. The manual rules below
-are the fallback and the review contract for the analyzer.
+It checks clean/attached state, active Git operations, incomplete shallow history, reachable
+strict-SemVer tags, equal-precedence build-metadata ambiguity, conventional-commit bump signals,
+target availability, and prerelease decisions. Resolve its `attention` entries before mutation.
+The manual rules below are the fallback and the review contract for the analyzer.
+
+For a manual fallback, an attached branch and empty `git status --porcelain` are not sufficient:
+run `git status --long --branch` and stop if it reports a merge, rebase/am, cherry-pick, revert,
+bisect, sequencer, or unresolved-conflict state. Finish or abort the owning Git operation before
+release planning; never turn its pending commit into a release commit.
 
 When the user supplied an exact valid target, keep it as the selected version. Compare it with
 the inferred bump and report any mismatch, but ask only when the requested value is invalid,

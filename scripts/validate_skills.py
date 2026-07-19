@@ -664,6 +664,7 @@ def validate_semver_release_contract() -> None:
         "--target vX.Y.Z",
         "Resolve every `attention` result before mutation",
         "A valid exact version supplied by the user is the target",
+        "merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress",
     )
     missing_skill_router = [value for value in skill_router_contract if value not in skill_text]
     if missing_skill_router:
@@ -678,6 +679,8 @@ def validate_semver_release_contract() -> None:
         "git cat-file -p <root>",
         "commit headers before the first blank line",
         "repository-level `true` is not sufficient",
+        "git status --long --branch",
+        "never turn its pending commit into a release commit",
     )
     missing_reference_base = [value for value in reference_base_contract if value not in selection_text]
     if missing_reference_base:
@@ -755,6 +758,10 @@ def validate_semver_release_contract() -> None:
         "schema_version",
         "parse_semver",
         "compare_semver",
+        "GIT_OPERATION_MARKERS",
+        "git_path",
+        "active_git_operations",
+        "operation-state",
         "complete-head-history",
         "reachable-semver-base",
         "BREAKING_FOOTER_RE",
@@ -795,6 +802,7 @@ def validate_semver_release_contract() -> None:
         "test_known_prerelease_order_selects_the_stable_base",
         "test_numbered_prerelease_can_advance_explicitly",
         "test_detached_head_requires_attention",
+        "test_clean_attached_merge_still_requires_attention",
         "test_real_shallow_boundary_blocks_base_selection",
     )
     missing_tests = [value for value in test_contract if value not in planner_test_text]
