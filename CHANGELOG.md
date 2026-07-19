@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v4.0.0] — 2026-07-19
+
 ### ⚠ Breaking
 
 - `tooling-conventions` retires its exactly-one surface taxonomy and semantic manifest contract.
@@ -181,7 +183,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v3.0.2...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v4.0.0...HEAD
+[v4.0.0]: https://github.com/sean2077/skills/compare/v3.0.2...v4.0.0
 [v3.0.2]: https://github.com/sean2077/skills/compare/v3.0.1...v3.0.2
 [v3.0.1]: https://github.com/sean2077/skills/compare/v3.0.0...v3.0.1
 [v3.0.0]: https://github.com/sean2077/skills/compare/v2.0.0...v3.0.0
