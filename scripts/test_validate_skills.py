@@ -126,5 +126,114 @@ class CategoryReferenceTests(unittest.TestCase):
         self.assertIn("Validate the skills catalog", stdout.getvalue())
 
 
+class ProjectDocsOrganizerContractTests(unittest.TestCase):
+    METHOD_HEADINGS = (
+        "Reader role",
+        "Task or journey",
+        "Domain capability, ownership, and language",
+        "Product, subsystem, or interface surface",
+        "Content purpose or information type",
+        "Lifecycle or authority",
+    )
+    METHOD_FIELDS = (
+        "**Signals**: signal",
+        "**Ask**: question",
+        "**Fits when**: fit",
+        "**Fails when**: failure",
+        "**Axis role**: role",
+        "**Micro-example**: example",
+    )
+
+    def valid_files(self) -> dict[str, str]:
+        cards = "\n".join(
+            f"## {heading}\n" + "\n".join(self.METHOD_FIELDS) for heading in self.METHOD_HEADINGS
+        )
+        return {
+            "SKILL.md": (
+                "The target project owns its information architecture. Prefer the smallest structure and "
+                "preserve a coherent established convention. Select one primary axis per tree level. "
+                "Write a documentation IA decision record. Present two or three candidates and wait for "
+                "the user before mutation. No empty category is allowed. Resolve the target project root."
+            ),
+            "references/information-architecture.md": (
+                "Reader-route separation. Vocabulary and ownership cohesion. Lifecycle consistency. "
+                "Stability under change. Duplication pressure. Choose one primary axis and retain "
+                "secondary lenses. Run a representative placement test. Present two or three candidates "
+                "and wait for the user before mutation. Otherwise enable numbering by default."
+            ),
+            "references/classification-methods.md": cards,
+            "references/numbering-patterns.md": (
+                "Enable numbering by default only when no coherent established convention applies. "
+                "Keep it off when a documentation generator owns ordering or navigation. Use `10-`, "
+                "`20-`, and `00-` as sibling-local position, not category meaning. Add nested numbers "
+                "only for a genuine reading or execution order."
+            ),
+            "references/migration-and-links.md": (
+                "Build the migration map. Before deleting, gather evidence. Run "
+                "rg -n -F 'old/path.md' <project-root>. Coordinate external wikis or issue trackers. "
+                "Finish with git diff --check."
+            ),
+        }
+
+    def validate(
+        self,
+        *,
+        overrides: dict[str, str] | None = None,
+        removed: set[str] | None = None,
+        extras: dict[str, str] | None = None,
+    ) -> list[str]:
+        files = self.valid_files()
+        files.update(overrides or {})
+        for relative in removed or set():
+            files.pop(relative, None)
+        files.update(extras or {})
+        with tempfile.TemporaryDirectory() as temporary:
+            skill_dir = Path(temporary) / "project-docs-organizer"
+            for relative, content in files.items():
+                path = skill_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            validator.errors.clear()
+            validator.validate_project_docs_organizer_contract(skill_dir)
+            return list(validator.errors)
+
+    def test_valid_evidence_led_contract(self) -> None:
+        self.assertEqual(self.validate(), [])
+
+    def test_missing_required_reference_is_rejected(self) -> None:
+        errors = self.validate(removed={"references/classification-methods.md"})
+        self.assertTrue(any("missing required files" in error for error in errors))
+
+    def test_legacy_zone_catalog_is_rejected(self) -> None:
+        errors = self.validate(
+            extras={"references/zone-catalog.md": "# Optional Documentation Zone Catalog\n"}
+        )
+        self.assertTrue(any("retired references/zone-catalog.md" in error for error in errors))
+
+    def test_incomplete_method_card_set_is_rejected(self) -> None:
+        methods = self.valid_files()["references/classification-methods.md"].replace(
+            "## Lifecycle or authority", "## Records"
+        )
+        errors = self.validate(overrides={"references/classification-methods.md": methods})
+        self.assertTrue(any("method-card set is incomplete" in error for error in errors))
+
+    def test_global_number_range_semantics_are_rejected(self) -> None:
+        numbering = (
+            self.valid_files()["references/numbering-patterns.md"]
+            + " The developer area is `2x`."
+        )
+        errors = self.validate(overrides={"references/numbering-patterns.md": numbering})
+        self.assertTrue(any("retired zone-template semantics" in error for error in errors))
+
+    def test_forced_numbering_without_opt_outs_is_rejected(self) -> None:
+        numbering = self.valid_files()["references/numbering-patterns.md"].replace(
+            "coherent established convention", "project exception"
+        ).replace(
+            "documentation generator owns ordering or navigation", "the project is large"
+        )
+        errors = self.validate(overrides={"references/numbering-patterns.md": numbering})
+        self.assertTrue(any("default and opt-out numbering contract" in error for error in errors))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,38 +1,33 @@
-# Optional Documentation Numbering Patterns
+# Local Documentation Numbering
 
-Read this only after the project has chosen a numbered tree and the proposed structure may
-collapse distinct subcategories or misuse numeric prefixes.
+Read this after semantic boundaries are stable and the project needs a decision about numeric
+ordering. Numbers are presentation, never a classification method.
 
-## Numbering pitfalls
+## Decide whether numbering applies
 
-Use these examples only after the information-architecture decision selects numbering.
+Enable numbering by default only when creating or materially reorganizing a dedicated
+documentation tree with no coherent established convention. Keep numbering disabled when:
 
-**Don't let the first digit be the only classification** — collapsing every major area into a single landing folder loses the subcategory semantics:
+- the user explicitly declines it;
+- a coherent established convention already routes readers effectively;
+- a documentation generator owns ordering or navigation; or
+- renaming stable public paths would cost more than the evidenced ordering problem.
 
-```text
-# avoid
-docs/
-├── 20-development/
-├── 30-iteration/
-└── 40-tooling-standards/
-```
+README-only projects have no directory layer to number. If an established convention is itself
+the retrieval failure, present the migration cost and let the maintainer reconsider it.
 
-```text
-# prefer — real subcategories under each major area
-docs/
-├── 21-architecture/
-├── 22-codebase/
-├── 32-adrs/
-├── 33-specs-rfcs/
-├── 41-development-tools/
-└── 44-coding-standards/
-```
+## Use sibling-local ordering tokens
 
-**Nested numeric prefixes only for required reading order** — inside a numbered subcategory, add `00-`/`01-`/… prefixes only when readers must consume the files in sequence:
+- Name semantic groups first, then prefix only the siblings whose display order should remain
+  predictable.
+- Use two-digit tokens with insertion gaps by default: `10-`, `20-`, `30-`, and so on.
+- Use `00-` only for real first-stop content. Do not create an entry page or directory merely
+  to consume the token.
+- Treat each number as sibling-local position, not category meaning. Numeric ranges carry no
+  cross-project or cross-subtree semantics.
+- Add prefixes inside a group only when readers must follow a genuine reading or execution order.
+- Renumber existing paths only when the navigation benefit justifies link churn and the
+  migration contract covers every active route.
 
-```text
-docs/01-quickstart/
-├── 00-install.md
-├── 01-first-run.md
-└── 02-first-change.md
-```
+The result may use numbered directories, numbered files, both, or neither. The decision follows
+reader navigation and project convention; it never follows project size alone.

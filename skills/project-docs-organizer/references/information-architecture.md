@@ -1,46 +1,90 @@
 # Documentation Information Architecture
 
-Read this when choosing the documentation root and deciding whether the project needs a
-README-only, named-directory, generated-site, or numbered organization.
+Read this when selecting the documentation container, primary axis, secondary lenses, and
+numbering decision before proposing or applying a reorganization.
 
-## Choose from evidence
+## Start with the smallest container
 
-| Project evidence | Smallest fitting model |
+| Project evidence | Smallest fitting container |
 |---|---|
-| One audience, short setup, little durable history | Focused root `README.md` |
-| Several stable topics or audiences, modest doc count | Existing docs root with plain reader-oriented names |
+| One main reader, short setup, little durable detail | Focused root `README.md` |
+| Several durable topics or reader routes | Existing documentation root with project-owned names |
 | A documentation generator already owns navigation | Preserve its content and navigation model |
-| Large long-lived corpus where stable grouping and sort order both matter | Optional semantic numbered zones |
+| No coherent convention and a dedicated tree is justified | Create a project-named docs root; use `docs/` only as the neutral fallback |
 
-Use the user's explicit path first. Otherwise prefer a coherent existing documentation
-root; create `docs/` only when no convention exists and a dedicated tree is justified.
-Do not rename `doc/`, `documentation/`, or generator-owned paths merely to normalize them.
+Honor the user's explicit location first. Otherwise preserve a coherent `docs/`, `doc/`,
+`documentation/`, generated site, or other established root. Do not normalize paths merely
+because another project uses a different convention.
 
-## Classification dimensions
+## Gather boundary evidence
 
-Choose boundaries from real differences in:
+Record evidence before naming categories:
 
-- audience: user, integrator, contributor, maintainer, operator
-- lifecycle: stable guidance, active proposal, decision record, generated output, retained history
-- ownership: source-maintained, tool-generated, externally synchronized
-- retrieval: task, subsystem, workflow, reference lookup, incident response
+- reader roles, prerequisites, permissions, and fastest safe tasks;
+- recurring goals, workflows, search terms, and support or incident routes;
+- domain capabilities, vocabulary conflicts, decision owners, and handoff contracts;
+- products, subsystems, interfaces, and the mental model readers already use;
+- stable guidance, active proposals, decisions, generated material, and retained history;
+- canonical sources, generator or publishing constraints, and observed retrieval failures.
 
-Prefer reader tasks and lifecycle over file-format or team-name buckets. A directory is
-justified when it has multiple durable pages, a distinct owner/lifecycle, or meaningful
-navigation value.
+Do not turn this list into six peer directory axes. Read
+[`classification-methods.md`](classification-methods.md), shortlist only lenses supported by
+the evidence, and keep the project's own terminology.
 
-## Entry-point roles
+## Choose one primary axis per level
 
-The root README should identify the project, intended users, fastest safe start, and routes
+Compare candidate lenses qualitatively:
+
+- **Reader-route separation**: will readers usually remain inside one group?
+- **Vocabulary and ownership cohesion**: does one owner or language govern the material?
+- **Lifecycle consistency**: can content in the group evolve under compatible trust rules?
+- **Stability under change**: will the boundary survive normal product or team changes?
+- **Duplication pressure**: does the choice give each fact one canonical home?
+
+Choose one primary axis for each relevant tree level. A different subtree may choose a
+different primary axis. Keep secondary lenses as local subgroups, navigation or generated
+views, metadata, or validation rules; do not create a Cartesian-product hierarchy or duplicate
+canonical content to simulate multiple views.
+
+## Run a representative placement test
+
+Before moving files, place representative current documents and plausible new documents into
+the candidate design. It passes only when:
+
+- each sample has one obvious canonical home;
+- common reader routes avoid unrelated branches;
+- ownership or lifecycle changes do not require unrelated moves;
+- no category exists only to complete the method; and
+- secondary lenses remain usable without duplicating content.
+
+If the test fails, refine the primary axis or choose a smaller container. If a high-impact
+choice remains tied, present two or three candidates with their evidence, migration cost,
+tradeoffs, and a recommendation, then wait for the user before mutation. For a minor,
+reversible tie that preserves semantic ownership, use and report the smallest coherent change.
+
+## Record the decision
+
+Before presenting the proposed tree, report:
+
+1. project evidence and retrieval failures;
+2. candidate lenses and why each was considered;
+3. the primary axis at every relevant level;
+4. secondary lenses and how readers access them;
+5. rejected alternatives and their failure modes;
+6. whether numbering is enabled and the evidence for that decision; and
+7. the proposed tree plus move, merge, delete, and retention actions.
+
+## Keep entry points as routers
+
+The root README should identify the project, intended readers, fastest safe start, and routes
 to deeper user and contributor material. A docs-root README or generated landing page should
 map the available areas and distinguish stable, active, generated, and historical material.
+Link to canonical setup, architecture, ADR, tool, and runbook pages instead of duplicating them.
 
-Neither entry point should duplicate long setup guides, architecture descriptions, ADRs,
-tool manuals, or runbooks. Link to one canonical page instead.
+## Decide numbering after semantics
 
-## When numbering helps
-
-Use numbering only when maintainers want durable grouping plus deterministic ordering and
-will preserve its semantics. Do not add it solely because the corpus is large. When selected,
-read [`numbering-patterns.md`](numbering-patterns.md) and
-[`zone-catalog.md`](zone-catalog.md) before designing the tree.
+README-only projects have nothing to number. Preserve an explicit user choice, a coherent
+established convention, or documentation-generator-owned ordering. When creating or materially
+reorganizing a dedicated tree with no governing convention, enable numbering by default and
+read [`numbering-patterns.md`](numbering-patterns.md). Reconsider an existing convention only
+when evidence shows that it causes the retrieval or ordering failure being solved.
