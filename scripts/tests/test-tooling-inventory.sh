@@ -60,12 +60,13 @@ bash "$CHECKER" -- "$fixture/explicit/scripts/inventory.tsv"
 mkdir -p "$fixture/override/config" "$fixture/override/bin"
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$fixture/override/bin/run.sh"
 printf 'path\nrun.sh\n' > "$fixture/override/config/inventory.tsv"
+override_scan="$(cd "$fixture/override/bin" && pwd -P)"
 if ! override_output="$(
     TOOLS_DIR="$fixture/override/bin" bash "$CHECKER" "$fixture/override/config/inventory.tsv"
 )"; then
     echo "TOOLS_DIR did not override the inventory directory" >&2
     negative_fails=$((negative_fails + 1))
-elif ! grep -qF "scan: $fixture/override/bin" <<<"$override_output"; then
+elif ! grep -qF "scan: $override_scan" <<<"$override_output"; then
     echo "TOOLS_DIR override was not reported as the scan root" >&2
     negative_fails=$((negative_fails + 1))
 fi
@@ -120,6 +121,8 @@ printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$fixture/invalid/tools/tool.sh"
 {
     printf 'path\taudit_level\n'
     printf '\tenforce\n'
+    # Exact parent segments remain blocking even when the row asks to warn.
+    printf '..\twarn\n'
     printf '../outside.sh\tenforce\n'
     printf './tool.sh\tenforce\n'
     printf 'tool.sh\tenforce\n'
@@ -136,6 +139,7 @@ if [[ "$invalid_rc" != 1 ]]; then
 else
     for diagnostic in \
         'inventory row 2 has an empty path' \
+        'FAIL: invalid inventory path (must be normalized and relative): ..' \
         'invalid inventory path (must be normalized and relative): ../outside.sh' \
         'invalid inventory path (must be normalized and relative): ./tool.sh' \
         'duplicate inventory path: tool.sh' \
@@ -199,7 +203,7 @@ printf '%s\n' '#!/usr/bin/env python3' 'print("ok")' \
 printf 'path\taudit_level\nrun.py\twarn\n' > "$fixture/python-preflight/tools/inventory.tsv"
 set +e
 python_preflight_output="$(
-    # shellcheck disable=SC2329 # exported into the checker process to simulate a missing command
+    # shellcheck disable=SC2317,SC2329 # exported to simulate a missing command
     command() {
         if [[ "${1:-}" == '-v' && "${2:-}" == 'python' ]]; then return 1; fi
         builtin command "$@"

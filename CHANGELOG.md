@@ -12,9 +12,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   The bundled `<skill-dir>/scripts/manifest-check.sh` is replaced by
   `<skill-dir>/scripts/inventory-check.sh` without a compatibility wrapper or legacy mode;
   `MANIFEST_CHECK_SKIP` is replaced by `INVENTORY_CHECK_SKIP`.
+- `project-docs-organizer` removes `references/zone-catalog.md` and the universal numbered-zone
+  vocabulary without a compatibility alias. Consumers must derive project-owned information
+  architecture from the new classification methods instead of reusing fixed semantic ranges.
 
 ### Changed
 
+- `project-docs-organizer` now selects reader, task, domain, product, content-purpose, and
+  lifecycle lenses from repository evidence, records an IA decision before mutation, and treats
+  numbering as optional sibling-local presentation rather than cross-project classification.
+- `agent-scaffold` now publishes explicit authority-document freshness, residency, scope, and
+  conflict laws while leaving third-party skill placement and installation policy project-owned.
 - Tool governance now derives Job Boundaries, Contract Profiles, and project-owned Placement
   Decisions through eight boundary/constraint method cards, and requires a Tool Governance
   Decision Record before recommendations or mutation.
@@ -23,6 +31,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   from an explicit `TOOLS_DIR` or the inventory location. Semantic policy remains target-owned.
 - Deterministic fixtures cover default and custom command roots, separated inventories,
   directory non-coverage, syntax and reverse drift, warn/enforce behavior, and safe preflights.
+
+### Fixed
+
+- The structural inventory checker now rejects an exact `..` path as a blocking normalization
+  failure even when its row requests warning-level handling.
+- Inventory fixtures now compare canonical scan roots across Windows, macOS, and Linux and carry
+  the indirect-call ShellCheck annotations required by the CI runner.
 
 ## [v3.0.2] — 2026-07-17
 
