@@ -45,6 +45,21 @@ class CategoryReferenceTests(unittest.TestCase):
         )
         self.assertEqual(errors, [])
 
+    def test_equivalent_reference_load_boundaries_are_accepted(self) -> None:
+        introductions = (
+            "Consult this when selecting a release base.",
+            "Open this only for a breaking migration.",
+            "Use this after the semantic boundary is stable.",
+            "Load this when another tool needs the schema.",
+        )
+        for introduction in introductions:
+            with self.subTest(introduction=introduction):
+                errors = self.validate(
+                    "## On-demand references\n[Alpha](references/alpha.md)",
+                    {"references/alpha.md": f"# Alpha\n\n{introduction}\n"},
+                )
+                self.assertEqual(errors, [])
+
     def test_reference_router_heading_is_required(self) -> None:
         errors = self.validate(
             "[Alpha](references/alpha.md)",
