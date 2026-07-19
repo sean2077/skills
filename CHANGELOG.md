@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v4.0.1] — 2026-07-19
+
 ### Changed
 
 - Catalog reference validation now accepts equivalent imperative load-boundary wording while
@@ -220,7 +222,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v4.0.1...HEAD
+[v4.0.1]: https://github.com/sean2077/skills/compare/v4.0.0...v4.0.1
 [v4.0.0]: https://github.com/sean2077/skills/compare/v3.0.2...v4.0.0
 [v3.0.2]: https://github.com/sean2077/skills/compare/v3.0.1...v3.0.2
 [v3.0.1]: https://github.com/sean2077/skills/compare/v3.0.0...v3.0.1
