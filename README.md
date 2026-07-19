@@ -32,7 +32,7 @@ If the skills were installed before the compatibility manifest existed, rerun th
 | Skill | Description | Stack |
 |-------|-------------|-------|
 | [conventional-commit](skills/conventional-commit/) | Create one scoped local Conventional Commit or return one history-aware message-only subject while preserving unrelated index state. | Git |
-| [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, project-owned version synchronization, and verified CI or direct forge publication. | Git, Python, Release |
+| [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, project-owned version synchronization, and policy-derived publication verification. | Git, Python, Release |
 | [project-docs-organizer](skills/project-docs-organizer/) | Derive project-owned documentation structure from reader, task, domain, ownership, lifecycle, and retrieval evidence; use optional sibling-local numbering only when stable order materially improves reader navigation. | Documentation |
 | [tooling-conventions](skills/tooling-conventions/) | Derive project-owned command boundaries, placement, and evidence-gated safety contracts, with optional structural inventory reconciliation. | Shell, Governance |
 | [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, merge-owned hooks, subagent projection, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
@@ -71,7 +71,7 @@ the top. Do not add root-level `reference.md` files or catch-alls such as `misc.
 Run the catalog's pinned validation, official spec, discovery, shell, and behavioral gates from
 the [development commands](AGENTS.md#development-commands). Release-facing changes accumulate in
 the [changelog](CHANGELOG.md); the repository's SemVer workflow owns the final version, tag, and
-forge publication.
+project-defined publication boundary.
 
 ## License
 

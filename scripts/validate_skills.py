@@ -250,7 +250,7 @@ def main() -> int:
     validate_agent_scaffold_contract()
     validate_tooling_conventions_contract(readme_text=readme)
     validate_conventional_commit_contract()
-    validate_semver_release_contract()
+    validate_semver_release_contract(readme_text=readme)
     validate_project_docs_organizer_contract(readme_text=readme)
 
     # Reverse coverage: a README link must point at a real skill directory.
@@ -671,7 +671,58 @@ def validate_conventional_commit_contract(skill_dir: Path | None = None) -> None
         )
 
 
-def validate_semver_release_contract() -> None:
+def validate_semver_publication_boundary(
+    skill_text: str, publishing_text: str, public_summary: str
+) -> None:
+    """Keep release completion policy-derived instead of forge-mandatory."""
+    normalized_skill = " ".join(skill_text.split())
+    normalized_publishing = " ".join(publishing_text.split())
+    normalized_public = " ".join(public_summary.split())
+    skill_contract = (
+        "repository-owned completion boundary",
+        "Stop at a verified pushed tag only when policy makes it terminal",
+        "Create a direct forge release only when the forge is the established release surface",
+        "every applicable downstream publisher identity",
+        "URLs or identities that the selected boundary actually exposes",
+    )
+    publishing_contract = (
+        "Tag-only or external handoff",
+        "Tag-triggered release workflow",
+        "Project-owned direct publisher",
+        "Direct forge release",
+        "absence of a tag workflow does not authorize a new forge release",
+        "gh release create vX.Y.Z",
+        "--verify-tag",
+        "local and remote tags exist and peel to that release commit",
+        "Only the evidence for the selected boundary is mandatory",
+        "distinct states",
+    )
+    missing_skill = [value for value in skill_contract if value not in normalized_skill]
+    missing_publishing = [
+        value for value in publishing_contract if value not in normalized_publishing
+    ]
+    if missing_skill or missing_publishing or "policy-derived publication verification" not in normalized_public:
+        errors.append(
+            "semver-release: repository-owned publication boundary lost fixtures: "
+            f"skill={missing_skill}, publishing={missing_publishing}, public_summary="
+            f"{'present' if 'policy-derived publication verification' in normalized_public else 'missing'}"
+        )
+    forbidden = (
+        "A pushed tag is not completion",
+        "otherwise create the forge release",
+        "through a verified forge release",
+        "Use this only when no tag-triggered release owner exists",
+    )
+    combined = " ".join((normalized_skill, normalized_publishing, normalized_public))
+    found = [value for value in forbidden if value in combined]
+    if found:
+        errors.append(
+            "semver-release: publication policy must not require a universal forge surface: "
+            f"{found}"
+        )
+
+
+def validate_semver_release_contract(readme_text: str | None = None) -> None:
     """Guard bump inference and package identity across release ecosystems."""
     skill_dir = SKILLS_DIR / "semver-release"
     skill = skill_dir / "SKILL.md"
@@ -693,6 +744,13 @@ def validate_semver_release_contract() -> None:
     changelog_text = reference_texts["references/changelog.md"]
     publishing_text = reference_texts["references/publishing.md"]
     planner_text = planner.read_text(encoding="utf-8")
+    if readme_text is None:
+        readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
+    validate_semver_publication_boundary(
+        skill_text,
+        publishing_text,
+        readme_skill_rows(readme_text, "semver-release"),
+    )
     combined = skill_text + "".join(reference_texts.values())
     bump_contract = (
         "BREAKING CHANGE:",
@@ -828,20 +886,6 @@ def validate_semver_release_contract() -> None:
     ] == sorted(version_files_text.index(value) for value in cargo_sync_contract)
     if missing_cargo_sync or not cargo_sync_ordered:
         errors.append("semver-release/references/version-files.md: bounded Cargo synchronization contract is missing")
-    publishing_contract = (
-        "Tag-triggered release workflow",
-        "Direct forge release",
-        "gh release create vX.Y.Z",
-        "--verify-tag",
-        "local and remote tags exist and peel to that release commit",
-        "A release commit, pushed tag, CI run, forge release, and",
-    )
-    missing_publishing = [value for value in publishing_contract if value not in publishing_text]
-    if missing_publishing:
-        errors.append(
-            "semver-release/references/publishing.md: publication ownership or verification lost fixtures: "
-            f"{missing_publishing}"
-        )
     planner_contract = (
         "schema_version",
         "parse_semver",
