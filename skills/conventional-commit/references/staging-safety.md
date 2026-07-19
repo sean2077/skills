@@ -63,6 +63,21 @@ If it reports an in-progress merge, rebase, cherry-pick, revert, bisect, or unre
 stop without staging or committing. Ordinary commit mode never continues or completes those
 operations; use the workflow that owns the active operation.
 
+## Freeze the reviewed snapshot
+
+Immediately before committing, record the current base and the exact tree represented by the
+reviewed index:
+
+```bash
+git -C <repo-root> rev-parse --verify --quiet HEAD
+git -C <repo-root> write-tree
+```
+
+Preserve the first output as `<base>` and the second as `<expected-tree>`. If HEAD verification
+returns nonzero, continue only when the earlier attached-branch status explicitly reported an
+unborn branch; otherwise treat it as a Git error. `git write-tree` must run only after the cached
+patch has passed scope and whitespace review.
+
 ## Commit and verify
 
 Use `git commit -m <subject>` only when quoting is simple. For bodies, trailers, or
@@ -74,7 +89,12 @@ After committing, verify:
 ```bash
 git -C <repo-root> status --short
 git -C <repo-root> log -1 --format=%H%n%s
+git -C <repo-root> rev-parse 'HEAD^{tree}'
+git -C <repo-root> rev-list --parents -n 1 HEAD
 ```
 
-Report the short hash and actual recorded subject. If post-commit verification fails,
-the commit may still exist; report both facts without attempting history rewriting.
+Require the new commit tree to equal `<expected-tree>`. On an existing branch, the new commit must
+have exactly `<base>` as its sole parent; on an unborn branch it must have no parent. These checks
+detect hook-driven index changes or extra commits after the cached patch was reviewed. Report the
+short hash and actual recorded subject. If post-commit verification fails, the commit may still
+exist; report both facts without attempting history rewriting.

@@ -46,10 +46,12 @@ message-selection decisions unless the user asks.
    rebase, cherry-pick, revert, bisect, or unresolved conflict, stop without completing it.
 5. Read [`staging-safety.md`](references/staging-safety.md), stage the exact intended
    changes—including hunk boundaries inside a mixed-ownership path—and verify the actual
-   cached patch, not only its file names.
+   cached patch, not only its file names. Record the current HEAD state and the exact reviewed
+   index tree immediately before committing.
 6. Commit with the selected subject. Use a message file or stdin when a body,
    trailers, or shell-sensitive text makes inline quoting fragile.
-7. Verify `git status --short` and `git log -1 --format=%s`.
+7. Verify status and the recorded subject, tree, and parent boundary as defined in
+   `staging-safety.md`; report any mismatch without rewriting history.
 
 ## Output contract
 

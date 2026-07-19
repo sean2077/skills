@@ -561,7 +561,7 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
 
 
 def validate_conventional_commit_contract(skill_dir: Path | None = None) -> None:
-    """Keep commit mode rooted and prevent staging changes on a detached HEAD."""
+    """Keep commit mode rooted and prove the committed snapshot matches the reviewed index."""
     skill_dir = skill_dir or SKILLS_DIR / "conventional-commit"
     skill = skill_dir / "SKILL.md"
     staging = skill_dir / "references" / "staging-safety.md"
@@ -612,6 +612,25 @@ def validate_conventional_commit_contract(skill_dir: Path | None = None) -> None
         errors.append(
             "conventional-commit/references/staging-safety.md: path/hunk staging boundary lost fixtures: "
             f"{missing_reference}"
+        )
+    snapshot_contract = (
+        "git -C <repo-root> rev-parse --verify --quiet HEAD",
+        "git -C <repo-root> write-tree",
+        "reviewed index",
+        "git -C <repo-root> rev-parse 'HEAD^{tree}'",
+        "git -C <repo-root> rev-list --parents -n 1 HEAD",
+        "equal `<expected-tree>`",
+        "exactly `<base>` as its sole parent",
+        "unborn branch it must have no parent",
+        "without attempting history rewriting",
+    )
+    missing_snapshot = [
+        value for value in snapshot_contract if value not in normalized_staging
+    ]
+    if missing_snapshot:
+        errors.append(
+            "conventional-commit/references/staging-safety.md: committed-snapshot "
+            f"verification boundary lost fixtures: {missing_snapshot}"
         )
 
 
