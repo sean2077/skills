@@ -19,7 +19,7 @@ The CI gates must stay green — `.github/workflows/validate.yml` runs them on p
 ```bash
 python -m pip install -r requirements-validation.txt  # pinned StrictYAML + official skills-ref
 python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
-python scripts/test_validate_skills.py # category-reference validation fixtures
+python scripts/test_validate_skills.py # focused catalog-contract regression fixtures
 python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
 python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator

@@ -48,7 +48,7 @@ skills/
     └── scripts/ / assets/  # Optional: deterministic helpers and output resources
 scripts/
 ├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
-├── test_validate_skills.py  # Focused fixtures for category reference routing and naming
+├── test_validate_skills.py  # Focused catalog-contract regression fixtures
 ├── tests/                    # Focused regression suites and fixtures for skill-specific behavior
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 └── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works

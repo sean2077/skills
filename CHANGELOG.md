@@ -31,6 +31,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   attached and the porcelain worktree status is empty.
 - `agent-scaffold` trunk-guard guidance now requires explicit authorization for a trunk edit;
   merely mentioning a trunk branch no longer appears to authorize the escape hatch.
+- The pinned `npx skills` installation smoke test now compares every installed skill's complete
+  file inventory and bytes, covering executable scripts and assets as well as references.
 
 ## [v4.0.0] — 2026-07-19
 

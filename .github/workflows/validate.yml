@@ -101,7 +101,7 @@ jobs:
             exit 1
           fi
 
-      - name: Smoke-test installed category references
+      - name: Smoke-test installed skill payloads
         if: always()
         run: |
           repo="$(pwd)"
@@ -114,18 +114,18 @@ jobs:
             cd "$fixture"
             NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add "$source" -a codex -y
           )
-          for source_refs in "$repo"/skills/*/references; do
-            [ -d "$source_refs" ] || continue
-            skill="$(basename "$(dirname "$source_refs")")"
-            installed_refs="$fixture/.agents/skills/$skill/references"
-            test -d "$installed_refs"
-            expected="$(cd "$(dirname "$source_refs")" && find references -type f -print | sort)"
-            actual="$(cd "$fixture/.agents/skills/$skill" && find references -type f -print | sort)"
+          for source_skill in "$repo"/skills/*; do
+            [ -d "$source_skill" ] || continue
+            skill="$(basename "$source_skill")"
+            installed_skill="$fixture/.agents/skills/$skill"
+            test -d "$installed_skill"
+            expected="$(cd "$source_skill" && find . -type f -print | sort)"
+            actual="$(cd "$installed_skill" && find . -type f -print | sort)"
             if [ "$actual" != "$expected" ]; then
-              printf '%s installed references mismatch\nexpected:\n%s\nactual:\n%s\n' "$skill" "$expected" "$actual" >&2
+              printf '%s installed payload mismatch\nexpected:\n%s\nactual:\n%s\n' "$skill" "$expected" "$actual" >&2
               exit 1
             fi
-            diff -ru "$source_refs" "$installed_refs"
+            diff -ru "$source_skill" "$installed_skill"
           done
 
       - name: Shellcheck bundled scripts
