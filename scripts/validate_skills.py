@@ -674,6 +674,188 @@ def validate_semver_release_contract() -> None:
         errors.append("semver-release: stale tag-only prerelease guidance remains")
 
 
+PROJECT_DOC_METHOD_CARDS = (
+    "Reader role",
+    "Task or journey",
+    "Domain capability, ownership, and language",
+    "Product, subsystem, or interface surface",
+    "Content purpose or information type",
+    "Lifecycle or authority",
+)
+PROJECT_DOC_METHOD_FIELDS = (
+    "Signals",
+    "Ask",
+    "Fits when",
+    "Fails when",
+    "Axis role",
+    "Micro-example",
+)
+PROJECT_DOC_H2 = re.compile(r"^##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+PROJECT_DOC_METHOD_FIELD = re.compile(
+    r"^-[ \t]+\*\*(Signals|Ask|Fits when|Fails when|Axis role|Micro-example)\*\*:"
+    r"[ \t]*(.*)$",
+    re.MULTILINE,
+)
+PROJECT_DOC_FENCE = re.compile(r"^[ \t]*(?:```|~~~)", re.MULTILINE)
+PROJECT_DOC_TREE_ENTRY = re.compile(
+    r"^\s*(?:[│├└─+|`\\-]+\s*)?[A-Za-z0-9_.-]+(?:/|\.mdx?)\s*$"
+)
+PROJECT_DOC_FIXED_RANGE = (
+    re.compile(r"(?i)(?<![A-Za-z0-9])`?[0-9]+x`?(?![A-Za-z0-9])"),
+    re.compile(
+        r"(?i)(?<![0-9])`?[0-9]{1,2}\s*(?:-|–|—|\.\.|to|through)\s*"
+        r"[0-9]{1,2}`?(?![0-9])"
+    ),
+)
+PROJECT_DOC_FORCED_NUMBERING = (
+    re.compile(
+        r"(?i)(?<!not )(?<!never )\balways\s+(?:number|prefix)\b[^\n.!?]{0,80}"
+    ),
+    re.compile(
+        r"(?i)\b(?:numbering|numeric prefixes?)\b[^\n.!?]{0,20}"
+        r"\b(?:is|are|remain|remains|become|becomes)\s+"
+        r"(?:(?:always|universally)\s+)?(?:required|mandatory)\b"
+    ),
+    re.compile(
+        r"(?i)(?<!not )(?<!never )\b(?:every|all)\s+"
+        r"(?:project|repository|documentation tree|docs tree)s?\b"
+        r"[^\n.!?]{0,60}\b(?:must|shall)\b[^\n.!?]{0,40}"
+        r"\b(?:numbering|numbered|numeric prefixes?)\b"
+    ),
+    re.compile(
+        r"(?i)\b(?:numbering|numeric prefixes?)\b[^\n.!?]{0,40}"
+        r"\b(?:cannot|must not|may not|never)\s+be\s+disabled\b"
+    ),
+    re.compile(
+        r"(?i)(?<!not )(?<!never )\b(?:enable|apply|add|use)\s+"
+        r"(?:numbering|numeric prefixes?)\s+"
+        r"(?:for|to|in)\s+(?:all|every)\s+"
+        r"(?:project|repository|documentation tree|docs tree)s?\b"
+    ),
+    re.compile(
+        r"(?i)(?<!not )(?<!never )(?<!not always )(?<!never always )"
+        r"\b(?:number|prefix)\s+(?:all|every)\s+"
+        r"(?:project|repository|documentation tree|docs tree)s?\b"
+    ),
+    re.compile(
+        r"(?i)(?<!not )(?<!never )\b(?:every|all)\s+"
+        r"(?:project|repository|documentation tree|docs tree)s?\b[^\n.!?]{0,30}"
+        r"\b(?:is|are|remain|remains|stay|stays)\s+(?:always\s+)?numbered\b"
+    ),
+    re.compile(
+        r"(?i)\bnumbering\s+(?:always\s+)?(?:applies|is applied)\s+"
+        r"(?:to|in)\s+(?:all|every)\s+"
+        r"(?:project|repository|documentation tree|docs tree)s?\b"
+    ),
+)
+
+
+def markdown_h2_sections(text: str) -> dict[str, list[str]]:
+    """Return level-two Markdown sections without treating deeper headings as peers."""
+    matches = list(PROJECT_DOC_H2.finditer(text))
+    sections: dict[str, list[str]] = {}
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        sections.setdefault(match.group(1).strip(), []).append(text[match.end() : end])
+    return sections
+
+
+def method_example_is_tree(field_block: str) -> bool:
+    """Reject fenced or visibly tree-shaped examples while allowing ordinary prose."""
+    if PROJECT_DOC_FENCE.search(field_block) or any(
+        marker in field_block for marker in ("├──", "└──", "│")
+    ):
+        return True
+    tree_entries = [
+        line for line in field_block.splitlines() if PROJECT_DOC_TREE_ENTRY.fullmatch(line)
+    ]
+    return len(tree_entries) >= 2
+
+
+def validate_project_doc_method_cards(method_text: str) -> None:
+    """Require the six method cards and their reasoning fields card by card."""
+    sections = markdown_h2_sections(method_text)
+    invalid_cards = [
+        f"{title} ({len(sections.get(title, []))})"
+        for title in PROJECT_DOC_METHOD_CARDS
+        if len(sections.get(title, [])) != 1
+    ]
+    if invalid_cards:
+        errors.append(
+            "project-docs-organizer/references/classification-methods.md: "
+            f"method-card set is incomplete or duplicated: {invalid_cards}"
+        )
+
+    for title in PROJECT_DOC_METHOD_CARDS:
+        card_bodies = sections.get(title, [])
+        if len(card_bodies) != 1:
+            continue
+        body = card_bodies[0]
+        field_matches = list(PROJECT_DOC_METHOD_FIELD.finditer(body))
+        field_counts = {
+            field: sum(match.group(1) == field for match in field_matches)
+            for field in PROJECT_DOC_METHOD_FIELDS
+        }
+        invalid_fields = [
+            f"{field} ({count})" for field, count in field_counts.items() if count != 1
+        ]
+        empty_fields = [match.group(1) for match in field_matches if not match.group(2).strip()]
+        invalid_fields.extend(f"{field} (empty)" for field in empty_fields)
+        if invalid_fields:
+            errors.append(
+                "project-docs-organizer/references/classification-methods.md: "
+                f"{title} method card must contain each reasoning field exactly once: "
+                f"{invalid_fields}"
+            )
+            continue
+
+        micro_index = next(
+            index
+            for index, match in enumerate(field_matches)
+            if match.group(1) == "Micro-example"
+        )
+        micro_start = field_matches[micro_index].start()
+        micro_end = (
+            field_matches[micro_index + 1].start()
+            if micro_index + 1 < len(field_matches)
+            else len(body)
+        )
+        if method_example_is_tree(body[micro_start:micro_end]):
+            errors.append(
+                "project-docs-organizer/references/classification-methods.md: "
+                f"{title} micro-example must be prose, not a directory tree"
+            )
+
+
+def validate_project_doc_numbering_semantics(numbering_text: str) -> None:
+    """Reject global numeric taxonomies and unconditional numbering mandates."""
+    fixed_ranges = sorted(
+        {
+            match.group(0)
+            for pattern in PROJECT_DOC_FIXED_RANGE
+            for match in pattern.finditer(numbering_text)
+        }
+    )
+    if fixed_ranges:
+        errors.append(
+            "project-docs-organizer: fixed numeric range notation is prohibited; "
+            f"use sibling-local ordering tokens only: {fixed_ranges}"
+        )
+
+    forced_rules = sorted(
+        {
+            match.group(0).strip()
+            for pattern in PROJECT_DOC_FORCED_NUMBERING
+            for match in pattern.finditer(numbering_text)
+        }
+    )
+    if forced_rules:
+        errors.append(
+            "project-docs-organizer/references/numbering-patterns.md: "
+            f"unconditional numbering mandate contradicts project opt-outs: {forced_rules}"
+        )
+
+
 def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> None:
     """Keep documentation structure evidence-led and local numbering project-owned."""
     skill_dir = skill_dir or SKILLS_DIR / "project-docs-organizer"
@@ -734,40 +916,7 @@ def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> N
             "project-docs-organizer/references/information-architecture.md: "
             f"evidence-led selection contract is incomplete: {missing_architecture}"
         )
-    method_text = texts["references/classification-methods.md"]
-    method_headings = (
-        "## Reader role",
-        "## Task or journey",
-        "## Domain capability, ownership, and language",
-        "## Product, subsystem, or interface surface",
-        "## Content purpose or information type",
-        "## Lifecycle or authority",
-    )
-    missing_methods = [value for value in method_headings if value not in method_text]
-    if missing_methods:
-        errors.append(
-            "project-docs-organizer/references/classification-methods.md: "
-            f"method-card set is incomplete: {missing_methods}"
-        )
-    method_fields = (
-        "**Signals**",
-        "**Ask**",
-        "**Fits when**",
-        "**Fails when**",
-        "**Axis role**",
-        "**Micro-example**",
-    )
-    incomplete_fields = [value for value in method_fields if method_text.count(value) != 6]
-    if incomplete_fields:
-        errors.append(
-            "project-docs-organizer/references/classification-methods.md: "
-            f"every method card needs the same reasoning fields: {incomplete_fields}"
-        )
-    if "```text" in method_text:
-        errors.append(
-            "project-docs-organizer/references/classification-methods.md: "
-            "method cards must use non-directory micro-examples"
-        )
+    validate_project_doc_method_cards(texts["references/classification-methods.md"])
     numbering_contract = (
         "Enable numbering by default only when",
         "coherent established convention",
@@ -790,6 +939,7 @@ def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> N
             f"default and opt-out numbering contract is incomplete: {missing_numbering}"
         )
     combined = "\n".join(texts.values())
+    validate_project_doc_numbering_semantics(texts["references/numbering-patterns.md"])
     stale_template_rules = (
         "## Default Zone Model",
         "# Optional Documentation Zone Catalog",

@@ -136,12 +136,12 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
         "Lifecycle or authority",
     )
     METHOD_FIELDS = (
-        "**Signals**: signal",
-        "**Ask**: question",
-        "**Fits when**: fit",
-        "**Fails when**: failure",
-        "**Axis role**: role",
-        "**Micro-example**: example",
+        "- **Signals**: signal",
+        "- **Ask**: question",
+        "- **Fits when**: fit",
+        "- **Fails when**: failure",
+        "- **Axis role**: role",
+        "- **Micro-example**: example",
     )
 
     def valid_files(self) -> dict[str, str]:
@@ -217,6 +217,53 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
         errors = self.validate(overrides={"references/classification-methods.md": methods})
         self.assertTrue(any("method-card set is incomplete" in error for error in errors))
 
+    def test_method_fields_are_validated_inside_each_card(self) -> None:
+        methods = self.valid_files()["references/classification-methods.md"]
+        methods = methods.replace("- **Signals**: signal\n", "", 1).replace(
+            "## Task or journey\n",
+            "## Task or journey\n- **Signals**: duplicate\n",
+            1,
+        )
+        errors = self.validate(overrides={"references/classification-methods.md": methods})
+        self.assertTrue(
+            any("Reader role method card" in error and "Signals (0)" in error for error in errors)
+        )
+        self.assertTrue(
+            any("Task or journey method card" in error and "Signals (2)" in error for error in errors)
+        )
+
+    def test_empty_method_field_is_rejected(self) -> None:
+        methods = self.valid_files()["references/classification-methods.md"].replace(
+            "- **Ask**: question",
+            "- **Ask**:",
+            1,
+        )
+        errors = self.validate(overrides={"references/classification-methods.md": methods})
+        self.assertTrue(any("Ask (empty)" in error for error in errors))
+
+    def test_method_card_directory_examples_reject_every_fence_form(self) -> None:
+        methods = self.valid_files()["references/classification-methods.md"]
+        for fence in ("```", "```markdown", "~~~text"):
+            with self.subTest(fence=fence):
+                invalid = methods.replace(
+                    "- **Micro-example**: example",
+                    f"- **Micro-example**: example\n{fence}\ndocs/\n  users/\n{fence[:3]}",
+                    1,
+                )
+                errors = self.validate(
+                    overrides={"references/classification-methods.md": invalid}
+                )
+                self.assertTrue(any("micro-example must be prose" in error for error in errors))
+
+    def test_method_card_unfenced_directory_tree_is_rejected(self) -> None:
+        methods = self.valid_files()["references/classification-methods.md"].replace(
+            "- **Micro-example**: example",
+            "- **Micro-example**: example\ndocs/\n  users/\n  maintainers/",
+            1,
+        )
+        errors = self.validate(overrides={"references/classification-methods.md": methods})
+        self.assertTrue(any("micro-example must be prose" in error for error in errors))
+
     def test_global_number_range_semantics_are_rejected(self) -> None:
         numbering = (
             self.valid_files()["references/numbering-patterns.md"]
@@ -224,6 +271,26 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
         )
         errors = self.validate(overrides={"references/numbering-patterns.md": numbering})
         self.assertTrue(any("retired zone-template semantics" in error for error in errors))
+
+    def test_reworded_fixed_numeric_ranges_are_rejected(self) -> None:
+        numbering = self.valid_files()["references/numbering-patterns.md"]
+        for rule in (
+            "Reserve 20-29 for development.",
+            "Iteration uses 30–39.",
+            "Maintenance occupies 4x.",
+            "Reference occupies 60 to 69.",
+            "The complete catalog spans 00-94.",
+        ):
+            with self.subTest(rule=rule):
+                errors = self.validate(
+                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
+                )
+                self.assertTrue(any("fixed numeric range notation" in error for error in errors))
+
+    def test_numeric_quantity_outside_numbering_rules_is_not_a_fixed_range(self) -> None:
+        skill = self.valid_files()["SKILL.md"] + " Present 2-3 candidates for a tied decision."
+        errors = self.validate(overrides={"SKILL.md": skill})
+        self.assertFalse(any("fixed numeric range notation" in error for error in errors))
 
     def test_forced_numbering_without_opt_outs_is_rejected(self) -> None:
         numbering = self.valid_files()["references/numbering-patterns.md"].replace(
@@ -233,6 +300,43 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
         )
         errors = self.validate(overrides={"references/numbering-patterns.md": numbering})
         self.assertTrue(any("default and opt-out numbering contract" in error for error in errors))
+
+    def test_contradictory_forced_numbering_rules_are_rejected(self) -> None:
+        numbering = self.valid_files()["references/numbering-patterns.md"]
+        for rule in (
+            "Always number every project.",
+            "Numeric prefixes are mandatory for all documentation trees.",
+            "Every repository must use numbering.",
+            "Numbering cannot be disabled.",
+            "All documentation trees are numbered.",
+            "Numbering applies to every project.",
+        ):
+            with self.subTest(rule=rule):
+                errors = self.validate(
+                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
+                )
+                self.assertTrue(
+                    any("unconditional numbering mandate" in error for error in errors)
+                )
+
+    def test_explicit_numbering_opt_out_phrasings_are_not_false_positives(self) -> None:
+        numbering = self.valid_files()["references/numbering-patterns.md"]
+        for rule in (
+            "Numbering is not mandatory.",
+            "Do not always number every project.",
+            "Not every repository must use numbering.",
+            "Do not enable numbering for every project.",
+            "Do not number every project.",
+            "Not all documentation trees are numbered.",
+            "Numbering does not apply to every project.",
+        ):
+            with self.subTest(rule=rule):
+                errors = self.validate(
+                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
+                )
+                self.assertFalse(
+                    any("unconditional numbering mandate" in error for error in errors)
+                )
 
 
 if __name__ == "__main__":
