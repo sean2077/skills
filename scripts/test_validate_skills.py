@@ -141,6 +141,59 @@ class CategoryReferenceTests(unittest.TestCase):
         self.assertIn("Validate the skills catalog", stdout.getvalue())
 
 
+class ConventionalCommitContractTests(unittest.TestCase):
+    def valid_files(self) -> dict[str, str]:
+        return {
+            "SKILL.md": (
+                "## Workflow\n"
+                "git rev-parse --show-toplevel\n"
+                "git -C <repo-root> symbolic-ref --quiet --short HEAD\n"
+                "Exit status 1 means detached HEAD; any other nonzero status is a Git preflight "
+                "error. Then stage the exact intended changes.\n"
+            ),
+            "references/staging-safety.md": (
+                "git -C <repo-root> status --short\n"
+                "git -C <repo-root> add -A -- .\n"
+                "Exit status 1 means HEAD is detached. Any other nonzero status is a Git error.\n"
+                "git diff --cached --name-only\n"
+                "git diff --cached --check\n"
+                "Stop when unrelated paths are already staged.\n"
+                "A named path does not authorize every hunk. Inspect "
+                "git -C <repo-root> diff --cached -- <paths> and "
+                "git -C <repo-root> diff -- <paths>. If a path mixes intended and unrelated "
+                "hunks, select only the authorized patch without modifying the working tree or "
+                "unrelated pre-existing index state. Inspect the actual cached patch.\n"
+            ),
+        }
+
+    def validate(self, *, staging_text: str | None = None) -> list[str]:
+        files = self.valid_files()
+        if staging_text is not None:
+            files["references/staging-safety.md"] = staging_text
+        with tempfile.TemporaryDirectory() as temporary:
+            skill_dir = Path(temporary) / "conventional-commit"
+            for relative, content in files.items():
+                path = skill_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            validator.errors.clear()
+            validator.validate_conventional_commit_contract(skill_dir)
+            return list(validator.errors)
+
+    def test_valid_path_and_hunk_scope_contract(self) -> None:
+        self.assertEqual(self.validate(), [])
+
+    def test_mixed_hunk_boundary_is_required(self) -> None:
+        staging = self.valid_files()["references/staging-safety.md"].replace(
+            "If a path mixes intended and unrelated hunks, ",
+            "If every change in a path is intended, ",
+        )
+        errors = self.validate(staging_text=staging)
+        self.assertTrue(
+            any("path/hunk staging boundary lost fixtures" in error for error in errors)
+        )
+
+
 class ProjectDocsOrganizerContractTests(unittest.TestCase):
     METHOD_HEADINGS = (
         "Reader role",

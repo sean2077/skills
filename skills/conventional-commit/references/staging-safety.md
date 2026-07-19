@@ -17,14 +17,27 @@ git -C <repo-root> log --format=%s -20
 
 ## Protect scope and index state
 
-- If the user named files, normalize them without changing their meaning, then stage only
-  those repository-relative paths with `git -C <repo-root> add -- <paths>`.
+- A named path does not authorize every hunk inside it. When the current context does not
+  establish whole-file ownership, inspect both the existing staged and unstaged changes first:
+
+  ```bash
+  git -C <repo-root> diff --cached -- <paths>
+  git -C <repo-root> diff -- <paths>
+  ```
+
+- If a path mixes intended and unrelated hunks, do not stage the whole path. Use a hunk-level
+  selection only when the exact authorized patch can be selected and verified without modifying
+  the working tree or unrelated pre-existing index state; otherwise stop and name the mixed path.
+- If the user named files and every hunk is authorized, normalize them without changing their
+  meaning, then stage only those repository-relative paths with
+  `git -C <repo-root> add -- <paths>`.
 - If the user asked to commit all current work, inspect status first; use
   `git -C <repo-root> add -A -- .`
   only after confirming that every visible change belongs to the request.
 - If unrelated paths are already staged, stop and report them instead of silently
   including, unstaging, or working around them.
-- After staging, check `git diff --cached --name-only` and `git diff --cached --check`.
+- After staging, check `git diff --cached --name-only`, inspect the actual cached patch with
+  `git diff --cached -- <paths>`, and run `git diff --cached --check`.
 - Do not stage credentials, `.env` files, secrets, or unrelated generated output unless
   explicitly authorized.
 - If the intended paths contain no committable change, stop with a concise result.

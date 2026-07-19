@@ -15,7 +15,8 @@ message-selection decisions unless the user asks.
 - Resolve the repository root before Git inspection; do not let a subdirectory invocation
   narrow status, history, all-change staging, or post-commit verification by accident.
 - Run the attached-HEAD preflight before staging anything.
-- Stage only the user-owned scope; preserve unrelated working-tree and index state.
+- Stage only the user-owned changes; a named path does not authorize unrelated hunks.
+  Preserve unrelated working-tree and index state.
 - Use conversation context before rediscovering facts from Git.
 - Keep `type` in English and select the summary language from explicit instructions,
   project policy, then relevant repository history; default to English when unclear.
@@ -42,7 +43,8 @@ message-selection decisions unless the user asks.
    Exit status 1 means detached HEAD; any other nonzero status is a Git preflight
    error. Stop before staging in either case.
 5. Read [`staging-safety.md`](references/staging-safety.md), stage the exact intended
-   paths, and verify that the staged snapshot contains no unrelated files.
+   changes—including hunk boundaries inside a mixed-ownership path—and verify the actual
+   cached patch, not only its file names.
 6. Commit with the selected subject. Use a message file or stdin when a body,
    trailers, or shell-sensitive text makes inline quoting fragile.
 7. Verify `git status --short` and `git log -1 --format=%s`.
