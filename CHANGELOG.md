@@ -29,6 +29,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tree and directly advances the recorded parent, including the unborn-branch case.
 - `semver-release` now rejects active Git operations in its read-only plan even when the branch is
   attached and the porcelain worktree status is empty.
+- `agent-scaffold` trunk-guard guidance now requires explicit authorization for a trunk edit;
+  merely mentioning a trunk branch no longer appears to authorize the escape hatch.
 
 ## [v4.0.0] — 2026-07-19
 

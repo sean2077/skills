@@ -90,7 +90,7 @@ trunk_edit_guard: BLOCKED — $file_path
 This checkout ($toplevel) is on trunk branch '$branch'. Every change, however
 small ("just docs" is NOT an exception), starts in its own .worktrees/ branch:
     $wt_cmd new <name>      # then edit inside .worktrees/<name>/
-Only if the user explicitly named a trunk in this conversation:
+Only if the user explicitly authorized a trunk edit in this conversation:
     touch $toplevel/.claude/allow-trunk-edit    # auto-expires in 2 h${stale}
 EOF
     return 2
