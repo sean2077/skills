@@ -168,6 +168,14 @@ class ConventionalCommitContractTests(unittest.TestCase):
                 "git -C <repo-root> status --long --branch and stop for an in-progress merge, "
                 "rebase, cherry-pick, revert, bisect, or unresolved conflict. Ordinary commit "
                 "mode never continues or completes those operations.\n"
+                "Immediately before committing, record the reviewed index with "
+                "git -C <repo-root> rev-parse --verify --quiet HEAD and "
+                "git -C <repo-root> write-tree. After commit, run "
+                "git -C <repo-root> rev-parse 'HEAD^{tree}' and "
+                "git -C <repo-root> rev-list --parents -n 1 HEAD. Require the new tree to "
+                "equal `<expected-tree>` and exactly `<base>` as its sole parent; on an "
+                "unborn branch it must have no parent. Report failure without attempting "
+                "history rewriting.\n"
             ),
         }
 
@@ -206,6 +214,16 @@ class ConventionalCommitContractTests(unittest.TestCase):
         errors = self.validate(staging_text=staging)
         self.assertTrue(
             any("path/hunk staging boundary lost fixtures" in error for error in errors)
+        )
+
+    def test_committed_snapshot_verification_is_required(self) -> None:
+        staging = self.valid_files()["references/staging-safety.md"].replace(
+            "equal `<expected-tree>` and exactly `<base>` as its sole parent",
+            "have a plausible file list",
+        )
+        errors = self.validate(staging_text=staging)
+        self.assertTrue(
+            any("committed-snapshot verification boundary" in error for error in errors)
         )
 
 
