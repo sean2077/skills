@@ -24,7 +24,7 @@ python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook,
 python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
 npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
-bash scripts/tests/test-tooling-manifest.sh # tooling manifest reconciliation fixtures
+bash scripts/tests/test-tooling-inventory.sh # tooling structural-inventory reconciliation fixtures
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 bash scripts/e2e-agent-scaffold.sh      # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck

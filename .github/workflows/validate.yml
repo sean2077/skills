@@ -72,9 +72,9 @@ jobs:
           python scripts/tests/test_agent_scaffold_core.py
           bash scripts/check-agent-scaffold.sh
 
-      - name: Exercise tooling manifest reconciliation
+      - name: Exercise tooling inventory reconciliation
         if: always()
-        run: bash scripts/tests/test-tooling-manifest.sh
+        run: bash scripts/tests/test-tooling-inventory.sh
 
       - name: E2E installer test with mandatory real links
         if: always()

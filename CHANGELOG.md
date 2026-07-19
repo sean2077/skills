@@ -6,6 +6,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### ⚠ Breaking
+
+- `tooling-conventions` retires its exactly-one surface taxonomy and semantic manifest contract.
+  The bundled `<skill-dir>/scripts/manifest-check.sh` is replaced by
+  `<skill-dir>/scripts/inventory-check.sh` without a compatibility wrapper or legacy mode;
+  `MANIFEST_CHECK_SKIP` is replaced by `INVENTORY_CHECK_SKIP`.
+
+### Changed
+
+- Tool governance now derives Job Boundaries, Contract Profiles, and project-owned Placement
+  Decisions through eight boundary/constraint method cards, and requires a Tool Governance
+  Decision Record before recommendations or mutation.
+- The optional checker now accepts a path-only structural TSV with opaque project-owned columns,
+  keeps `tools/tools-inventory.tsv` only as its no-argument default, and derives the scan root
+  from an explicit `TOOLS_DIR` or the inventory location. Semantic policy remains target-owned.
+- Deterministic fixtures cover default and custom command roots, separated inventories,
+  directory non-coverage, syntax and reverse drift, warn/enforce behavior, and safe preflights.
+
 ## [v3.0.2] — 2026-07-17
 
 ### Docs

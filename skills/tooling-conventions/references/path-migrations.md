@@ -10,7 +10,8 @@ A move is a contract change — sync every mechanical reference surface in the *
 - [ ] sibling skills that invoke it
 - [ ] service/unit files bound to it (change the owning unit/install contract first)
 - [ ] build files, install scripts, image/packaging scripts, and any other callers
-- [ ] the manifest row and any derived human-readable view, when the project has adopted them
+- [ ] the structural inventory row, Project Tool Policy, and any derived human-readable view,
+      when the project has adopted them
 - [ ] re-check the moved script's own `REPO_ROOT`/`HERE` derivation and sibling-file references (a relocated script often needs one extra `..`)
 
 If an active external consumer cannot move in the same change, stop and report the coordination
