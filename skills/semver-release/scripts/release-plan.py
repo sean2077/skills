@@ -41,7 +41,8 @@ PATCH_TYPES = {
 }
 GIT_OPERATION_MARKERS = {
     "merge": ("MERGE_HEAD",),
-    "rebase/am": ("REBASE_HEAD", "rebase-merge", "rebase-apply"),
+    # REBASE_HEAD can outlive a completed rebase; the state directories are active-operation markers.
+    "rebase/am": ("rebase-merge", "rebase-apply"),
     "cherry-pick": ("CHERRY_PICK_HEAD",),
     "revert": ("REVERT_HEAD",),
     "bisect": ("BISECT_HEAD", "BISECT_LOG", "BISECT_START"),

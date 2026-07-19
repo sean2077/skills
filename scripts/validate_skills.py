@@ -940,6 +940,8 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
         "test_numbered_prerelease_can_advance_explicitly",
         "test_detached_head_requires_attention",
         "test_clean_attached_merge_still_requires_attention",
+        "test_stale_rebase_head_without_active_rebase_is_ignored",
+        "test_active_rebase_directory_requires_attention",
         "test_real_shallow_boundary_blocks_base_selection",
     )
     missing_tests = [value for value in test_contract if value not in planner_test_text]
