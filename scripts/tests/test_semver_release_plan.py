@@ -62,6 +62,10 @@ class ReleasePlanTests(unittest.TestCase):
     def tag(self, name: str) -> None:
         self.git("tag", "-a", name, "-m", name)
 
+    def git_path(self, name: str) -> Path:
+        path = Path(self.git("rev-parse", "--git-path", name).stdout.strip())
+        return path if path.is_absolute() else self.repo / path
+
     def plan_repo(self, repo: Path, target: Optional[str] = None) -> tuple[int, dict[str, object]]:
         command = [sys.executable, str(PLANNER), "--repo", str(repo), "--json"]
         if target is not None:
@@ -187,6 +191,43 @@ class ReleasePlanTests(unittest.TestCase):
             item for item in report["checks"] if item["id"] == "operation-state"  # type: ignore[union-attr]
         )
         self.assertEqual(operation_check["operations"], ["merge"])
+
+    def test_stale_rebase_head_without_active_rebase_is_ignored(self) -> None:
+        self.tag("v1.2.3")
+        self.commit("fix: prepare release")
+        self.git_path("REBASE_HEAD").write_text(
+            self.git("rev-parse", "HEAD").stdout,
+            encoding="utf-8",
+        )
+        self.assertEqual(self.git("status", "--porcelain").stdout, "")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 0)
+        self.assertNotIn("operation-state", self.attention_ids(report))
+        operation_check = next(
+            item for item in report["checks"] if item["id"] == "operation-state"  # type: ignore[union-attr]
+        )
+        self.assertEqual(operation_check["status"], "ok")
+
+    def test_active_rebase_directory_requires_attention(self) -> None:
+        self.tag("v1.2.3")
+        self.commit("fix: prepare release")
+        stopped = self.git("rebase", "--exec", "git false", "HEAD~1", check=False)
+        self.assertNotEqual(stopped.returncode, 0)
+        self.assertTrue(
+            self.git_path("rebase-merge").is_dir() or self.git_path("rebase-apply").is_dir()
+        )
+        self.assertEqual(self.git("status", "--porcelain").stdout, "")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 1)
+        self.assertIn("operation-state", self.attention_ids(report))
+        operation_check = next(
+            item for item in report["checks"] if item["id"] == "operation-state"  # type: ignore[union-attr]
+        )
+        self.assertEqual(operation_check["operations"], ["rebase/am"])
 
     def test_equal_precedence_tags_on_different_commits_are_ambiguous(self) -> None:
         self.tag("v1.2.3+one")
