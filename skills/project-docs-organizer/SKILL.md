@@ -1,6 +1,6 @@
 ---
 name: project-docs-organizer
-description: 'Design, reorganize, or prune a software project documentation system from observed readers, tasks, domains, ownership, lifecycles, and retrieval failures. Covers README and docs trees, onboarding, architecture, ADRs, specs, plans, runbooks, reference, archives, navigation, and optional default-on local numbering when no coherent convention governs. Use when readers cannot find or trust project docs. Not for application source layout, tool-command governance (use tooling-conventions), or AGENTS.md/CLAUDE.md harness policy (use agent-scaffold).'
+description: 'Design, reorganize, or prune a software project documentation system from observed readers, tasks, domains, ownership, lifecycles, and retrieval failures. Covers README and docs trees, onboarding, architecture, ADRs, specs, plans, runbooks, reference, archives, navigation, and optional evidence-gated local numbering when stable order materially improves reader navigation. Use when readers cannot find or trust project docs. Not for application source layout, tool-command governance (use tooling-conventions), or AGENTS.md/CLAUDE.md harness policy (use agent-scaffold).'
 ---
 
 # Project Docs Organizer
@@ -40,8 +40,10 @@ universal directory template.
 5. Run the representative placement test from `information-architecture.md`. Resolve a
    high-impact tie with the user before editing.
 6. Decide numbering only after semantic boundaries are stable. Preserve an explicit user
-   choice, coherent established convention, or generator-owned ordering. Otherwise enable
-   numbering by default and read [`numbering-patterns.md`](references/numbering-patterns.md).
+   choice, coherent established convention, or generator-owned ordering. Otherwise keep
+   numbering off unless observed reader routes need stable sibling order and the navigation
+   benefit exceeds path/link churn; when enabled, read
+   [`numbering-patterns.md`](references/numbering-patterns.md).
 7. Apply the reorganization, consolidating duplicates into canonical pages and keeping
    project-specific terminology intact.
 8. Follow [`migration-and-links.md`](references/migration-and-links.md) to update navigation,

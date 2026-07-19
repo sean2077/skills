@@ -85,6 +85,9 @@ Link to canonical setup, architecture, ADR, tool, and runbook pages instead of d
 
 README-only projects have nothing to number. Preserve an explicit user choice, a coherent
 established convention, or documentation-generator-owned ordering. When creating or materially
-reorganizing a dedicated tree with no governing convention, enable numbering by default and
-read [`numbering-patterns.md`](numbering-patterns.md). Reconsider an existing convention only
-when evidence shows that it causes the retrieval or ordering failure being solved.
+reorganizing a dedicated tree with no governing convention, treat the absence of a convention as
+permission to choose, not evidence for numbering. Enable local numbering only when the decision
+record shows that a stable sibling display or reading order improves an observed reader route and
+the navigation benefit exceeds path/link churn; otherwise keep semantic paths unnumbered. Read
+[`numbering-patterns.md`](numbering-patterns.md) when that evidence exists. Reconsider an existing
+convention only when evidence shows that it causes the retrieval or ordering failure being solved.

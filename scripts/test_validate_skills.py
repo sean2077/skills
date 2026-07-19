@@ -174,14 +174,17 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
                 "Reader-route separation. Vocabulary and ownership cohesion. Lifecycle consistency. "
                 "Stability under change. Duplication pressure. Choose one primary axis and retain "
                 "secondary lenses. Run a representative placement test. Present two or three candidates "
-                "and wait for the user before mutation. Otherwise enable numbering by default."
+                "and wait for the user before mutation. Treat the absence of a convention as permission "
+                "to choose, not evidence for numbering. Require stable sibling order and weigh "
+                "path/link churn."
             ),
             "references/classification-methods.md": cards,
             "references/numbering-patterns.md": (
-                "Enable numbering by default only when no coherent established convention applies. "
-                "Keep it off when a documentation generator owns ordering or navigation. Use `10-`, "
-                "`20-`, and `00-` as sibling-local position, not category meaning. Add nested numbers "
-                "only for a genuine reading or execution order."
+                "Keep numbering disabled by default. Enable it only for stable sibling order that improves "
+                "an observed reader route and outweighs path/link churn. A coherent established convention "
+                "or documentation generator owns ordering or navigation. Use `10-`, `20-`, and `00-` as "
+                "sibling-local position, not category meaning. Add nested numbers only for a genuine reading "
+                "or execution order."
             ),
             "references/migration-and-links.md": (
                 "Build the migration map. Before deleting, gather evidence. Run "
@@ -314,7 +317,40 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
             "documentation generator owns ordering or navigation", "the project is large"
         )
         errors = self.validate(overrides={"references/numbering-patterns.md": numbering})
-        self.assertTrue(any("default and opt-out numbering contract" in error for error in errors))
+        self.assertTrue(any("evidence and opt-out numbering contract" in error for error in errors))
+
+    def test_default_on_numbering_is_rejected_across_contract(self) -> None:
+        for relative, rule in (
+            ("SKILL.md", "Enable numbering by default when no convention exists."),
+            (
+                "references/information-architecture.md",
+                "Otherwise use local numbering by default.",
+            ),
+            (
+                "references/numbering-patterns.md",
+                "The skill provides optional default-on local numbering.",
+            ),
+        ):
+            with self.subTest(relative=relative):
+                invalid = self.valid_files()[relative] + " " + rule
+                errors = self.validate(overrides={relative: invalid})
+                self.assertTrue(
+                    any("default-on numbering contradicts the evidence gate" in error for error in errors)
+                )
+
+    def test_explicit_default_on_rejections_are_not_false_positives(self) -> None:
+        numbering = self.valid_files()["references/numbering-patterns.md"]
+        for rule in (
+            "Do not enable numbering by default.",
+            "Never use local numbering by default.",
+        ):
+            with self.subTest(rule=rule):
+                errors = self.validate(
+                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
+                )
+                self.assertFalse(
+                    any("default-on numbering contradicts the evidence gate" in error for error in errors)
+                )
 
     def test_contradictory_forced_numbering_rules_are_rejected(self) -> None:
         numbering = self.valid_files()["references/numbering-patterns.md"]

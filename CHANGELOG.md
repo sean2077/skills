@@ -12,6 +12,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   still requiring each on-demand reference to state a conditional load boundary near the top.
 - Resident documentation and tooling workflows now route decision-record field detail to their
   canonical references instead of carrying a second always-loaded copy.
+- Project documentation numbering is now evidence-gated instead of default-on when a dedicated
+  tree lacks a convention; absence of a convention alone no longer triggers path prefixes.
 
 ## [v4.0.0] — 2026-07-19
 

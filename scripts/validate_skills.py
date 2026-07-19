@@ -870,6 +870,13 @@ PROJECT_DOC_FORCED_NUMBERING = (
         r"(?:project|repository|documentation tree|docs tree)s?\b"
     ),
 )
+PROJECT_DOC_DEFAULT_ON_NUMBERING = (
+    re.compile(
+        r"(?i)(?<!not )(?<!never )(?<!n't )\b(?:enable|use|apply)\s+"
+        r"(?:local\s+)?numbering\s+by\s+default\b"
+    ),
+    re.compile(r"(?i)\boptional\s+default-on(?:\s+local)?\s+numbering\b"),
+)
 
 
 def markdown_h2_sections(text: str) -> dict[str, list[str]]:
@@ -949,8 +956,10 @@ def validate_project_doc_method_cards(method_text: str) -> None:
             )
 
 
-def validate_project_doc_numbering_semantics(numbering_text: str) -> None:
-    """Reject global numeric taxonomies and unconditional numbering mandates."""
+def validate_project_doc_numbering_semantics(
+    numbering_text: str, *, combined_text: str | None = None
+) -> None:
+    """Reject global numeric taxonomies and unconditional or default-on numbering."""
     fixed_ranges = sorted(
         {
             match.group(0)
@@ -975,6 +984,18 @@ def validate_project_doc_numbering_semantics(numbering_text: str) -> None:
         errors.append(
             "project-docs-organizer/references/numbering-patterns.md: "
             f"unconditional numbering mandate contradicts project opt-outs: {forced_rules}"
+        )
+    default_on_rules = sorted(
+        {
+            match.group(0).strip()
+            for pattern in PROJECT_DOC_DEFAULT_ON_NUMBERING
+            for match in pattern.finditer(combined_text or numbering_text)
+        }
+    )
+    if default_on_rules:
+        errors.append(
+            "project-docs-organizer: default-on numbering contradicts the evidence gate: "
+            f"{default_on_rules}"
         )
 
 
@@ -1026,7 +1047,10 @@ def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> N
         "representative placement test",
         "two or three candidates",
         "wait for the user before mutation",
-        "enable numbering by default",
+        "absence of a convention",
+        "not evidence for numbering",
+        "stable sibling",
+        "path/link churn",
     )
     missing_architecture = [
         value
@@ -1040,7 +1064,10 @@ def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> N
         )
     validate_project_doc_method_cards(texts["references/classification-methods.md"])
     numbering_contract = (
-        "Enable numbering by default only when",
+        "Keep numbering disabled by default",
+        "stable sibling",
+        "observed reader route",
+        "path/link churn",
         "coherent established convention",
         "documentation generator owns ordering or navigation",
         "sibling-local position",
@@ -1058,10 +1085,12 @@ def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> N
     if missing_numbering:
         errors.append(
             "project-docs-organizer/references/numbering-patterns.md: "
-            f"default and opt-out numbering contract is incomplete: {missing_numbering}"
+            f"evidence and opt-out numbering contract is incomplete: {missing_numbering}"
         )
     combined = "\n".join(texts.values())
-    validate_project_doc_numbering_semantics(texts["references/numbering-patterns.md"])
+    validate_project_doc_numbering_semantics(
+        texts["references/numbering-patterns.md"], combined_text=combined
+    )
     stale_template_rules = (
         "## Default Zone Model",
         "# Optional Documentation Zone Catalog",

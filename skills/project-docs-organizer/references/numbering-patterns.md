@@ -5,12 +5,15 @@ ordering. Numbers are presentation, never a classification method.
 
 ## Decide whether numbering applies
 
-Enable numbering by default only when creating or materially reorganizing a dedicated
-documentation tree with no coherent established convention. Keep numbering disabled when:
+Keep numbering disabled by default. Enable it only when the IA decision record identifies a
+stable sibling display or reading order that materially improves an observed reader route and
+the navigation benefit exceeds path/link churn. The absence of a coherent established convention
+is permission to choose, not evidence for numbering. Keep numbering disabled when:
 
 - the user explicitly declines it;
 - a coherent established convention already routes readers effectively;
 - a documentation generator owns ordering or navigation; or
+- no observed reader route requires stable sibling ordering; or
 - renaming stable public paths would cost more than the evidenced ordering problem.
 
 README-only projects have no directory layer to number. If an established convention is itself
