@@ -674,49 +674,138 @@ def validate_semver_release_contract() -> None:
         errors.append("semver-release: stale tag-only prerelease guidance remains")
 
 
-def validate_project_docs_organizer_contract() -> None:
-    """Keep documentation structure project-owned and numbering optional."""
-    skill_dir = SKILLS_DIR / "project-docs-organizer"
+def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> None:
+    """Keep documentation structure evidence-led and local numbering project-owned."""
+    skill_dir = skill_dir or SKILLS_DIR / "project-docs-organizer"
     paths = {
         "SKILL.md": skill_dir / "SKILL.md",
         "references/information-architecture.md": skill_dir / "references" / "information-architecture.md",
+        "references/classification-methods.md": skill_dir / "references" / "classification-methods.md",
         "references/numbering-patterns.md": skill_dir / "references" / "numbering-patterns.md",
-        "references/zone-catalog.md": skill_dir / "references" / "zone-catalog.md",
         "references/migration-and-links.md": skill_dir / "references" / "migration-and-links.md",
     }
-    if any(not path.exists() for path in paths.values()):
+    retired_zone_catalog = skill_dir / "references" / "zone-catalog.md"
+    if retired_zone_catalog.exists():
+        errors.append("project-docs-organizer: retired references/zone-catalog.md still exists")
+    missing_files = [label for label, path in paths.items() if not path.exists()]
+    if missing_files:
+        errors.append(f"project-docs-organizer: missing required files: {missing_files}")
         return
     texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
-    skill_text = texts["SKILL.md"]
+    normalized = {label: " ".join(text.split()) for label, text in texts.items()}
+    normalized_skill = normalized["SKILL.md"]
     project_owned_contract = (
-        "The target project owns",
+        "The target project owns its information architecture",
         "smallest structure",
         "preserve a coherent established convention",
-        "never introduce numbering merely",
-        "No empty zone or placeholder",
+        "one primary axis per tree level",
+        "documentation IA decision record",
+        "two or three candidates",
+        "wait for the user before mutation",
+        "No empty category",
+        "Resolve the target project root",
     )
-    missing = [value for value in project_owned_contract if value not in skill_text]
+    missing = [value for value in project_owned_contract if value not in normalized_skill]
     if missing:
         errors.append(
             "project-docs-organizer/SKILL.md: project-owned information architecture lost fixtures: "
             f"{missing}"
         )
+    architecture_contract = (
+        "Reader-route separation",
+        "Vocabulary and ownership cohesion",
+        "Lifecycle consistency",
+        "Stability under change",
+        "Duplication pressure",
+        "Choose one primary axis",
+        "secondary lenses",
+        "representative placement test",
+        "two or three candidates",
+        "wait for the user before mutation",
+        "enable numbering by default",
+    )
+    missing_architecture = [
+        value
+        for value in architecture_contract
+        if value not in normalized["references/information-architecture.md"]
+    ]
+    if missing_architecture:
+        errors.append(
+            "project-docs-organizer/references/information-architecture.md: "
+            f"evidence-led selection contract is incomplete: {missing_architecture}"
+        )
+    method_text = texts["references/classification-methods.md"]
+    method_headings = (
+        "## Reader role",
+        "## Task or journey",
+        "## Domain capability, ownership, and language",
+        "## Product, subsystem, or interface surface",
+        "## Content purpose or information type",
+        "## Lifecycle or authority",
+    )
+    missing_methods = [value for value in method_headings if value not in method_text]
+    if missing_methods:
+        errors.append(
+            "project-docs-organizer/references/classification-methods.md: "
+            f"method-card set is incomplete: {missing_methods}"
+        )
+    method_fields = (
+        "**Signals**",
+        "**Ask**",
+        "**Fits when**",
+        "**Fails when**",
+        "**Axis role**",
+        "**Micro-example**",
+    )
+    incomplete_fields = [value for value in method_fields if method_text.count(value) != 6]
+    if incomplete_fields:
+        errors.append(
+            "project-docs-organizer/references/classification-methods.md: "
+            f"every method card needs the same reasoning fields: {incomplete_fields}"
+        )
+    if "```text" in method_text:
+        errors.append(
+            "project-docs-organizer/references/classification-methods.md: "
+            "method cards must use non-directory micro-examples"
+        )
+    numbering_contract = (
+        "Enable numbering by default only when",
+        "coherent established convention",
+        "documentation generator owns ordering or navigation",
+        "sibling-local position",
+        "`10-`",
+        "`20-`",
+        "`00-`",
+        "genuine reading or execution order",
+        "not category meaning",
+    )
+    missing_numbering = [
+        value
+        for value in numbering_contract
+        if value not in normalized["references/numbering-patterns.md"]
+    ]
+    if missing_numbering:
+        errors.append(
+            "project-docs-organizer/references/numbering-patterns.md: "
+            f"default and opt-out numbering contract is incomplete: {missing_numbering}"
+        )
+    combined = "\n".join(texts.values())
     stale_template_rules = (
         "## Default Zone Model",
-        "Use two-digit prefixes for direct children of the documentation root when the project is complex",
+        "# Optional Documentation Zone Catalog",
+        "## Candidate zone catalog",
+        "`00-start-here`",
+        "`20-development-overview`",
+        "The developer area is `2x`",
+        "one-class-per-zone rule",
+        "semantic numbered zones",
     )
-    found_stale = [value for value in stale_template_rules if value in skill_text]
+    found_stale = [value for value in stale_template_rules if value in combined]
     if found_stale:
         errors.append(
-            "project-docs-organizer/SKILL.md: numbered template is still resident/default: "
+            "project-docs-organizer: retired zone-template semantics remain: "
             f"{found_stale}"
         )
-    if "Use numbering only when" not in texts["references/information-architecture.md"]:
-        errors.append(
-            "project-docs-organizer/references/information-architecture.md: optional numbering gate is missing"
-        )
-    if not texts["references/zone-catalog.md"].startswith("# Optional Documentation Zone Catalog"):
-        errors.append("project-docs-organizer/references/zone-catalog.md: zone catalog is not marked optional")
     migration_contract = (
         "Build the migration map",
         "Before deleting",
@@ -732,8 +821,6 @@ def validate_project_docs_organizer_contract() -> None:
             "project-docs-organizer/references/migration-and-links.md: migration evidence lost fixtures: "
             f"{missing_migration}"
         )
-    if "Resolve the target project root" not in skill_text:
-        errors.append("project-docs-organizer/SKILL.md: target-root resolution is missing")
 
 
 def validate_grouping_manifest(skill_dirs: list[Path]) -> None:
