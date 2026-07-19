@@ -499,5 +499,35 @@ class PublicSummaryContractTests(unittest.TestCase):
         )
 
 
+class ToolingScriptContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        validator.errors.clear()
+
+    @staticmethod
+    def contextual_contract() -> str:
+        return (
+            "The Contract Profile decides which cards apply. "
+            "Never let unknown or invalid input reach a dangerous default action. "
+            "Preserve the project's existing CLI grammar and exit-code convention. "
+            "Use a language-native shared resolver. Require idempotency only when retry or convergence. "
+            "Do not claim a dry run unless tests prove it is safe. Inventory registration, when adopted."
+        )
+
+    def test_forced_universal_contract_rules_are_rejected(self) -> None:
+        for forced_rule in validator.TOOLING_FORCED_SCRIPT_CONTRACT:
+            with self.subTest(forced_rule=forced_rule):
+                validator.errors.clear()
+                validator.validate_tooling_script_contract_semantics(
+                    f"{self.contextual_contract()} {forced_rule}"
+                )
+                self.assertTrue(
+                    any("evidence-gated and project-owned" in error for error in validator.errors)
+                )
+
+    def test_contextual_command_contract_is_accepted(self) -> None:
+        validator.validate_tooling_script_contract_semantics(self.contextual_contract())
+        self.assertEqual(validator.errors, [])
+
+
 if __name__ == "__main__":
     unittest.main()

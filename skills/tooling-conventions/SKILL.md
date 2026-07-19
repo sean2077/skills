@@ -18,7 +18,8 @@ evidence-led boundary methods, contract checks, and an optional structural inven
 - Build a Contract Profile before choosing placement. Installed paths and service-bound commands
   remain external contracts until every active consumer moves in one coordinated change.
 - Keep project-specific roots, names, semantic metadata, CLI shape, languages, and deployment
-  mechanics project-owned.
+  mechanics project-owned. Require safe outcomes without inventing flags, exit numbers, resolver
+  languages, logging formats, or write mechanisms.
 - There is no required `tools/`, `scripts/`, or `bin/` root and no mandatory semantic inventory
   schema; only the structural `path` contract is universal when an inventory is adopted.
 - Route dangerous actions through the project's authoritative deploy, install, upgrade, or
@@ -38,8 +39,8 @@ evidence-led boundary methods, contract checks, and an optional structural inven
    from the target project's coherent conventions. A physical directory never defines a job.
 5. Before recommending or applying a Placement Decision, output the **Tool Governance Decision
    Record** defined in `classification-methods.md`.
-6. Apply [`script-contract.md`](references/script-contract.md) when implementing or auditing
-   executable behavior.
+6. When implementing or auditing executable behavior, derive only the applicable command-contract
+   cards from the Contract Profile in [`script-contract.md`](references/script-contract.md).
 7. For a move, rename, or deletion, follow [`path-migrations.md`](references/path-migrations.md)
    and update all active consumers in the same coordinated change.
 8. When recurring drift justifies a machine inventory, adapt
@@ -67,7 +68,7 @@ present ranked candidates and evidence; do not mass-move commands without change
 | Need | Reference |
 |---|---|
 | Derive Job Boundaries, Contract Profiles, and project-owned placement | [`classification-methods.md`](references/classification-methods.md) |
-| Implement help, exit, resolver, hazard, secret, atomicity, and logging behavior | [`script-contract.md`](references/script-contract.md) |
+| Derive fail-closed input, resolver, state, secret, output, and preview behavior from command evidence | [`script-contract.md`](references/script-contract.md) |
 | Move, rename, or delete a command and reconcile callers | [`path-migrations.md`](references/path-migrations.md) |
 | Adopt the optional path-only structural inventory | [`inventory-contract.md`](references/inventory-contract.md) |
 | Migrate the retired flat surface manifest and checker | [`migration-from-surface-manifest.md`](references/migration-from-surface-manifest.md) |

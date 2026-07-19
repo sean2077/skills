@@ -339,6 +339,36 @@ def validate_agent_scaffold_contract() -> None:
         )
 
 
+TOOLING_FORCED_SCRIPT_CONTRACT = (
+    "### Mandatory (gate/audit these)",
+    "usage / unknown flag → exit 2",
+    "it `source`s a single shared resolver",
+    "state-file writes: `.tmp` + fsync/close + atomic rename",
+    "multi-step scripts use a stable bracketed prefix",
+    "Prefer `--dry-run` over `--yes`",
+)
+
+
+def validate_tooling_script_contract_semantics(script_text: str) -> None:
+    """Reject the retired one-size-fits-all command implementation contract."""
+    required = (
+        "The Contract Profile decides which cards apply",
+        "Never let unknown or invalid input reach a dangerous default action",
+        "project's existing CLI grammar and exit-code convention",
+        "language-native shared resolver",
+        "Require idempotency only when retry or convergence",
+        "Do not claim a dry run unless tests prove",
+        "Inventory registration, when adopted",
+    )
+    missing = [value for value in required if value not in script_text]
+    forced = [value for value in TOOLING_FORCED_SCRIPT_CONTRACT if value in script_text]
+    if missing or forced:
+        errors.append(
+            "tooling-conventions/references/script-contract.md: command contracts must be "
+            f"evidence-gated and project-owned; missing={missing}, forced={forced}"
+        )
+
+
 def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> None:
     """Keep structural inventory checks deterministic and semantic policy project-owned."""
     skill_dir = SKILLS_DIR / "tooling-conventions"
@@ -362,6 +392,7 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
     if readme_text is None:
         readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
     public_summary = readme_skill_rows(readme_text, "tooling-conventions")
+    validate_tooling_script_contract_semantics(texts["references/script-contract.md"])
     memory_compile = (
         "python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), "
         "sys.argv[1], \"exec\")'"
@@ -421,6 +452,7 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
             "excludes nothing",
         ),
         "references/script-contract.md": (
+            "The Contract Profile decides which cards apply",
             "Inventory registration, when adopted",
             "Do not create an inventory solely",
         ),
