@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Catalog reference validation now accepts equivalent imperative load-boundary wording while
+  still requiring each on-demand reference to state a conditional load boundary near the top.
+
 ## [v4.0.0] — 2026-07-19
 
 ### ⚠ Breaking

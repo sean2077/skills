@@ -76,6 +76,10 @@ def parse_frontmatter(text: str) -> dict[str, object]:
 REFERENCE_LINK = re.compile(r"\]\((references/[^)\s#]+\.md)(?:#[^)]+)?\)")
 LEGACY_REFERENCE_LINK = re.compile(r"\]\((?:\./)?reference\.md(?:#[^)]+)?\)", re.IGNORECASE)
 REFERENCE_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
+REFERENCE_LOAD_BOUNDARY = re.compile(
+    r"^(?:read|consult|open|load|use) this (?:only )?(?:when|for|after)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
 FORBIDDEN_REFERENCE_NAMES = {"reference.md", "references.md", "misc.md", "all.md", "readme.md"}
 
 
@@ -128,7 +132,7 @@ def validate_category_references(skill_dir: Path, skill_text: str) -> None:
         except OSError as exc:
             errors.append(f"{skill_name}: cannot read reference {relative}: {exc}")
         else:
-            if not re.search(r"(?m)^Read this (?:only )?(?:when|for|after)\b", reference_text[:600]):
+            if not REFERENCE_LOAD_BOUNDARY.search(reference_text[:600]):
                 errors.append(
                     f"{skill_name}: reference must state its conditional load boundary near the top: {relative}"
                 )
