@@ -15,6 +15,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Project documentation numbering is now evidence-gated instead of default-on when a dedicated
   tree lacks a convention; absence of a convention alone no longer triggers path prefixes.
 
+### Fixed
+
+- README skill summaries now participate in the documentation/tooling domain guards, preventing
+  public catalog copy from retaining behavior that those skills have retired.
+
 ## [v4.0.0] — 2026-07-19
 
 ### ⚠ Breaking
