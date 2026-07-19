@@ -19,6 +19,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - README skill summaries now participate in the documentation/tooling domain guards, preventing
   public catalog copy from retaining behavior that those skills have retired.
+- `conventional-commit` now treats mixed-ownership hunks within one path as a staging boundary
+  and requires inspection of the actual cached patch before commit.
 
 ## [v4.0.0] — 2026-07-19
 

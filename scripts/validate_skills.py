@@ -528,9 +528,9 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
             )
 
 
-def validate_conventional_commit_contract() -> None:
+def validate_conventional_commit_contract(skill_dir: Path | None = None) -> None:
     """Keep commit mode rooted and prevent staging changes on a detached HEAD."""
-    skill_dir = SKILLS_DIR / "conventional-commit"
+    skill_dir = skill_dir or SKILLS_DIR / "conventional-commit"
     skill = skill_dir / "SKILL.md"
     staging = skill_dir / "references" / "staging-safety.md"
     if not skill.exists() or not staging.exists():
@@ -559,11 +559,20 @@ def validate_conventional_commit_contract() -> None:
         "git diff --cached --name-only",
         "git diff --cached --check",
         "unrelated paths are already staged",
+        "A named path does not authorize every hunk",
+        "git -C <repo-root> diff --cached -- <paths>",
+        "git -C <repo-root> diff -- <paths>",
+        "mixes intended and unrelated hunks",
+        "without modifying the working tree or unrelated pre-existing index state",
+        "actual cached patch",
     )
-    missing_reference = [value for value in reference_contract if value not in staging_text]
+    normalized_staging = " ".join(staging_text.split())
+    missing_reference = [
+        value for value in reference_contract if value not in normalized_staging
+    ]
     if missing_reference:
         errors.append(
-            "conventional-commit/references/staging-safety.md: staging boundary lost fixtures: "
+            "conventional-commit/references/staging-safety.md: path/hunk staging boundary lost fixtures: "
             f"{missing_reference}"
         )
 
