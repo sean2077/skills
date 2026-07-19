@@ -199,6 +199,7 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
         overrides: dict[str, str] | None = None,
         removed: set[str] | None = None,
         extras: dict[str, str] | None = None,
+        readme_text: str | None = None,
     ) -> list[str]:
         files = self.valid_files()
         files.update(overrides or {})
@@ -212,7 +213,17 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
             validator.errors.clear()
-            validator.validate_project_docs_organizer_contract(skill_dir)
+            validator.validate_project_docs_organizer_contract(
+                skill_dir,
+                readme_text=(
+                    readme_text
+                    if readme_text is not None
+                    else (
+                        "| [project-docs-organizer](skills/project-docs-organizer/) | "
+                        "Evidence-gated local numbering. | Documentation |"
+                    )
+                ),
+            )
             return list(validator.errors)
 
     def test_valid_evidence_led_contract(self) -> None:
@@ -338,6 +349,17 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
                     any("default-on numbering contradicts the evidence gate" in error for error in errors)
                 )
 
+    def test_stale_readme_summary_is_rejected_by_domain_contract(self) -> None:
+        errors = self.validate(
+            readme_text=(
+                "| [project-docs-organizer](skills/project-docs-organizer/) | Use optional "
+                "default-on local numbering when no coherent convention governs. | Documentation |"
+            )
+        )
+        self.assertTrue(
+            any("default-on numbering contradicts the evidence gate" in error for error in errors)
+        )
+
     def test_explicit_default_on_rejections_are_not_false_positives(self) -> None:
         numbering = self.valid_files()["references/numbering-patterns.md"]
         for rule in (
@@ -388,6 +410,25 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
                 self.assertFalse(
                     any("unconditional numbering mandate" in error for error in errors)
                 )
+
+
+class PublicSummaryContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        validator.errors.clear()
+
+    def test_tooling_readme_summary_cannot_reactivate_retired_checker(self) -> None:
+        validator.validate_tooling_conventions_contract(
+            readme_text=(
+                "| [tooling-conventions](skills/tooling-conventions/) | Run "
+                "scripts/manifest-check.sh for every tool surface. | Shell |"
+            )
+        )
+        self.assertTrue(
+            any(
+                "retired flat-surface contract remains active" in error
+                for error in validator.errors
+            )
+        )
 
 
 if __name__ == "__main__":

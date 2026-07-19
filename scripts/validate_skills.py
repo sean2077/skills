@@ -166,6 +166,12 @@ def validate_resident_contract(skill_dir: Path, skill_text: str, frontmatter: di
         )
 
 
+def readme_skill_rows(readme_text: str, skill_name: str) -> str:
+    """Return public catalog rows for one skill so domain guards cover that projection."""
+    marker = f"[{skill_name}](skills/{skill_name}/)"
+    return "\n".join(line for line in readme_text.splitlines() if marker in line)
+
+
 def main() -> int:
     if not SKILLS_DIR.is_dir():
         errors.append(f"no skills/ directory at {SKILLS_DIR}")
@@ -241,10 +247,10 @@ def main() -> int:
         )
 
     validate_agent_scaffold_contract()
-    validate_tooling_conventions_contract()
+    validate_tooling_conventions_contract(readme_text=readme)
     validate_conventional_commit_contract()
     validate_semver_release_contract()
-    validate_project_docs_organizer_contract()
+    validate_project_docs_organizer_contract(readme_text=readme)
 
     # Reverse coverage: a README link must point at a real skill directory.
     for m in re.finditer(r"\(skills/([A-Za-z0-9_-]+)/\)", readme):
@@ -333,7 +339,7 @@ def validate_agent_scaffold_contract() -> None:
         )
 
 
-def validate_tooling_conventions_contract() -> None:
+def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> None:
     """Keep structural inventory checks deterministic and semantic policy project-owned."""
     skill_dir = SKILLS_DIR / "tooling-conventions"
     paths = {
@@ -353,6 +359,9 @@ def validate_tooling_conventions_contract() -> None:
         errors.append(f"tooling-conventions: missing contextual-governance assets: {missing_paths}")
         return
     texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
+    if readme_text is None:
+        readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
+    public_summary = readme_skill_rows(readme_text, "tooling-conventions")
     memory_compile = (
         "python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), "
         "sys.argv[1], \"exec\")'"
@@ -477,7 +486,7 @@ def validate_tooling_conventions_contract() -> None:
         text
         for label, text in texts.items()
         if label != "references/migration-from-surface-manifest.md"
-    )
+    ) + public_summary
     stale_flat_contract = (
         "scripts/manifest-check.sh",
         "references/surface-taxonomy.md",
@@ -999,7 +1008,9 @@ def validate_project_doc_numbering_semantics(
         )
 
 
-def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> None:
+def validate_project_docs_organizer_contract(
+    skill_dir: Path | None = None, *, readme_text: str | None = None
+) -> None:
     """Keep documentation structure evidence-led and local numbering project-owned."""
     skill_dir = skill_dir or SKILLS_DIR / "project-docs-organizer"
     paths = {
@@ -1017,6 +1028,9 @@ def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> N
         errors.append(f"project-docs-organizer: missing required files: {missing_files}")
         return
     texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
+    if readme_text is None:
+        readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
+    public_summary = readme_skill_rows(readme_text, "project-docs-organizer")
     normalized = {label: " ".join(text.split()) for label, text in texts.items()}
     normalized_skill = normalized["SKILL.md"]
     project_owned_contract = (
@@ -1087,7 +1101,7 @@ def validate_project_docs_organizer_contract(skill_dir: Path | None = None) -> N
             "project-docs-organizer/references/numbering-patterns.md: "
             f"evidence and opt-out numbering contract is incomplete: {missing_numbering}"
         )
-    combined = "\n".join(texts.values())
+    combined = "\n".join((*texts.values(), public_summary))
     validate_project_doc_numbering_semantics(
         texts["references/numbering-patterns.md"], combined_text=combined
     )
