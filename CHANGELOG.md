@@ -10,6 +10,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Catalog reference validation now accepts equivalent imperative load-boundary wording while
   still requiring each on-demand reference to state a conditional load boundary near the top.
+- Resident documentation and tooling workflows now route decision-record field detail to their
+  canonical references instead of carrying a second always-loaded copy.
 
 ## [v4.0.0] — 2026-07-19
 

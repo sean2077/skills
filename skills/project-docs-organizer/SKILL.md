@@ -35,10 +35,8 @@ universal directory template.
 3. Read [`information-architecture.md`](references/information-architecture.md) and
    [`classification-methods.md`](references/classification-methods.md). Shortlist lenses,
    choose one evidence-backed primary axis at each relevant level, and place secondary lenses.
-4. Write a documentation IA decision record before proposing or applying a reorganization:
-   evidence and retrieval failures; candidate lenses; chosen primary axes; secondary-lens
-   representations; rejected alternatives; numbering decision and evidence; proposed tree;
-   and the move/merge/delete map.
+4. Before proposing or applying a reorganization, write the documentation IA decision record
+   defined in `information-architecture.md`.
 5. Run the representative placement test from `information-architecture.md`. Resolve a
    high-impact tie with the user before editing.
 6. Decide numbering only after semantic boundaries are stable. Preserve an explicit user

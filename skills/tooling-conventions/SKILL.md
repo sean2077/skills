@@ -36,10 +36,8 @@ evidence-led boundary methods, contract checks, and an optional structural inven
    own the same job with compatible state/artifact, failure/rollback, and verification semantics.
 4. Build each affected command's Contract Profile, then derive roots, grouping, paths, and names
    from the target project's coherent conventions. A physical directory never defines a job.
-5. Before recommending or applying that Placement Decision, output a **Tool Governance Decision
-   Record**: evidence and drift; selected and rejected lenses; Job Boundaries and aggregate/toolkit
-   decisions; Contract Profiles; placement and migration decisions; consumer impacts; and the
-   verification plan.
+5. Before recommending or applying a Placement Decision, output the **Tool Governance Decision
+   Record** defined in `classification-methods.md`.
 6. Apply [`script-contract.md`](references/script-contract.md) when implementing or auditing
    executable behavior.
 7. For a move, rename, or deletion, follow [`path-migrations.md`](references/path-migrations.md)
