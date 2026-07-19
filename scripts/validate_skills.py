@@ -431,8 +431,7 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
     public_summary = readme_skill_rows(readme_text, "tooling-conventions")
     validate_tooling_script_contract_semantics(texts["references/script-contract.md"])
     memory_compile = (
-        "python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), "
-        "sys.argv[1], \"exec\")'"
+        'compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")'
     )
     for label in ("references/verification.md", "scripts/inventory-check.sh"):
         if memory_compile not in texts[label]:
@@ -457,6 +456,8 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
         "directory inventory row does not cover nested commands",
         "TOOLS_DIR did not override the inventory directory",
         "default skip policy hid a project-owned command",
+        "python3 fallback did not complete the inventory check",
+        "py -3 fallback did not complete the inventory check",
         "expected missing Python preflight to exit 2",
     )
     missing_fixture = [value for value in fixture_contract if value not in fixture_text]
@@ -509,7 +510,11 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
 
     checker_contract = (
         'SKIP_RE="${INVENTORY_CHECK_SKIP:-a^}"',
-        'echo "python interpreter unavailable for syntax check: $path" >&2',
+        'python_compatible "$PYTHON_BIN"',
+        "elif python_compatible python3; then",
+        "elif python_compatible py -3; then",
+        'PYTHONUTF8=1 "${PYTHON_CMD[@]}" -c',
+        'echo "python 3.8+ interpreter unavailable for syntax check: $path',
     )
     missing_checker_contract = [
         value for value in checker_contract if value not in texts["scripts/inventory-check.sh"]

@@ -12,6 +12,8 @@ fixture="$(mktemp -d "${fixture_prefix}XXXXXX")"
 fixture_suffix="${fixture#"$fixture_prefix"}"
 [[ "$fixture" == "$fixture_prefix"* && -n "$fixture_suffix" && -d "$fixture" ]] \
     || { echo "unsafe fixture directory: $fixture" >&2; exit 1; }
+REAL_PYTHON="$(command -v python || command -v python3 || true)"
+[[ -n "$REAL_PYTHON" ]] || { echo "test requires a Python interpreter" >&2; exit 1; }
 cleanup() {
     local suffix="${fixture#"$fixture_prefix"}"
     if [[ "$fixture" == "$fixture_prefix"* && -n "$suffix" && -d "$fixture" ]]; then
@@ -21,6 +23,31 @@ cleanup() {
 trap cleanup EXIT
 
 negative_fails=0
+
+run_with_python_candidate() { # <python|python3|py|none> <inventory>
+    local selected="$1" inventory="$2"
+    (
+        # shellcheck disable=SC2317,SC2329 # exported to model launcher availability in child Bash
+        python() {
+            [[ "$PYTHON_FIXTURE_CANDIDATE" == "python" ]] || return 127
+            "$REAL_PYTHON" "$@"
+        }
+        # shellcheck disable=SC2317,SC2329 # exported to model launcher availability in child Bash
+        python3() {
+            [[ "$PYTHON_FIXTURE_CANDIDATE" == "python3" ]] || return 127
+            "$REAL_PYTHON" "$@"
+        }
+        # shellcheck disable=SC2317,SC2329 # exported to model launcher availability in child Bash
+        py() {
+            [[ "$PYTHON_FIXTURE_CANDIDATE" == "py" && "${1:-}" == "-3" ]] || return 127
+            shift
+            "$REAL_PYTHON" "$@"
+        }
+        export -f python python3 py
+        PYTHON_FIXTURE_CANDIDATE="$selected" REAL_PYTHON="$REAL_PYTHON" \
+            bash "$CHECKER" "$inventory" 2>&1
+    )
+}
 
 # No-argument behavior is only a convenience default; target projects can use any root.
 mkdir -p "$fixture/default/tools/package-dir"
@@ -196,27 +223,47 @@ if [[ "$missing_path_header_rc" != 2 ]]; then
     negative_fails=$((negative_fails + 1))
 fi
 
-# Interpreter availability is a checker preflight and cannot be downgraded by row warning policy.
+# Python syntax checks support python3-only and Windows py -3 launcher environments.
 mkdir -p "$fixture/python-preflight/tools"
 printf '%s\n' '#!/usr/bin/env python3' 'print("ok")' \
     > "$fixture/python-preflight/tools/run.py"
 printf 'path\taudit_level\nrun.py\twarn\n' > "$fixture/python-preflight/tools/inventory.tsv"
+
+set +e
+python3_fallback_output="$(
+    run_with_python_candidate python3 "$fixture/python-preflight/tools/inventory.tsv"
+)"
+python3_fallback_rc=$?
+set -e
+if [[ "$python3_fallback_rc" != 0 ]]; then
+    echo "python3 fallback did not complete the inventory check (got $python3_fallback_rc)" >&2
+    echo "$python3_fallback_output" >&2
+    negative_fails=$((negative_fails + 1))
+fi
+
+set +e
+py_fallback_output="$(
+    run_with_python_candidate py "$fixture/python-preflight/tools/inventory.tsv"
+)"
+py_fallback_rc=$?
+set -e
+if [[ "$py_fallback_rc" != 0 ]]; then
+    echo "py -3 fallback did not complete the inventory check (got $py_fallback_rc)" >&2
+    echo "$py_fallback_output" >&2
+    negative_fails=$((negative_fails + 1))
+fi
+
+# Interpreter availability is a checker preflight and cannot be downgraded by row warning policy.
 set +e
 python_preflight_output="$(
-    # shellcheck disable=SC2317,SC2329 # exported to simulate a missing command
-    command() {
-        if [[ "${1:-}" == '-v' && "${2:-}" == 'python' ]]; then return 1; fi
-        builtin command "$@"
-    }
-    export -f command
-    bash "$CHECKER" "$fixture/python-preflight/tools/inventory.tsv" 2>&1
+    run_with_python_candidate none "$fixture/python-preflight/tools/inventory.tsv"
 )"
 python_preflight_rc=$?
 set -e
 if [[ "$python_preflight_rc" != 2 ]]; then
     echo "expected missing Python preflight to exit 2 (got $python_preflight_rc)" >&2
     negative_fails=$((negative_fails + 1))
-elif ! grep -qF 'python interpreter unavailable for syntax check: run.py' \
+elif ! grep -qF 'python 3.8+ interpreter unavailable for syntax check: run.py' \
     <<<"$python_preflight_output"; then
     echo "missing Python preflight diagnostic was not reported" >&2
     negative_fails=$((negative_fails + 1))
