@@ -367,6 +367,7 @@ def validate_tooling_conventions_contract() -> None:
         "-dash.sh",
         "inventory check left Python bytecode residue",
         "structural findings above use exit 1",
+        "Exact parent segments remain blocking",
         "invalid inventory path (must be normalized and relative)",
         "invalid audit_level for tool.sh: maybe",
         "expected invalid CLI arguments to exit 2",

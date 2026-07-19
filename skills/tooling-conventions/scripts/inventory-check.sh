@@ -118,7 +118,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         continue
     fi
     case "$path" in
-        /* | [A-Za-z]:* | . | ./* | ../* | */. | */./* | */.. | */../* | *//* | *\\*)
+        /* | [A-Za-z]:* | . | .. | ./* | ../* | */. | */./* | */.. | */../* | *//* | *\\*)
             fail "invalid inventory path (must be normalized and relative): $path"
             continue
             ;;
