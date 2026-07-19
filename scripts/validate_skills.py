@@ -188,6 +188,7 @@ def main() -> int:
 
     validate_grouping_manifest(skill_dirs)
     validate_npx_discovery_contract()
+    validate_npx_payload_contract()
 
     for d in skill_dirs:
         dir_name = d.name
@@ -300,6 +301,42 @@ def validate_npx_discovery_contract() -> None:
         errors.append(
             "CI npx discovery must assert that the pinned CLI returns the exact catalog skill set; "
             f"missing={missing}"
+        )
+
+
+def validate_npx_payload_contract(workflow_text: str | None = None) -> None:
+    """Require CI to compare every installed skill file with the catalog source."""
+    if workflow_text is None:
+        workflow = REPO / ".github" / "workflows" / "validate.yml"
+        if not workflow.exists():
+            return
+        workflow_text = workflow.read_text(encoding="utf-8")
+    match = re.search(
+        r"(?ms)^\s*- name: Smoke-test installed skill payloads\s*$"
+        r"(.*?)(?=^\s*- name:|\Z)",
+        workflow_text,
+    )
+    payload_step = match.group(1) if match else ""
+    required = {
+        "iterate every catalog skill": r'for source_skill in "\$repo"/skills/\*; do',
+        "derive installed skill path": (
+            r'installed_skill="\$fixture/\.agents/skills/\$skill"'
+        ),
+        "compare the complete source inventory": (
+            r'expected=.*cd "\$source_skill".*find \. -type f -print \| sort'
+        ),
+        "compare the complete installed inventory": (
+            r'actual=.*cd "\$installed_skill".*find \. -type f -print \| sort'
+        ),
+        "diff complete skill payload bytes": (
+            r'diff -ru "\$source_skill" "\$installed_skill"'
+        ),
+    }
+    missing = [label for label, pattern in required.items() if not re.search(pattern, payload_step)]
+    if missing:
+        errors.append(
+            "CI npx install smoke must compare every installed skill payload with its "
+            f"catalog source; missing={missing}"
         )
 
 

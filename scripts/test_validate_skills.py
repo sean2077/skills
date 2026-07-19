@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Focused fixtures for resident-context and on-demand reference validation."""
+"""Focused regression fixtures for catalog validation contracts."""
 
 from __future__ import annotations
 
@@ -139,6 +139,36 @@ class CategoryReferenceTests(unittest.TestCase):
             result = validator.cli(["--help"])
         self.assertEqual(result, 0)
         self.assertIn("Validate the skills catalog", stdout.getvalue())
+
+
+class NpxPayloadContractTests(unittest.TestCase):
+    VALID_STEP = r'''
+      - name: Smoke-test installed skill payloads
+        run: |
+          for source_skill in "$repo"/skills/*; do
+            skill="$(basename "$source_skill")"
+            installed_skill="$fixture/.agents/skills/$skill"
+            expected="$(cd "$source_skill" && find . -type f -print | sort)"
+            actual="$(cd "$installed_skill" && find . -type f -print | sort)"
+            diff -ru "$source_skill" "$installed_skill"
+          done
+'''
+
+    def validate(self, workflow_text: str) -> list[str]:
+        validator.errors.clear()
+        validator.validate_npx_payload_contract(workflow_text)
+        return list(validator.errors)
+
+    def test_complete_installed_payload_contract_is_accepted(self) -> None:
+        self.assertEqual([], self.validate(self.VALID_STEP))
+
+    def test_reference_only_install_smoke_is_rejected(self) -> None:
+        reference_only = self.VALID_STEP.replace(
+            'diff -ru "$source_skill" "$installed_skill"',
+            'diff -ru "$source_skill/references" "$installed_skill/references"',
+        )
+        errors = self.validate(reference_only)
+        self.assertTrue(any("every installed skill payload" in error for error in errors))
 
 
 class ConventionalCommitContractTests(unittest.TestCase):
