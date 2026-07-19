@@ -49,10 +49,13 @@ Agent act correctly.
 | High-cost safety, security, or data rules | Extended examples and tutorials |
 | Short navigation to an authoritative source | Low-frequency background and reference detail |
 
-The `authority_doc_budget.sh` hook remains advisory: root 320 / nested 120 lines by default,
-overridable with `AUTHORITY_DOC_MAX_ROOT|NESTED`. A line count is a signal, not a substitute for the
-semantic admission rule. Do not hard-fail solely on size or compress prose mechanically to satisfy a
-number.
+The `authority_doc_budget.sh` hook remains advisory. Its defaults are 320 lines / 25,600 characters
+for the root and 120 lines / 9,600 characters for nested contracts. Override them with
+`AUTHORITY_DOC_MAX_ROOT`, `AUTHORITY_DOC_MAX_NESTED`, `AUTHORITY_DOC_MAX_ROOT_CHARS`, or
+`AUTHORITY_DOC_MAX_NESTED_CHARS`. These measurements are signals, not substitutes for the semantic
+admission rule. The character defaults retain the former line budgets' approximate 80-column
+capacity without requiring source hard-wrap. Do not hard-fail solely on size or compress prose
+mechanically to satisfy a number.
 
 ### Conflict handling
 
@@ -78,6 +81,10 @@ block:
 Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade`
 refreshes everything between them. The template's inner worktree boundary is installer-owned:
 `--profile light` removes that complete policy and its worktree-only layout rows.
+
+The managed template uses semantic source lines: one paragraph, list item, table row, or command per
+physical line. It does not hard-wrap prose to a fixed display width. The installer applies this
+convention only inside the managed markers and does not reflow project-owned prose outside them.
 
 ### Project-owned root prose
 

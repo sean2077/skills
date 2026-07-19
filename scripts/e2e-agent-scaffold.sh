@@ -62,7 +62,7 @@ authority_laws_present() {
     && grep -qF '**Keep scopes honest.**' "$file" \
     && grep -qF 'directory structure alone never justifies one.' "$file" \
     && grep -qF '**Resolve conflicts explicitly.**' "$file" \
-    && grep -qF 'budget hook remains advisory at 320 root / 120 nested' "$file"
+    && grep -qF 'budget hook remains advisory; projects may override its default line and character limits' "$file"
 }
 # shellcheck disable=SC2317,SC2329
 no_partial_harness() {
@@ -953,6 +953,23 @@ python -c 'import json,sys; print(json.dumps({"cwd":sys.argv[1],"tool_input":{"f
 check "nested budget hook exits 0" test "$rc" = 0
 check "nested contract uses the nested budget" grep -qF "docs/budget-fixture/AGENTS.md" "$work/nested-budget.out"
 check "nested contract reports budget 1" grep -qF "budget 1" "$work/nested-budget.out"
+budget_resolver_bin="$work/budget-python-resolver"; mkdir -p "$budget_resolver_bin"
+for candidate in explicit-python "explicit python" python python3 py; do
+  cp "$resolver_bin/python-shim" "$budget_resolver_bin/$candidate"
+  chmod +x "$budget_resolver_bin/$candidate"
+done
+resolver_log="$work/budget-python3-fallback.log"; : > "$resolver_log"
+python -c 'import json,sys; print(json.dumps({"cwd":sys.argv[1],"tool_input":{"file_path":sys.argv[2]}}))' \
+  "$budget_root" "$nested_contract" \
+  | PATH="$budget_resolver_bin:$PATH" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
+      PYTHON_BIN="$budget_resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
+      RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=py38 RESOLVER_PY_MODE=broken \
+      CLAUDE_PROJECT_DIR="$budget_root" AUTHORITY_DOC_MAX_ROOT=9999 AUTHORITY_DOC_MAX_NESTED=9999 \
+      AUTHORITY_DOC_MAX_ROOT_CHARS=999999 AUTHORITY_DOC_MAX_NESTED_CHARS=1 \
+      bash "$budget_hook" >"$work/nested-character-budget.out" 2>&1; rc=$?
+check "character budget hook exits 0" test "$rc" = 0
+check "nested contract uses the character budget" grep -qF "13 characters (budget 1" "$work/nested-character-budget.out"
+check "character budget uses compatible hook Python" test "$(grep -c '^python3:exec$' "$resolver_log")" -ge 2
 rm -rf "$S/docs/budget-fixture"
 
 echo "== relink coexistence with an npx-installed skill =="

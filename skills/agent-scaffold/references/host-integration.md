@@ -33,7 +33,8 @@ nested/sibling repos pass through; gitignored paths are exempt. A damaged/missin
 ### authority_doc_budget.sh — PostToolUse, advisory (never blocks)
 
 - Watches `AGENTS.md` / `CLAUDE.md` writes; resolves the `CLAUDE.md → AGENTS.md` symlink so each contract is measured once.
-- Budgets: **root `AGENTS.md` 320** lines, **nested `AGENTS.md` 120** lines. Override with `AUTHORITY_DOC_MAX_ROOT` / `AUTHORITY_DOC_MAX_NESTED`.
+- Line budgets: **root `AGENTS.md` 320**, **nested `AGENTS.md` 120**. Override with `AUTHORITY_DOC_MAX_ROOT` / `AUTHORITY_DOC_MAX_NESTED`.
+- Character budgets: **root `AGENTS.md` 25,600**, **nested `AGENTS.md` 9,600**. Override with `AUTHORITY_DOC_MAX_ROOT_CHARS` / `AUTHORITY_DOC_MAX_NESTED_CHARS`.
 - Over budget → emits a nudge as PostToolUse `additionalContext` (via jq), else to stderr. Always **exit 0**.
 
 ## Dual-host wiring
