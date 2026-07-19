@@ -543,8 +543,10 @@ def validate_conventional_commit_contract(skill_dir: Path | None = None) -> None
     preflight = "git -C <repo-root> symbolic-ref --quiet --short HEAD"
     detached = "Exit status 1 means detached HEAD"
     git_error = "any other nonzero status is a Git preflight"
+    operation_status = "git -C <repo-root> status --long --branch"
+    in_progress = "in-progress merge"
     stage = "stage the exact intended"
-    required = (root, preflight, detached, git_error, stage)
+    required = (root, preflight, detached, git_error, operation_status, in_progress, stage)
     missing = [value for value in required if value not in workflow]
     ordered = not missing and [workflow.index(value) for value in required] == sorted(
         workflow.index(value) for value in required
@@ -565,6 +567,10 @@ def validate_conventional_commit_contract(skill_dir: Path | None = None) -> None
         "mixes intended and unrelated hunks",
         "without modifying the working tree or unrelated pre-existing index state",
         "actual cached patch",
+        "An attached HEAD proves only",
+        "git -C <repo-root> status --long --branch",
+        "in-progress merge, rebase, cherry-pick, revert, bisect, or unresolved conflict",
+        "Ordinary commit mode never continues or completes those operations",
     )
     normalized_staging = " ".join(staging_text.split())
     missing_reference = [

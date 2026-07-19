@@ -149,7 +149,8 @@ class ConventionalCommitContractTests(unittest.TestCase):
                 "git rev-parse --show-toplevel\n"
                 "git -C <repo-root> symbolic-ref --quiet --short HEAD\n"
                 "Exit status 1 means detached HEAD; any other nonzero status is a Git preflight "
-                "error. Then stage the exact intended changes.\n"
+                "error. Run git -C <repo-root> status --long --branch and stop for an "
+                "in-progress merge. Then stage the exact intended changes.\n"
             ),
             "references/staging-safety.md": (
                 "git -C <repo-root> status --short\n"
@@ -163,6 +164,10 @@ class ConventionalCommitContractTests(unittest.TestCase):
                 "git -C <repo-root> diff -- <paths>. If a path mixes intended and unrelated "
                 "hunks, select only the authorized patch without modifying the working tree or "
                 "unrelated pre-existing index state. Inspect the actual cached patch.\n"
+                "An attached HEAD proves only that a branch is named. Run "
+                "git -C <repo-root> status --long --branch and stop for an in-progress merge, "
+                "rebase, cherry-pick, revert, bisect, or unresolved conflict. Ordinary commit "
+                "mode never continues or completes those operations.\n"
             ),
         }
 
@@ -187,6 +192,16 @@ class ConventionalCommitContractTests(unittest.TestCase):
         staging = self.valid_files()["references/staging-safety.md"].replace(
             "If a path mixes intended and unrelated hunks, ",
             "If every change in a path is intended, ",
+        )
+        errors = self.validate(staging_text=staging)
+        self.assertTrue(
+            any("path/hunk staging boundary lost fixtures" in error for error in errors)
+        )
+
+    def test_in_progress_operation_boundary_is_required(self) -> None:
+        staging = self.valid_files()["references/staging-safety.md"].replace(
+            "Ordinary commit mode never continues or completes those operations.",
+            "Continue the current operation when the index is clean.",
         )
         errors = self.validate(staging_text=staging)
         self.assertTrue(
