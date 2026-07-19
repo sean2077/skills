@@ -51,6 +51,18 @@ git -C <repo-root> symbolic-ref --quiet --short HEAD
 Exit status 1 means HEAD is detached. Any other nonzero status is a Git error. Neither
 case permits staging.
 
+An attached HEAD proves only that `HEAD` names a branch; it does not rule out an active Git
+operation. Before staging, inspect the unscoped long status so resolved conflicts cannot hide
+the operation state behind an ordinary path summary:
+
+```bash
+git -C <repo-root> status --long --branch
+```
+
+If it reports an in-progress merge, rebase, cherry-pick, revert, bisect, or unresolved conflict,
+stop without staging or committing. Ordinary commit mode never continues or completes those
+operations; use the workflow that owns the active operation.
+
 ## Commit and verify
 
 Use `git commit -m <subject>` only when quoting is simple. For bodies, trailers, or

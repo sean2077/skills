@@ -1,6 +1,6 @@
 ---
 name: conventional-commit
-description: 'Create exactly one local Git commit with a Conventional Commits subject, or return one subject when explicitly asked for message-only output. Use for scoped commit requests and history-aware message selection. Not for releases or tags (use semver-release), pushes or PRs, history rewriting, or worktree cleanup.'
+description: 'Create exactly one local Git commit with a Conventional Commits subject, or return one subject when explicitly asked for message-only output. Use for scoped commit requests and history-aware message selection. Not for releases or tags (use semver-release), pushes or PRs, history rewriting, worktree cleanup, or continuing an in-progress merge, rebase, cherry-pick, revert, or bisect.'
 ---
 
 # Conventional Commit
@@ -14,7 +14,7 @@ message-selection decisions unless the user asks.
 - Commit mode creates exactly one local commit and never pushes.
 - Resolve the repository root before Git inspection; do not let a subdirectory invocation
   narrow status, history, all-change staging, or post-commit verification by accident.
-- Run the attached-HEAD preflight before staging anything.
+- Run the attached-HEAD and in-progress-operation preflights before staging anything.
 - Stage only the user-owned changes; a named path does not authorize unrelated hunks.
   Preserve unrelated working-tree and index state.
 - Use conversation context before rediscovering facts from Git.
@@ -41,7 +41,9 @@ message-selection decisions unless the user asks.
 3. In message-only mode, return exactly one normalized subject and stop.
 4. In commit mode, run `git -C <repo-root> symbolic-ref --quiet --short HEAD` before staging.
    Exit status 1 means detached HEAD; any other nonzero status is a Git preflight
-   error. Stop before staging in either case.
+   error. Stop before staging in either case. Then run
+   `git -C <repo-root> status --long --branch`; if it reports an in-progress merge,
+   rebase, cherry-pick, revert, bisect, or unresolved conflict, stop without completing it.
 5. Read [`staging-safety.md`](references/staging-safety.md), stage the exact intended
    changes—including hunk boundaries inside a mixed-ownership path—and verify the actual
    cached patch, not only its file names.

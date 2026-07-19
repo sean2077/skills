@@ -21,6 +21,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   public catalog copy from retaining behavior that those skills have retired.
 - `conventional-commit` now treats mixed-ownership hunks within one path as a staging boundary
   and requires inspection of the actual cached patch before commit.
+- Ordinary commit mode now stops on in-progress merge, rebase, cherry-pick, revert, bisect, and
+  unresolved-conflict states even when `HEAD` remains attached.
 
 ## [v4.0.0] — 2026-07-19
 
