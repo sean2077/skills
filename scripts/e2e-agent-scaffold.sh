@@ -897,8 +897,13 @@ check "unsafe registry temp keeps registration" \
 
 echo "== trunk guard: block on main + escape hatch =="
 g="$S/.agents/tools/hooks/trunk_edit_guard.sh"
-printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
+guard_block_out="$work/trunk-guard-block.out"
+printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | CLAUDE_PROJECT_DIR="$S" bash "$g" >"$guard_block_out" 2>&1; rc=$?
 check "blocks a tracked main edit (exit 2)"  test "$rc" = 2
+check "block message requires explicit trunk-edit authorization" \
+  grep -qF "Only if the user explicitly authorized a trunk edit in this conversation:" "$guard_block_out"
+check "block message never lowers authorization to mentioning trunk" \
+  no_fixed_text "$guard_block_out" "explicitly named a trunk"
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "escape hatch allows (exit 0)"         test "$rc" = 0
 python -c 'import json,sys; print(json.dumps({"cwd": sys.argv[1], "tool_input": {"file_path": "AGENTS.md"}}))' "$S" \
