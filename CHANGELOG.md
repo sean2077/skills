@@ -33,6 +33,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   merely mentioning a trunk branch no longer appears to authorize the escape hatch.
 - The pinned `npx skills` installation smoke test now compares every installed skill's complete
   file inventory and bytes, covering executable scripts and assets as well as references.
+- `semver-release` now derives completion from repository policy instead of treating a forge
+  release and URL as universal; explicit tag-only, workflow, registry, artifact, and handoff
+  boundaries remain valid and are verified only when applicable.
 
 ## [v4.0.0] — 2026-07-19
 

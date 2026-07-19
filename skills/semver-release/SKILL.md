@@ -1,11 +1,11 @@
 ---
 name: semver-release
-description: 'Cut and publish a semantic-version release from conventional commits: select or validate the target version, prepare project-owned release notes and version files, create the release commit and tag, push, and verify the forge release. Use for releases, tags, version bumps, prereleases, or promoting beta/rc to stable. Not for one ordinary commit (use conventional-commit) or pushing a feature branch.'
+description: 'Cut and publish a semantic-version release from conventional commits: select or validate the target version, prepare project-owned release notes and version files, create the release commit and tag, push, and verify the repository-owned completion boundary. Use for releases, tags, version bumps, prereleases, or promoting beta/rc to stable. Not for one ordinary commit (use conventional-commit) or pushing a feature branch.'
 ---
 
 # Semver Release
 
-Drive one release from read-only planning through a verified forge release. Keep generic
+Drive one release from read-only planning through its verified repository-owned completion boundary. Keep generic
 Git and SemVer analysis deterministic; leave version authorities, build commands, signing,
 and artifact publication under the target repository's policy.
 
@@ -22,13 +22,15 @@ and artifact publication under the target repository's policy.
 - Keep every package/version identity semantically aligned with the tag.
 - Stage the exact release snapshot, run its gates, and return to a clean tree before tagging.
 - Never move, replace, or recreate an existing tag.
-- A pushed tag is not completion: verify the release workflow or direct forge release, its
-  commit identity, and final URL.
+- Treat a pushed tag as completion only when repository policy explicitly makes it terminal.
+  Otherwise verify every applicable downstream publisher or handoff; never invent a forge,
+  registry, artifact, or deployment surface merely because another one is absent.
 
 ## Workflow
 
 1. Read repository release policy and inspect the branch, worktree, remotes, version sources,
-   changelog, signing requirements, and forge workflows. Fetch tags before selecting a base.
+   changelog, signing requirements, and release or distribution workflows. Fetch tags before
+   selecting a base.
 2. Run the bundled read-only analyzer (Python 3.8+):
 
    ```bash
@@ -49,11 +51,13 @@ and artifact publication under the target repository's policy.
    `git diff --cached --check` and short status, create `release: vX.Y.Z`, then require a clean
    tree. Create the repository-required signed tag or the default annotated tag, push the
    release branch/trunk, and push the tag without force.
-5. Follow [`publishing.md`](references/publishing.md): prefer an existing tag-triggered workflow;
-   otherwise create the forge release from the already-pushed tag using the selected project
-   release notes or repository-approved generated notes.
-6. Verify local, remote-branch, peeled-tag, CI, and forge-release commit identities, then report
-   the selected version and rationale, files changed, commit, tag, checks, and release URL.
+5. Follow [`publishing.md`](references/publishing.md) and declare the repository-owned completion
+   boundary before pushing. Stop at a verified pushed tag only when policy makes it terminal;
+   otherwise run or observe the established workflow, publisher, or handoff. Create a direct
+   forge release only when the forge is the established release surface and no workflow owns it.
+6. Verify local, remote-branch, peeled-tag, and every applicable downstream publisher identity,
+   then report the selected version and rationale, files changed, commit, tag, checks, and only
+   the URLs or identities that the selected boundary actually exposes.
 
 ## On-demand references
 
@@ -63,4 +67,4 @@ and artifact publication under the target repository's policy.
 | Node, Rust, Python, CMake, generic version files, and bounded lock synchronization | [`version-files.md`](references/version-files.md) |
 | Maintain a committed changelog or prepare a release-notes file | [`changelog.md`](references/changelog.md) |
 | Consolidate same-version prerelease history into a stable release | [`prerelease-promotion.md`](references/prerelease-promotion.md) |
-| Choose tag-triggered CI versus direct publication and verify the remote result | [`publishing.md`](references/publishing.md) |
+| Select tag-only, workflow, registry/artifact, handoff, or forge completion and verify it | [`publishing.md`](references/publishing.md) |

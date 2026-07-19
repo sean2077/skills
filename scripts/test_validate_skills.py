@@ -171,6 +171,50 @@ class NpxPayloadContractTests(unittest.TestCase):
         self.assertTrue(any("every installed skill payload" in error for error in errors))
 
 
+class SemverPublicationContractTests(unittest.TestCase):
+    SKILL = """
+repository-owned completion boundary
+Stop at a verified pushed tag only when policy makes it terminal.
+Create a direct forge release only when the forge is the established release surface.
+Verify every applicable downstream publisher identity.
+Report the URLs or identities that the selected boundary actually exposes.
+"""
+    PUBLISHING = """
+Tag-only or external handoff
+Tag-triggered release workflow
+Project-owned direct publisher
+Direct forge release
+absence of a tag workflow does not authorize a new forge release
+gh release create vX.Y.Z --verify-tag
+local and remote tags exist and peel to that release commit
+Only the evidence for the selected boundary is mandatory.
+The release states are distinct states.
+"""
+    PUBLIC = "policy-derived publication verification"
+
+    def validate(self, *, skill: str | None = None, publishing: str | None = None) -> list[str]:
+        validator.errors.clear()
+        validator.validate_semver_publication_boundary(
+            skill if skill is not None else self.SKILL,
+            publishing if publishing is not None else self.PUBLISHING,
+            self.PUBLIC,
+        )
+        return list(validator.errors)
+
+    def test_policy_derived_completion_contract_is_accepted(self) -> None:
+        self.assertEqual([], self.validate())
+
+    def test_tag_only_boundary_cannot_be_dropped(self) -> None:
+        errors = self.validate(
+            publishing=self.PUBLISHING.replace("Tag-only or external handoff", "Forge only")
+        )
+        self.assertTrue(any("repository-owned publication boundary" in error for error in errors))
+
+    def test_unconditional_forge_fallback_is_rejected(self) -> None:
+        errors = self.validate(skill=self.SKILL + "\notherwise create the forge release\n")
+        self.assertTrue(any("universal forge surface" in error for error in errors))
+
+
 class ConventionalCommitContractTests(unittest.TestCase):
     def valid_files(self) -> dict[str, str]:
         return {
