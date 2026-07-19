@@ -40,6 +40,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `python`, `python3`, or Windows `py -3` instead of rejecting non-`python` environments.
 - The release planner no longer treats a standalone stale `REBASE_HEAD` as an active rebase;
   worktree-aware `rebase-merge` or `rebase-apply` state remains blocking.
+- Non-conventional merge commits now remain audit-visible as `kind: "merge"` without masking the
+  Conventional Commit signals in their child history; explicit merge-level signals still count.
 
 ## [v4.0.0] — 2026-07-19
 

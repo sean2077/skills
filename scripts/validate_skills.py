@@ -832,6 +832,8 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
         "repository-level `true` is not sufficient",
         "git status --long --branch",
         "never turn its pending commit into a release commit",
+        "multi-parent commit without its own",
+        '`kind: "merge"`',
     )
     missing_reference_base = [value for value in reference_base_contract if value not in selection_text]
     if missing_reference_base:
@@ -942,6 +944,7 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
         "test_clean_attached_merge_still_requires_attention",
         "test_stale_rebase_head_without_active_rebase_is_ignored",
         "test_active_rebase_directory_requires_attention",
+        "test_nonconventional_merge_does_not_mask_child_inference",
         "test_real_shallow_boundary_blocks_base_selection",
     )
     missing_tests = [value for value in test_contract if value not in planner_test_text]

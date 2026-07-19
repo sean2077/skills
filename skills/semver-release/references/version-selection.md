@@ -36,6 +36,11 @@ Read subjects **and** bodies (`git log <base>..HEAD --pretty='%h %s%n%b%n---'`):
 | any `feat:` / `feat(scope):` | MINOR | `0.4.2 → 0.5.0` |
 | only `fix:` / `perf:` / `refactor:` / `docs:` / `chore:` / `test:` / `build:` / `style:` / `ci:` | PATCH | `0.4.2 → 0.4.3` |
 
+A multi-parent commit without its own Conventional Commit or breaking-footer signal remains in
+the JSON report with `kind: "merge"` for audit, but it does not become an unclassified bump
+blocker; its child commits carry the version signal. A merge commit with an explicit conventional
+or breaking signal is classified normally.
+
 Commit types are case-insensitive (`FEAT:` and `feat:` are equivalent). The breaking footer token remains uppercase; treat `BREAKING CHANGE:` and `BREAKING-CHANGE:` as synonymous.
 
 Pre-1.0 caution: many projects treat a breaking change before `1.0.0` as a MINOR bump rather than jumping to `1.0.0`. When the repo is still `0.y.z`, confirm with the user before auto-promoting a breaking change to `1.0.0`.
