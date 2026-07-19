@@ -54,6 +54,17 @@ no_exact_line() { ! grep -qxF "$2" "$1"; }
 # shellcheck disable=SC2317,SC2329
 both_absent() { [ ! -e "$1" ] && [ ! -e "$2" ]; }
 # shellcheck disable=SC2317,SC2329
+authority_laws_present() {
+  local file="$1"
+  grep -qF 'canonical repository-level contract for Agent work' "$file" \
+    && grep -qF '**Keep it current.**' "$file" \
+    && grep -qF '**Keep it lean.**' "$file" \
+    && grep -qF '**Keep scopes honest.**' "$file" \
+    && grep -qF 'directory structure alone never justifies one.' "$file" \
+    && grep -qF '**Resolve conflicts explicitly.**' "$file" \
+    && grep -qF 'budget hook remains advisory at 320 root / 120 nested' "$file"
+}
+# shellcheck disable=SC2317,SC2329
 no_partial_harness() {
   local root="$1" path
   for path in AGENTS.md CLAUDE.md .agents .claude .codex tools; do
@@ -638,6 +649,7 @@ check "greenfield creates no example source" test ! -e "$S/.agents/subagents/cod
 check "greenfield creates no example projection" both_absent "$S/.claude/agents/code-reviewer.md" "$S/.codex/agents/code-reviewer.toml"
 check "AGENTS.md contains no project overview" no_fixed_text "$S/AGENTS.md" "## Project Overview"
 check "AGENTS.md starts at the managed boundary" grep -qF '<!-- agent-scaffold:start' "$S/AGENTS.md"
+check "AGENTS.md carries the common authority laws" authority_laws_present "$S/AGENTS.md"
 check "AGENTS.md keeps third-party policy project-owned" grep -qF "Third-party skills** follow project-owned placement and installation policy" "$S/AGENTS.md"
 # shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
 check "AGENTS.md omits unconditional third-party placement" no_fixed_text "$S/AGENTS.md" 'they land as real dirs in `.claude/skills/`'
@@ -1006,7 +1018,7 @@ from pathlib import Path
 import sys
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
-path.write_text(text.replace("source of truth (SSOT)", "BROKEN MANAGED CONTENT", 1), encoding="utf-8")
+path.write_text(text.replace("canonical repository-level contract for Agent work", "BROKEN MANAGED AUTHORITY CONTRACT", 1), encoding="utf-8")
 PY
 ( cd "$S" && bash "$H" verify --json ) >"$work/verify-agents-drift.json" 2>&1; rc=$?
 check "verify rejects managed AGENTS block drift" test "$rc" != 0
@@ -1106,6 +1118,7 @@ check "Claude config omits trunk guard"          jcommand_count "$L/.claude/sett
 check "Codex config omits trunk guard"           jcommand_count "$L/.codex/hooks.json" trunk_edit_guard 0
 check "authority hook remains wired"             jcommand_count "$L/.claude/settings.json" authority_doc_budget 1
 check "managed AGENTS block omits hard rule"     no_fixed_text "$L/AGENTS.md" "Worktree-per-change (hard rule)"
+check "light-profile keeps common authority laws" authority_laws_present "$L/AGENTS.md"
 check "light-profile omits .worktrees ignore"      no_exact_line "$L/.gitignore" ".worktrees/"
 check "light-profile omits escape-hatch ignore"    no_exact_line "$L/.gitignore" ".claude/allow-trunk-edit"
 check "light-profile keeps the real-link contract" test "$(readlink "$L/CLAUDE.md")" = AGENTS.md
@@ -1140,6 +1153,7 @@ check "plan flags CLAUDE.md prose adoption"  grep -qF "adopt prose from CLAUDE.m
 check "apply exits 0"                      test "$rc" = 0
 check "AGENTS.md keeps the original prose"    grep -q "Hand-written agent rules to keep" "$M/AGENTS.md"
 check "AGENTS.md gains the harness block"     grep -qF "<!-- agent-scaffold:start" "$M/AGENTS.md"
+check "adopted AGENTS.md gains common authority laws" authority_laws_present "$M/AGENTS.md"
 check "CLAUDE.md is now a symlink to AGENTS.md" test "$(readlink "$M/CLAUDE.md")" = AGENTS.md
 
 echo "== apply adopts hand-authored subagents into the SSOT (python, no package.json) =="

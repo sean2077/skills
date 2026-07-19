@@ -85,14 +85,32 @@ tracked files while on trunk. Escape hatch — only when the user explicitly
 authorizes a trunk edit: `touch .claude/allow-trunk-edit` (auto-expires in 2 h)
 or `WORKTREE_ALLOW_TRUNK_EDIT=1`.
 
-### Authority docs
+### Authority documents (hard rules)
 
-`AGENTS.md` (root plus nested contracts created only for local differences;
-root `CLAUDE.md` is a symlink to it) is an **entry
-point**, not a detail dump. `.agents/tools/hooks/authority_doc_budget.sh`
-(PostToolUse) advises when a contract exceeds its line budget (root 320 / nested
-120; override with `AUTHORITY_DOC_MAX_ROOT|NESTED`). Nested contracts carry a
-`<!-- Parent: ... -->` link to the nearest existing ancestor contract.
+`AGENTS.md` is the canonical repository-level contract for Agent work. Read and
+follow the root contract and its applicable nested contract chain before acting;
+higher-priority instructions still govern.
+
+- **Keep it current.** When a durable change affects an Agent-relevant command,
+  invariant, ownership boundary, risk boundary, or navigation path, update or
+  remove the affected contract guidance in the same change. If the detail lives
+  in linked project docs, update it there and keep the contract summary and link
+  accurate.
+- **Keep it lean.** Keep only concise, actionable guidance that changes Agent
+  behavior and is frequently needed or costly to miss. Move explanations,
+  rationale, history, long procedures, examples, and low-frequency detail to
+  project docs and link to it.
+- **Keep scopes honest.** Root rules are project-wide. Create a nested
+  `AGENTS.md` only for a concrete local difference from the nearest ancestor;
+  directory structure alone never justifies one.
+- **Resolve conflicts explicitly.** If applicable instructions conflict, or
+  contract guidance disagrees with verified repository facts, do not guess or
+  silently ignore either. Surface the conflict, follow higher-priority
+  instructions, request owner direction when authority is unclear, and repair
+  stale guidance in the same change when authorized.
+
+The authority-document budget hook remains advisory at 320 root / 120 nested
+lines; projects may override those defaults when justified.
 
 ### SSOT layout
 
@@ -109,7 +127,7 @@ point**, not a detail dump. `.agents/tools/hooks/authority_doc_budget.sh`
 
 - **Add a skill**: edit `.agents/skills/` → run `bash .agents/relink-skills.sh` → commit source + symlink.
 - **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. Wire `--check` into the project's own CI or hook manager when desired.
-- **Third-party skills** install separately via `npx skills`; they land as real dirs in `.claude/skills/` and the relinker leaves them untouched.
+- **Third-party skills** follow project-owned placement and installation policy. The relinker manages only names sourced from `.agents/skills/`, preserves unrelated entries, and fails on same-name ownership conflicts.
 
 **Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a
 **trusted** project; until trusted it is silently skipped. Trust once: run `codex`

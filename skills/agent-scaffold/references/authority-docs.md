@@ -2,13 +2,69 @@
 
 Read this only when changing AGENTS.md or CLAUDE.md governance, budgets, or nested contracts.
 
-## AGENTS.md governance and budget
+## AGENTS.md authority and lifecycle
 
-`AGENTS.md` (root plus any on-demand nested contracts; root `CLAUDE.md` is a symlink to it) is an **entry
-point, not a detail dump** — put depth in `docs/` and link back; inline only important,
-frequently-needed points. The `authority_doc_budget.sh` hook advises when a contract crosses its
-line budget (root 320 / nested 120). Nested contracts carry `<!-- Parent: ... -->` pointing to the
-nearest existing ancestor contract and stay subordinate to the root.
+`AGENTS.md` (root plus any applicable on-demand nested contracts; root `CLAUDE.md` is a symlink to
+it) is the canonical repository-level **Agent work contract**. It governs Agent behavior, commands,
+constraints, and navigation. It is not the factual source of truth for every product behavior,
+configuration value, schema, API, or architecture decision; those remain owned by the relevant
+source, configuration, specification, or topic documentation. Higher-priority instructions still
+govern.
+
+The managed contract publishes four common laws:
+
+- **Keep it current.** Close contract or linked-document drift in the same durable change.
+- **Keep it lean.** Keep only concise, actionable, high-value guidance resident.
+- **Keep scopes honest.** Put global rules at the root and create nested contracts only for real
+  local differences.
+- **Resolve conflicts explicitly.** Never silently guess, ignore a contract, or follow known-stale
+  guidance when applicable instructions or verified repository facts materially disagree.
+
+### Maintenance trigger and ownership
+
+A **durable Agent-relevant change** is a lasting change to something future Agent work must know:
+
+- a build, test, lint, generation, run, release, or recovery command;
+- an invariant, convention, registration point, or architectural boundary;
+- an ownership, security, data-handling, review, or other risk boundary; or
+- a path or navigation entry that the contract tells Agents to use.
+
+The change author owns the documentation closure, and the reviewer checks semantic freshness. If
+the change makes resident guidance false, incomplete, or misleading, update or remove that guidance
+in the same change. If the affected detail belongs in linked project docs, update it there and keep
+the contract's concise summary and link accurate. Ordinary implementation changes that do not alter
+durable Agent guidance require neither an `AGENTS.md` edit nor a boilerplate review declaration.
+
+### Resident rules and routed detail
+
+Keep a **resident rule** only when it directly changes Agent behavior and is frequently needed or
+costly to miss. Keep it concise and actionable. Route depth to the target project's established
+documentation location (conventionally `docs/`) and link it from the contract when the link helps an
+Agent act correctly.
+
+| Keep resident in `AGENTS.md` | Route to project docs |
+|---|---|
+| Commands Agents repeatedly need | Long procedures and troubleshooting trees |
+| Non-obvious invariants and ownership boundaries | Rationale, history, and design narrative |
+| High-cost safety, security, or data rules | Extended examples and tutorials |
+| Short navigation to an authoritative source | Low-frequency background and reference detail |
+
+The `authority_doc_budget.sh` hook remains advisory: root 320 / nested 120 lines by default,
+overridable with `AUTHORITY_DOC_MAX_ROOT|NESTED`. A line count is a signal, not a substitute for the
+semantic admission rule. Do not hard-fail solely on size or compress prose mechanically to satisfy a
+number.
+
+### Conflict handling
+
+Use the root contract plus its most specific applicable nested-contract chain. When applicable
+instructions conflict, obey the higher-priority instruction. When contract guidance disagrees with
+verified repository facts, treat that as possible contract drift rather than silently using the
+facts as permission to violate the contract. Surface the material conflict, request user or project
+owner direction when authority is unclear, and repair stale lower-level guidance in the same change
+when authorized.
+
+This policy does not add a universal pull-request checkbox, periodic audit workflow, hard line gate,
+new documentation tree, or automated semantic conflict resolver.
 
 **Apply never overwrites a hand-authored `AGENTS.md`.** The installer manages only the marked
 block:
