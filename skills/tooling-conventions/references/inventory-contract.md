@@ -20,6 +20,11 @@ lives outside that root, set `TOOLS_DIR` explicitly.
 excludes nothing: no directory or filename carries universal semantic meaning. A project-provided
 value is a full project-owned policy, not an additive skill taxonomy.
 
+Python syntax checks resolve a Python 3.8+ interpreter lazily, only when the inventory contains a
+`.py` row. Set `PYTHON_BIN` to an explicit executable, or let the checker try `python`, `python3`,
+then the Windows `py -3` launcher. If none is compatible, the unavailable-interpreter preflight
+exits `2`; it is never downgraded by `audit_level=warn`.
+
 ## TSV shape
 
 Only `path` is required. `audit_level` is optional with values `enforce` (default) or `warn`.

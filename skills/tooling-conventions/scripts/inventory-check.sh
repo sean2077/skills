@@ -19,6 +19,8 @@
 #   TOOLS_DIR             scan root (default: directory containing the inventory)
 #   INVENTORY_CHECK_SKIP  full regex override for reverse-scan exclusions
 #                         (default: match nothing; every command candidate is scanned)
+#   PYTHON_BIN            optional Python 3.8+ executable override; otherwise resolve
+#                         python, python3, then the Windows py -3 launcher
 set -euo pipefail
 
 usage() {
@@ -41,6 +43,7 @@ SCAN_DIR="${TOOLS_DIR:-$(dirname "$INVENTORY")}"
 SCAN_DIR="$(cd "$SCAN_DIR" && pwd -P)" \
     || { echo "scan directory is unavailable: $SCAN_DIR" >&2; exit 2; }
 SKIP_RE="${INVENTORY_CHECK_SKIP:-a^}"
+PYTHON_CMD=()
 
 fails=0 warns=0
 fail() { printf 'FAIL: %s\n' "$*"; fails=$((fails + 1)); }
@@ -49,6 +52,27 @@ row_issue() {
     local audit_level="$1"
     shift
     if [[ "$audit_level" == "warn" ]]; then warn "$@"; else fail "$@"; fi
+}
+
+python_compatible() {
+    PYTHONUTF8=1 "$@" -c \
+        'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)' \
+        >/dev/null 2>&1
+}
+
+resolve_python() {
+    PYTHON_CMD=()
+    if [[ -n "${PYTHON_BIN:-}" ]] && python_compatible "$PYTHON_BIN"; then
+        PYTHON_CMD=("$PYTHON_BIN")
+    elif python_compatible python; then
+        PYTHON_CMD=(python)
+    elif python_compatible python3; then
+        PYTHON_CMD=(python3)
+    elif python_compatible py -3; then
+        PYTHON_CMD=(py -3)
+    else
+        return 1
+    fi
 }
 
 column_index() {
@@ -156,10 +180,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     case "$path" in
         *.sh) bash -n "$target" 2>/dev/null || row_issue "$audit_level" "shell syntax error: $path" ;;
         *.py)
-            if ! command -v python >/dev/null 2>&1; then
-                echo "python interpreter unavailable for syntax check: $path" >&2
+            if ((${#PYTHON_CMD[@]} == 0)) && ! resolve_python; then
+                echo "python 3.8+ interpreter unavailable for syntax check: $path (set PYTHON_BIN, or install python/python3/py -3)" >&2
                 exit 2
-            elif ! python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")' "$target" 2>/dev/null; then
+            fi
+            if ! PYTHONUTF8=1 "${PYTHON_CMD[@]}" -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")' "$target" 2>/dev/null; then
                 row_issue "$audit_level" "python compile error: $path"
             fi
             ;;
