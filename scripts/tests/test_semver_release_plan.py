@@ -210,6 +210,25 @@ class ReleasePlanTests(unittest.TestCase):
         )
         self.assertEqual(operation_check["status"], "ok")
 
+    def test_nonconventional_merge_does_not_mask_child_inference(self) -> None:
+        self.tag("v1.2.3")
+        self.git("checkout", "-q", "-b", "topic")
+        self.git("commit", "-q", "--allow-empty", "-m", "feat: add topic capability")
+        self.git("checkout", "-q", "main")
+        self.git("commit", "-q", "--allow-empty", "-m", "fix: repair main behavior")
+        self.git("merge", "-q", "--no-ff", "-m", "Merge topic", "topic")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 0)
+        self.assertEqual(report["inferred_bump"], "minor")
+        self.assertEqual(report["selected_tag"], "v1.3.0")
+        merge = next(  # type: ignore[union-attr]
+            item for item in report["commits"] if item["subject"] == "Merge topic"
+        )
+        self.assertEqual(merge["kind"], "merge")
+        self.assertNotIn("unclassified-commits", self.attention_ids(report))
+
     def test_active_rebase_directory_requires_attention(self) -> None:
         self.tag("v1.2.3")
         self.commit("fix: prepare release")

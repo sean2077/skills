@@ -164,10 +164,15 @@ def peel_tag(repo: Path, tag: str) -> str:
 
 
 def read_commit(repo: Path, commit: str) -> dict[str, str]:
-    output = run_git(repo, "show", "-s", "--format=%s%x00%b", commit).stdout
-    subject, _, body = output.partition("\x00")
-    short_hash = run_git(repo, "rev-parse", "--short", commit).stdout.strip()
-    return {"hash": commit, "short_hash": short_hash, "subject": subject.strip(), "body": body.strip()}
+    output = run_git(repo, "show", "-s", "--format=%h%x00%P%x00%s%x00%b", commit).stdout
+    short_hash, parents, subject, body = output.split("\x00", 3)
+    return {
+        "hash": commit,
+        "short_hash": short_hash.strip(),
+        "parents": parents.strip(),
+        "subject": subject.strip(),
+        "body": body.strip(),
+    }
 
 
 def classify_commits(commits: Iterable[dict[str, str]]) -> tuple[list[dict[str, str]], dict[str, list[str]]]:
@@ -176,6 +181,7 @@ def classify_commits(commits: Iterable[dict[str, str]]) -> tuple[list[dict[str, 
         "breaking": [],
         "feature": [],
         "patch": [],
+        "merge": [],
         "unclassified": [],
     }
     for commit in commits:
@@ -188,6 +194,8 @@ def classify_commits(commits: Iterable[dict[str, str]]) -> tuple[list[dict[str, 
             kind = "feature"
         elif match and match.group(1).lower() in PATCH_TYPES:
             kind = "patch"
+        elif len(commit["parents"].split()) > 1:
+            kind = "merge"
         else:
             kind = "unclassified"
         item = {"hash": commit["hash"], "short_hash": commit["short_hash"], "subject": subject, "kind": kind}
