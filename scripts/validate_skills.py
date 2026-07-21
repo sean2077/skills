@@ -37,6 +37,8 @@ SKILLS_DIR = REPO / "skills"
 README = REPO / "README.md"
 MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
 GROUPING_MANIFEST = REPO / ".claude-plugin" / "plugin.json"
+VALIDATE_WORKFLOW = REPO / ".github" / "workflows" / "validate.yml"
+RELEASE_WORKFLOW = REPO / ".github" / "workflows" / "release.yml"
 # Coarse repo-local prose budget, not a host token limit. It scales with the
 # catalog so adding a well-scoped skill does not consume another skill's share.
 METADATA_PROSE_CHARS_PER_SKILL = 512
@@ -172,6 +174,82 @@ def readme_skill_rows(readme_text: str, skill_name: str) -> str:
     return "\n".join(line for line in readme_text.splitlines() if marker in line)
 
 
+def validate_repository_release_automation_contract(
+    validate_text: str | None = None, release_text: str | None = None
+) -> None:
+    """Keep this catalog's tag publisher reusable, ordered, and fail-closed."""
+
+    missing_paths = [
+        path.relative_to(REPO).as_posix()
+        for path in (VALIDATE_WORKFLOW, RELEASE_WORKFLOW)
+        if not path.is_file()
+    ]
+    if (validate_text is None or release_text is None) and missing_paths:
+        errors.append(f"repository release automation is missing required workflows: {missing_paths}")
+        return
+
+    if validate_text is None:
+        validate_text = VALIDATE_WORKFLOW.read_text(encoding="utf-8")
+    if release_text is None:
+        release_text = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+    normalized_validate = " ".join(validate_text.split())
+    normalized_release = " ".join(release_text.split())
+    required_validate = (
+        'push: branches: ["**"]',
+        "pull_request:",
+        "workflow_call:",
+        "permissions: contents: read",
+    )
+    required_release = (
+        'push: tags: ["v*"]',
+        "permissions: contents: read",
+        "uses: ./.github/workflows/validate.yml",
+        "needs: validate",
+        "contents: write",
+        "tag_pattern=",
+        'git rev-parse "$GITHUB_REF_NAME^{commit}"',
+        "skills/semver-release/scripts/extract-changelog.py",
+        '--tag "$GITHUB_REF_NAME"',
+        '--output "$RUNNER_TEMP/release-notes.md"',
+        "Inspect existing release",
+        "id: release_state",
+        "exists=true",
+        "if: steps.release_state.outputs.exists != 'true'",
+        'release create "$GITHUB_REF_NAME"',
+        "--verify-tag",
+        '--notes-file "$RUNNER_TEMP/release-notes.md"',
+        'gh "${args[@]}"',
+        "--prerelease --latest=false",
+        "Verify GitHub Release",
+        "expected_notes=",
+        "actual_notes=",
+    )
+    missing = {
+        "validate.yml": [value for value in required_validate if value not in normalized_validate],
+        "release.yml": [value for value in required_release if value not in normalized_release],
+    }
+    missing = {label: values for label, values in missing.items() if values}
+    if missing:
+        errors.append(f"repository release automation lost required fixtures: {missing}")
+
+    forbidden = ("--generate-notes", "pull_request_target:")
+    found = [value for value in forbidden if value in normalized_release]
+    if found:
+        errors.append(
+            "repository release automation must remain changelog-backed and least-privilege: "
+            f"{found}"
+        )
+
+    extract = normalized_release.find("skills/semver-release/scripts/extract-changelog.py")
+    publish = normalized_release.find('release create "$GITHUB_REF_NAME"')
+    verify = normalized_release.find("Verify GitHub Release")
+    if extract < 0 or publish < 0 or verify < 0 or not extract < publish < verify:
+        errors.append(
+            "repository release automation must extract notes before publishing and verify afterward"
+        )
+
+
 def main() -> int:
     if not SKILLS_DIR.is_dir():
         errors.append(f"no skills/ directory at {SKILLS_DIR}")
@@ -189,6 +267,7 @@ def main() -> int:
     validate_grouping_manifest(skill_dirs)
     validate_npx_discovery_contract()
     validate_npx_payload_contract()
+    validate_repository_release_automation_contract()
 
     for d in skill_dirs:
         dir_name = d.name

@@ -42,6 +42,10 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
 - Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
   green before any merge back to `main`.
+- **Release boundary** — after the release snapshot passes `main` CI, push its annotated
+  `vX.Y.Z` or numbered `-alpha.N`/`-beta.N`/`-rc.N` tag. `.github/workflows/release.yml` reuses the
+  full validation workflow, extracts the exact tag section from `CHANGELOG.md`, and owns GitHub
+  Release creation; never race it with a manual publisher.
 - **Cross-platform (design goal)** — skills + bundled scripts target macOS / Linux / Windows
   (**Git Bash only**): keep them POSIX-bash + GNU-coreutils compatible, **LF** line endings
   (enforced by `.gitattributes` + a CI CRLF check), and **real-symlink-required** (preflight

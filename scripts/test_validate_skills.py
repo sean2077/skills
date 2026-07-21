@@ -435,6 +435,71 @@ class SemverChangelogExtractionTests(unittest.TestCase):
             self.assertEqual(original, changelog.read_text(encoding="utf-8"))
 
 
+class RepositoryReleaseAutomationContractTests(unittest.TestCase):
+    ROOT = Path(__file__).resolve().parents[1]
+
+    def files(self) -> tuple[str, str]:
+        validate_text = (self.ROOT / ".github" / "workflows" / "validate.yml").read_text(
+            encoding="utf-8"
+        )
+        release_text = (self.ROOT / ".github" / "workflows" / "release.yml").read_text(
+            encoding="utf-8"
+        )
+        return validate_text, release_text
+
+    def validate(
+        self, *, validate_text: str | None = None, release_text: str | None = None
+    ) -> list[str]:
+        current_validate, current_release = self.files()
+        validator.errors.clear()
+        validator.validate_repository_release_automation_contract(
+            current_validate if validate_text is None else validate_text,
+            current_release if release_text is None else release_text,
+        )
+        return list(validator.errors)
+
+    def test_repository_release_automation_is_accepted(self) -> None:
+        self.assertEqual([], self.validate())
+
+    def test_validation_workflow_must_remain_reusable(self) -> None:
+        validate_text, _ = self.files()
+        errors = self.validate(validate_text=validate_text.replace("  workflow_call:\n", ""))
+        self.assertTrue(any("required fixtures" in error for error in errors))
+
+    def test_release_must_wait_for_validation(self) -> None:
+        _, release_text = self.files()
+        errors = self.validate(release_text=release_text.replace("    needs: validate\n", ""))
+        self.assertTrue(any("required fixtures" in error for error in errors))
+
+    def test_generated_notes_fallback_is_rejected(self) -> None:
+        _, release_text = self.files()
+        errors = self.validate(release_text=release_text + "\n# --generate-notes\n")
+        self.assertTrue(any("changelog-backed" in error for error in errors))
+
+    def test_existing_release_is_not_replaced(self) -> None:
+        _, release_text = self.files()
+        errors = self.validate(
+            release_text=release_text.replace(
+                "        if: steps.release_state.outputs.exists != 'true'\n", ""
+            )
+        )
+        self.assertTrue(any("required fixtures" in error for error in errors))
+
+    def test_publication_cannot_precede_extraction(self) -> None:
+        _, release_text = self.files()
+        errors = self.validate(
+            release_text='release create "$GITHUB_REF_NAME"\n' + release_text
+        )
+        self.assertTrue(any("extract notes before publishing" in error for error in errors))
+
+    def test_post_publication_verification_is_required(self) -> None:
+        _, release_text = self.files()
+        errors = self.validate(
+            release_text=release_text.replace("      - name: Verify GitHub Release", "")
+        )
+        self.assertTrue(any("required fixtures" in error for error in errors))
+
+
 class ConventionalCommitContractTests(unittest.TestCase):
     def valid_files(self) -> dict[str, str]:
         return {
