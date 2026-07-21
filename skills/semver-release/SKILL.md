@@ -1,6 +1,6 @@
 ---
 name: semver-release
-description: 'Cut and publish a semantic-version release from conventional commits: select or validate the target version, prepare project-owned release notes and version files, create the release commit and tag, push, and verify the repository-owned completion boundary. Use for releases, tags, version bumps, prereleases, or promoting beta/rc to stable. Not for one ordinary commit (use conventional-commit) or pushing a feature branch.'
+description: 'Cut and publish a SemVer release from conventional commits: choose or validate the target, update project-owned notes and version files, create the release commit/tag, push, and verify the repository-owned completion boundary. Prefer changelog-backed tag-triggered automation for a new release path; preserve or explicitly migrate existing policy. Use for releases, tags, bumps, prereleases, or stable promotion. Not for one ordinary commit (use conventional-commit) or a feature-branch push.'
 ---
 
 # Semver Release
@@ -19,6 +19,8 @@ and artifact publication under the target repository's policy.
   merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress.
 - Preserve the repository's release-note authority: committed changelog, fragments,
   generated notes, or forge-native notes. Do not invent a root changelog by default.
+- Prefer changelog-backed tag-triggered automation only when the repository already owns it or
+  the user approves its adoption after a concrete comparison with the current flow.
 - Keep every package/version identity semantically aligned with the tag.
 - Stage the exact release snapshot, run its gates, and return to a clean tree before tagging.
 - Never move, replace, or recreate an existing tag.
@@ -29,17 +31,22 @@ and artifact publication under the target repository's policy.
 ## Workflow
 
 1. Read repository release policy and inspect the branch, worktree, remotes, version sources,
-   changelog, signing requirements, and release or distribution workflows. Fetch tags before
-   selecting a base.
+   complete tag format, changelog or fragments, notes producer, signing requirements, publisher,
+   outputs, and release workflows. Fetch tags before selecting a base. When the observed flow is
+   missing, partial, or different from the preferred automation, follow
+   [`automated-release-flow.md`](references/automated-release-flow.md) and ask once whether to
+   retain or migrate; this gate also applies to a mature alternative, and maturity alone is not
+   a retention decision. Make no infrastructure change without an answer.
 2. Run the bundled read-only analyzer (Python 3.8+):
 
    ```bash
    python <skill-dir>/scripts/release-plan.py --repo <repo-root> --json [--target vX.Y.Z]
    ```
 
-   Resolve every `attention` result before mutation. If Python is unavailable or a custom
-   release model exceeds the analyzer, follow [`version-selection.md`](references/version-selection.md)
-   manually and report the unsupported boundary.
+   Resolve every `attention` result before mutation. The analyzer models `v`-prefixed SemVer tags;
+   preserve an established unprefixed or custom tag format and follow
+   [`version-selection.md`](references/version-selection.md) manually. If Python is unavailable
+   or another custom release model exceeds the analyzer, report the unsupported boundary.
 3. Follow the repository-owned release-note pipeline. Read
    [`changelog.md`](references/changelog.md) only when the project maintains a committed
    changelog or needs a prepared notes file. Synchronize only authoritative project version
@@ -48,7 +55,7 @@ and artifact publication under the target repository's policy.
    [`prerelease-promotion.md`](references/prerelease-promotion.md). Get the date from the
    environment rather than guessing it.
 4. Run repository release gates. Stage every release file and no unrelated path; verify with
-   `git diff --cached --check` and short status, create `release: vX.Y.Z`, then require a clean
+   `git diff --cached --check` and short status, create `release: <exact-tag>`, then require a clean
    tree. Create the repository-required signed tag or the default annotated tag, push the
    release branch/trunk, and push the tag without force.
 5. Follow [`publishing.md`](references/publishing.md) and declare the repository-owned completion
@@ -66,5 +73,6 @@ and artifact publication under the target repository's policy.
 | Manual SemVer validation, reachable-base selection, bump inference, or unsupported models | [`version-selection.md`](references/version-selection.md) |
 | Node, Rust, Python, CMake, generic version files, and bounded lock synchronization | [`version-files.md`](references/version-files.md) |
 | Maintain a committed changelog or prepare a release-notes file | [`changelog.md`](references/changelog.md) |
+| Compare, adopt, or run changelog-backed tag-triggered automation | [`automated-release-flow.md`](references/automated-release-flow.md) |
 | Consolidate same-version prerelease history into a stable release | [`prerelease-promotion.md`](references/prerelease-promotion.md) |
 | Select tag-only, workflow, registry/artifact, handoff, or forge completion and verify it | [`publishing.md`](references/publishing.md) |

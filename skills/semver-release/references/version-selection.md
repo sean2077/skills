@@ -15,6 +15,13 @@ strict-SemVer tags, equal-precedence build-metadata ambiguity, conventional-comm
 target availability, and prerelease decisions. Resolve its `attention` entries before mutation.
 The manual rules below are the fallback and the review contract for the analyzer.
 
+The analyzer deliberately models `v`-prefixed SemVer tags. If repository policy instead owns an
+unprefixed or custom mapping such as `1.2.3` or `release-1.2.3`, report that analyzer boundary and
+preserve the repository's complete tag format. Use its documented mapping to validate and compare
+the embedded SemVer value manually; if the mapping is absent, mixed, or ambiguous, ask the owner
+instead of inferring a format from a few historical tags. Changelog extraction and CI publication
+still use the complete tag as an opaque exact identity.
+
 For a manual fallback, an attached branch and empty `git status --porcelain` are not sufficient:
 run `git status --long --branch` and stop if it reports a merge, rebase/am, cherry-pick, revert,
 bisect, sequencer, or unresolved-conflict state. Finish or abort the owning Git operation before
