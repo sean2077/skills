@@ -6,6 +6,33 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v4.1.0] — 2026-07-21
+
+### Added
+
+- `semver-release` now prefers changelog-backed, tag-triggered publication for a new release
+  path, with a one-time adoption offer before changing an existing repository's release
+  infrastructure.
+- Release-note extraction now treats the complete repository tag as an opaque exact identity and
+  fails closed on missing, duplicate, malformed, mismatched, calendar-invalid, or empty changelog
+  sections. Executable fixtures cover stable, prerelease, prefixed, unprefixed, and custom tags.
+- This catalog now dogfoods that model: stable and numbered-prerelease `v` tags invoke the full
+  reusable validation matrix, extract notes from the tagged commit, publish the GitHub Release
+  only after validation, and verify the resulting tag, notes, and release state without replacing
+  an existing release.
+
+### Changed
+
+- Release guidance now keeps the repository's semantic version separate from its complete tag
+  format and preserves retained generated-notes, tag-only, external-handoff, direct-publisher,
+  and direct-forge models instead of silently migrating them.
+
+### Fixed
+
+- `agent-scaffold` authority-document budgets now support character limits alongside advisory
+  line limits, allowing managed contracts to keep semantic source lines without enforcing hard
+  wrapping.
+
 ## [v4.0.1] — 2026-07-19
 
 ### Changed
@@ -222,7 +249,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v4.0.1...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v4.1.0...HEAD
+[v4.1.0]: https://github.com/sean2077/skills/compare/v4.0.1...v4.1.0
 [v4.0.1]: https://github.com/sean2077/skills/compare/v4.0.0...v4.0.1
 [v4.0.0]: https://github.com/sean2077/skills/compare/v3.0.2...v4.0.0
 [v3.0.2]: https://github.com/sean2077/skills/compare/v3.0.1...v3.0.2
