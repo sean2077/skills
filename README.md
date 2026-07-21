@@ -70,8 +70,10 @@ the top. Do not add root-level `reference.md` files or catch-alls such as `misc.
 
 Run the catalog's pinned validation, official spec, discovery, shell, and behavioral gates from
 the [development commands](AGENTS.md#development-commands). Release-facing changes accumulate in
-the [changelog](CHANGELOG.md); the repository's SemVer workflow owns the final version, tag, and
-project-defined publication boundary.
+the [changelog](CHANGELOG.md). After the release snapshot is merged and validated on `main`, an
+annotated stable or numbered-prerelease `v` tag triggers the repository-owned release workflow.
+It reruns the complete validation workflow, extracts the exact matching changelog section from
+the tagged commit, and creates a GitHub Release only after both steps succeed.
 
 ## License
 

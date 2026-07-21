@@ -1,0 +1,95 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: validate release snapshot
+    uses: ./.github/workflows/validate.yml
+
+  release:
+    name: publish GitHub Release
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate tag identity and extract release notes
+        shell: bash
+        run: |
+          tag_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc)\.[1-9][0-9]*)?$'
+          if [[ ! "$GITHUB_REF_NAME" =~ $tag_pattern ]]; then
+            printf 'unsupported release tag: %s\n' "$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
+          python skills/semver-release/scripts/extract-changelog.py \
+            --changelog CHANGELOG.md \
+            --tag "$GITHUB_REF_NAME" \
+            --output "$RUNNER_TEMP/release-notes.md"
+
+      - name: Inspect existing release
+        id: release_state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        if: steps.release_state.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          args=(
+            release create "$GITHUB_REF_NAME"
+            --repo "$GITHUB_REPOSITORY"
+            --verify-tag
+            --title "$GITHUB_REF_NAME"
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+          )
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            args+=(--prerelease --latest=false)
+          else
+            args+=(--latest)
+          fi
+          gh "${args[@]}"
+
+      - name: Verify GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          test "$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)" = "$GITHUB_REF_NAME"
+          test "$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = "false"
+          expected_prerelease=false
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            expected_prerelease=true
+          fi
+          test "$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)" = "$expected_prerelease"
+          expected_notes="$(cat "$RUNNER_TEMP/release-notes.md")"
+          actual_notes="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json body --jq .body)"
+          test "$actual_notes" = "$expected_notes"
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json url --jq .url

@@ -2,7 +2,12 @@ name: validate-skills
 
 on:
   push:
+    branches: ["**"]
   pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   validate:
