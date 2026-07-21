@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import contextlib
 import io
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -185,7 +187,7 @@ Tag-triggered release workflow
 Project-owned direct publisher
 Direct forge release
 absence of a tag workflow does not authorize a new forge release
-gh release create vX.Y.Z --verify-tag
+gh release create <exact-tag> --verify-tag
 local and remote tags exist and peel to that release commit
 Only the evidence for the selected boundary is mandatory.
 The release states are distinct states.
@@ -213,6 +215,224 @@ The release states are distinct states.
     def test_unconditional_forge_fallback_is_rejected(self) -> None:
         errors = self.validate(skill=self.SKILL + "\notherwise create the forge release\n")
         self.assertTrue(any("universal forge surface" in error for error in errors))
+
+
+class SemverAutomationContractTests(unittest.TestCase):
+    ROOT = Path(__file__).resolve().parents[1]
+    SKILL_DIR = ROOT / "skills" / "semver-release"
+
+    def files(self) -> dict[str, str]:
+        paths = {
+            "skill": self.SKILL_DIR / "SKILL.md",
+            "automation": self.SKILL_DIR / "references" / "automated-release-flow.md",
+            "changelog": self.SKILL_DIR / "references" / "changelog.md",
+            "publishing": self.SKILL_DIR / "references" / "publishing.md",
+            "extractor": self.SKILL_DIR / "scripts" / "extract-changelog.py",
+        }
+        return {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
+
+    def validate(self, **overrides: str) -> list[str]:
+        files = self.files()
+        files.update(overrides)
+        validator.errors.clear()
+        validator.validate_semver_automation_contract(
+            files["skill"],
+            files["automation"],
+            files["changelog"],
+            files["publishing"],
+            files["extractor"],
+            "preferred changelog-backed tag workflow",
+        )
+        return list(validator.errors)
+
+    def test_preferred_automation_contract_is_accepted(self) -> None:
+        self.assertEqual([], self.validate())
+
+    def test_adoption_gate_cannot_be_dropped(self) -> None:
+        skill = self.files()["skill"].replace(
+            "ask once whether to\n   retain or migrate",
+            "migrate the repository automatically",
+        )
+        errors = self.validate(skill=skill)
+        self.assertTrue(any("preferred automation contract" in error for error in errors))
+
+    def test_generated_notes_fallback_is_rejected(self) -> None:
+        automation = self.files()["automation"] + "\nFallback: --generate-notes\n"
+        errors = self.validate(automation=automation)
+        self.assertTrue(any("generated-notes fallback" in error for error in errors))
+
+    def test_mature_alternative_still_requires_an_adoption_offer(self) -> None:
+        automation = self.files()["automation"].replace(
+            "including a mature alternative", "unless the alternative is mature"
+        )
+        errors = self.validate(automation=automation)
+        self.assertTrue(any("preferred automation contract" in error for error in errors))
+
+    def test_notes_validation_must_precede_publication(self) -> None:
+        automation = "gh release create too-early\n" + self.files()["automation"]
+        errors = self.validate(automation=automation)
+        self.assertTrue(any("notes validation must precede publication" in error for error in errors))
+
+    def test_format_neutral_tag_examples_are_required(self) -> None:
+        automation = self.files()["automation"].replace("`release-1.2.3`", "`v1.2.3`")
+        errors = self.validate(automation=automation)
+        self.assertTrue(any("preferred automation contract" in error for error in errors))
+
+    def test_extractor_cannot_assume_a_v_prefix(self) -> None:
+        extractor = self.files()["extractor"] + '\nvalue.startswith("v")\n'
+        errors = self.validate(extractor=extractor)
+        self.assertTrue(any("tag-prefix assumption" in error for error in errors))
+
+    def test_workflow_owned_generated_notes_boundary_is_required(self) -> None:
+        publishing = self.files()["publishing"].replace(
+            "#### Workflow-owned generated notes", "#### Changelog only"
+        )
+        errors = self.validate(publishing=publishing)
+        self.assertTrue(any("preferred automation contract" in error for error in errors))
+
+
+class SemverChangelogExtractionTests(unittest.TestCase):
+    EXTRACTOR = (
+        Path(__file__).resolve().parents[1]
+        / "skills"
+        / "semver-release"
+        / "scripts"
+        / "extract-changelog.py"
+    )
+
+    def run_extract(
+        self, changelog_text: str, exact_tag: str, *, existing_output: str | None = None
+    ) -> tuple[subprocess.CompletedProcess[str], str | None]:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            changelog = directory / "CHANGELOG.md"
+            output = directory / "release-notes.md"
+            changelog.write_text(changelog_text, encoding="utf-8")
+            if existing_output is not None:
+                output.write_text(existing_output, encoding="utf-8")
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(self.EXTRACTOR),
+                    "--changelog",
+                    str(changelog),
+                    "--tag",
+                    exact_tag,
+                    "--output",
+                    str(output),
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            output_text = output.read_text(encoding="utf-8") if output.exists() else None
+            return completed, output_text
+
+    def test_extracts_exact_format_neutral_tags_after_unreleased(self) -> None:
+        for exact_tag in (
+            "v1.2.3",
+            "1.2.3",
+            "release-1.2.3",
+            "1.3.0-rc.1",
+            "build]2026.07",
+        ):
+            with self.subTest(exact_tag=exact_tag):
+                changelog = f"""# Changelog
+
+## [Unreleased]
+
+- pending
+
+## [{exact_tag}] — 2026-07-21
+
+### Added
+
+- shipped
+
+## [older] — 2026-07-20
+
+- previous
+"""
+                completed, output = self.run_extract(changelog, exact_tag)
+                self.assertEqual(0, completed.returncode, completed.stderr)
+                self.assertEqual("### Added\n\n- shipped\n", output)
+
+    def test_level_two_text_inside_fence_is_not_a_boundary(self) -> None:
+        changelog = """# Changelog
+
+## [release/2026.07] — 2026-07-21
+
+### Changed
+
+```markdown
+## [example] — 2000-01-01
+```not-a-closing-fence
+## [still-an-example] — 2000-01-02
+```
+
+- kept
+
+## [older] — 2026-07-20
+"""
+        completed, output = self.run_extract(changelog, "release/2026.07")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertIn("## [example] — 2000-01-01", output or "")
+        self.assertIn("## [still-an-example] — 2000-01-02", output or "")
+        self.assertTrue((output or "").endswith("- kept\n"))
+
+    def test_invalid_sections_fail_without_replacing_existing_output(self) -> None:
+        cases = {
+            "missing": "## [other] — 2026-07-21\n\n- notes\n",
+            "duplicate": (
+                "## [v1.2.3] — 2026-07-21\n\n- first\n\n"
+                "## [v1.2.3] — 2026-07-21\n\n- second\n"
+            ),
+            "malformed": "## [v1.2.3] - 2026-07-21\n\n- notes\n",
+            "invalid-date": "## [v1.2.3] — 2026-02-30\n\n- notes\n",
+            "empty": "## [v1.2.3] — 2026-07-21\n\n## [older] — 2026-07-20\n",
+        }
+        for name, changelog in cases.items():
+            with self.subTest(name=name):
+                completed, output = self.run_extract(
+                    changelog, "v1.2.3", existing_output="sentinel\n"
+                )
+                self.assertEqual(1, completed.returncode)
+                self.assertIn("error:", completed.stderr)
+                self.assertEqual("sentinel\n", output)
+
+    def test_tag_mismatch_does_not_create_output(self) -> None:
+        completed, output = self.run_extract(
+            "## [v1.2.3] — 2026-07-21\n\n- notes\n", "1.2.3"
+        )
+        self.assertEqual(1, completed.returncode)
+        self.assertIsNone(output)
+
+    def test_output_cannot_overwrite_changelog(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            changelog = Path(temporary) / "CHANGELOG.md"
+            original = "## [v1.2.3] — 2026-07-21\n\n- notes\n"
+            changelog.write_text(original, encoding="utf-8")
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(self.EXTRACTOR),
+                    "--changelog",
+                    str(changelog),
+                    "--tag",
+                    "v1.2.3",
+                    "--output",
+                    str(changelog),
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            self.assertEqual(1, completed.returncode)
+            self.assertEqual(original, changelog.read_text(encoding="utf-8"))
 
 
 class ConventionalCommitContractTests(unittest.TestCase):

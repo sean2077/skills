@@ -696,7 +696,7 @@ def validate_semver_publication_boundary(
         "Project-owned direct publisher",
         "Direct forge release",
         "absence of a tag workflow does not authorize a new forge release",
-        "gh release create vX.Y.Z",
+        "gh release create <exact-tag>",
         "--verify-tag",
         "local and remote tags exist and peel to that release commit",
         "Only the evidence for the selected boundary is mandatory",
@@ -727,6 +727,110 @@ def validate_semver_publication_boundary(
         )
 
 
+def validate_semver_automation_contract(
+    skill_text: str,
+    automation_text: str,
+    changelog_text: str,
+    publishing_text: str,
+    extractor_text: str,
+    public_summary: str,
+) -> None:
+    """Keep preferred automation opt-in, format-neutral, and fail-closed."""
+
+    normalized = {
+        "skill": " ".join(skill_text.split()),
+        "automation": " ".join(automation_text.split()),
+        "changelog": " ".join(changelog_text.split()),
+        "publishing": " ".join(publishing_text.split()),
+        "extractor": " ".join(extractor_text.split()),
+        "public": " ".join(public_summary.split()),
+    }
+    required = {
+        "skill": (
+            "Prefer changelog-backed tag-triggered automation",
+            "ask once whether to retain or migrate",
+            "this gate also applies to a mature alternative",
+            "Make no infrastructure change without an answer",
+            "The analyzer models `v`-prefixed SemVer tags",
+            "create `release: <exact-tag>`",
+        ),
+        "automation": (
+            "Preferred Automated Release Flow",
+            "Adoption offer",
+            "including a mature alternative",
+            "present one concrete current-versus-preferred comparison and ask once whether to retain",
+            "Maturity alone is not a retention decision",
+            "make no changelog-authority, workflow, permission, publisher, or release-surface change",
+            "`v1.2.3`, `1.2.3`, `release-1.2.3`",
+            "opaque exact string",
+            "before any forge Release creation",
+            "Do not generate fallback notes",
+            "scripts/extract-changelog.py",
+            "gh release create",
+            "--notes-file",
+            "Do not reconstruct it from a package version or assume a `v` prefix",
+        ),
+        "changelog": (
+            "## [<exact-tag>] — YYYY-MM-DD",
+            "`## [v1.2.3] — 2026-07-21`",
+            "`## [1.3.0-rc.1] — 2026-07-21`",
+            "`## [release-1.2.3] — 2026-07-21`",
+            "trimmed body after the one matching heading",
+            "next level-two heading",
+            "Do not include the release heading itself",
+            "never falls back to generated notes",
+        ),
+        "publishing": (
+            "Preferred changelog-backed workflow",
+            "Workflow-owned generated notes",
+            "After the owner explicitly retains an established workflow",
+            "before any forge Release creation",
+            "do not fall back to generated notes",
+        ),
+        "extractor": (
+            "def extract_notes",
+            "def write_notes",
+            "CANONICAL_HEADING_RE",
+            "--changelog",
+            "--tag",
+            "--output",
+            "complete repository tag, matched exactly",
+            "os.replace",
+        ),
+        "public": ("preferred changelog-backed tag workflow",),
+    }
+    missing = {
+        label: [value for value in values if value not in normalized[label]]
+        for label, values in required.items()
+    }
+    missing = {label: values for label, values in missing.items() if values}
+    if missing:
+        errors.append(f"semver-release: preferred automation contract lost fixtures: {missing}")
+
+    automation = normalized["automation"]
+    extractor_call = automation.find("scripts/extract-changelog.py")
+    publisher_call = automation.find("gh release create")
+    if extractor_call < 0 or publisher_call < 0 or extractor_call > publisher_call:
+        errors.append(
+            "semver-release/references/automated-release-flow.md: notes validation must precede publication"
+        )
+
+    forbidden = {
+        "automation": ("--generate-notes",),
+        "extractor": ('startswith("v")', "removeprefix(\"v\")", "parse_semver"),
+    }
+    found = {
+        label: [value for value in values if value in normalized[label]]
+        for label, values in forbidden.items()
+    }
+    found = {label: values for label, values in found.items() if values}
+    if found:
+        errors.append(
+            "semver-release: preferred automation must not add a generated-notes fallback or tag-prefix assumption: "
+            f"{found}"
+        )
+
+
 def validate_semver_release_contract(readme_text: str | None = None) -> None:
     """Guard bump inference and package identity across release ecosystems."""
     skill_dir = SKILLS_DIR / "semver-release"
@@ -735,11 +839,21 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
         "references/version-selection.md": skill_dir / "references" / "version-selection.md",
         "references/version-files.md": skill_dir / "references" / "version-files.md",
         "references/changelog.md": skill_dir / "references" / "changelog.md",
+        "references/automated-release-flow.md": skill_dir / "references" / "automated-release-flow.md",
         "references/prerelease-promotion.md": skill_dir / "references" / "prerelease-promotion.md",
         "references/publishing.md": skill_dir / "references" / "publishing.md",
     }
     planner = skill_dir / "scripts" / "release-plan.py"
-    if not skill.exists() or not planner.exists() or any(not path.exists() for path in reference_paths.values()):
+    extractor = skill_dir / "scripts" / "extract-changelog.py"
+    required_paths = {
+        "SKILL.md": skill,
+        **reference_paths,
+        "scripts/release-plan.py": planner,
+        "scripts/extract-changelog.py": extractor,
+    }
+    missing_paths = [label for label, path in required_paths.items() if not path.exists()]
+    if missing_paths:
+        errors.append(f"semver-release: missing required files: {missing_paths}")
         return
     skill_text = skill.read_text(encoding="utf-8")
     reference_texts = {label: path.read_text(encoding="utf-8") for label, path in reference_paths.items()}
@@ -747,8 +861,10 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
     version_files_text = reference_texts["references/version-files.md"]
     promotion_text = reference_texts["references/prerelease-promotion.md"]
     changelog_text = reference_texts["references/changelog.md"]
+    automation_text = reference_texts["references/automated-release-flow.md"]
     publishing_text = reference_texts["references/publishing.md"]
     planner_text = planner.read_text(encoding="utf-8")
+    extractor_text = extractor.read_text(encoding="utf-8")
     if readme_text is None:
         readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
     validate_semver_publication_boundary(
@@ -756,7 +872,15 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
         publishing_text,
         readme_skill_rows(readme_text, "semver-release"),
     )
-    combined = skill_text + "".join(reference_texts.values())
+    validate_semver_automation_contract(
+        skill_text,
+        automation_text,
+        changelog_text,
+        publishing_text,
+        extractor_text,
+        readme_skill_rows(readme_text, "semver-release"),
+    )
+    combined = skill_text + "".join(reference_texts.values()) + extractor_text
     bump_contract = (
         "BREAKING CHANGE:",
         "BREAKING-CHANGE:",
@@ -847,7 +971,7 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
     release_stage_contract = (
         "Stage every release file and no unrelated path",
         "git diff --cached --check",
-        "create `release: vX.Y.Z`",
+        "create `release: <exact-tag>`",
         "require a clean",
         "push the tag without force",
     )

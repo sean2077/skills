@@ -25,6 +25,23 @@ actually owns: packages, artifacts, deployments, a forge release, or a downstrea
 race it with a second manual publisher or substitute the fallback changelog format for a workflow
 that already owns another note-generation contract.
 
+#### Preferred changelog-backed workflow
+
+When the repository adopts the preferred automated release flow, the complete CI tag is the
+identity shared by the changelog heading, workflow, publisher, and verification. Validate and
+extract exactly one non-empty section before any forge Release creation, registry publication,
+artifact upload, deployment, or external handoff. A missing, duplicate, malformed, mismatched, or
+empty section is a publication failure; do not fall back to generated notes. Follow
+[`automated-release-flow.md`](automated-release-flow.md) for the adoption gate and adaptable CI
+sequence.
+
+#### Workflow-owned generated notes
+
+After the owner explicitly retains an established workflow that owns note generation
+independently, preserve that contract rather than forcing a committed changelog or the preferred
+extractor. Generated notes remain valid only because repository policy selected them, not as a
+fallback after changelog validation fails.
+
 If CI succeeds but an output required by that workflow's contract does not appear, report the
 missing output as a publication failure. A workflow that intentionally publishes no forge release
 is not incomplete merely because the forge has no release page.
@@ -45,9 +62,9 @@ explicitly uses GitHub-generated notes, use `--generate-notes` instead of fabric
 changelog:
 
 ```bash
-gh release create vX.Y.Z --title vX.Y.Z --notes-file <release-notes.md> --verify-tag
-gh release create vX.Y.Z --title vX.Y.Z --generate-notes --verify-tag
-glab release create vX.Y.Z --notes-file <release-notes.md>
+gh release create <exact-tag> --title <exact-tag> --notes-file <release-notes.md> --verify-tag
+gh release create <exact-tag> --title <exact-tag> --generate-notes --verify-tag
+glab release create <exact-tag> --notes-file <release-notes.md>
 ```
 
 If the required publisher or CLI is unavailable or unauthenticated, stop after the safe pushed
