@@ -225,11 +225,18 @@ def validate_repository_release_automation_contract(
     normalized_validate = " ".join(validate_text.split())
     normalized_release = " ".join(release_text.split())
     required_validate = (
-        'push: branches: ["**"]',
+        # Trunk-only push + pull_request: every origin ref stays covered exactly
+        # once. Matching "**" here would double-run the full matrix per PR branch.
+        "push: branches: [main]",
         "pull_request:",
         "workflow_call:",
         "permissions: contents: read",
     )
+    if 'branches: ["**"]' in normalized_validate:
+        errors.append(
+            "validate.yml must not run the full matrix on every branch push: "
+            'pull_request already covers PR branches, so `branches: ["**"]` doubles each PR run'
+        )
     required_release = (
         'push: tags: ["v*"]',
         "permissions: contents: read",

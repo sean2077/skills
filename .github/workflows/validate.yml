@@ -1,8 +1,11 @@
 name: validate-skills
 
 on:
+  # Trunk pushes are the worktree flow's only origin writes. Branch pushes are
+  # covered by pull_request; matching "**" here would run the full matrix twice
+  # for every PR branch (Dependabot opens one per update).
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_call:
 
