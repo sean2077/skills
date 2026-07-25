@@ -6,6 +6,30 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Per-skill catalog contracts now live in `scripts/contracts/<skill>.py`, one module per
+  `skills/<name>/`, discovered by filename. Validation now fails when a skill has no contract
+  module or a module names a skill the catalog does not ship, so coverage cannot silently lapse.
+- Dependabot keeps the SHA-pinned workflow actions and the pinned validation requirements moving.
+
+### Changed
+
+- `validate_skills.py` keeps only catalog-wide rules and shrank from 1558 to 510 lines; shared
+  state and path constants moved to `catalog_core.py`. The flat module API is re-exported, so the
+  regression suite and any external caller are unaffected.
+- Both workflows now pin `actions/checkout` and `actions/setup-python` by commit SHA, cache the
+  pinned pip requirements, and supersede an in-flight validation run for the same ref while never
+  cancelling a tag run.
+- `agent-scaffold` contracts now state that everything under `.agents/tools/` is a managed copy
+  refreshed by `agent-scaffold upgrade`, not a hand-editable file.
+
+### Fixed
+
+- Release-note extraction fixtures are now written byte-exact instead of inheriting `os.linesep`,
+  and a CRLF changelog is covered explicitly so the LF release-note guarantee is enforced on
+  every platform rather than only where the runner happens to translate line endings.
+
 ## [v4.1.0] — 2026-07-21
 
 ### Added

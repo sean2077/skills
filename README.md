@@ -47,7 +47,10 @@ skills/
     │   └── <category>.md
     └── scripts/ / assets/  # Optional: deterministic helpers and output resources
 scripts/
-├── validate_skills.py       # Catalog check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
+├── validate_skills.py       # Catalog-wide check: frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
+├── catalog_core.py          # Shared error/warning collection and repository path constants
+├── contracts/               # One module per skill: its semantic contract, discovered by filename
+│   └── <skill>.py
 ├── test_validate_skills.py  # Focused catalog-contract regression fixtures
 ├── tests/                    # Focused regression suites and fixtures for skill-specific behavior
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift

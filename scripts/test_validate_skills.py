@@ -307,9 +307,11 @@ class SemverChangelogExtractionTests(unittest.TestCase):
             directory = Path(temporary)
             changelog = directory / "CHANGELOG.md"
             output = directory / "release-notes.md"
-            changelog.write_text(changelog_text, encoding="utf-8")
+            # newline="" keeps fixtures byte-exact on Windows, so a case that
+            # means CRLF says so explicitly instead of inheriting os.linesep.
+            changelog.write_text(changelog_text, encoding="utf-8", newline="")
             if existing_output is not None:
-                output.write_text(existing_output, encoding="utf-8")
+                output.write_text(existing_output, encoding="utf-8", newline="")
             completed = subprocess.run(
                 [
                     sys.executable,
@@ -401,6 +403,17 @@ class SemverChangelogExtractionTests(unittest.TestCase):
                 self.assertEqual(1, completed.returncode)
                 self.assertIn("error:", completed.stderr)
                 self.assertEqual("sentinel\n", output)
+
+    def test_crlf_changelog_yields_lf_release_notes(self) -> None:
+        # A Windows checkout can hand the extractor CRLF; GitHub release bodies
+        # are compared byte-for-byte against this output by release.yml.
+        body = (
+            "# Changelog\n\n## [v1.2.3] — 2026-07-21\n\n"
+            "### Added\n\n- shipped\n\n## [v1.2.2] — 2026-07-20\n\n- old\n"
+        )
+        completed, output = self.run_extract(body.replace("\n", "\r\n"), "v1.2.3")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual("### Added\n\n- shipped\n", output)
 
     def test_tag_mismatch_does_not_create_output(self) -> None:
         completed, output = self.run_extract(

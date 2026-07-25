@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+  # Actions are SHA-pinned in both workflows; without this they never move.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels: []
+
+  # requirements-validation.txt pins StrictYAML + the official skills-ref
+  # validator. A skills-ref bump can change what the spec gate accepts, so
+  # these land as reviewable PRs rather than silent floats.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build
+    labels: []
