@@ -23,6 +23,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cancelling a tag run.
 - `agent-scaffold` contracts now state that everything under `.agents/tools/` is a managed copy
   refreshed by `agent-scaffold upgrade`, not a hand-editable file.
+- Validation runs on trunk pushes and pull requests instead of every branch push, so a PR branch
+  no longer runs the full three-platform matrix twice. Validation rejects a reintroduced
+  `branches: ["**"]`.
 
 ### Fixed
 

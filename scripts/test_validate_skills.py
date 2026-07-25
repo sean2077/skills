@@ -474,6 +474,17 @@ class RepositoryReleaseAutomationContractTests(unittest.TestCase):
     def test_repository_release_automation_is_accepted(self) -> None:
         self.assertEqual([], self.validate())
 
+    def test_wildcard_branch_push_is_rejected(self) -> None:
+        # pull_request already covers PR branches; "**" would run the full
+        # 3-OS matrix twice for every Dependabot update.
+        validate_text, _ = self.files()
+        errors = self.validate(
+            validate_text=validate_text.replace(
+                "branches: [main]", 'branches: ["**"]'
+            )
+        )
+        self.assertTrue(any("doubles each PR run" in error for error in errors))
+
     def test_validation_workflow_must_remain_reusable(self) -> None:
         validate_text, _ = self.files()
         errors = self.validate(validate_text=validate_text.replace("  workflow_call:\n", ""))
