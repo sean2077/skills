@@ -10,6 +10,10 @@ with no shipped file. Catalog skills must leave tool approval to the host rather
 than declaring `allowed-tools`; warnings flag softer hygiene such as an
 over-long description.
 
+This module owns only catalog-wide rules that apply to every skill. Per-skill
+semantic contracts live in `scripts/contracts/<skill>.py` and are discovered
+automatically, so changing one skill's contract touches exactly one file.
+
 Install the pinned validation dependency first. Exit 0 = clean, 1 = errors.
 Warnings never fail.
 
@@ -21,67 +25,98 @@ Warnings never fail.
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 from pathlib import Path
 
-try:
-    from strictyaml import YAMLValidationError, dirty_load
-except ImportError:  # reported as a concise catalog error from main()
-    YAMLValidationError = Exception  # type: ignore[assignment,misc]
-    dirty_load = None
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-REPO = Path(os.environ.get("SKILLS_REPO", Path(__file__).resolve().parent.parent))
-SKILLS_DIR = REPO / "skills"
-README = REPO / "README.md"
-MARKETPLACE = REPO / ".claude-plugin" / "marketplace.json"
-GROUPING_MANIFEST = REPO / ".claude-plugin" / "plugin.json"
-VALIDATE_WORKFLOW = REPO / ".github" / "workflows" / "validate.yml"
-RELEASE_WORKFLOW = REPO / ".github" / "workflows" / "release.yml"
-# Coarse repo-local prose budget, not a host token limit. It scales with the
-# catalog so adding a well-scoped skill does not consume another skill's share.
-METADATA_PROSE_CHARS_PER_SKILL = 512
-ALLOWED_FRONTMATTER_FIELDS = {"name", "description"}
-RESIDENT_SKILL_MAX_LINES = 100
-RESIDENT_SKILL_MAX_CHARS = 8000
+import contracts
+from catalog_core import (
+    ALLOWED_FRONTMATTER_FIELDS,
+    GROUPING_MANIFEST,
+    MARKETPLACE,
+    METADATA_PROSE_CHARS_PER_SKILL,
+    README,
+    RELEASE_WORKFLOW,
+    REPO,
+    RESIDENT_SKILL_MAX_CHARS,
+    RESIDENT_SKILL_MAX_LINES,
+    SKILLS_DIR,
+    VALIDATE_WORKFLOW,
+    errors,
+    parse_frontmatter,
+    readme_skill_rows,
+    warnings,
+)
 
-errors: list[str] = []
-warnings: list[str] = []
+# Re-exported so `import validate_skills` stays the single entry point for the
+# regression suite and for any external caller pinned to the flat module API.
+from contracts.agent_scaffold import validate_agent_scaffold_contract
+from contracts.conventional_commit import validate_conventional_commit_contract
+from contracts.project_docs_organizer import (
+    markdown_h2_sections,
+    method_example_is_tree,
+    validate_project_doc_method_cards,
+    validate_project_doc_numbering_semantics,
+    validate_project_docs_organizer_contract,
+)
+from contracts.semver_release import (
+    validate_semver_automation_contract,
+    validate_semver_publication_boundary,
+    validate_semver_release_contract,
+)
+from contracts.tooling_conventions import (
+    TOOLING_FORCED_SCRIPT_CONTRACT,
+    validate_tooling_conventions_contract,
+    validate_tooling_script_contract_semantics,
+)
 
-
-def parse_frontmatter(text: str) -> dict[str, object]:
-    """Parse a leading frontmatter block with a real strict YAML parser."""
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        raise ValueError("SKILL.md has no opening `---` frontmatter delimiter")
-    closing = None
-    for index, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
-            closing = index
-            break
-    if closing is None:
-        raise ValueError("SKILL.md has no closing `---` frontmatter delimiter")
-    if dirty_load is None:
-        raise ValueError(
-            "StrictYAML is unavailable — run `python -m pip install -r requirements-validation.txt`"
-        )
-    try:
-        parsed = dirty_load("\n".join(lines[1:closing]), allow_flow_style=True).data
-    except YAMLValidationError as exc:
-        raise ValueError(f"frontmatter is not valid YAML: {exc.context} {exc.problem}") from exc
-    if not isinstance(parsed, dict):
-        raise ValueError("frontmatter must be a YAML mapping")
-    return parsed
+__all__ = [
+    "TOOLING_FORCED_SCRIPT_CONTRACT",
+    "cli",
+    "errors",
+    "main",
+    "markdown_h2_sections",
+    "method_example_is_tree",
+    "parse_frontmatter",
+    "readme_skill_rows",
+    "report",
+    "validate_agent_scaffold_contract",
+    "validate_category_references",
+    "validate_conventional_commit_contract",
+    "validate_grouping_manifest",
+    "validate_npx_discovery_contract",
+    "validate_npx_payload_contract",
+    "validate_project_doc_method_cards",
+    "validate_project_doc_numbering_semantics",
+    "validate_project_docs_organizer_contract",
+    "validate_repository_release_automation_contract",
+    "validate_resident_contract",
+    "validate_semver_automation_contract",
+    "validate_semver_publication_boundary",
+    "validate_semver_release_contract",
+    "validate_tooling_conventions_contract",
+    "validate_tooling_script_contract_semantics",
+    "warnings",
+]
 
 
 REFERENCE_LINK = re.compile(r"\]\((references/[^)\s#]+\.md)(?:#[^)]+)?\)")
+
+
 LEGACY_REFERENCE_LINK = re.compile(r"\]\((?:\./)?reference\.md(?:#[^)]+)?\)", re.IGNORECASE)
+
+
 REFERENCE_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
+
+
 REFERENCE_LOAD_BOUNDARY = re.compile(
     r"^(?:read|consult|open|load|use) this (?:only )?(?:when|for|after)\b",
     re.IGNORECASE | re.MULTILINE,
 )
+
+
 FORBIDDEN_REFERENCE_NAMES = {"reference.md", "references.md", "misc.md", "all.md", "readme.md"}
 
 
@@ -168,12 +203,6 @@ def validate_resident_contract(skill_dir: Path, skill_text: str, frontmatter: di
         )
 
 
-def readme_skill_rows(readme_text: str, skill_name: str) -> str:
-    """Return public catalog rows for one skill so domain guards cover that projection."""
-    marker = f"[{skill_name}](skills/{skill_name}/)"
-    return "\n".join(line for line in readme_text.splitlines() if marker in line)
-
-
 def validate_repository_release_automation_contract(
     validate_text: str | None = None, release_text: str | None = None
 ) -> None:
@@ -247,6 +276,101 @@ def validate_repository_release_automation_contract(
     if extract < 0 or publish < 0 or verify < 0 or not extract < publish < verify:
         errors.append(
             "repository release automation must extract notes before publishing and verify afterward"
+        )
+
+
+def validate_npx_discovery_contract() -> None:
+    """Require CI to compare pinned npx discovery with the catalog exactly."""
+    workflow = REPO / ".github" / "workflows" / "validate.yml"
+    if not workflow.exists():
+        return
+    workflow_text = workflow.read_text(encoding="utf-8")
+    match = re.search(
+        r"(?ms)^\s*- name: Smoke-test real npx skills discovery\s*$"
+        r"(.*?)(?=^\s*- name:|\Z)",
+        workflow_text,
+    )
+    discovery_step = match.group(1) if match else ""
+    required = {
+        "capture pinned CLI output": (
+            r"output=.*NO_COLOR=1\s+DISABLE_TELEMETRY=1\s+"
+            r"npx --yes skills@1\.5\.17 add \. -l.*2>&1"
+        ),
+        "preserve CLI failure status": (
+            r"status=\$\?[\s\S]*if \[ [\"']?\$status[\"']? -ne 0 \]; then"
+        ),
+        "extract names independently of the UI border": (
+            r"actual=.*sed -n [\"']s/\^\.\*    "
+        ),
+        "derive expected names from skills/": r"expected=.*python -c.*Path",
+        "compare the two sets exactly": (
+            r"if \[ [\"']?\$actual[\"']? != [\"']?\$expected[\"']? \]; then"
+        ),
+    }
+    missing = [label for label, pattern in required.items() if not re.search(pattern, discovery_step)]
+    if missing:
+        errors.append(
+            "CI npx discovery must assert that the pinned CLI returns the exact catalog skill set; "
+            f"missing={missing}"
+        )
+
+
+def validate_npx_payload_contract(workflow_text: str | None = None) -> None:
+    """Require CI to compare every installed skill file with the catalog source."""
+    if workflow_text is None:
+        workflow = REPO / ".github" / "workflows" / "validate.yml"
+        if not workflow.exists():
+            return
+        workflow_text = workflow.read_text(encoding="utf-8")
+    match = re.search(
+        r"(?ms)^\s*- name: Smoke-test installed skill payloads\s*$"
+        r"(.*?)(?=^\s*- name:|\Z)",
+        workflow_text,
+    )
+    payload_step = match.group(1) if match else ""
+    required = {
+        "iterate every catalog skill": r'for source_skill in "\$repo"/skills/\*; do',
+        "derive installed skill path": (
+            r'installed_skill="\$fixture/\.agents/skills/\$skill"'
+        ),
+        "compare the complete source inventory": (
+            r'expected=.*cd "\$source_skill".*find \. -type f -print \| sort'
+        ),
+        "compare the complete installed inventory": (
+            r'actual=.*cd "\$installed_skill".*find \. -type f -print \| sort'
+        ),
+        "diff complete skill payload bytes": (
+            r'diff -ru "\$source_skill" "\$installed_skill"'
+        ),
+    }
+    missing = [label for label, pattern in required.items() if not re.search(pattern, payload_step)]
+    if missing:
+        errors.append(
+            "CI npx install smoke must compare every installed skill payload with its "
+            f"catalog source; missing={missing}"
+        )
+
+
+def validate_grouping_manifest(skill_dirs: list[Path]) -> None:
+    """Keep npx skills grouping metadata aligned with the catalog."""
+    if not GROUPING_MANIFEST.exists():
+        errors.append("missing `.claude-plugin/plugin.json` grouping manifest")
+        return
+
+    try:
+        manifest = json.loads(GROUPING_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"invalid `.claude-plugin/plugin.json`: {exc}")
+        return
+
+    if manifest.get("name") != "sean2077-skills":
+        errors.append("`.claude-plugin/plugin.json` name must be `sean2077-skills`")
+
+    expected = [f"./skills/{skill_dir.name}" for skill_dir in skill_dirs]
+    if manifest.get("skills") != expected:
+        errors.append(
+            "`.claude-plugin/plugin.json` skills must exactly match the sorted "
+            f"skills/ catalog: expected {expected}"
         )
 
 
@@ -326,11 +450,18 @@ def main() -> int:
             f"({METADATA_PROSE_CHARS_PER_SKILL} per skill)"
         )
 
-    validate_agent_scaffold_contract()
-    validate_tooling_conventions_contract(readme_text=readme)
-    validate_conventional_commit_contract()
-    validate_semver_release_contract(readme_text=readme)
-    validate_project_docs_organizer_contract(readme_text=readme)
+    # Per-skill contracts, one module each under scripts/contracts/.
+    covered = set(contracts.run_all(readme_text=readme))
+    uncovered = sorted(d.name for d in skill_dirs if d.name not in covered)
+    if uncovered:
+        errors.append(
+            f"skills without a scripts/contracts/<skill>.py contract module: {uncovered}"
+        )
+    orphaned = sorted(covered - {d.name for d in skill_dirs})
+    if orphaned:
+        errors.append(
+            f"scripts/contracts/ declares contracts for missing skills: {orphaned}"
+        )
 
     # Reverse coverage: a README link must point at a real skill directory.
     for m in re.finditer(r"\(skills/([A-Za-z0-9_-]+)/\)", readme):
@@ -339,1194 +470,15 @@ def main() -> int:
             errors.append(f"README links `skills/{linked}/` but that skill directory does not exist")
 
     # Stale install paths: don't advertise the marketplace flow without a manifest.
+    # `MARKETPLACE` intentionally names a file this repo does not ship — these two
+    # guards exist so README can never advertise the marketplace install flow
+    # without the manifest that flow requires.
     if "/plugin install" in readme and not MARKETPLACE.exists():
         errors.append("README advertises `/plugin install` but `.claude-plugin/marketplace.json` does not exist")
     if ".claude-plugin/marketplace.json" in readme and not MARKETPLACE.exists():
         errors.append("README references `.claude-plugin/marketplace.json` which does not exist")
 
     return report()
-
-
-def validate_npx_discovery_contract() -> None:
-    """Require CI to compare pinned npx discovery with the catalog exactly."""
-    workflow = REPO / ".github" / "workflows" / "validate.yml"
-    if not workflow.exists():
-        return
-    workflow_text = workflow.read_text(encoding="utf-8")
-    match = re.search(
-        r"(?ms)^\s*- name: Smoke-test real npx skills discovery\s*$"
-        r"(.*?)(?=^\s*- name:|\Z)",
-        workflow_text,
-    )
-    discovery_step = match.group(1) if match else ""
-    required = {
-        "capture pinned CLI output": (
-            r"output=.*NO_COLOR=1\s+DISABLE_TELEMETRY=1\s+"
-            r"npx --yes skills@1\.5\.17 add \. -l.*2>&1"
-        ),
-        "preserve CLI failure status": (
-            r"status=\$\?[\s\S]*if \[ [\"']?\$status[\"']? -ne 0 \]; then"
-        ),
-        "extract names independently of the UI border": (
-            r"actual=.*sed -n [\"']s/\^\.\*    "
-        ),
-        "derive expected names from skills/": r"expected=.*python -c.*Path",
-        "compare the two sets exactly": (
-            r"if \[ [\"']?\$actual[\"']? != [\"']?\$expected[\"']? \]; then"
-        ),
-    }
-    missing = [label for label, pattern in required.items() if not re.search(pattern, discovery_step)]
-    if missing:
-        errors.append(
-            "CI npx discovery must assert that the pinned CLI returns the exact catalog skill set; "
-            f"missing={missing}"
-        )
-
-
-def validate_npx_payload_contract(workflow_text: str | None = None) -> None:
-    """Require CI to compare every installed skill file with the catalog source."""
-    if workflow_text is None:
-        workflow = REPO / ".github" / "workflows" / "validate.yml"
-        if not workflow.exists():
-            return
-        workflow_text = workflow.read_text(encoding="utf-8")
-    match = re.search(
-        r"(?ms)^\s*- name: Smoke-test installed skill payloads\s*$"
-        r"(.*?)(?=^\s*- name:|\Z)",
-        workflow_text,
-    )
-    payload_step = match.group(1) if match else ""
-    required = {
-        "iterate every catalog skill": r'for source_skill in "\$repo"/skills/\*; do',
-        "derive installed skill path": (
-            r'installed_skill="\$fixture/\.agents/skills/\$skill"'
-        ),
-        "compare the complete source inventory": (
-            r'expected=.*cd "\$source_skill".*find \. -type f -print \| sort'
-        ),
-        "compare the complete installed inventory": (
-            r'actual=.*cd "\$installed_skill".*find \. -type f -print \| sort'
-        ),
-        "diff complete skill payload bytes": (
-            r'diff -ru "\$source_skill" "\$installed_skill"'
-        ),
-    }
-    missing = [label for label, pattern in required.items() if not re.search(pattern, payload_step)]
-    if missing:
-        errors.append(
-            "CI npx install smoke must compare every installed skill payload with its "
-            f"catalog source; missing={missing}"
-        )
-
-
-def validate_agent_scaffold_contract() -> None:
-    """Keep Python 3.8+ a hard prerequisite throughout the selected router."""
-    skill = SKILLS_DIR / "agent-scaffold" / "SKILL.md"
-    if not skill.exists():
-        return
-    skill_text = skill.read_text(encoding="utf-8")
-    stale_optional_python = {
-        "retrofit fallback": r"without\s+python\s+the installer flags them instead",
-        "workflow skip": r"subagents when python is unavailable",
-        "conditional generator install": r"when\s+python\s+is\s+available\s+—\s+installs",
-    }
-    required_python_contract = {
-        "hard prerequisite": (
-            r"The harness requires\s+\*\*git, Python 3\.8\+, and Bash 3\.2\+\*\*\."
-        ),
-        "unconditional generator install": (
-            r"installs\s+and\s+runs\s+the\s+subagent\s+generator"
-        ),
-    }
-    found = [
-        label
-        for label, pattern in stale_optional_python.items()
-        if re.search(pattern, skill_text, flags=re.IGNORECASE)
-    ]
-    missing = [
-        label
-        for label, pattern in required_python_contract.items()
-        if not re.search(pattern, skill_text)
-    ]
-    if found or missing:
-        errors.append(
-            "agent-scaffold/SKILL.md: Python 3.8+ is a hard prerequisite; "
-            f"missing={missing}, stale_optional={found}"
-        )
-
-
-TOOLING_FORCED_SCRIPT_CONTRACT = (
-    "### Mandatory (gate/audit these)",
-    "usage / unknown flag → exit 2",
-    "it `source`s a single shared resolver",
-    "state-file writes: `.tmp` + fsync/close + atomic rename",
-    "multi-step scripts use a stable bracketed prefix",
-    "Prefer `--dry-run` over `--yes`",
-)
-
-
-def validate_tooling_script_contract_semantics(script_text: str) -> None:
-    """Reject the retired one-size-fits-all command implementation contract."""
-    required = (
-        "The Contract Profile decides which cards apply",
-        "Never let unknown or invalid input reach a dangerous default action",
-        "project's existing CLI grammar and exit-code convention",
-        "language-native shared resolver",
-        "Require idempotency only when retry or convergence",
-        "Do not claim a dry run unless tests prove",
-        "Inventory registration, when adopted",
-    )
-    missing = [value for value in required if value not in script_text]
-    forced = [value for value in TOOLING_FORCED_SCRIPT_CONTRACT if value in script_text]
-    if missing or forced:
-        errors.append(
-            "tooling-conventions/references/script-contract.md: command contracts must be "
-            f"evidence-gated and project-owned; missing={missing}, forced={forced}"
-        )
-
-
-def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> None:
-    """Keep structural inventory checks deterministic and semantic policy project-owned."""
-    skill_dir = SKILLS_DIR / "tooling-conventions"
-    paths = {
-        "SKILL.md": skill_dir / "SKILL.md",
-        "references/verification.md": skill_dir / "references" / "verification.md",
-        "references/classification-methods.md": skill_dir / "references" / "classification-methods.md",
-        "references/inventory-contract.md": skill_dir / "references" / "inventory-contract.md",
-        "references/migration-from-surface-manifest.md": (
-            skill_dir / "references" / "migration-from-surface-manifest.md"
-        ),
-        "references/script-contract.md": skill_dir / "references" / "script-contract.md",
-        "references/path-migrations.md": skill_dir / "references" / "path-migrations.md",
-        "scripts/inventory-check.sh": skill_dir / "scripts" / "inventory-check.sh",
-    }
-    missing_paths = [label for label, path in paths.items() if not path.exists()]
-    if missing_paths:
-        errors.append(f"tooling-conventions: missing contextual-governance assets: {missing_paths}")
-        return
-    texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
-    if readme_text is None:
-        readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
-    public_summary = readme_skill_rows(readme_text, "tooling-conventions")
-    validate_tooling_script_contract_semantics(texts["references/script-contract.md"])
-    memory_compile = (
-        'compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")'
-    )
-    for label in ("references/verification.md", "scripts/inventory-check.sh"):
-        if memory_compile not in texts[label]:
-            errors.append(f"tooling-conventions/{label}: in-memory Python compile command is missing")
-    stale = [label for label, value in texts.items() if "py_compile" in value]
-    if stale:
-        errors.append(f"tooling-conventions: py_compile bytecode-producing guidance remains in {stale}")
-
-    fixture = REPO / "scripts" / "tests" / "test-tooling-inventory.sh"
-    fixture_text = fixture.read_text(encoding="utf-8") if fixture.exists() else ""
-    fixture_contract = (
-        "valid path-雪.py",
-        "-dash.sh",
-        "inventory check left Python bytecode residue",
-        "structural findings above use exit 1",
-        "Exact parent segments remain blocking",
-        "invalid inventory path (must be normalized and relative)",
-        "invalid audit_level for tool.sh: maybe",
-        "expected invalid CLI arguments to exit 2",
-        "failed to create temporary directory",
-        "expected an unsafe temporary-directory result",
-        "directory inventory row does not cover nested commands",
-        "TOOLS_DIR did not override the inventory directory",
-        "default skip policy hid a project-owned command",
-        "python3 fallback did not complete the inventory check",
-        "py -3 fallback did not complete the inventory check",
-        "expected missing Python preflight to exit 2",
-    )
-    missing_fixture = [value for value in fixture_contract if value not in fixture_text]
-    if missing_fixture:
-        errors.append(
-            "tooling-conventions: structural-inventory CI fixture is incomplete: "
-            f"{missing_fixture}"
-        )
-    workflow = REPO / ".github" / "workflows" / "validate.yml"
-    workflow_text = workflow.read_text(encoding="utf-8") if workflow.exists() else ""
-    if "bash scripts/tests/test-tooling-inventory.sh" not in workflow_text:
-        errors.append("tooling-conventions: CI does not run the focused inventory-check suite")
-    stale_compatibility = ("≥1 release", "at least one release")
-    combined = "".join(texts.values()) + fixture_text
-    found_stale = [value for value in stale_compatibility if value in combined]
-    if found_stale:
-        errors.append(f"tooling-conventions: generic compatibility-cycle guidance remains: {found_stale}")
-    project_owned_contract = {
-        "SKILL.md": ("target repository owns names and roots", "Tool Governance Decision Record"),
-        "references/classification-methods.md": (
-            "## Boundary lenses",
-            "## Constraint lenses",
-            "not required categories or directory names",
-        ),
-        "references/inventory-contract.md": (
-            "Only `path` is required",
-            "project-owned columns are opaque",
-            "`tools/tools-inventory.tsv` is only the no-argument default",
-            "When unset, reverse scan",
-            "excludes nothing",
-        ),
-        "references/script-contract.md": (
-            "The Contract Profile decides which cards apply",
-            "Inventory registration, when adopted",
-            "Do not create an inventory solely",
-        ),
-        "references/migration-from-surface-manifest.md": (
-            "`public` / `helper`",
-            "Project Tool Policy",
-            "no compatibility wrapper",
-        ),
-    }
-    for label, required_values in project_owned_contract.items():
-        missing_values = [value for value in required_values if value not in texts[label]]
-        if missing_values:
-            errors.append(
-                f"tooling-conventions/{label}: project-owned root/manifest boundary lost fixtures: "
-                f"{missing_values}"
-            )
-
-    checker_contract = (
-        'SKIP_RE="${INVENTORY_CHECK_SKIP:-a^}"',
-        'python_compatible "$PYTHON_BIN"',
-        "elif python_compatible python3; then",
-        "elif python_compatible py -3; then",
-        'PYTHONUTF8=1 "${PYTHON_CMD[@]}" -c',
-        'echo "python 3.8+ interpreter unavailable for syntax check: $path',
-    )
-    missing_checker_contract = [
-        value for value in checker_contract if value not in texts["scripts/inventory-check.sh"]
-    ]
-    if missing_checker_contract:
-        errors.append(
-            "tooling-conventions/scripts/inventory-check.sh: neutral-scan/preflight contract "
-            f"is incomplete: {missing_checker_contract}"
-        )
-    if "(internal|vendor|tests?|legacy)" in texts["scripts/inventory-check.sh"]:
-        errors.append(
-            "tooling-conventions/scripts/inventory-check.sh: semantic directory exclusions "
-            "remain in the structural checker"
-        )
-
-    required_boundary_phrases = (
-        "There is no required `tools/`, `scripts/`, or `bin/` root",
-        "no mandatory semantic inventory",
-        "only the structural `path` contract is universal",
-    )
-    missing_boundary_phrases = [
-        value for value in required_boundary_phrases if value not in texts["SKILL.md"]
-    ]
-    if missing_boundary_phrases:
-        errors.append(
-            "tooling-conventions/SKILL.md: project-owned placement/schema boundary is incomplete: "
-            f"{missing_boundary_phrases}"
-        )
-
-    retired_paths = (
-        skill_dir / "references" / "surface-taxonomy.md",
-        skill_dir / "references" / "manifest-schema.md",
-        skill_dir / "scripts" / "manifest-check.sh",
-    )
-    found_retired_paths = [str(path.relative_to(skill_dir)) for path in retired_paths if path.exists()]
-    if found_retired_paths:
-        errors.append(
-            "tooling-conventions: retired flat-surface assets remain: "
-            f"{found_retired_paths}"
-        )
-
-    non_migration_text = "".join(
-        text
-        for label, text in texts.items()
-        if label != "references/migration-from-surface-manifest.md"
-    ) + public_summary
-    stale_flat_contract = (
-        "scripts/manifest-check.sh",
-        "references/surface-taxonomy.md",
-        "references/manifest-schema.md",
-        "MANIFEST_CHECK_SKIP",
-        "surface_current",
-    )
-    found_flat_contract = [value for value in stale_flat_contract if value in non_migration_text]
-    if found_flat_contract:
-        errors.append(
-            "tooling-conventions: retired flat-surface contract remains active: "
-            f"{found_flat_contract}"
-        )
-
-    prohibited_active_contracts = {
-        "exactly-one surface taxonomy": (
-            "exactly one `surface`",
-            "exactly-one `surface`",
-            "one row per command surface",
-            "Full surface taxonomy",
-        ),
-        "fixed directory layout": (
-            "<tool-root>/<domain>/",
-            "tools/public/",
-            "tools/internal/",
-            "placement guidance when the project has no stronger convention",
-        ),
-        "mandatory semantic schema": (
-            "path\tsurface",
-            "must have a 'path' and a 'surface'",
-            "Core columns (every row)",
-        ),
-    }
-    for contract_name, forbidden_values in prohibited_active_contracts.items():
-        found_values = [value for value in forbidden_values if value in non_migration_text]
-        if found_values:
-            errors.append(
-                f"tooling-conventions: reintroduced {contract_name}: {found_values}"
-            )
-
-
-def validate_conventional_commit_contract(skill_dir: Path | None = None) -> None:
-    """Keep commit mode rooted and prove the committed snapshot matches the reviewed index."""
-    skill_dir = skill_dir or SKILLS_DIR / "conventional-commit"
-    skill = skill_dir / "SKILL.md"
-    staging = skill_dir / "references" / "staging-safety.md"
-    if not skill.exists() or not staging.exists():
-        return
-    skill_text = skill.read_text(encoding="utf-8")
-    staging_text = staging.read_text(encoding="utf-8")
-    match = re.search(r"(?ms)^## Workflow[ \t]*\r?\n(.*?)(?=^## |\Z)", skill_text)
-    workflow = match.group(1) if match else ""
-    root = "git rev-parse --show-toplevel"
-    preflight = "git -C <repo-root> symbolic-ref --quiet --short HEAD"
-    detached = "Exit status 1 means detached HEAD"
-    git_error = "any other nonzero status is a Git preflight"
-    operation_status = "git -C <repo-root> status --long --branch"
-    in_progress = "in-progress merge"
-    stage = "stage the exact intended"
-    required = (root, preflight, detached, git_error, operation_status, in_progress, stage)
-    missing = [value for value in required if value not in workflow]
-    ordered = not missing and [workflow.index(value) for value in required] == sorted(
-        workflow.index(value) for value in required
-    )
-    if missing or not ordered:
-        errors.append("conventional-commit: attached-HEAD preflight must precede commit-mode staging")
-    reference_contract = (
-        "git -C <repo-root> status --short",
-        "git -C <repo-root> add -A -- .",
-        "Exit status 1 means HEAD is detached",
-        "Any other nonzero status is a Git error",
-        "git diff --cached --name-only",
-        "git diff --cached --check",
-        "unrelated paths are already staged",
-        "A named path does not authorize every hunk",
-        "git -C <repo-root> diff --cached -- <paths>",
-        "git -C <repo-root> diff -- <paths>",
-        "mixes intended and unrelated hunks",
-        "without modifying the working tree or unrelated pre-existing index state",
-        "actual cached patch",
-        "An attached HEAD proves only",
-        "git -C <repo-root> status --long --branch",
-        "in-progress merge, rebase, cherry-pick, revert, bisect, or unresolved conflict",
-        "Ordinary commit mode never continues or completes those operations",
-    )
-    normalized_staging = " ".join(staging_text.split())
-    missing_reference = [
-        value for value in reference_contract if value not in normalized_staging
-    ]
-    if missing_reference:
-        errors.append(
-            "conventional-commit/references/staging-safety.md: path/hunk staging boundary lost fixtures: "
-            f"{missing_reference}"
-        )
-    snapshot_contract = (
-        "git -C <repo-root> rev-parse --verify --quiet HEAD",
-        "git -C <repo-root> write-tree",
-        "reviewed index",
-        "git -C <repo-root> rev-parse 'HEAD^{tree}'",
-        "git -C <repo-root> rev-list --parents -n 1 HEAD",
-        "equal `<expected-tree>`",
-        "exactly `<base>` as its sole parent",
-        "unborn branch it must have no parent",
-        "without attempting history rewriting",
-    )
-    missing_snapshot = [
-        value for value in snapshot_contract if value not in normalized_staging
-    ]
-    if missing_snapshot:
-        errors.append(
-            "conventional-commit/references/staging-safety.md: committed-snapshot "
-            f"verification boundary lost fixtures: {missing_snapshot}"
-        )
-
-
-def validate_semver_publication_boundary(
-    skill_text: str, publishing_text: str, public_summary: str
-) -> None:
-    """Keep release completion policy-derived instead of forge-mandatory."""
-    normalized_skill = " ".join(skill_text.split())
-    normalized_publishing = " ".join(publishing_text.split())
-    normalized_public = " ".join(public_summary.split())
-    skill_contract = (
-        "repository-owned completion boundary",
-        "Stop at a verified pushed tag only when policy makes it terminal",
-        "Create a direct forge release only when the forge is the established release surface",
-        "every applicable downstream publisher identity",
-        "URLs or identities that the selected boundary actually exposes",
-    )
-    publishing_contract = (
-        "Tag-only or external handoff",
-        "Tag-triggered release workflow",
-        "Project-owned direct publisher",
-        "Direct forge release",
-        "absence of a tag workflow does not authorize a new forge release",
-        "gh release create <exact-tag>",
-        "--verify-tag",
-        "local and remote tags exist and peel to that release commit",
-        "Only the evidence for the selected boundary is mandatory",
-        "distinct states",
-    )
-    missing_skill = [value for value in skill_contract if value not in normalized_skill]
-    missing_publishing = [
-        value for value in publishing_contract if value not in normalized_publishing
-    ]
-    if missing_skill or missing_publishing or "policy-derived publication verification" not in normalized_public:
-        errors.append(
-            "semver-release: repository-owned publication boundary lost fixtures: "
-            f"skill={missing_skill}, publishing={missing_publishing}, public_summary="
-            f"{'present' if 'policy-derived publication verification' in normalized_public else 'missing'}"
-        )
-    forbidden = (
-        "A pushed tag is not completion",
-        "otherwise create the forge release",
-        "through a verified forge release",
-        "Use this only when no tag-triggered release owner exists",
-    )
-    combined = " ".join((normalized_skill, normalized_publishing, normalized_public))
-    found = [value for value in forbidden if value in combined]
-    if found:
-        errors.append(
-            "semver-release: publication policy must not require a universal forge surface: "
-            f"{found}"
-        )
-
-
-def validate_semver_automation_contract(
-    skill_text: str,
-    automation_text: str,
-    changelog_text: str,
-    publishing_text: str,
-    extractor_text: str,
-    public_summary: str,
-) -> None:
-    """Keep preferred automation opt-in, format-neutral, and fail-closed."""
-
-    normalized = {
-        "skill": " ".join(skill_text.split()),
-        "automation": " ".join(automation_text.split()),
-        "changelog": " ".join(changelog_text.split()),
-        "publishing": " ".join(publishing_text.split()),
-        "extractor": " ".join(extractor_text.split()),
-        "public": " ".join(public_summary.split()),
-    }
-    required = {
-        "skill": (
-            "Prefer changelog-backed tag-triggered automation",
-            "ask once whether to retain or migrate",
-            "this gate also applies to a mature alternative",
-            "Make no infrastructure change without an answer",
-            "The analyzer models `v`-prefixed SemVer tags",
-            "create `release: <exact-tag>`",
-        ),
-        "automation": (
-            "Preferred Automated Release Flow",
-            "Adoption offer",
-            "including a mature alternative",
-            "present one concrete current-versus-preferred comparison and ask once whether to retain",
-            "Maturity alone is not a retention decision",
-            "make no changelog-authority, workflow, permission, publisher, or release-surface change",
-            "`v1.2.3`, `1.2.3`, `release-1.2.3`",
-            "opaque exact string",
-            "before any forge Release creation",
-            "Do not generate fallback notes",
-            "scripts/extract-changelog.py",
-            "gh release create",
-            "--notes-file",
-            "Do not reconstruct it from a package version or assume a `v` prefix",
-        ),
-        "changelog": (
-            "## [<exact-tag>] — YYYY-MM-DD",
-            "`## [v1.2.3] — 2026-07-21`",
-            "`## [1.3.0-rc.1] — 2026-07-21`",
-            "`## [release-1.2.3] — 2026-07-21`",
-            "trimmed body after the one matching heading",
-            "next level-two heading",
-            "Do not include the release heading itself",
-            "never falls back to generated notes",
-        ),
-        "publishing": (
-            "Preferred changelog-backed workflow",
-            "Workflow-owned generated notes",
-            "After the owner explicitly retains an established workflow",
-            "before any forge Release creation",
-            "do not fall back to generated notes",
-        ),
-        "extractor": (
-            "def extract_notes",
-            "def write_notes",
-            "CANONICAL_HEADING_RE",
-            "--changelog",
-            "--tag",
-            "--output",
-            "complete repository tag, matched exactly",
-            "os.replace",
-        ),
-        "public": ("preferred changelog-backed tag workflow",),
-    }
-    missing = {
-        label: [value for value in values if value not in normalized[label]]
-        for label, values in required.items()
-    }
-    missing = {label: values for label, values in missing.items() if values}
-    if missing:
-        errors.append(f"semver-release: preferred automation contract lost fixtures: {missing}")
-
-    automation = normalized["automation"]
-    extractor_call = automation.find("scripts/extract-changelog.py")
-    publisher_call = automation.find("gh release create")
-    if extractor_call < 0 or publisher_call < 0 or extractor_call > publisher_call:
-        errors.append(
-            "semver-release/references/automated-release-flow.md: notes validation must precede publication"
-        )
-
-    forbidden = {
-        "automation": ("--generate-notes",),
-        "extractor": ('startswith("v")', "removeprefix(\"v\")", "parse_semver"),
-    }
-    found = {
-        label: [value for value in values if value in normalized[label]]
-        for label, values in forbidden.items()
-    }
-    found = {label: values for label, values in found.items() if values}
-    if found:
-        errors.append(
-            "semver-release: preferred automation must not add a generated-notes fallback or tag-prefix assumption: "
-            f"{found}"
-        )
-
-
-def validate_semver_release_contract(readme_text: str | None = None) -> None:
-    """Guard bump inference and package identity across release ecosystems."""
-    skill_dir = SKILLS_DIR / "semver-release"
-    skill = skill_dir / "SKILL.md"
-    reference_paths = {
-        "references/version-selection.md": skill_dir / "references" / "version-selection.md",
-        "references/version-files.md": skill_dir / "references" / "version-files.md",
-        "references/changelog.md": skill_dir / "references" / "changelog.md",
-        "references/automated-release-flow.md": skill_dir / "references" / "automated-release-flow.md",
-        "references/prerelease-promotion.md": skill_dir / "references" / "prerelease-promotion.md",
-        "references/publishing.md": skill_dir / "references" / "publishing.md",
-    }
-    planner = skill_dir / "scripts" / "release-plan.py"
-    extractor = skill_dir / "scripts" / "extract-changelog.py"
-    required_paths = {
-        "SKILL.md": skill,
-        **reference_paths,
-        "scripts/release-plan.py": planner,
-        "scripts/extract-changelog.py": extractor,
-    }
-    missing_paths = [label for label, path in required_paths.items() if not path.exists()]
-    if missing_paths:
-        errors.append(f"semver-release: missing required files: {missing_paths}")
-        return
-    skill_text = skill.read_text(encoding="utf-8")
-    reference_texts = {label: path.read_text(encoding="utf-8") for label, path in reference_paths.items()}
-    selection_text = reference_texts["references/version-selection.md"]
-    version_files_text = reference_texts["references/version-files.md"]
-    promotion_text = reference_texts["references/prerelease-promotion.md"]
-    changelog_text = reference_texts["references/changelog.md"]
-    automation_text = reference_texts["references/automated-release-flow.md"]
-    publishing_text = reference_texts["references/publishing.md"]
-    planner_text = planner.read_text(encoding="utf-8")
-    extractor_text = extractor.read_text(encoding="utf-8")
-    if readme_text is None:
-        readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
-    validate_semver_publication_boundary(
-        skill_text,
-        publishing_text,
-        readme_skill_rows(readme_text, "semver-release"),
-    )
-    validate_semver_automation_contract(
-        skill_text,
-        automation_text,
-        changelog_text,
-        publishing_text,
-        extractor_text,
-        readme_skill_rows(readme_text, "semver-release"),
-    )
-    combined = skill_text + "".join(reference_texts.values()) + extractor_text
-    bump_contract = (
-        "BREAKING CHANGE:",
-        "BREAKING-CHANGE:",
-        "case-insensitive",
-        "remains uppercase",
-    )
-    missing_bump = [value for value in bump_contract if value not in selection_text]
-    if missing_bump:
-        errors.append(
-            "semver-release/references/version-selection.md: bump inference contract lost fixtures: "
-            f"{missing_bump}"
-        )
-    required = ("1.2.0-beta.1", "1.2.0b1", "1.2.0rc1", "project(... VERSION 1.2.0)")
-    missing = [value for value in required if value not in combined]
-    if missing:
-        errors.append(f"semver-release: prerelease ecosystem contract lost fixtures: {missing}")
-    python_boundary_reference = (
-        "`alpha.N` → `aN`",
-        "`beta.N` → `bN`",
-        "`rc.N` → `rcN`",
-        "`v1.2.0-canary.1` remains a valid SemVer tag",
-        "historical base selection",
-        "non-Python ecosystems",
-    )
-    missing_python_reference = [
-        value for value in python_boundary_reference if value not in version_files_text
-    ]
-    if missing_python_reference:
-        errors.append(
-            "semver-release/references/version-files.md: Python prerelease mapping boundary lost fixtures: "
-            f"{missing_python_reference}"
-        )
-    shared_base_contract = (
-        "HEAD-reachable",
-        "SemVer 2.0.0 precedence",
-        "no HEAD-reachable valid SemVer base",
-    )
-    missing_base = [value for value in shared_base_contract if value not in selection_text]
-    if missing_base:
-        errors.append(
-            "semver-release/references/version-selection.md: base-selection contract lost fixtures: "
-            f"{missing_base}"
-        )
-    equal_precedence = (
-        "When highest-precedence tags differ only by build metadata, use their shared commit as "
-        "`<base>` only if they all resolve to that commit; otherwise stop and report the ambiguity."
-    )
-    peel_commit = "git rev-parse '<tag>^{commit}'"
-    if equal_precedence not in selection_text:
-        errors.append("semver-release/references/version-selection.md: equal-precedence base rule is missing")
-    if peel_commit not in selection_text:
-        errors.append("semver-release/references/version-selection.md: annotated-tag commit resolution is missing")
-    skill_router_contract = (
-        "scripts/release-plan.py",
-        "--json",
-        "--target vX.Y.Z",
-        "Resolve every `attention` result before mutation",
-        "A valid exact version supplied by the user is the target",
-        "merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress",
-    )
-    missing_skill_router = [value for value in skill_router_contract if value not in skill_text]
-    if missing_skill_router:
-        errors.append(f"semver-release/SKILL.md: read-only planner route lost fixtures: {missing_skill_router}")
-    reference_base_contract = (
-        "`v01.2.3` and `v1.2.3-rc.01` are invalid",
-        "`v1.1.0-rc.1 < v1.1.0`",
-        "build metadata does not affect precedence",
-        "Git's `version:refname` order is not SemVer precedence",
-        "shallow repository",
-        "git rev-list --max-parents=0 HEAD",
-        "git cat-file -p <root>",
-        "commit headers before the first blank line",
-        "repository-level `true` is not sufficient",
-        "git status --long --branch",
-        "never turn its pending commit into a release commit",
-        "multi-parent commit without its own",
-        '`kind: "merge"`',
-    )
-    missing_reference_base = [value for value in reference_base_contract if value not in selection_text]
-    if missing_reference_base:
-        errors.append(
-            "semver-release/references/version-selection.md: SemVer precedence contract lost fixtures: "
-            f"{missing_reference_base}"
-        )
-    promotion_contract = "previous HEAD-reachable stable release, or repo root if none exists"
-    if promotion_contract not in promotion_text:
-        errors.append("semver-release/references/prerelease-promotion.md: stable-base contract is missing")
-    release_stage_contract = (
-        "Stage every release file and no unrelated path",
-        "git diff --cached --check",
-        "create `release: <exact-tag>`",
-        "require a clean",
-        "push the tag without force",
-    )
-    missing_stage = [value for value in release_stage_contract if value not in skill_text]
-    stage_ordered = not missing_stage and [skill_text.index(value) for value in release_stage_contract] == sorted(
-        skill_text.index(value) for value in release_stage_contract
-    )
-    if missing_stage or not stage_ordered:
-        errors.append(
-            "semver-release/SKILL.md: complete release snapshot must be staged and clean before tagging"
-        )
-    sync_invariant = (
-        "Ecosystem tools synchronize release files; they do not own the release commit, tag, or push, and"
-    )
-    if sync_invariant not in version_files_text:
-        errors.append("semver-release/references/version-files.md: bounded synchronization invariant is missing")
-    npm_sync_contract = (
-        "existing `package-lock.json`",
-        "`preversion`, `version`, and `postversion`",
-        "npm version <version> --no-git-tag-version --ignore-scripts",
-        "`package.json.version`",
-        "`package-lock.json.version`",
-        "`package-lock.json.packages[\"\"].version`",
-    )
-    missing_npm_sync = [value for value in npm_sync_contract if value not in version_files_text]
-    npm_sync_ordered = not missing_npm_sync and [version_files_text.index(value) for value in npm_sync_contract] == sorted(
-        version_files_text.index(value) for value in npm_sync_contract
-    )
-    if missing_npm_sync or not npm_sync_ordered:
-        errors.append("semver-release/references/version-files.md: bounded npm synchronization contract is missing")
-    cargo_sync_contract = (
-        "authoritative version source",
-        "`version.workspace = true`",
-        "`[workspace.package].version`",
-        "existing `Cargo.lock`",
-        "cargo update --workspace",
-        "cargo metadata --locked --format-version 1",
-        "unrelated dependency versions remain locked",
-    )
-    missing_cargo_sync = [value for value in cargo_sync_contract if value not in version_files_text]
-    cargo_sync_ordered = not missing_cargo_sync and [
-        version_files_text.index(value) for value in cargo_sync_contract
-    ] == sorted(version_files_text.index(value) for value in cargo_sync_contract)
-    if missing_cargo_sync or not cargo_sync_ordered:
-        errors.append("semver-release/references/version-files.md: bounded Cargo synchronization contract is missing")
-    planner_contract = (
-        "schema_version",
-        "parse_semver",
-        "compare_semver",
-        "GIT_OPERATION_MARKERS",
-        "git_path",
-        "active_git_operations",
-        "operation-state",
-        "complete-head-history",
-        "reachable-semver-base",
-        "BREAKING_FOOTER_RE",
-        "requested_tag",
-        "selected_tag",
-        "release_notes_base",
-        "The script never fetches, edits, commits, tags, or pushes.",
-    )
-    missing_planner = [value for value in planner_contract if value not in planner_text]
-    if missing_planner:
-        errors.append(
-            "semver-release/scripts/release-plan.py: deterministic planner contract lost fixtures: "
-            f"{missing_planner}"
-        )
-    changelog_authority_contract = (
-        "repository's existing release-note contract wins",
-        "Do not create `CHANGELOG.md` solely because this skill ran",
-        "Fallback committed changelog",
-    )
-    missing_changelog_authority = [
-        value for value in changelog_authority_contract if value not in changelog_text
-    ]
-    if missing_changelog_authority:
-        errors.append(
-            "semver-release/references/changelog.md: project-owned release-note boundary "
-            f"lost fixtures: {missing_changelog_authority}"
-        )
-    planner_tests = REPO / "scripts" / "tests" / "test_semver_release_plan.py"
-    planner_test_text = planner_tests.read_text(encoding="utf-8") if planner_tests.exists() else ""
-    test_contract = (
-        "test_infers_patch_without_mutating_repository",
-        "test_breaking_footer_infers_major",
-        "test_prerelease_requires_target",
-        "test_equal_precedence_tags_on_different_commits_are_ambiguous",
-        "test_no_commits_after_base_blocks_explicit_target",
-        "test_unclassified_commit_requires_an_explicit_target",
-        "test_equal_precedence_build_tags_on_one_commit_share_the_base",
-        "test_known_prerelease_order_selects_the_stable_base",
-        "test_numbered_prerelease_can_advance_explicitly",
-        "test_detached_head_requires_attention",
-        "test_clean_attached_merge_still_requires_attention",
-        "test_stale_rebase_head_without_active_rebase_is_ignored",
-        "test_active_rebase_directory_requires_attention",
-        "test_nonconventional_merge_does_not_mask_child_inference",
-        "test_real_shallow_boundary_blocks_base_selection",
-    )
-    missing_tests = [value for value in test_contract if value not in planner_test_text]
-    if missing_tests:
-        errors.append(f"semver-release: release planner regression suite is incomplete: {missing_tests}")
-    for line in version_files_text.splitlines():
-        command = line.strip()
-        if re.match(r"^npm version(?:\s|$)", command) and (
-            "--no-git-tag-version" not in command or "--ignore-scripts" not in command
-        ):
-            errors.append("semver-release/references/version-files.md: npm command can own Git or lifecycle side effects")
-            break
-    if re.search(r"(?m)^\s*cargo update\s*$", version_files_text):
-        errors.append("semver-release/references/version-files.md: bare cargo update can refresh dependencies")
-    if "cargo metadata --locked --no-deps --format-version 1" in version_files_text:
-        errors.append("semver-release/references/version-files.md: --no-deps metadata does not validate Cargo.lock")
-    stale_selector = "git tag --list 'v[0-9]*' --sort=-v:refname | head -10"
-    if stale_selector in combined:
-        errors.append("semver-release: stale Git version-sort base selector remains")
-    if "git add CHANGELOG.md <version-file> [release-notes]" in skill_text:
-        errors.append("semver-release/SKILL.md: partial release staging command remains")
-    if "Prerelease suffixes generally do **not** go into the version file" in combined:
-        errors.append("semver-release: stale tag-only prerelease guidance remains")
-
-
-PROJECT_DOC_METHOD_CARDS = (
-    "Reader role",
-    "Task or journey",
-    "Domain capability, ownership, and language",
-    "Product, subsystem, or interface surface",
-    "Content purpose or information type",
-    "Lifecycle or authority",
-)
-PROJECT_DOC_METHOD_FIELDS = (
-    "Signals",
-    "Ask",
-    "Fits when",
-    "Fails when",
-    "Axis role",
-    "Micro-example",
-)
-PROJECT_DOC_H2 = re.compile(r"^##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
-PROJECT_DOC_METHOD_FIELD = re.compile(
-    r"^-[ \t]+\*\*(Signals|Ask|Fits when|Fails when|Axis role|Micro-example)\*\*:"
-    r"[ \t]*(.*)$",
-    re.MULTILINE,
-)
-PROJECT_DOC_FENCE = re.compile(r"^[ \t]*(?:```|~~~)", re.MULTILINE)
-PROJECT_DOC_TREE_ENTRY = re.compile(
-    r"^\s*(?:[│├└─+|`\\-]+\s*)?[A-Za-z0-9_.-]+(?:/|\.mdx?)\s*$"
-)
-PROJECT_DOC_FIXED_RANGE = (
-    re.compile(r"(?i)(?<![A-Za-z0-9])`?[0-9]+x`?(?![A-Za-z0-9])"),
-    re.compile(
-        r"(?i)(?<![0-9])`?[0-9]{1,2}\s*(?:-|–|—|\.\.|to|through)\s*"
-        r"[0-9]{1,2}`?(?![0-9])"
-    ),
-)
-PROJECT_DOC_FORCED_NUMBERING = (
-    re.compile(
-        r"(?i)(?<!not )(?<!never )\balways\s+(?:number|prefix)\b[^\n.!?]{0,80}"
-    ),
-    re.compile(
-        r"(?i)\b(?:numbering|numeric prefixes?)\b[^\n.!?]{0,20}"
-        r"\b(?:is|are|remain|remains|become|becomes)\s+"
-        r"(?:(?:always|universally)\s+)?(?:required|mandatory)\b"
-    ),
-    re.compile(
-        r"(?i)(?<!not )(?<!never )\b(?:every|all)\s+"
-        r"(?:project|repository|documentation tree|docs tree)s?\b"
-        r"[^\n.!?]{0,60}\b(?:must|shall)\b[^\n.!?]{0,40}"
-        r"\b(?:numbering|numbered|numeric prefixes?)\b"
-    ),
-    re.compile(
-        r"(?i)\b(?:numbering|numeric prefixes?)\b[^\n.!?]{0,40}"
-        r"\b(?:cannot|must not|may not|never)\s+be\s+disabled\b"
-    ),
-    re.compile(
-        r"(?i)(?<!not )(?<!never )\b(?:enable|apply|add|use)\s+"
-        r"(?:numbering|numeric prefixes?)\s+"
-        r"(?:for|to|in)\s+(?:all|every)\s+"
-        r"(?:project|repository|documentation tree|docs tree)s?\b"
-    ),
-    re.compile(
-        r"(?i)(?<!not )(?<!never )(?<!not always )(?<!never always )"
-        r"\b(?:number|prefix)\s+(?:all|every)\s+"
-        r"(?:project|repository|documentation tree|docs tree)s?\b"
-    ),
-    re.compile(
-        r"(?i)(?<!not )(?<!never )\b(?:every|all)\s+"
-        r"(?:project|repository|documentation tree|docs tree)s?\b[^\n.!?]{0,30}"
-        r"\b(?:is|are|remain|remains|stay|stays)\s+(?:always\s+)?numbered\b"
-    ),
-    re.compile(
-        r"(?i)\bnumbering\s+(?:always\s+)?(?:applies|is applied)\s+"
-        r"(?:to|in)\s+(?:all|every)\s+"
-        r"(?:project|repository|documentation tree|docs tree)s?\b"
-    ),
-)
-PROJECT_DOC_DEFAULT_ON_NUMBERING = (
-    re.compile(
-        r"(?i)(?<!not )(?<!never )(?<!n't )\b(?:enable|use|apply)\s+"
-        r"(?:local\s+)?numbering\s+by\s+default\b"
-    ),
-    re.compile(r"(?i)\boptional\s+default-on(?:\s+local)?\s+numbering\b"),
-)
-
-
-def markdown_h2_sections(text: str) -> dict[str, list[str]]:
-    """Return level-two Markdown sections without treating deeper headings as peers."""
-    matches = list(PROJECT_DOC_H2.finditer(text))
-    sections: dict[str, list[str]] = {}
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        sections.setdefault(match.group(1).strip(), []).append(text[match.end() : end])
-    return sections
-
-
-def method_example_is_tree(field_block: str) -> bool:
-    """Reject fenced or visibly tree-shaped examples while allowing ordinary prose."""
-    if PROJECT_DOC_FENCE.search(field_block) or any(
-        marker in field_block for marker in ("├──", "└──", "│")
-    ):
-        return True
-    tree_entries = [
-        line for line in field_block.splitlines() if PROJECT_DOC_TREE_ENTRY.fullmatch(line)
-    ]
-    return len(tree_entries) >= 2
-
-
-def validate_project_doc_method_cards(method_text: str) -> None:
-    """Require the six method cards and their reasoning fields card by card."""
-    sections = markdown_h2_sections(method_text)
-    invalid_cards = [
-        f"{title} ({len(sections.get(title, []))})"
-        for title in PROJECT_DOC_METHOD_CARDS
-        if len(sections.get(title, [])) != 1
-    ]
-    if invalid_cards:
-        errors.append(
-            "project-docs-organizer/references/classification-methods.md: "
-            f"method-card set is incomplete or duplicated: {invalid_cards}"
-        )
-
-    for title in PROJECT_DOC_METHOD_CARDS:
-        card_bodies = sections.get(title, [])
-        if len(card_bodies) != 1:
-            continue
-        body = card_bodies[0]
-        field_matches = list(PROJECT_DOC_METHOD_FIELD.finditer(body))
-        field_counts = {
-            field: sum(match.group(1) == field for match in field_matches)
-            for field in PROJECT_DOC_METHOD_FIELDS
-        }
-        invalid_fields = [
-            f"{field} ({count})" for field, count in field_counts.items() if count != 1
-        ]
-        empty_fields = [match.group(1) for match in field_matches if not match.group(2).strip()]
-        invalid_fields.extend(f"{field} (empty)" for field in empty_fields)
-        if invalid_fields:
-            errors.append(
-                "project-docs-organizer/references/classification-methods.md: "
-                f"{title} method card must contain each reasoning field exactly once: "
-                f"{invalid_fields}"
-            )
-            continue
-
-        micro_index = next(
-            index
-            for index, match in enumerate(field_matches)
-            if match.group(1) == "Micro-example"
-        )
-        micro_start = field_matches[micro_index].start()
-        micro_end = (
-            field_matches[micro_index + 1].start()
-            if micro_index + 1 < len(field_matches)
-            else len(body)
-        )
-        if method_example_is_tree(body[micro_start:micro_end]):
-            errors.append(
-                "project-docs-organizer/references/classification-methods.md: "
-                f"{title} micro-example must be prose, not a directory tree"
-            )
-
-
-def validate_project_doc_numbering_semantics(
-    numbering_text: str, *, combined_text: str | None = None
-) -> None:
-    """Reject global numeric taxonomies and unconditional or default-on numbering."""
-    fixed_ranges = sorted(
-        {
-            match.group(0)
-            for pattern in PROJECT_DOC_FIXED_RANGE
-            for match in pattern.finditer(numbering_text)
-        }
-    )
-    if fixed_ranges:
-        errors.append(
-            "project-docs-organizer: fixed numeric range notation is prohibited; "
-            f"use sibling-local ordering tokens only: {fixed_ranges}"
-        )
-
-    forced_rules = sorted(
-        {
-            match.group(0).strip()
-            for pattern in PROJECT_DOC_FORCED_NUMBERING
-            for match in pattern.finditer(numbering_text)
-        }
-    )
-    if forced_rules:
-        errors.append(
-            "project-docs-organizer/references/numbering-patterns.md: "
-            f"unconditional numbering mandate contradicts project opt-outs: {forced_rules}"
-        )
-    default_on_rules = sorted(
-        {
-            match.group(0).strip()
-            for pattern in PROJECT_DOC_DEFAULT_ON_NUMBERING
-            for match in pattern.finditer(combined_text or numbering_text)
-        }
-    )
-    if default_on_rules:
-        errors.append(
-            "project-docs-organizer: default-on numbering contradicts the evidence gate: "
-            f"{default_on_rules}"
-        )
-
-
-def validate_project_docs_organizer_contract(
-    skill_dir: Path | None = None, *, readme_text: str | None = None
-) -> None:
-    """Keep documentation structure evidence-led and local numbering project-owned."""
-    skill_dir = skill_dir or SKILLS_DIR / "project-docs-organizer"
-    paths = {
-        "SKILL.md": skill_dir / "SKILL.md",
-        "references/information-architecture.md": skill_dir / "references" / "information-architecture.md",
-        "references/classification-methods.md": skill_dir / "references" / "classification-methods.md",
-        "references/numbering-patterns.md": skill_dir / "references" / "numbering-patterns.md",
-        "references/migration-and-links.md": skill_dir / "references" / "migration-and-links.md",
-    }
-    retired_zone_catalog = skill_dir / "references" / "zone-catalog.md"
-    if retired_zone_catalog.exists():
-        errors.append("project-docs-organizer: retired references/zone-catalog.md still exists")
-    missing_files = [label for label, path in paths.items() if not path.exists()]
-    if missing_files:
-        errors.append(f"project-docs-organizer: missing required files: {missing_files}")
-        return
-    texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
-    if readme_text is None:
-        readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
-    public_summary = readme_skill_rows(readme_text, "project-docs-organizer")
-    normalized = {label: " ".join(text.split()) for label, text in texts.items()}
-    normalized_skill = normalized["SKILL.md"]
-    project_owned_contract = (
-        "The target project owns its information architecture",
-        "smallest structure",
-        "preserve a coherent established convention",
-        "one primary axis per tree level",
-        "documentation IA decision record",
-        "two or three candidates",
-        "wait for the user before mutation",
-        "No empty category",
-        "Resolve the target project root",
-    )
-    missing = [value for value in project_owned_contract if value not in normalized_skill]
-    if missing:
-        errors.append(
-            "project-docs-organizer/SKILL.md: project-owned information architecture lost fixtures: "
-            f"{missing}"
-        )
-    architecture_contract = (
-        "Reader-route separation",
-        "Vocabulary and ownership cohesion",
-        "Lifecycle consistency",
-        "Stability under change",
-        "Duplication pressure",
-        "Choose one primary axis",
-        "secondary lenses",
-        "representative placement test",
-        "two or three candidates",
-        "wait for the user before mutation",
-        "absence of a convention",
-        "not evidence for numbering",
-        "stable sibling",
-        "path/link churn",
-    )
-    missing_architecture = [
-        value
-        for value in architecture_contract
-        if value not in normalized["references/information-architecture.md"]
-    ]
-    if missing_architecture:
-        errors.append(
-            "project-docs-organizer/references/information-architecture.md: "
-            f"evidence-led selection contract is incomplete: {missing_architecture}"
-        )
-    validate_project_doc_method_cards(texts["references/classification-methods.md"])
-    numbering_contract = (
-        "Keep numbering disabled by default",
-        "stable sibling",
-        "observed reader route",
-        "path/link churn",
-        "coherent established convention",
-        "documentation generator owns ordering or navigation",
-        "sibling-local position",
-        "`10-`",
-        "`20-`",
-        "`00-`",
-        "genuine reading or execution order",
-        "not category meaning",
-    )
-    missing_numbering = [
-        value
-        for value in numbering_contract
-        if value not in normalized["references/numbering-patterns.md"]
-    ]
-    if missing_numbering:
-        errors.append(
-            "project-docs-organizer/references/numbering-patterns.md: "
-            f"evidence and opt-out numbering contract is incomplete: {missing_numbering}"
-        )
-    combined = "\n".join((*texts.values(), public_summary))
-    validate_project_doc_numbering_semantics(
-        texts["references/numbering-patterns.md"], combined_text=combined
-    )
-    stale_template_rules = (
-        "## Default Zone Model",
-        "# Optional Documentation Zone Catalog",
-        "## Candidate zone catalog",
-        "`00-start-here`",
-        "`20-development-overview`",
-        "The developer area is `2x`",
-        "one-class-per-zone rule",
-        "semantic numbered zones",
-    )
-    found_stale = [value for value in stale_template_rules if value in combined]
-    if found_stale:
-        errors.append(
-            "project-docs-organizer: retired zone-template semantics remain: "
-            f"{found_stale}"
-        )
-    migration_contract = (
-        "Build the migration map",
-        "Before deleting",
-        "rg -n -F 'old/path.md' <project-root>",
-        "external wikis or issue trackers",
-        "git diff --check",
-    )
-    missing_migration = [
-        value for value in migration_contract if value not in texts["references/migration-and-links.md"]
-    ]
-    if missing_migration:
-        errors.append(
-            "project-docs-organizer/references/migration-and-links.md: migration evidence lost fixtures: "
-            f"{missing_migration}"
-        )
-
-
-def validate_grouping_manifest(skill_dirs: list[Path]) -> None:
-    """Keep npx skills grouping metadata aligned with the catalog."""
-    if not GROUPING_MANIFEST.exists():
-        errors.append("missing `.claude-plugin/plugin.json` grouping manifest")
-        return
-
-    try:
-        manifest = json.loads(GROUPING_MANIFEST.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        errors.append(f"invalid `.claude-plugin/plugin.json`: {exc}")
-        return
-
-    if manifest.get("name") != "sean2077-skills":
-        errors.append("`.claude-plugin/plugin.json` name must be `sean2077-skills`")
-
-    expected = [f"./skills/{skill_dir.name}" for skill_dir in skill_dirs]
-    if manifest.get("skills") != expected:
-        errors.append(
-            "`.claude-plugin/plugin.json` skills must exactly match the sorted "
-            f"skills/ catalog: expected {expected}"
-        )
 
 
 def report() -> int:

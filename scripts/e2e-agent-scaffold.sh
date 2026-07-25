@@ -653,8 +653,11 @@ check "AGENTS.md carries the common authority laws" authority_laws_present "$S/A
 check "AGENTS.md keeps third-party policy project-owned" grep -qF "Third-party skills** follow project-owned placement and installation policy" "$S/AGENTS.md"
 # shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
 check "AGENTS.md omits unconditional third-party placement" no_fixed_text "$S/AGENTS.md" 'they land as real dirs in `.claude/skills/`'
+# The invariant is that stripping the worktree-only marker leaves a well-formed
+# closing cell — not any particular Role wording, which is free to be reworded.
 # shellcheck disable=SC2016  # backticks are literal Markdown in the expected table row
-check "managed table keeps its closing cell spacing" grep -qF '| `.agents/tools/worktree.sh` | worktree lifecycle | ✅ |' "$S/AGENTS.md"
+check "managed table keeps its closing cell spacing" grep -qE '^\| `\.agents/tools/worktree\.sh` \| .+ \| ✅ \|$' "$S/AGENTS.md"
+check "managed table strips the worktree-only marker" no_fixed_text "$S/AGENTS.md" 'agent-scaffold:worktree-only'
 check "resident skill README stays thin" test "$(wc -l < "$S/.agents/skills/README.md" | tr -d ' ')" -le 24
 check "resident skill README routes to depth" grep -qF 'references/harness-layout.md' "$S/.agents/skills/README.md"
 check "resident subagent README stays thin" test "$(wc -l < "$S/.agents/subagents/README.md" | tr -d ' ')" -le 26

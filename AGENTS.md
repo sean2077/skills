@@ -38,6 +38,11 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   kebab-case category names and link each file directly from `SKILL.md`. Do not use root-level
   `reference.md` or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
 - `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI.
+  `validate_skills.py` owns only catalog-wide rules; `catalog_core.py` holds the shared
+  `errors`/`warnings` lists and path constants. **Per-skill semantic contracts live in
+  `scripts/contracts/<skill>.py`, one file per `skills/<name>/`** — discovered by filename, so
+  changing one skill's contract touches exactly that file. A skill with no contract module (or a
+  module naming no existing skill) is a validation error.
 - **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product);
   `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
 - Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
@@ -102,11 +107,12 @@ The authority-document budget hook remains advisory; projects may override its d
 | `.agents/subagents/<name>/{metadata.json,instructions.md}` | subagent source | ✅ |
 | `.claude/skills/<name>` | symlink → `.agents/skills/<name>` (CC discovery; Codex reads `.agents/` directly) | ✅ |
 | `.claude/agents/*.md`, `.codex/agents/*.toml` | **generated** subagent projections — do NOT hand-edit | ✅ |
-| `.agents/tools/hooks/` | scaffold-managed hook runtime (doc budget + optional trunk guard) | ✅ |
-| `.agents/tools/worktree.sh` | worktree lifecycle | ✅ |
+| `.agents/tools/hooks/` | scaffold-managed hook runtime (doc budget + optional trunk guard) — **managed copies, do NOT hand-edit** | ✅ |
+| `.agents/tools/worktree.sh` | worktree lifecycle — **managed copy, do NOT hand-edit** | ✅ |
 | `.claude/allow-trunk-edit` | worktree escape hatch | ❌ ignored |
 | `.claude/settings.local.json` | personal overrides | ❌ ignored |
 
+- **Change managed runtime**: everything under `.agents/tools/` is a copy the skill owns. Edit the skill's bundled source and run `agent-scaffold upgrade` to refresh — a hand-edit here is drift, and `agent-scaffold verify` reports it.
 - **Add a skill**: edit `.agents/skills/` → run `bash .agents/relink-skills.sh` → commit source + symlink.
 - **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. Wire `--check` into the project's own CI or hook manager when desired.
 - **Third-party skills** follow project-owned placement and installation policy. The relinker manages only names sourced from `.agents/skills/`, preserves unrelated entries, and fails on same-name ownership conflicts.
