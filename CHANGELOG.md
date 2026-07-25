@@ -6,6 +6,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- The release workflow no longer deadlocks against its own reusable validation call. `v4.1.1`
+  derived validate.yml's concurrency group from `github.workflow`, which resolves to the *caller*
+  inside a `workflow_call` and therefore evaluated to release.yml's own `release-<ref>` group; the
+  called workflow queued behind a caller that never cancels, so no GitHub Release was published
+  for that tag. The group is now a literal `validate-skills-<ref>`, and validation rejects both a
+  `github.workflow`-derived group and any group shared with release.yml.
+
 ## [v4.1.1] — 2026-07-26
 
 ### Added

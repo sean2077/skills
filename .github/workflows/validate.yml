@@ -14,8 +14,13 @@ permissions:
 
 # Supersede an in-flight run for the same ref, but never cancel a tag run:
 # release.yml calls this workflow and deliberately sets cancel-in-progress: false.
+#
+# The prefix is a literal, NOT github.workflow: inside a called workflow that
+# context resolves to the CALLER's name, so `${{ github.workflow }}-${{ github.ref }}`
+# evaluated to release.yml's own `release-<ref>` group. The reusable call then
+# queued behind its own caller, which never cancels, and the release deadlocked.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: validate-skills-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:

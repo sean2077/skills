@@ -203,6 +203,40 @@ def validate_resident_contract(skill_dir: Path, skill_text: str, frontmatter: di
         )
 
 
+# Stop at cancel-in-progress rather than at whitespace: a group value contains
+# `${{ ... }}` expressions, so \S+ would truncate it at the first inner space.
+CONCURRENCY_GROUP = re.compile(r"concurrency: group: (.+?) cancel-in-progress:")
+
+
+def validate_concurrency_isolation(normalized_validate: str, normalized_release: str) -> None:
+    """Keep the reusable validation workflow out of its caller's concurrency group.
+
+    `github.workflow` resolves to the CALLER's name inside a called workflow, so
+    deriving validate.yml's group from it made the group identical to release.yml's
+    own `release-<ref>`. The reusable call then queued behind its own caller, which
+    sets cancel-in-progress: false, and the whole release run failed to start.
+    """
+    validate_group = CONCURRENCY_GROUP.search(normalized_validate)
+    release_group = CONCURRENCY_GROUP.search(normalized_release)
+    if not validate_group or not release_group:
+        errors.append(
+            "both workflows must declare a concurrency group so a superseded run "
+            "cannot keep burning the matrix"
+        )
+        return
+
+    if "github.workflow" in validate_group.group(1):
+        errors.append(
+            "validate.yml concurrency group must not use `github.workflow`: inside a "
+            "workflow_call it resolves to the caller, colliding with release.yml's group"
+        )
+    if validate_group.group(1) == release_group.group(1):
+        errors.append(
+            "validate.yml and release.yml declare the same concurrency group "
+            f"({validate_group.group(1)}); the reusable call would deadlock behind its caller"
+        )
+
+
 def validate_repository_release_automation_contract(
     validate_text: str | None = None, release_text: str | None = None
 ) -> None:
@@ -237,6 +271,7 @@ def validate_repository_release_automation_contract(
             "validate.yml must not run the full matrix on every branch push: "
             'pull_request already covers PR branches, so `branches: ["**"]` doubles each PR run'
         )
+    validate_concurrency_isolation(normalized_validate, normalized_release)
     required_release = (
         'push: tags: ["v*"]',
         "permissions: contents: read",
