@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v4.1.1] — 2026-07-26
+
 ### Added
 
 - Per-skill catalog contracts now live in `scripts/contracts/<skill>.py`, one module per
@@ -276,7 +278,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v4.1.1...HEAD
+[v4.1.1]: https://github.com/sean2077/skills/compare/v4.1.0...v4.1.1
 [v4.1.0]: https://github.com/sean2077/skills/compare/v4.0.1...v4.1.0
 [v4.0.1]: https://github.com/sean2077/skills/compare/v4.0.0...v4.0.1
 [v4.0.0]: https://github.com/sean2077/skills/compare/v3.0.2...v4.0.0
