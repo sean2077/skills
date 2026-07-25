@@ -474,6 +474,28 @@ class RepositoryReleaseAutomationContractTests(unittest.TestCase):
     def test_repository_release_automation_is_accepted(self) -> None:
         self.assertEqual([], self.validate())
 
+    def test_caller_derived_concurrency_group_is_rejected(self) -> None:
+        # github.workflow resolves to the CALLER inside a workflow_call, so this
+        # made validate.yml claim release.yml's own group and deadlocked v4.1.1.
+        validate_text, _ = self.files()
+        errors = self.validate(
+            validate_text=validate_text.replace(
+                "group: validate-skills-${{ github.ref }}",
+                "group: ${{ github.workflow }}-${{ github.ref }}",
+            )
+        )
+        self.assertTrue(any("resolves to the caller" in error for error in errors))
+
+    def test_shared_concurrency_group_is_rejected(self) -> None:
+        validate_text, _ = self.files()
+        errors = self.validate(
+            validate_text=validate_text.replace(
+                "group: validate-skills-${{ github.ref }}",
+                "group: release-${{ github.ref }}",
+            )
+        )
+        self.assertTrue(any("deadlock behind its caller" in error for error in errors))
+
     def test_wildcard_branch_push_is_rejected(self) -> None:
         # pull_request already covers PR branches; "**" would run the full
         # 3-OS matrix twice for every Dependabot update.
