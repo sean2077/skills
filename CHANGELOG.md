@@ -6,6 +6,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Added `lark-cli`, one lean 飞书/Feishu/Lark entry point that replaces the official
+  skill-per-domain context fan-out with eight conditionally loaded domain references. It
+  preserves explicit user/bot identity continuity, installed-command discovery, raw OpenAPI
+  fallback, mail/send confirmation, untrusted-content handling, and high-risk write gates.
+
 ## [v4.1.2] — 2026-07-26
 
 ### Fixed
