@@ -8,7 +8,7 @@
 
 `sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** —
 reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other
-Agent-Skills hosts). It ships 5 skills: `conventional-commit`, `semver-release`,
+Agent-Skills hosts). It ships 6 skills: `conventional-commit`, `lark-cli`, `semver-release`,
 `project-docs-organizer`, `tooling-conventions`, and `agent-scaffold`. No build step — the skills
 *are* the product.
 

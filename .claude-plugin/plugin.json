@@ -4,6 +4,7 @@
   "skills": [
     "./skills/agent-scaffold",
     "./skills/conventional-commit",
+    "./skills/lark-cli",
     "./skills/project-docs-organizer",
     "./skills/semver-release",
     "./skills/tooling-conventions"
