@@ -10,8 +10,23 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Added `lark-cli`, one lean 飞书/Feishu/Lark entry point that replaces the official
   skill-per-domain context fan-out with eight conditionally loaded domain references. It
-  preserves explicit user/bot identity continuity, installed-command discovery, raw OpenAPI
-  fallback, mail/send confirmation, untrusted-content handling, and high-risk write gates.
+  preserves explicit user/bot identity continuity, reference-backed fast paths with targeted
+  command-drift discovery, raw OpenAPI fallback, mail/send confirmation, untrusted-content
+  handling, and high-risk write gates.
+
+### Changed
+
+- `lark-cli` domain references now act as a maintained command cache for stable, high-frequency
+  operations. Known IDs and URLs normally take one business call; human-readable targets take at
+  most one resolver plus the action. Broad help/schema preflight, duplicate discovery, and routine
+  post-write readback are rejected by the catalog contract, while exact help/schema remains the
+  fallback for real CLI drift and low-frequency APIs.
+- `lark-cli` now treats already loaded instructions, domain references, successful command shapes,
+  and help/schema output as a trusted session-local context cache. Related turns skip duplicate file
+  reads while the exact contract remains present; context loss, a new domain, or real CLI drift
+  reloads only the smallest missing part. Recipients, payloads, confirmations, `--yes`,
+  `--confirm-send`, and idempotency keys remain transaction-scoped and are never inherited by a new
+  logical action.
 
 ## [v4.1.2] — 2026-07-26
 
