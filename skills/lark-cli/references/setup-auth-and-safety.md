@@ -62,19 +62,60 @@ query by the returned ID; when a send shortcut supports idempotency, reuse the o
 
 ## Configuration and user authorization
 
-When configuration is genuinely absent, inspect `lark-cli config --help` and use the installed
-surface (commonly `lark-cli config init`). Never ask the user to paste an app secret into chat or
-print credentials in logs.
+When configuration is genuinely absent, first choose the environment-specific setup path:
 
-For user authorization, react to the reported error and authorize only the narrow domain, for example:
+- In a detected OpenClaw, Hermes, or Lark Channel environment, do **not** run `config init`. It refuses there to avoid creating a parallel app. Explain that binding can replace configuration and locks an identity policy; obtain explicit approval of `bot-only` or `user-default`, then bind the existing Agent credentials (the source auto-detects):
+
+  ```bash
+  lark-cli config bind --identity bot-only
+  ```
+
+  If an OpenClaw installation exposes multiple apps, identify the intended existing app with the user and add its `--app-id`; do not guess which app to bind.
+
+- Otherwise initialize a new app:
+
+  ```bash
+  lark-cli config init --new
+  ```
+
+  This interactive command blocks while browser setup completes. In an Agent host, run it through a background-capable execution path, retrieve its verification URL, and show it to the user before waiting for completion.
+
+Never ask the user to paste an app secret into chat or print credentials in logs. Treat any returned
+`verification_url`, `verification_uri_complete`, or `console_url` as an opaque string: preserve it
+exactly, generate a QR code with `lark-cli auth qrcode`, and present the URL before the QR image.
+
+For user authorization, request the narrowest range that satisfies the reported error. Use the
+non-blocking JSON split flow; broad `all` is only for an explicit request for all permissions:
 
 ```bash
-lark-cli auth login --domain '<service>'
+lark-cli auth login --domain docs --domain drive --no-wait --json
+lark-cli auth login --scope '<missing-scope>' --no-wait --json
+lark-cli auth login --domain all --no-wait --json
 ```
 
-Inspect `lark-cli auth login --help` only when the reported login flow requires an option not covered
-here. Present generated verification URLs/codes exactly, never cache expired device material, and
-continue only after the user completes authorization.
+From the JSON response, preserve `verification_url` and `device_code`, then generate a non-existing
+cwd-relative PNG and show the unchanged URL first, followed by the QR image:
+
+```bash
+lark-cli auth qrcode '<verification_url>' --output './lark-auth-qr.png'
+```
+
+After the user explicitly reports that authorization is complete, finish the same device flow:
+
+```bash
+lark-cli auth login --device-code '<device-code>'
+```
+
+Do not run `--device-code` in the same turn before the user can see the URL. Do not cache expired
+device material; if it expires, restart with the same domain/scope range and exclusions rather than
+broadening it.
+Inspect `auth login --help` only after an actual parse/option drift error.
+
+A bot missing a scope is not a user-login problem: never run `auth login` for that error. Preserve the
+reported `console_url`, show it unchanged with a QR code, and direct the user to enable the exact bot
+scope in the developer console. Use `lark-cli auth status --json --verify` only when the user asks to
+inspect login/token state or diagnosis truly requires it; use `lark-cli whoami` only when the actually
+effective identity itself is needed. Neither is a business-command preflight.
 
 ## Identity model
 
@@ -113,6 +154,14 @@ can misclassify a completed write and cause duplicate retries. When a shortcut r
 updated ID, target, status, and warnings, use that as the authoritative result. Read back only when
 those fields are absent/ambiguous, the domain explicitly requires state validation, or the user asks.
 
+## Update notices
+
+Treat `_notice` as advisory metadata, not as the main result. Finish the requested task first.
+`_notice.update` reports a newer CLI, `_notice.skills` reports CLI/skill mismatch, and
+`_notice.deprecated_command` may provide a `replacement` for future calls. When relevant, recommend
+`lark-cli update`; it updates both the CLI and bundled AI skills. Do not interrupt the task or run
+repeated help/version checks merely because a notice appeared.
+
 ## High-risk confirmation
 
 Exit code `10` plus `error.type == "confirmation"` and
@@ -120,8 +169,10 @@ Exit code `10` plus `error.type == "confirmation"` and
 
 1. Show `error.action`, `error.risk`, the exact target, and material parameters.
 2. Obtain explicit user approval.
-3. Append `--yes` to the original argv and retry once without changing the target.
-4. On rejection, stop. Never auto-add `--yes` or reinterpret confirmation as auth/network failure.
+3. Follow `error.hint` to append the exact confirmation flag (usually `--yes`) to the original argv,
+   then retry once without changing the target or material parameters.
+4. On rejection, stop. Never auto-add a confirmation flag or reinterpret confirmation as
+   auth/network failure.
 
 Use `--dry-run` when a domain reference requires a preview for a risky/bounded write. Do not run it
 for every exact ordinary action merely because the flag exists.

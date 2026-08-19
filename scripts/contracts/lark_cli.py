@@ -88,6 +88,9 @@ def validate_lark_cli_contract(
         "ok == true",
         "Feishu/Lark URLs and tokens as opaque identifiers",
         "Do not add a ritual follow-up read",
+        "Do not invoke a parallel `lark-suite` or separate `lark-*` skill",
+        "no query string or fragment",
+        "Follow `error.hint`",
     )
     missing_resident = [
         value for value in resident_required if value not in normalized["SKILL.md"]
@@ -168,6 +171,16 @@ def validate_lark_cli_contract(
             "ok == true",
             "confirmation_required",
             "relative to the current directory",
+            "lark-cli config init --new",
+            "lark-cli config bind --identity bot-only",
+            "explicit approval of `bot-only` or `user-default`",
+            "background-capable execution path",
+            "--no-wait --json",
+            "lark-cli auth qrcode",
+            "A bot missing a scope",
+            "error.hint",
+            "_notice.update",
+            "lark-cli update",
         ),
         "references/messaging.md": (
             "Known `chat_id` (`oc_...`) -> one IM command",
@@ -199,6 +212,14 @@ def validate_lark_cli_contract(
             "do not WebFetch a protected resource",
             "Never fabricate a block ID",
             "Do not refetch the whole resource",
+            "--start-block-id",
+            "--end-block-id",
+            "lark-cli drive +add-comment",
+            "lark-cli drive +list-comments",
+            "--solved-status true",
+            "--solved-status all",
+            "lark-cli slides +update-slide",
+            "@./",
         ),
         "references/tables-and-records.md": (
             "Fast-path contract",
@@ -209,6 +230,8 @@ def validate_lark_cli_contract(
             "lark-cli sheets +formula-verify",
             "Formula writes must run the known verifier directly",
             "one focused `+record-list`/`+record-search` acceptance read",
+            "border_styles",
+            "Borders belong inside each `cell_styles` item",
         ),
         "references/calendar-and-meetings.md": (
             "Fast-path contract and call budget",
@@ -220,6 +243,10 @@ def validate_lark_cli_contract(
             "Ended meeting search",
             "lark-cli vc +meeting-list-active --as bot --user-id",
             "Identity is state across the whole chain",
+            "lark-cli note +transcript",
+            "note_display_type=unified",
+            "explicit consent",
+            "./notes/{note_id}/unified_transcript.md",
         ),
         "references/people-and-work.md": (
             "Fast-path contract and call budget",
@@ -246,6 +273,8 @@ def validate_lark_cli_contract(
             "reuse exact relevant content already in active context instead of reopening it",
             "raw OpenAPI",
             "one lean resident router",
+            "query strings or fragments",
+            "--params",
         ),
     }
     for label, fixtures in domain_required.items():
