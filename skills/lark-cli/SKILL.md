@@ -9,6 +9,10 @@ Operate Feishu/Lark through the installed `lark-cli`. Keep this file resident as
 cross-domain contract. Load only the smallest matching reference set. Do not preload every
 reference. Load means make content available only when absent.
 
+Once this unified router is selected, keep it as the only Lark skill entrypoint. Do not invoke a
+parallel `lark-suite` or separate `lark-*` skill, traverse the references directory, or open anything
+except the directly linked category reference selected below.
+
 ## Workflow
 1. Extract the requested outcome, target objects, exact recipients, time range, and supplied URLs,
    tokens, or IDs. Do not invent missing identifiers.
@@ -53,7 +57,9 @@ Use this precedence: **Shortcut > registered API > raw OpenAPI**.
 - Reuse any discovered help/schema result while it remains in active context. Do not repeat identical
   discovery calls. Never invent a command, flag, enum, method, or parameter shape.
 - Use `lark-cli api <METHOD> <path>` only after confirming no shortcut or registered API covers the
-  request. Never guess its method, path, scopes, parameters, or pagination contract.
+  request. The path must be a bare `/open-apis/...` path with no query string or fragment; pass query
+  values through `--params` and request bodies through `--data`. Never guess its method, path, scopes,
+  parameters, or pagination contract.
 - Do not blindly retry an ambiguous write. Inspect its result first; reuse an idempotency key only
   when retrying the same logical action.
 
@@ -70,7 +76,8 @@ Use this precedence: **Shortcut > registered API > raw OpenAPI**.
   reconfirm destructive, irreversible, bulk, permission/member, or externally published effects;
   mail sends have the stricter rule in the mail reference.
 - If the CLI exits with code `10` and reports `confirmation_required`, show the action, risk, target,
-  and material parameters. Add `--yes` only after explicit approval; never retry automatically.
+  and material parameters. Follow `error.hint` to append the exact confirmation flag (typically
+  `--yes`) only after explicit approval; never retry automatically.
 - Success is exit status 0 and/or an envelope with `ok == true`; do not test legacy top-level
   `code == 0`. Do not add a ritual follow-up read after a conclusive write except for a
   domain-required verification command documented in the available reference.

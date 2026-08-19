@@ -158,6 +158,8 @@ Escalate only when no cached shortcut covers the requested capability:
 3. Inspect `lark-cli schema <service.resource.method>` for that selected method only.
 4. Consult the official endpoint contract, then call `lark-cli api <METHOD> <path>` as last resort.
 
+The raw path must be a bare `/open-apis/...` path without query strings or fragments. Put query values
+in `--params` and request bodies in `--data`; do not append `?query=...` or `#fragment` to the path.
 Do not start with broad service help. Do not guess a URL path, HTTP method, identity, scope, parameter
 location, enum, or pagination contract. Preserve the same identity and global safety rules. When the
 endpoint is unsupported or ambiguous, report the boundary instead of improvising a plausible call.

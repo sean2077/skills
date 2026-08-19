@@ -133,8 +133,9 @@ automatically after analysis unless the user's request included leaving.
 ## Meeting product chain
 
 Identity is state across the whole chain. A `note_id` or `minute_token` discovered with `vc --as bot`
-must be consumed with the same `--as bot`; its document token must then be fetched with the same
-identity. Never switch to the usual Docs user default mid-chain.
+must normally be consumed with the same `--as bot`; its document token must then be fetched with the
+same identity. Never switch to the usual Docs user default mid-chain unless a command has an explicit
+identity restriction and the user approves the exception described below.
 
 ```bash
 # Known note: do not call VC first
@@ -149,8 +150,20 @@ lark-cli docs +fetch --doc '<doc-token>' --doc-format markdown --as user
 
 When both Note and Minutes exist, honor an explicit product choice. For links or existing AI summary,
 read only the requested product. For independent re-summarization, decisions, quotes, or “who said
-what,” use the raw transcript rather than merely reformatting an AI summary. If the Note is unified,
-route transcript access by `note_display_type`; do not infer support from a blank token.
+what,” use the raw transcript rather than merely reformatting an AI summary.
+
+Use the unified transcript shortcut only after `note +detail` confirms
+`note_display_type=unified`:
+
+```bash
+lark-cli note +transcript --note-id '<note-id>' --as user
+```
+
+This shortcut is user-only. If `note +detail --as bot` discovered the unified Note, stop and explain
+the identity boundary; switch to `--as user` only after the user's explicit consent. The default file
+is `./notes/{note_id}/unified_transcript.md`; add `--overwrite` only when the user explicitly approves
+replacing an existing file. For a normal Note, read its `verbatim_doc_token` through Docs using the
+identity that produced it; do not infer unified support from a blank token.
 
 For local audio/video that should become a Feishu meeting artifact, start with the Minutes upload
 shortcut, then use the returned `minute_token`; do not substitute an unrelated local transcription

@@ -78,6 +78,8 @@ lark-cli sheets +styles-put --url '<sheet-url>' --styles - --as user <<'JSON'
 JSON
 ```
 
+Borders belong inside each `cell_styles` item. Use the nested `border` shorthand for one uniform border, or the nested `border_styles` object only when sides need different styles; do not put `border_styles` alongside the top-level `cell_styles` array. Preserve the existing non-border fields when extending a styled range.
+
 Known structural fast paths include:
 
 ```bash
