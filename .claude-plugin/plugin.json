@@ -7,6 +7,7 @@
     "./skills/lark-cli",
     "./skills/project-docs-organizer",
     "./skills/semver-release",
+    "./skills/tdd",
     "./skills/tooling-conventions"
   ]
 }

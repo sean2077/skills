@@ -6,11 +6,7 @@
 
 ## Project Overview
 
-`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** —
-reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other
-Agent-Skills hosts). It ships 6 skills: `conventional-commit`, `lark-cli`, `semver-release`,
-`project-docs-organizer`, `tooling-conventions`, and `agent-scaffold`. No build step — the skills
-*are* the product.
+`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 7 skills: `conventional-commit`, `lark-cli`, `semver-release`, `project-docs-organizer`, `tdd`, `tooling-conventions`, and `agent-scaffold`. No build step — the skills *are* the product.
 
 ## Development Commands
 
@@ -22,6 +18,7 @@ python scripts/validate_skills.py      # frontmatter, name↔dir, README + refer
 python scripts/test_validate_skills.py # focused catalog-contract regression fixtures
 python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
 python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
+python scripts/tests/test_tdd_contract.py # stack-neutral TDD payload and semantic-contract regressions
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
 npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
 bash scripts/tests/test-tooling-inventory.sh # tooling structural-inventory reconciliation fixtures
