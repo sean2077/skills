@@ -80,6 +80,7 @@ jobs:
           python scripts/validate_skills.py
           python scripts/test_validate_skills.py
           python scripts/tests/test_semver_release_plan.py
+          python scripts/tests/test_tdd_contract.py
 
       - name: Validate official Agent Skills specification
         run: |
