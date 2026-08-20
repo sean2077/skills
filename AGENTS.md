@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 7 skills: `conventional-commit`, `lark-cli`, `semver-release`, `project-docs-organizer`, `tdd`, `tooling-conventions`, and `agent-scaffold`. No build step — the skills *are* the product.
+`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 16 independently installable skills: repository analysis/review workflows, deterministic `autopilot` / `deep-interview` / `ralph` control runtimes, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and the dual-host agent scaffold. No build step — the skills *are* the product.
 
 ## Development Commands
 
@@ -19,6 +19,7 @@ python scripts/test_validate_skills.py # focused catalog-contract regression fix
 python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
 python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
 python scripts/tests/test_tdd_contract.py # stack-neutral TDD payload and semantic-contract regressions
+python scripts/tests/test_oma_migration_workflows.py # migrated workflow state/terminal/binding regressions
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
 npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
 bash scripts/tests/test-tooling-inventory.sh # tooling structural-inventory reconciliation fixtures
@@ -40,6 +41,10 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   `scripts/contracts/<skill>.py`, one file per `skills/<name>/`** — discovered by filename, so
   changing one skill's contract touches exactly that file. A skill with no contract module (or a
   module naming no existing skill) is a validation error.
+- `autopilot`, `deep-interview`, and `ralph` must remain independently installable: each runtime
+  lives under its own skill, uses only the Python standard library, records state under
+  `.agent-workflows/<workflow>/<id>.json`, binds mutations to one Git worktree/branch, and never
+  executes verifier commands supplied as data. Keep their behavioral regression suite green.
 - **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product);
   `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
 - Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates

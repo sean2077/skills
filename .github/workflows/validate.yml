@@ -81,6 +81,7 @@ jobs:
           python scripts/test_validate_skills.py
           python scripts/tests/test_semver_release_plan.py
           python scripts/tests/test_tdd_contract.py
+          python scripts/tests/test_oma_migration_workflows.py
 
       - name: Validate official Agent Skills specification
         run: |
