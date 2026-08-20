@@ -9,6 +9,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Added `tdd`, an explicitly triggered, stack-neutral RED-GREEN-REFACTOR skill adapted from Matt Pocock's MIT-licensed TDD skill. It derives seams, independent oracles, test levels, working directories, and verification commands from target-project evidence; covers effects and doubles, legacy systems, generated code, concurrency, compatibility and migrations, security, performance, data/ML, infrastructure, and embedded targets; and ships a per-skill contract plus focused regressions against ecosystem defaults and rigid seam, assertion, mocking, or refactoring rules.
+- Migrated nine reusable workflows from the former bundled runtime into independently installable catalog skills: `analyze`, `ai-slop-cleaner`, `autopilot`, `best-practice-research`, `code-review`, `deep-interview`, `prototype`, `ralph`, and `trace`. `autopilot`, `deep-interview`, and `ralph` ship self-contained standard-library Python state runtimes plus behavioral regressions; no migrated skill requires a separate project CLI.
+- Folded research optimization and adversarial end-to-end QA into on-demand `ralph` profiles instead of publishing duplicate loop engines. Multi-agent delivery is intentionally outside this catalog and remains the responsibility of PairRoom.
 
 - Added `lark-cli`, one lean 飞书/Feishu/Lark entry point that replaces the official
   skill-per-domain context fan-out with eight conditionally loaded domain references. It
@@ -16,7 +18,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   command-drift discovery, raw OpenAPI fallback, mail/send confirmation, untrusted-content
   handling, and high-risk write gates.
 
+### Fixed
+
+- Hardened the migrated `autopilot`, `deep-interview`, and `ralph` state readers to validate schemas, required fields, types, and active-component score coverage before any transition; malformed state now fails closed as `corrupt_state`.
+- Restored `deep-interview` topology-aware scoring: every active component is scored independently, deferred components are excluded, dimension gates use active-component minima, and weakest targets retain their component identity.
+- Made the bundled skill relinker invoke the selected Python directly so user `env` shims cannot suppress the projection manager.
+
 ### Changed
+
+- Workflow control state now uses the skill-neutral repository-shared
+  `.agent-workflows/<workflow>/<id>.json` contract. Runtime mutations use atomic replacement,
+  single-generation backups, command locks, monotonically increasing revisions, and explicit Git
+  worktree/branch binding; the runtimes record observed results but never execute verifier commands.
 
 - `lark-cli` domain references now act as a maintained command cache for stable, high-frequency
   operations. Known IDs and URLs normally take one business call; human-readable targets take at
