@@ -8,16 +8,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added `docs/harness-constraint-policy.md`, a decision rule for keeping mechanical controls around costly machine state while leaving reversible single-session reasoning model-native.
 - Added `skill-eval`, an independently installable Python 3.8+ standard-library evaluation harness for baseline/treatment runs materialized in a clean detached worktree at one resolved commit. It gates positive, negative, and confusable routing, deterministic verifier evidence, changed-path scope, repository isolation, complete cost metrics, pair comparability, and absolute/relative budgets; an offline TDD fixture makes the contract executable in CI without a model or network.
 - Added `work-protocol`, an optional durable task protocol for cross-session, multi-writer, or high-risk delivery. It owns `.agents/work/<task-id>/` artifacts, compare-and-swap state, one expiring and recoverable loop-owner lease, hash-chained evidence, current-cycle verification, commit-pinned reviewer snapshots, isolated writable worktrees, path ownership, and safe cleanup while leaving Agent reasoning and tool use to the native host.
 - Added one maintainer SSOT and deterministic generator for both P0 runtimes, plus behavioral, concurrency, repository-mutation, lease, evidence-integrity, worktree-ownership, symlink-boundary, and Python-floor regressions.
 
 - Added `tdd`, an explicitly triggered, stack-neutral RED-GREEN-REFACTOR skill adapted from Matt Pocock's MIT-licensed TDD skill. It derives seams, independent oracles, test levels, working directories, and verification commands from target-project evidence; covers effects and doubles, legacy systems, generated code, concurrency, compatibility and migrations, security, performance, data/ML, infrastructure, and embedded targets; and ships a per-skill contract plus focused regressions against ecosystem defaults and rigid seam, assertion, mocking, or refactoring rules.
-- Migrated nine reusable workflows from the former bundled runtime into independently installable
+- Migrated eight reusable workflows from the former bundled runtime into independently installable
   catalog skills: `analyze`, `ai-slop-cleaner`, `autopilot`, `best-practice-research`,
-  `code-review`, `deep-interview`, `prototype`, `ralph`, and `trace`. `autopilot`,
-  `deep-interview`, and `ralph` ship self-contained standard-library Python state runtimes plus
-  behavioral regressions; no migrated skill requires a separate project CLI.
+  `code-review`, `deep-interview`, `prototype`, and `ralph`. `autopilot`, `deep-interview`, and
+  `ralph` ship self-contained standard-library Python state runtimes plus behavioral regressions;
+  no migrated skill requires a separate project CLI.
 - Added one maintainer source and deterministic generator for the standalone `autopilot`,
   `deep-interview`, and `ralph` runtimes, plus cross-platform CI regressions for generation drift,
   interruption, corruption, recovery, concurrency, path safety, worktrees, non-Git roots, and
@@ -35,6 +36,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Merged the standalone `trace` route into `analyze` as a causal-investigation mode, preserving competing hypotheses, falsification, and discriminating probes while removing one overlapping routing surface.
+- Made `autopilot` and `deep-interview` model-native by default for ordinary single-session work. Their generated state runtimes remain available as opt-in control planes for resumability, cross-session handoff, formal audit, or other cases where durable state materially helps.
+- Per-skill contract modules are now targeted and optional. Validation still rejects orphaned modules, while prompt-only semantics move to `SKILL.md` and evaluations instead of requiring one brittle phrase-checking module per skill.
 - Workflow control state now uses the skill-neutral
   `.agent-workflows/<workflow>/<session>/<id>.json` contract. Runtime mutations use atomic
   replacement, single-generation backups, command locks, monotonic revision/CAS checks, bounded
@@ -62,6 +66,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reloads only the smallest missing part. Recipients, payloads, confirmations, `--yes`,
   `--confirm-send`, and idempotency keys remain transaction-scoped and are never inherited by a new
   logical action.
+
+### Removed
+
+- Removed the standalone `trace` skill and six prompt-only keyword contracts (`analyze`, `trace`, `ai-slop-cleaner`, `best-practice-research`, `code-review`, and `prototype`). Executable, concurrency, release, Git-safety, and evaluation contracts remain.
 
 ## [v4.1.2] — 2026-07-26
 

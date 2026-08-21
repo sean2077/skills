@@ -10,9 +10,10 @@ with no shipped file. Catalog skills must leave tool approval to the host rather
 than declaring `allowed-tools`; warnings flag softer hygiene such as an
 over-long description.
 
-This module owns only catalog-wide rules that apply to every skill. Per-skill
-semantic contracts live in `scripts/contracts/<skill>.py` and are discovered
-automatically, so changing one skill's contract touches exactly one file.
+This module owns only catalog-wide rules that apply to every skill. Targeted
+per-skill contracts in `scripts/contracts/<skill>.py` are optional and reserved
+for executable or high-risk invariants; prompt-only semantics stay in SKILL.md
+and evaluations.
 
 Install the pinned validation dependency first. Exit 0 = clean, 1 = errors.
 Warnings never fail.
@@ -492,13 +493,8 @@ def main() -> int:
             f"({METADATA_PROSE_CHARS_PER_SKILL} per skill)"
         )
 
-    # Per-skill contracts, one module each under scripts/contracts/.
+    # Targeted executable/high-risk contracts are optional; only stale modules fail.
     covered = set(contracts.run_all(readme_text=readme))
-    uncovered = sorted(d.name for d in skill_dirs if d.name not in covered)
-    if uncovered:
-        errors.append(
-            f"skills without a scripts/contracts/<skill>.py contract module: {uncovered}"
-        )
     orphaned = sorted(covered - {d.name for d in skill_dirs})
     if orphaned:
         errors.append(

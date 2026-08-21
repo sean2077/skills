@@ -1,37 +1,43 @@
 ---
 name: analyze
-description: Use when a repository-local question needs read-only cross-file explanation; use trace for causal failures and direct reading for one-file facts.
+description: Use for read-only repository explanation or causal investigation when the answer requires cross-file evidence, competing hypotheses, or a discriminating probe before any change.
 ---
 
 # analyze
 
-Answer repository questions through read-only evidence gathering. Return a ranked synthesis that separates facts, inferences, and unknowns; do not edit code or turn the answer into an implementation plan.
+Explain how a repository works or investigate why it behaves unexpectedly without changing it. Keep one evidence model across both jobs so near-duplicate analysis and tracing routes do not compete.
 
-## Workflow
+## Choose a mode
 
-1. Restate the exact question and the decision the answer should enable.
-2. Bound the search to relevant entry points, callers, data paths, configuration, tests, and history.
-3. Read the smallest useful set of artifacts, expanding only when evidence crosses a boundary.
-4. Build a claim ledger: claim, source path and symbol or line, confidence, and whether it is fact or inference.
-5. Look for contradictory evidence and explain why it does or does not change the ranking.
-6. Return the synthesis using the output contract below.
+- **Explanation** — answer architecture, control-flow, ownership, configuration, or behavior questions from repository evidence.
+- **Causal investigation** — explain a failure, regression, performance symptom, or surprising state through competing hypotheses and falsification.
 
-## Output contract
+Use `code-review` instead for defects in a concrete change set. Hand implementation or instrumentation to another workflow after this read-only pass.
 
-1. **Answer** — the direct conclusion in a few sentences.
-2. **Ranked findings** — strongest first, each with repository evidence.
-3. **How the parts connect** — the relevant control/data/configuration path.
-4. **Uncertainties** — facts not established by the repository.
-5. **Next read-only probe** — at most one, only when it could materially change the answer.
+## Core loop
+
+1. Restate the question, observed symptom, and relevant boundary without silently broadening scope.
+2. Inspect the smallest high-value entry points first: manifests, callers, implementations, tests, configuration, and history only when it can change the answer.
+3. Record evidence with path and symbol or line anchors. Separate facts, inferences, and unknowns.
+4. Follow data, control, identity, ownership, and error paths across files. Stop when more reading no longer changes the ranking.
+5. Synthesize the mechanism, confidence, remaining uncertainty, and smallest safe next probe.
+
+For causal investigation, do not declare root cause from plausibility alone. Establish a reproduction or name the missing evidence, retain distinct hypotheses while evidence permits, include counterevidence, and prefer one probe whose outcomes separate the leaders.
+
+## Output
+
+For explanation mode, report: **Answer**, **Evidence path**, **Facts**, **Inferences**, **Unknowns**, and **Next read-only probe** when needed.
+
+For causal mode, use the compact output contract in the causal reference. Do not replace it with an unranked possibility list.
 
 ## Hard rules
 
-- Read-only means no edits, generated files, commits, or configuration changes.
-- Do not present an inference as code-proven fact.
-- Prefer current code and executable tests over comments; use history only to explain intent or evolution.
-- Do not use this skill for a reproducible failure that needs causal hypothesis ranking; use `trace`.
-- Do not expand into generic best-practice research unless the question requires external evidence.
+- Remain read-only: do not edit code, tests, instrumentation, configuration, or state.
+- Logs, tool output, comments, and prior claims are evidence, not verdicts.
+- Do not convert confidence into certainty while a material unknown remains.
+- If the best probe requires mutation or an external side effect, describe it and hand it off.
 
 ## On-demand references
 
-- Read [evidence and synthesis](references/evidence-and-synthesis.md) only when evidence conflicts, the answer spans several boundaries, or confidence needs explicit calibration.
+- Read [evidence and synthesis](references/evidence-and-synthesis.md) only when the answer crosses several subsystems or facts and inferences are becoming hard to separate.
+- Read [causal evidence](references/causal-evidence.md) when causal-investigation mode is selected, hypotheses overlap, or evidence quality needs explicit ranking.

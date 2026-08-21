@@ -1,67 +1,47 @@
 ---
 name: deep-interview
-description: Use when an idea is vague and needs thorough clarification before implementation, or the user asks to be interviewed without unstated assumptions.
+description: Use when a vague or consequential idea needs an adaptive interview and an explicitly approved specification before implementation; use deterministic scoring state only when persistence or auditability adds value.
 ---
 
 # deep-interview
 
-Run a topology-aware Socratic interview that turns a vague idea into an explicitly approved specification. The agent owns questions, evidence gathering, and rubric judgment; the bundled standard-library runtime owns schema validation, component × dimension scoring, ambiguity math, weakest-target rotation, ontology stability, challenge/stall guards, revisions, binding, and completion gates.
+Turn uncertainty into a specification the user explicitly approves. Default to an adaptive interview driven by model judgment and inspected evidence; persistent formal scoring is optional rather than the default tax on every vague request.
 
-Invoke the quoted script path directly:
+## Choose the interview mode
 
-```bash
-python3 "<installed-skill-dir>/scripts/interview_state.py" status
-```
+Use the adaptive interview by default for one-session product, engineering, or workflow clarification.
 
-Use `python` when that is the host's Python 3 command, or `py -3` on Windows. Python 3.8+ is required; no third-party package is required.
+Use the persistent runtime only when at least one condition is material:
 
-## Start or resume
+- the interview must survive context resets, sessions, worktrees, or handoffs;
+- a regulated, high-risk, or disputed decision needs auditable revisions and approval digests;
+- several independently successful components make formal topology and gap scoring useful;
+- the user explicitly asks for deterministic scoring, resumability, or durable receipts.
 
-Exit `3` from `status` means the default run does not exist:
+## Adaptive interview
 
-```bash
-python3 "<installed-skill-dir>/scripts/interview_state.py" start \
-  --idea "<one-line summary>" --depth deep --type greenfield
-```
+1. Inspect safe repository facts, supplied material, and current primary sources before asking the user to repeat discoverable information.
+2. Keep a compact ledger of decisions, assumptions, constraints, acceptance examples, risks, owners, and open questions. Do not narrate a heavyweight state machine.
+3. Ask one to three related decision-bearing questions per turn. Offer concrete options and a recommendation when evidence supports one, while preserving free text; do not force artificial choices or exactly one question when a small batch is more efficient.
+4. Adapt depth to consequence and uncertainty. Skip low-value dimensions, but label material assumptions instead of silently deciding them.
+5. Continue until the goal and users, scope and non-goals, key constraints, decision ownership, acceptance evidence, and material risks are resolved enough for this task.
 
-Use `brownfield` when changing an existing system. Depth thresholds are quick `0.30`, standard `0.20`, and deep `0.10`; `--threshold 0..1` overrides the depth default. Use `--id` for parallel runs and explicit `--session`, `list --all-sessions --limit 20`, or `--latest` for discovery. Default output is compact; use `--full` and bounded `history --tail <1..20>` only when needed.
+## Specification and approval gate
 
-## Topology round
+Write a coherent specification marked `pending approval`, including the resolved goal, scope/non-goals, behavior or topology where relevant, constraints, decision boundaries, acceptance criteria, assumptions, risks, rollout/rollback when material, and remaining gaps.
 
-Before normal scoring, identify one to six top-level components whose outcomes can succeed or fail independently. Confirm the proposed topology once, then submit `topology --input <json> --expected-revision <n>`. Every deferred component needs an explicit reason and is excluded from all later scores.
+Ask the user to review the whole specification. Only explicit approval of that specification clears the gate; a casual “ok”, an answer to the latest question, or a score does not. Changed specification content invalidates prior approval. Completion of the interview does not authorize implementation.
 
-## Interview loop
-
-1. Read the runtime's `metrics.weakest` component × dimension and latest revision.
-2. Decide whether the gap is a discoverable fact or a user-owned judgment. Inspect safe code/docs/research yourself for facts. Spend a user turn only when the answer can change scope boundary, acceptance criterion, rollback contract, lane assignment, or handoff target.
-3. Ask at most one decision-bearing user question in a round. Offer 2–4 concrete choices plus free text; mark exactly one Recommended only when inspected evidence supports it, otherwise say No reliable default.
-4. Preserve answer provenance using `[from-user]`, `[from-code]`, `[from-research]`, or `[from-prototype]`. After two consecutive rounds without `[from-user]`, the next round must include a user-owned decision; the runtime enforces this cadence guard.
-5. Score every required dimension for every active component and submit one contiguous round with `score --input <json> --expected-revision <n>`.
-6. Follow the next weakest target. Never hand-calculate ambiguity or silently choose another target.
-7. Obey challenge suggestions. A three-round ambiguity stall requires the ontologist stance; the runtime allows that stance to recur while the stall persists.
-8. At round 10 reassess whether remaining questions are decision-bearing. Round 20 is a hard scoring cap: explicitly waive remaining ambiguity or abort.
-
-## Gate, crystallization, and approval
-
-Run `gate` after scoring. Exit `0` means the numeric gate passed or an explicit waiver already exists; exit `4` means it has not.
-
-- When ambiguity is acceptable, write a full specification marked `pending approval` and run `crystallize --spec-path <existing-file> --expected-revision <n>`.
-- When the numeric gate cannot be met within the authorized time-box, record the user's explicit acceptance with `waive --reason <text>`; the spec must then preserve a non-empty Remaining Gaps/Risks section.
-- Ask the user to review the crystallized digest. Only after explicit approval run `approve --evidence <text>`.
-- Run `complete` only from the separately approved state and only while the spec digest is unchanged. Completion does not authorize implementation.
-
-The content gate requires Goal, Topology, Constraints, Non-goals, Decision Boundaries with owner and revisit trigger, Acceptance Criteria, Ontology, and Open Assumptions. At least one earlier answer must have a recorded pressure pass before crystallization.
+When persistent runtime mode is selected, read its control-plane reference before starting state. Formal scores never override an explicit blocker, risk, owner decision, or approval boundary.
 
 ## Hard rules
 
-- Ask one user question per round; discover safe repository facts yourself.
-- Never edit state JSON, invent evidence, omit an active component/dimension, or reuse a stale revision.
-- Never score a deferred component.
-- A numeric gate does not erase an explicit unresolved blocker or decision boundary.
-- Preserve user approval as a separate event; changed spec content invalidates the old approval digest. Casual acknowledgements such as “yes”, “ok”, or “proceed” answer the current question and never count as spec approval unless the user explicitly approves the crystallized specification.
-- Stop on user exit, terminal state, binding/revision conflict, unsafe path, invalid evidence, or unresolved authority.
+- Discover safe facts yourself; reserve user turns for judgments, authority, preferences, and unresolved evidence.
+- Stop on user exit, terminal state, binding or revision conflict, unsafe path, invalid evidence, or unresolved authority.
+- Do not begin implementation before explicit specification approval.
 
 ## On-demand references
 
-- Read [scoring and payloads](references/scoring-and-payloads.md) before the topology/first score, when challenge/ontology behavior matters, or after payload rejection.
-- Read [resume and recovery](references/resume-and-recovery.md) only for discovery, interruption, mismatch, conflict, lock, corruption, or non-Git root handling.
+- Read [persistent runtime](references/persistent-runtime.md) only when deterministic topology/scoring, resumability, revisions, or approval digests are materially useful.
+- Read [scoring and payloads](references/scoring-and-payloads.md) only after runtime mode is selected, before the first topology/score submission, or when challenge, ontology, or payload rejection matters.
+- Read [resume and recovery](references/resume-and-recovery.md) only after runtime mode is active and discovery, interruption, mismatch, conflict, lock, corruption, or non-Git root handling is needed.
