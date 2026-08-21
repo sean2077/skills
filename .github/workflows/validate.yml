@@ -81,6 +81,10 @@ jobs:
           python scripts/test_validate_skills.py
           python scripts/tests/test_semver_release_plan.py
           python scripts/tests/test_tdd_contract.py
+
+      - name: Validate deterministic workflow runtimes
+        run: |
+          python scripts/generate_workflow_runtimes.py --check
           python scripts/tests/test_oma_migration_workflows.py
 
       - name: Validate official Agent Skills specification
@@ -155,3 +159,25 @@ jobs:
         if: always() && runner.os == 'Linux'
         run: |
           find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
+
+  workflow-python38:
+    name: workflow runtime (Python 3.8 floor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.8"
+
+      - name: Validate generated runtimes and compatibility floor
+        run: |
+          python scripts/generate_workflow_runtimes.py --check
+          python -m compileall -q scripts/workflow_runtime skills/autopilot/scripts skills/deep-interview/scripts skills/ralph/scripts
+          python -m unittest -v \
+            scripts.tests.test_oma_migration_workflows.RuntimeTests.test_generated_runtimes_are_current_and_compile \
+            scripts.tests.test_oma_migration_workflows.RuntimeTests.test_read_only_discovery_has_no_filesystem_side_effects \
+            scripts.tests.test_oma_migration_workflows.RuntimeTests.test_deep_interview_brownfield_formula_topology_and_rotation
