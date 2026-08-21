@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import io
 import subprocess
 import sys
@@ -12,6 +13,11 @@ import unittest
 from pathlib import Path
 
 import validate_skills as validator
+
+
+LIVE_EVAL_VERIFIER = (
+    Path(__file__).resolve().parents[1] / "evals" / "agent-skills" / "verifier.py"
+)
 
 
 class CategoryReferenceTests(unittest.TestCase):
@@ -141,6 +147,78 @@ class CategoryReferenceTests(unittest.TestCase):
             result = validator.cli(["--help"])
         self.assertEqual(result, 0)
         self.assertIn("Validate the skills catalog", stdout.getvalue())
+
+
+class TargetedContractCoverageTests(unittest.TestCase):
+    def validate(
+        self, *, skill_names: set[str], covered: set[str], required: set[str]
+    ) -> list[str]:
+        validator.errors.clear()
+        validator.validate_targeted_contract_coverage(skill_names, covered, required)
+        return list(validator.errors)
+
+    def test_prompt_only_skill_needs_no_contract(self) -> None:
+        errors = self.validate(
+            skill_names={"analyze", "work-protocol"},
+            covered={"work-protocol"},
+            required={"work-protocol"},
+        )
+        self.assertEqual([], errors)
+
+    def test_required_targeted_contract_cannot_disappear(self) -> None:
+        errors = self.validate(
+            skill_names={"autopilot", "work-protocol"},
+            covered={"autopilot"},
+            required={"autopilot", "work-protocol"},
+        )
+        self.assertTrue(
+            any("required targeted contracts are missing" in error for error in errors)
+        )
+
+    def test_orphaned_targeted_contract_is_rejected(self) -> None:
+        errors = self.validate(
+            skill_names={"autopilot"},
+            covered={"autopilot", "retired-skill"},
+            required={"autopilot"},
+        )
+        self.assertTrue(any("contracts for missing skills" in error for error in errors))
+
+    def test_unregistered_targeted_contract_is_rejected(self) -> None:
+        errors = self.validate(
+            skill_names={"analyze", "autopilot"},
+            covered={"analyze", "autopilot"},
+            required={"autopilot"},
+        )
+        self.assertTrue(any("not registered as required" in error for error in errors))
+
+
+class LiveEvalVerifierTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "agent_skill_eval_verifier", LIVE_EVAL_VERIFIER
+        )
+        if spec is None or spec.loader is None:
+            raise RuntimeError("could not load live Agent Skill verifier")
+        cls.verifier = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.verifier)
+
+    def test_expected_behavior_is_a_recursive_subset(self) -> None:
+        expected = {"route": "analyze", "details": {"mutation": "none"}}
+        actual = {
+            "route": "analyze",
+            "details": {"mutation": "none", "confidence": "high"},
+            "extra": True,
+        }
+        self.assertEqual([], self.verifier.subset_mismatches(expected, actual))
+
+    def test_missing_or_changed_behavior_is_reported(self) -> None:
+        mismatches = self.verifier.subset_mismatches(
+            {"route": "autopilot", "persistent_state": False},
+            {"route": "other"},
+        )
+        self.assertTrue(any("behavior.route" in mismatch for mismatch in mismatches))
+        self.assertTrue(any("behavior.persistent_state" in mismatch for mismatch in mismatches))
 
 
 class NpxPayloadContractTests(unittest.TestCase):

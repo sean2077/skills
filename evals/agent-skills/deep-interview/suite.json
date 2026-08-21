@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "suite_id": "deep-interview-mode-selection",
+  "skill_path": "skills/deep-interview",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": ["agent-skill-host-adapter"],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+  },
+  "budgets": {
+    "absolute": {"interventions": 0},
+    "relative": {
+      "input_tokens": {"max_ratio": 4.0, "max_additive": 2000},
+      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
+      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
+      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-adaptive-interview",
+      "kind": "positive",
+      "prompt": "Interview me to turn a vague internal dashboard idea into an approved specification. This is one session and no external market facts are needed.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "interview", "mode": "adaptive", "approval_required": true},
+          "treatment": {"route": "deep-interview", "workflow": "interview", "mode": "adaptive", "question_batch_max": 3, "approval_required": true, "external_research": "conditional"}
+        }
+      }
+    },
+    {
+      "id": "positive-auditable-interview",
+      "kind": "positive",
+      "prompt": "Run a resumable requirements interview across sessions with deterministic component scoring and an auditable approval digest before any implementation.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "interview", "mode": "unspecified", "approval_required": true},
+          "treatment": {"route": "deep-interview", "workflow": "interview", "mode": "persistent", "persistent_state": true, "approval_required": true}
+        }
+      }
+    },
+    {
+      "id": "negative-approved-implementation",
+      "kind": "negative",
+      "prompt": "The attached specification is already approved. Implement its small logging change and run the focused tests.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "implementation"},
+          "treatment": {"route": "none", "workflow": "implementation"}
+        }
+      }
+    },
+    {
+      "id": "confusable-single-clarification",
+      "kind": "confusable",
+      "prompt": "Before answering, ask me which of the two output formats I prefer; no full specification is needed.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "clarification", "approval_required": false},
+          "treatment": {"route": "none", "workflow": "clarification", "approval_required": false}
+        }
+      }
+    }
+  ]
+}

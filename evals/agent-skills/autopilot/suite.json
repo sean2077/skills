@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "suite_id": "autopilot-control-plane",
+  "skill_path": "skills/autopilot",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": ["agent-skill-host-adapter"],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+  },
+  "budgets": {
+    "absolute": {"interventions": 0},
+    "relative": {
+      "input_tokens": {"max_ratio": 4.0, "max_additive": 2000},
+      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
+      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
+      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-native-delivery",
+      "kind": "positive",
+      "prompt": "Take this small authorized documentation correction end to end in the current session, verify it, and report the result. Do not push.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "delivery", "control_plane": "native", "persistent_state": false},
+          "treatment": {"route": "autopilot", "workflow": "delivery", "control_plane": "native", "persistent_state": false, "test_first": "conditional", "external_side_effects": "not-authorized"}
+        }
+      }
+    },
+    {
+      "id": "positive-interruption-safe-delivery",
+      "kind": "positive",
+      "prompt": "Run this migration end to end with interruption-safe resume across sessions and durable phase receipts. Do not deploy or push.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "delivery", "control_plane": "unspecified"},
+          "treatment": {"route": "autopilot", "workflow": "delivery", "control_plane": "persistent", "persistent_state": true, "external_side_effects": "not-authorized"}
+        }
+      }
+    },
+    {
+      "id": "negative-read-only-explanation",
+      "kind": "negative",
+      "prompt": "Explain why this configuration is loaded twice. Do not change files.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "analysis", "mutation": "none"},
+          "treatment": {"route": "none", "workflow": "analysis", "mutation": "none"}
+        }
+      }
+    },
+    {
+      "id": "confusable-explicit-tdd",
+      "kind": "confusable",
+      "prompt": "Implement the parser fix using strict RED-GREEN-REFACTOR and show the failing regression test before the fix.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "tdd", "test_first": "required"},
+          "treatment": {"route": "none", "workflow": "tdd", "test_first": "required"}
+        }
+      }
+    }
+  ]
+}

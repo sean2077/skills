@@ -20,7 +20,7 @@ Use the persistent runtime only when at least one condition is material:
 
 ## Adaptive interview
 
-1. Inspect safe repository facts, supplied material, and current primary sources before asking the user to repeat discoverable information.
+1. Inspect safe repository facts and supplied material before asking the user to repeat discoverable information. Consult current primary sources only when external or time-sensitive facts can materially change a decision.
 2. Keep a compact ledger of decisions, assumptions, constraints, acceptance examples, risks, owners, and open questions. Do not narrate a heavyweight state machine.
 3. Ask one to three related decision-bearing questions per turn. Offer concrete options and a recommendation when evidence supports one, while preserving free text; do not force artificial choices or exactly one question when a small batch is more efficient.
 4. Adapt depth to consequence and uncertainty. Skip low-value dimensions, but label material assumptions instead of silently deciding them.

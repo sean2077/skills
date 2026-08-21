@@ -97,6 +97,7 @@ __all__ = [
     "validate_semver_automation_contract",
     "validate_semver_publication_boundary",
     "validate_semver_release_contract",
+    "validate_targeted_contract_coverage",
     "validate_tooling_conventions_contract",
     "validate_tooling_script_contract_semantics",
     "warnings",
@@ -417,6 +418,23 @@ def validate_grouping_manifest(skill_dirs: list[Path]) -> None:
         )
 
 
+def validate_targeted_contract_coverage(
+    skill_names: set[str], covered: set[str], required: set[str] | frozenset[str]
+) -> None:
+    """Reject missing required contracts and modules for absent catalog skills."""
+    missing = sorted(required - covered)
+    if missing:
+        errors.append(f"required targeted contracts are missing: {missing}")
+    unregistered = sorted((covered & skill_names) - required)
+    if unregistered:
+        errors.append(f"targeted contracts are not registered as required: {unregistered}")
+    orphaned = sorted(covered - skill_names)
+    if orphaned:
+        errors.append(
+            f"scripts/contracts/ declares contracts for missing skills: {orphaned}"
+        )
+
+
 def main() -> int:
     if not SKILLS_DIR.is_dir():
         errors.append(f"no skills/ directory at {SKILLS_DIR}")
@@ -493,13 +511,11 @@ def main() -> int:
             f"({METADATA_PROSE_CHARS_PER_SKILL} per skill)"
         )
 
-    # Targeted executable/high-risk contracts are optional; only stale modules fail.
+    # Prompt-only skills need no contract. Every targeted module is explicit and fail-closed.
     covered = set(contracts.run_all(readme_text=readme))
-    orphaned = sorted(covered - {d.name for d in skill_dirs})
-    if orphaned:
-        errors.append(
-            f"scripts/contracts/ declares contracts for missing skills: {orphaned}"
-        )
+    validate_targeted_contract_coverage(
+        {d.name for d in skill_dirs}, covered, contracts.REQUIRED_SKILLS
+    )
 
     # Reverse coverage: a README link must point at a real skill directory.
     for m in re.finditer(r"\(skills/([A-Za-z0-9_-]+)/\)", readme):
