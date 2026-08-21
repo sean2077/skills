@@ -9,6 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Added `docs/harness-constraint-policy.md`, a decision rule for keeping mechanical controls around costly machine state while leaving reversible single-session reasoning model-native.
+- Added live positive/negative/confusable routing suites for `analyze`, `autopilot`, and `deep-interview`. CI validates their manifests, while behavioral acceptance requires a real `agent-skill-host-adapter`; fake adapters are explicitly not treated as model evidence.
 - Added `skill-eval`, an independently installable Python 3.8+ standard-library evaluation harness for baseline/treatment runs materialized in a clean detached worktree at one resolved commit. It gates positive, negative, and confusable routing, deterministic verifier evidence, changed-path scope, repository isolation, complete cost metrics, pair comparability, and absolute/relative budgets; an offline TDD fixture makes the contract executable in CI without a model or network.
 - Added `work-protocol`, an optional durable task protocol for cross-session, multi-writer, or high-risk delivery. It owns `.agents/work/<task-id>/` artifacts, compare-and-swap state, one expiring and recoverable loop-owner lease, hash-chained evidence, current-cycle verification, commit-pinned reviewer snapshots, isolated writable worktrees, path ownership, and safe cleanup while leaving Agent reasoning and tool use to the native host.
 - Added one maintainer SSOT and deterministic generator for both P0 runtimes, plus behavioral, concurrency, repository-mutation, lease, evidence-integrity, worktree-ownership, symlink-boundary, and Python-floor regressions.
@@ -39,6 +40,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Merged the standalone `trace` route into `analyze` as a causal-investigation mode, preserving competing hypotheses, falsification, and discriminating probes while removing one overlapping routing surface.
 - Made `autopilot` and `deep-interview` model-native by default for ordinary single-session work. Their generated state runtimes remain available as opt-in control planes for resumability, cross-session handoff, formal audit, or other cases where durable state materially helps.
 - Per-skill contract modules are now targeted and optional. Validation still rejects orphaned modules, while prompt-only semantics move to `SKILL.md` and evaluations instead of requiring one brittle phrase-checking module per skill.
+- Registered the reviewed high-risk targeted-contract subset so accidental module deletion fails validation, removed exact resident-policy phrase fixtures from the `autopilot` and `deep-interview` contracts, kept runtime/schema checks mechanical, aligned `autopilot` with explicit-only TDD routing, and made deep-interview research conditional on decision value.
 - Workflow control state now uses the skill-neutral
   `.agent-workflows/<workflow>/<session>/<id>.json` contract. Runtime mutations use atomic
   replacement, single-generation backups, command locks, monotonic revision/CAS checks, bounded
@@ -67,9 +69,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--confirm-send`, and idempotency keys remain transaction-scoped and are never inherited by a new
   logical action.
 
+### ⚠ Breaking
+
+- The standalone `trace` install target is removed. Existing consumers must replace it with `analyze`, whose causal-investigation mode preserves the read-only hypothesis, falsification, and discriminating-probe workflow, and remove stale `trace` projections to prevent duplicate routing.
+
 ### Removed
 
-- Removed the standalone `trace` skill and six prompt-only keyword contracts (`analyze`, `trace`, `ai-slop-cleaner`, `best-practice-research`, `code-review`, and `prototype`). Executable, concurrency, release, Git-safety, and evaluation contracts remain.
+- Removed six prompt-only keyword contracts (`analyze`, `trace`, `ai-slop-cleaner`, `best-practice-research`, `code-review`, and `prototype`). Executable, concurrency, release, Git-safety, and evaluation contracts remain.
 
 ## [v4.1.2] — 2026-07-26
 

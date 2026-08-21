@@ -3,7 +3,7 @@
 A module opts in by exposing `SKILL` (the catalog directory name) and
 `validate(*, readme_text)`. Use modules for executable or high-risk invariants
 that generic catalog validation cannot express; prompt-only skills do not need
-one. Adding or retiring a targeted contract touches exactly one file here.
+one. The required registry below protects the reviewed high-risk subset.
 """
 
 from __future__ import annotations
@@ -11,7 +11,30 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 from typing import Callable, Iterator
+
 PACKAGE = Path(__file__).resolve().parent
+
+
+# This reviewed subset owns machine-checkable or high-risk boundaries. Keeping
+# it separate from discovery prevents an accidental module deletion from
+# silently disabling validation without restoring one-contract-per-skill.
+REQUIRED_SKILLS = frozenset(
+    {
+        "agent-scaffold",
+        "autopilot",
+        "conventional-commit",
+        "deep-interview",
+        "lark-cli",
+        "project-docs-organizer",
+        "ralph",
+        "semver-release",
+        "skill-eval",
+        "tdd",
+        "tooling-conventions",
+        "work-protocol",
+    }
+)
+
 
 def discover() -> Iterator[tuple[str, Callable[..., None]]]:
     """Yield (skill name, validate) for every targeted module, sorted by skill."""
@@ -28,6 +51,7 @@ def discover() -> Iterator[tuple[str, Callable[..., None]]]:
             )
         found.append((skill, validate))
     yield from sorted(found, key=lambda item: item[0])
+
 
 def run_all(*, readme_text: str | None = None) -> list[str]:
     """Run every discovered targeted contract and return the covered skills."""

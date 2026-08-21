@@ -24,7 +24,7 @@ Do not create runtime state after the work is understood or complete merely to s
 
 1. Confirm authority, success evidence, scope, and only the uncertainties that can change the work.
 2. Make the plan proportional. Small obvious tasks need no standalone plan file; complex work should expose ordered slices, risks, and exact verification.
-3. Implement the smallest coherent slices. Establish RED before GREEN when a meaningful test seam exists.
+3. Implement the smallest coherent slices and add focused tests when they are part of the acceptance evidence. Use a RED–GREEN–REFACTOR loop only when the user or applicable project policy explicitly requires test-first development.
 4. Run the real verifier and inspect its observed output. Retry only when new evidence changes the next attempt; stop rather than repeating the same failed approach.
 5. Deliver changes, evidence, limits, and deferrals.
 

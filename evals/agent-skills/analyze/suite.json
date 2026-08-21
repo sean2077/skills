@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "suite_id": "analyze-routing",
+  "skill_path": "skills/analyze",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": ["agent-skill-host-adapter"],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+  },
+  "budgets": {
+    "absolute": {"interventions": 0},
+    "relative": {
+      "input_tokens": {"max_ratio": 4.0, "max_additive": 2000},
+      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
+      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
+      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-causal-investigation",
+      "kind": "positive",
+      "prompt": "The payment test started failing after a configuration change. Investigate the cause without editing anything and finish with the most discriminating next probe.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "analysis", "mode": "causal", "mutation": "none"},
+          "treatment": {"route": "analyze", "workflow": "analysis", "mode": "causal", "mutation": "none", "result": "discriminating-probe"}
+        }
+      }
+    },
+    {
+      "id": "positive-cross-file-explanation",
+      "kind": "positive",
+      "prompt": "Explain how request identity flows from the CLI entry point through configuration and the service boundary. This is read-only.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "analysis", "mode": "explanation", "mutation": "none"},
+          "treatment": {"route": "analyze", "workflow": "analysis", "mode": "explanation", "mutation": "none"}
+        }
+      }
+    },
+    {
+      "id": "negative-implementation-request",
+      "kind": "negative",
+      "prompt": "Implement the approved retry-policy change and update its tests.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "implementation", "mutation": "authorized-scope"},
+          "treatment": {"route": "none", "workflow": "implementation", "mutation": "authorized-scope"}
+        }
+      }
+    },
+    {
+      "id": "confusable-concrete-diff-review",
+      "kind": "confusable",
+      "prompt": "Review the current patch for correctness defects and verification gaps; do not modify it.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "code-review", "mutation": "none"},
+          "treatment": {"route": "none", "workflow": "code-review", "mutation": "none"}
+        }
+      }
+    }
+  ]
+}

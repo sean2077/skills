@@ -21,6 +21,7 @@ python scripts/generate_p0_runtimes.py --check # generated skill-eval/work-proto
 python scripts/tests/test_p0_agent_workflows.py # P0 behavior, concurrency, path, state, and evidence regressions
 python scripts/tests/test_p0_hardening.py # repository isolation, current-cycle verification, and claim hardening
 python skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
+for suite in evals/agent-skills/*/suite.json; do python skills/skill-eval/scripts/skill_eval.py validate "$suite"; done # live routing-suite contract validation
 python skills/skill-eval/scripts/skill_eval.py run evals/examples/tdd/suite.json --output /tmp/tdd-skill-eval.json
 python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
 python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
@@ -41,13 +42,7 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   ships. Keep the resident file lean (router + invariants + skeleton); use descriptive lowercase
   kebab-case category names and link each file directly from `SKILL.md`. Do not use root-level
   `reference.md` or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
-- `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI.
-  `validate_skills.py` owns only catalog-wide rules; `catalog_core.py` holds the shared
-  `errors`/`warnings` lists and path constants. Targeted `scripts/contracts/<skill>.py` modules are
-  optional and reserved for executable or high-risk invariants that generic validation cannot
-  express; prompt-only skills need no module by default. Orphaned modules remain an error. Follow
-  the [harness constraint policy](docs/harness-constraint-policy.md) instead of adding phrase-only
-  checks that merely restate `SKILL.md`.
+- `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI. `validate_skills.py` owns only catalog-wide rules; `catalog_core.py` holds the shared `errors`/`warnings` lists and path constants. Targeted `scripts/contracts/<skill>.py` modules are optional and reserved for executable or high-risk invariants that generic validation cannot express; prompt-only skills need no module by default. `scripts/contracts/__init__.py` lists the reviewed required subset so an accidental deletion cannot silently disable a high-risk contract, and validation still rejects orphaned modules. Follow the [harness constraint policy](docs/harness-constraint-policy.md) instead of adding phrase-only checks that merely restate `SKILL.md`.
 - `autopilot`, `deep-interview`, and `ralph` must remain independently installable. Maintainer SSOT
   is `scripts/workflow_runtime/{common,autopilot,deep_interview,ralph}.py`; run
   `scripts/generate_workflow_runtimes.py` instead of hand-editing generated skill scripts. The first

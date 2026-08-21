@@ -1,0 +1,1 @@
+This fixture is intentionally read-only; live suites evaluate routing and control-plane decisions rather than repository mutation.

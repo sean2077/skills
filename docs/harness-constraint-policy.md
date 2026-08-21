@@ -48,9 +48,9 @@ Some skills benefit from both modes. Keep the native mode as the default and mak
 
 Catalog-wide validation should cover universal structure: frontmatter, routing metadata, references, installer manifests, generated payload inventory, and stale links.
 
-Add a targeted `scripts/contracts/<skill>.py` module for executable or high-risk invariants that generic validation cannot express. Prompt-only skills do not need one by default. Avoid substring fixtures that only restate prose; prefer parsing, execution, adversarial fixtures, or generator drift checks.
+Add a targeted `scripts/contracts/<skill>.py` module for executable or high-risk invariants that generic validation cannot express. Prompt-only skills do not need one by default. Register every intentionally retained targeted module in `scripts/contracts/__init__.py` so accidental deletion fails closed. Avoid substring fixtures that only restate prose; prefer parsing, execution, adversarial fixtures, or generator drift checks.
 
-Reject orphaned contract modules, but do not require one module per skill.
+Reject missing registered modules and orphaned contract modules, but do not require one module per skill.
 
 ## Skill addition and merge gate
 
@@ -58,7 +58,7 @@ Before adding a new skill, compare it with existing routes:
 
 - Does its frontmatter describe a distinct user intent rather than a different internal technique?
 - Would combining it as a mode preserve a coherent mutation, authority, and evidence boundary?
-- Does treatment evaluation show benefit over the baseline after token and latency cost?
+- Does treatment evaluation through a real host adapter show benefit over the baseline after token and latency cost? Manifest validation or a fake adapter proves only protocol plumbing.
 - Is the full body truly on-demand, with only routing and hard invariants resident?
 
 Merge skills when their triggers, evidence model, side-effect boundary, and handoff are substantially the same. Keep them separate when one mutates and the other is read-only, one performs external side effects, or their verifier/authority boundaries differ.

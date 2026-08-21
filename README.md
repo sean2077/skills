@@ -79,6 +79,7 @@ scripts/
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 └── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
 evals/examples/tdd/         # Offline positive/negative/confusable skill-eval example
+evals/agent-skills/         # Live analyze/autopilot/deep-interview routing suites; CI validates manifests only
 requirements-validation.txt  # Pinned official skills-ref + StrictYAML validation dependency
 .claude-plugin/
 └── plugin.json              # npx skills grouping metadata, kept in sync by the validator
@@ -89,7 +90,9 @@ requirements-validation.txt  # Pinned official skills-ref + StrictYAML validatio
 `autopilot`, `deep-interview`, and `ralph` each ship one generated, Python 3.8+ standard-library script. The `autopilot` and `deep-interview` runtimes are opt-in persistence/control planes; ordinary single-session delivery and interviewing stay model-native. `ralph` uses its runtime as the normal bounded verifier loop. Installing a single skill creates no sibling-skill, repository-runtime, or OMA CLI dependency. Maintainers edit `scripts/workflow_runtime/`, run `python scripts/generate_workflow_runtimes.py`, and let CI reject generated drift.
 `skill-eval` and `work-protocol` likewise ship generated Python 3.8+ standard-library packages and remain independently installable. Maintainers edit `scripts/p0_runtime/`, run `python scripts/generate_p0_runtimes.py`, and validate the offline TDD A/B fixture plus the P0 behavioral/adversarial suites before committing.
 
-Use model-native reasoning for reversible single-session work. Add deterministic scripts only around machine state or costly machine-checkable boundaries such as external side effects, Git/release integrity, concurrency/CAS, path and identity safety, generated drift, or comparable evaluation. Targeted per-skill contract modules are optional; prompt-only semantics belong in `SKILL.md` and evaluations rather than brittle phrase checks. See the [harness constraint policy](docs/harness-constraint-policy.md).
+Use model-native reasoning for reversible single-session work. Add deterministic scripts only around machine state or costly machine-checkable boundaries such as external side effects, Git/release integrity, concurrency/CAS, path and identity safety, generated drift, or comparable evaluation. Targeted per-skill contract modules are optional; the reviewed high-risk subset is registered so accidental deletion fails validation, while prompt-only semantics belong in `SKILL.md` and live evaluations rather than brittle phrase checks. See the [harness constraint policy](docs/harness-constraint-policy.md).
+
+The former `trace` route is now the causal-investigation mode of `analyze`. Existing installations should replace `trace` with `analyze` and remove any stale `trace` projection to avoid duplicate routing.
 
 The runtime scripts emit compact versioned receipts by default. Full state is opt-in through `--full`; history is bounded through `history --tail`; discovery is bounded through `list --limit`. Git repositories share discovery across worktrees while preserving explicit mutation ownership. Non-Git workspaces use a stable `--root`.
 
