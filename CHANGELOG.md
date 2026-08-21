@@ -8,6 +8,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added `skill-eval`, an independently installable Python 3.8+ standard-library evaluation harness for baseline/treatment runs materialized in a clean detached worktree at one resolved commit. It gates positive, negative, and confusable routing, deterministic verifier evidence, changed-path scope, repository isolation, complete cost metrics, pair comparability, and absolute/relative budgets; an offline TDD fixture makes the contract executable in CI without a model or network.
+- Added `work-protocol`, an optional durable task protocol for cross-session, multi-writer, or high-risk delivery. It owns `.agents/work/<task-id>/` artifacts, compare-and-swap state, one expiring and recoverable loop-owner lease, hash-chained evidence, current-cycle verification, commit-pinned reviewer snapshots, isolated writable worktrees, path ownership, and safe cleanup while leaving Agent reasoning and tool use to the native host.
+- Added one maintainer SSOT and deterministic generator for both P0 runtimes, plus behavioral, concurrency, repository-mutation, lease, evidence-integrity, worktree-ownership, symlink-boundary, and Python-floor regressions.
+
 - Added `tdd`, an explicitly triggered, stack-neutral RED-GREEN-REFACTOR skill adapted from Matt Pocock's MIT-licensed TDD skill. It derives seams, independent oracles, test levels, working directories, and verification commands from target-project evidence; covers effects and doubles, legacy systems, generated code, concurrency, compatibility and migrations, security, performance, data/ML, infrastructure, and embedded targets; and ships a per-skill contract plus focused regressions against ecosystem defaults and rigid seam, assertion, mocking, or refactoring rules.
 - Migrated nine reusable workflows from the former bundled runtime into independently installable
   catalog skills: `analyze`, `ai-slop-cleaner`, `autopilot`, `best-practice-research`,

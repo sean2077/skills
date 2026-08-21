@@ -15,8 +15,10 @@
     "./skills/prototype",
     "./skills/ralph",
     "./skills/semver-release",
+    "./skills/skill-eval",
     "./skills/tdd",
     "./skills/tooling-conventions",
-    "./skills/trace"
+    "./skills/trace",
+    "./skills/work-protocol"
   ]
 }

@@ -47,9 +47,11 @@ Repeat the selective command for each additional skill. If skills were installed
 | [prototype](skills/prototype/) | Reduce one uncertainty through a disposable, bounded experiment with explicit oracle, safety, conclusion, and cleanup boundaries. | Engineering, Experimentation |
 | [ralph](skills/ralph/) | Run a bounded verifier loop until it passes, stalls, plateaus, or exhausts its round budget, with deterministic state and compact receipts. | Python, Iteration |
 | [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, a preferred changelog-backed tag workflow, project-owned version synchronization, and policy-derived publication verification. | Git, Python, Release |
+| [skill-eval](skills/skill-eval/) | Run deterministic, comparable baseline/treatment evaluations for Agent Skills, including trigger leakage, verifier, changed-path, repository-isolation, and cost gates. | Python, Evaluation |
 | [tdd](skills/tdd/) | Apply explicitly requested test-first implementation across stacks by deriving seams, oracles, test levels, and commands from the target project, with validated RED-GREEN-REFACTOR evidence and guidance for effects, legacy code, and hard cases. | Engineering, Testing |
 | [tooling-conventions](skills/tooling-conventions/) | Derive project-owned command boundaries, placement, and evidence-gated safety contracts, with optional structural inventory reconciliation. | Shell, Governance |
 | [trace](skills/trace/) | Investigate failures through read-only causal evidence, competing hypotheses, falsification, and one discriminating probe. | Engineering, Debugging |
+| [work-protocol](skills/work-protocol/) | Externalize high-risk or cross-session tasks into durable artifacts with one loop-owner lease, CAS state, hash-chained evidence, and isolated writer/reviewer worktrees. | Python, Git, Coordination |
 
 ## Structure
 
@@ -71,10 +73,13 @@ scripts/
 │   ├── deep_interview.py
 │   └── ralph.py
 ├── generate_workflow_runtimes.py # Generates/checks each independently installable single-file runtime
+├── p0_runtime/              # Maintainer SSOT for skill-eval and work-protocol runtime packages
+├── generate_p0_runtimes.py  # Generates/checks independently installable P0 skill runtimes
 ├── test_validate_skills.py  # Focused catalog-contract regression fixtures
 ├── tests/                    # Behavioral and adversarial skill-specific regressions
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 └── e2e-agent-scaffold.sh    # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
+evals/examples/tdd/         # Offline positive/negative/confusable skill-eval example
 requirements-validation.txt  # Pinned official skills-ref + StrictYAML validation dependency
 .claude-plugin/
 └── plugin.json              # npx skills grouping metadata, kept in sync by the validator
@@ -83,6 +88,7 @@ requirements-validation.txt  # Pinned official skills-ref + StrictYAML validatio
 ```
 
 `autopilot`, `deep-interview`, and `ralph` each ship one generated, Python 3.8+ standard-library script. Installing a single skill therefore creates no sibling-skill, repository-runtime, or OMA CLI dependency. Maintainers edit `scripts/workflow_runtime/`, run `python scripts/generate_workflow_runtimes.py`, and let CI reject generated drift.
+`skill-eval` and `work-protocol` likewise ship generated Python 3.8+ standard-library packages and remain independently installable. Maintainers edit `scripts/p0_runtime/`, run `python scripts/generate_p0_runtimes.py`, and validate the offline TDD A/B fixture plus the P0 behavioral/adversarial suites before committing.
 
 The runtime scripts emit compact versioned receipts by default. Full state is opt-in through `--full`; history is bounded through `history --tail`; discovery is bounded through `list --limit`. Git repositories share discovery across worktrees while preserving explicit mutation ownership. Non-Git workspaces use a stable `--root`.
 
