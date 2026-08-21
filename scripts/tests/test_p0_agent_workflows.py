@@ -10,6 +10,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -28,6 +29,7 @@ from p0_runtime.skill_eval import (  # noqa: E402
     EXIT_ADAPTER,
     EXIT_VERIFIER,
     ProtocolFailure,
+    _expand_command,
     compare_pair,
     run_suite,
     validate_manifest,
@@ -154,6 +156,23 @@ class SkillEvalTest(unittest.TestCase):
         path = self.repo / "evals" / name
         path.write_text(body, encoding="utf-8")
         return path
+
+    def test_python_placeholder_accepts_symlinked_interpreter(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            interpreter = Path(temp) / "python"
+            try:
+                interpreter.symlink_to(Path(sys.executable).resolve())
+            except OSError as exc:
+                self.skipTest("interpreter symlink unavailable: %s" % exc)
+            with mock.patch("p0_runtime.skill_eval.sys.executable", str(interpreter)):
+                expanded = _expand_command(
+                    ["{python}"],
+                    self.repo,
+                    self.repo / "workspace",
+                    "baseline",
+                    "symlinked-python",
+                )
+        self.assertEqual(Path(expanded[0]), Path(sys.executable).resolve())
 
     def test_offline_ab_suite_passes(self) -> None:
         output = Path(self.temp.name) / "result.json"

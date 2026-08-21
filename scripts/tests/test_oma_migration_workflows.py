@@ -591,6 +591,7 @@ class RuntimeTests(unittest.TestCase):
             "second failure",
         )
         self.assertEqual(blocked["status"], "blocked")
+
         terminal, _ = self.run_cli(AUTO, "finish", "--id", "ship", "--expected-revision", "7", expected=4)
         self.assertEqual(terminal["error"], "terminal")
 
@@ -613,6 +614,57 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(verified["stage"], "deliver")
         done, _ = self.run_cli(AUTO, "finish", "--id", "green", "--expected-revision", "5")
         self.assertEqual(done["status"], "done")
+
+    def test_worktree_root_alias_accepts_bound_input_and_artifact_files(self) -> None:
+        alias = self.tmp_path / "repo-alias"
+        try:
+            alias.symlink_to(self.repo, target_is_directory=True)
+        except OSError as exc:
+            self.skipTest("worktree-root symlink unavailable: %s" % exc)
+
+        self.run_cli(AUTO, "start", "--id", "alias-plan", "--goal", "accept a root alias")
+        self.run_cli(AUTO, "advance", "--id", "alias-plan", "--expected-revision", "1", "--to", "plan")
+        plan = self.repo / "alias-plan.md"
+        plan.write_text("# Plan\nUse the bound worktree.\n", encoding="utf-8")
+        descendant_alias = self.repo / "descendant-alias"
+        descendant_alias.symlink_to(self.repo, target_is_directory=True)
+        rejected, _ = self.run_cli(
+            AUTO,
+            "plan",
+            "--id",
+            "alias-plan",
+            "--expected-revision",
+            "2",
+            "--path",
+            str(descendant_alias / plan.name),
+            expected=2,
+        )
+        self.assertEqual(rejected["error"], "unsafe_artifact")
+        planned, _ = self.run_cli(
+            AUTO,
+            "plan",
+            "--id",
+            "alias-plan",
+            "--expected-revision",
+            "2",
+            "--path",
+            str(alias / plan.name),
+        )
+        self.assertEqual(planned["metrics"]["plan_path"], plan.name)
+
+        self.run_cli(INTERVIEW, "start", "--id", "alias-input", "--idea", "accept a root alias")
+        topology = self.topology_file("alias-topology.json", [self.active_component("api")])
+        accepted, _ = self.run_cli(
+            INTERVIEW,
+            "topology",
+            "--id",
+            "alias-input",
+            "--expected-revision",
+            "1",
+            "--input",
+            str(alias / topology.name),
+        )
+        self.assertEqual(accepted["stage"], "interviewing")
 
     def test_ralph_pass_stall_plateau_exhaustion_and_pending_round(self) -> None:
         self.run_cli(RALPH, "start", "--id", "pass", "--goal", "green", "--max-rounds", "2")
