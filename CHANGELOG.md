@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v5.0.0] — 2026-08-21
+
 ### Added
 
 - Added `docs/harness-constraint-policy.md`, a decision rule for keeping mechanical controls around costly machine state while leaving reversible single-session reasoning model-native.
@@ -360,7 +362,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v4.1.2...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v5.0.0...HEAD
+[v5.0.0]: https://github.com/sean2077/skills/compare/v4.1.2...v5.0.0
 [v4.1.2]: https://github.com/sean2077/skills/compare/v4.1.1...v4.1.2
 [v4.1.1]: https://github.com/sean2077/skills/compare/v4.1.0...v4.1.1
 [v4.1.0]: https://github.com/sean2077/skills/compare/v4.0.1...v4.1.0
