@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 18 independently installable skills: repository analysis/review workflows, deterministic `autopilot` / `deep-interview` / `ralph` control runtimes, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and the dual-host agent scaffold. Consumers need no build step; maintainers regenerate the checked-in workflow and P0 standalone runtimes from their shared sources before committing.
+`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 17 independently installable skills: repository analysis/review workflows, optional persistence runtimes for `autopilot` / `deep-interview`, the deterministic `ralph` verifier loop, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and the dual-host agent scaffold. Consumers need no build step; maintainers regenerate the checked-in workflow and P0 standalone runtimes from their shared sources before committing.
 
 ## Development Commands
 
@@ -43,18 +43,22 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   `reference.md` or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
 - `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI.
   `validate_skills.py` owns only catalog-wide rules; `catalog_core.py` holds the shared
-  `errors`/`warnings` lists and path constants. **Per-skill semantic contracts live in
-  `scripts/contracts/<skill>.py`, one file per `skills/<name>/`** — discovered by filename, so
-  changing one skill's contract touches exactly that file. A skill with no contract module (or a
-  module naming no existing skill) is a validation error.
+  `errors`/`warnings` lists and path constants. Targeted `scripts/contracts/<skill>.py` modules are
+  optional and reserved for executable or high-risk invariants that generic validation cannot
+  express; prompt-only skills need no module by default. Orphaned modules remain an error. Follow
+  the [harness constraint policy](docs/harness-constraint-policy.md) instead of adding phrase-only
+  checks that merely restate `SKILL.md`.
 - `autopilot`, `deep-interview`, and `ralph` must remain independently installable. Maintainer SSOT
   is `scripts/workflow_runtime/{common,autopilot,deep_interview,ralph}.py`; run
-  `scripts/generate_workflow_runtimes.py` instead of hand-editing generated skill scripts. Each
-  standalone runtime targets Python 3.8+, uses only the standard library, emits compact JSON by
-  default, stores bounded state at `.agent-workflows/<workflow>/<session>/<id>.json`, bounds discovery
-  through `list --limit`, supports an explicit non-Git `--root`, binds Git mutations to one
-  worktree/branch, and never executes verifier commands supplied as data. Keep generator drift and
-  behavioral/adversarial regressions green on Python 3.8 and on Linux, macOS, and Windows.
+  `scripts/generate_workflow_runtimes.py` instead of hand-editing generated skill scripts. The first
+  two runtimes are opt-in persistence/control planes; native delivery and adaptive interviewing are
+  the default for ordinary single-session work. `ralph` keeps deterministic runtime control as its
+  normal bounded verifier loop. Each standalone runtime targets Python 3.8+, uses only the standard
+  library, emits compact JSON by default, stores bounded state at
+  `.agent-workflows/<workflow>/<session>/<id>.json`, bounds discovery through `list --limit`, supports
+  an explicit non-Git `--root`, binds Git mutations to one worktree/branch, and never executes
+  verifier commands supplied as data. Keep generator drift and behavioral/adversarial regressions
+  green on Python 3.8 and on Linux, macOS, and Windows.
 - `skill-eval` and `work-protocol` must remain independently installable. Maintainer SSOT is
   `scripts/p0_runtime/{common,skill_eval,workctl}.py`; run `scripts/generate_p0_runtimes.py`
   instead of hand-editing generated package files. `skill-eval` owns comparable A/B execution,

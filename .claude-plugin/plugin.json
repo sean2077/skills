@@ -18,7 +18,6 @@
     "./skills/skill-eval",
     "./skills/tdd",
     "./skills/tooling-conventions",
-    "./skills/trace",
     "./skills/work-protocol"
   ]
 }
