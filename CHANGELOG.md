@@ -9,8 +9,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Added `tdd`, an explicitly triggered, stack-neutral RED-GREEN-REFACTOR skill adapted from Matt Pocock's MIT-licensed TDD skill. It derives seams, independent oracles, test levels, working directories, and verification commands from target-project evidence; covers effects and doubles, legacy systems, generated code, concurrency, compatibility and migrations, security, performance, data/ML, infrastructure, and embedded targets; and ships a per-skill contract plus focused regressions against ecosystem defaults and rigid seam, assertion, mocking, or refactoring rules.
-- Migrated nine reusable workflows from the former bundled runtime into independently installable catalog skills: `analyze`, `ai-slop-cleaner`, `autopilot`, `best-practice-research`, `code-review`, `deep-interview`, `prototype`, `ralph`, and `trace`. `autopilot`, `deep-interview`, and `ralph` ship self-contained standard-library Python state runtimes plus behavioral regressions; no migrated skill requires a separate project CLI.
-- Folded research optimization and adversarial end-to-end QA into on-demand `ralph` profiles instead of publishing duplicate loop engines. Multi-agent delivery is intentionally outside this catalog and remains the responsibility of PairRoom.
+- Migrated nine reusable workflows from the former bundled runtime into independently installable
+  catalog skills: `analyze`, `ai-slop-cleaner`, `autopilot`, `best-practice-research`,
+  `code-review`, `deep-interview`, `prototype`, `ralph`, and `trace`. `autopilot`,
+  `deep-interview`, and `ralph` ship self-contained standard-library Python state runtimes plus
+  behavioral regressions; no migrated skill requires a separate project CLI.
+- Added one maintainer source and deterministic generator for the standalone `autopilot`,
+  `deep-interview`, and `ralph` runtimes, plus cross-platform CI regressions for generation drift,
+  interruption, corruption, recovery, concurrency, path safety, worktrees, non-Git roots, and
+  terminal behavior. CI also exercises the declared Python 3.8 compatibility floor in addition to
+  the Linux/macOS/Windows Python 3.11 matrix.
+- Folded research optimization and adversarial end-to-end QA into on-demand `ralph` profiles
+  instead of publishing duplicate loop engines. Multi-agent delivery is intentionally outside this
+  catalog and remains the responsibility of PairRoom.
 
 - Added `lark-cli`, one lean 飞书/Feishu/Lark entry point that replaces the official
   skill-per-domain context fan-out with eight conditionally loaded domain references. It
@@ -18,18 +29,23 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   command-drift discovery, raw OpenAPI fallback, mail/send confirmation, untrusted-content
   handling, and high-risk write gates.
 
-### Fixed
-
-- Hardened the migrated `autopilot`, `deep-interview`, and `ralph` state readers to validate schemas, required fields, types, and active-component score coverage before any transition; malformed state now fails closed as `corrupt_state`.
-- Restored `deep-interview` topology-aware scoring: every active component is scored independently, deferred components are excluded, dimension gates use active-component minima, and weakest targets retain their component identity.
-- Made the bundled skill relinker invoke the selected Python directly so user `env` shims cannot suppress the projection manager.
-
 ### Changed
 
-- Workflow control state now uses the skill-neutral repository-shared
-  `.agent-workflows/<workflow>/<id>.json` contract. Runtime mutations use atomic replacement,
-  single-generation backups, command locks, monotonically increasing revisions, and explicit Git
-  worktree/branch binding; the runtimes record observed results but never execute verifier commands.
+- Workflow control state now uses the skill-neutral
+  `.agent-workflows/<workflow>/<session>/<id>.json` contract. Runtime mutations use atomic
+  replacement, single-generation backups, command locks, monotonic revision/CAS checks, bounded
+  inputs/history, token-owned locks, explicit Git worktree/branch binding, portable path segments,
+  and a non-Git `--root` fallback. Read-only discovery has no filesystem side effects; newest-first
+  `list --limit`, `--latest`, `doctor`, `recover`, `unlock`, and explicit `rebind` cover normal resume
+  and repair without manual JSON editing.
+- Deterministic workflow output is compact by default, with opt-in `--full` state and bounded
+  `history --tail`, avoiding repeated full-history context growth. State loads validate complete
+  workflow schemas and derived counters/formulas without leaking tracebacks. Plan/spec and JSON input
+  paths must exist inside their allowed roots and may not traverse symlinks.
+- Restored topology-aware deep-interview behavior: active-component × dimension scoring, original
+  greenfield/brownfield ambiguity weights, weakest-target rotation, ontology stability, challenge
+  modes, stall escalation, round guards, explicit waivers, pressure-pass/content gates, and separate
+  `crystallize → approve → complete` states with a verified spec digest.
 
 - `lark-cli` domain references now act as a maintained command cache for stable, high-frequency
   operations. Known IDs and URLs normally take one business call; human-readable targets take at

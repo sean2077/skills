@@ -1,27 +1,41 @@
 # Resume and recovery
 
-Read this only when an autopilot run is interrupted or reports a revision conflict, worktree/branch mismatch, blocked state, or lock error.
+Read this only when an autopilot run is interrupted or reports discovery, binding, revision, lock, or state-health trouble.
 
-## State location and ownership
+## Locate the run
 
-The runtime stores state under the repository-shared `.agent-workflows/autopilot/<id>.json`, derived from Git's common directory. The file is bound to one worktree and branch even though linked worktrees can discover it.
+State is stored at `.agent-workflows/autopilot/<session>/<id>.json`. In Git repositories the root is shared through Git's common directory, so linked worktrees can discover the same run while mutations remain bound to one worktree and branch. Outside Git, pass a stable `--root <directory>` from every invocation.
 
-A mismatch is evidence of a different owner, not permission to take over. Inspect the recorded owner and active processes. Rebind only with the latest reported revision and an explicit decision that continuation in the current worktree is intended:
+Use read-only discovery before touching files:
 
 ```bash
-$AUTOPILOT rebind --id <slug> --expected-revision <n>
+python3 "<installed-skill-dir>/scripts/autopilot_state.py" list --all-sessions --limit 20
+python3 "<installed-skill-dir>/scripts/autopilot_state.py" status --session <session> --latest
+python3 "<installed-skill-dir>/scripts/autopilot_state.py" history --id <slug> --tail 5
 ```
 
-## Revision conflict
+`status`, `list`, `history`, and `doctor` do not create a missing state tree. Add `--full` only when compact fields are insufficient.
 
-Reload status, reconcile what changed, and retry from the new revision. Never overwrite a newer state or decrement the revision.
+## Resolve ownership and concurrency
 
-## Lock failure
+A revision conflict means another mutation won. Reload status, reconcile its result, and retry from the new revision. A binding mismatch means another worktree or branch owns the run. Confirm that owner is inactive, then transfer deliberately:
 
-The lock is command-scoped. First confirm no command is running. If a process crashed and left `<id>.json.lock`, inspect its JSON owner record before removing only that exact lock. Never delete the workflow directory broadly.
+```bash
+python3 "<installed-skill-dir>/scripts/autopilot_state.py" rebind --id <slug> --expected-revision <n>
+```
 
-## Blocked terminal state
+Never decrement a revision or copy state between session directories.
 
-`blocked` records a second failed verification and its summary. Report the evidence and propose a materially different strategy. Start a new run only when the user authorizes a fresh budget; do not mutate blocked back to implement.
+## Diagnose and recover
 
-The `.bak` file is a single-generation recovery aid. Restore it only after preserving the corrupt primary and validating workflow, id, schema, and revision.
+Run `doctor --id <slug>` first. It validates the primary, backup, and lock without printing full history.
+
+- For a corrupt primary with a valid single-generation backup, run `recover --id <slug>`. Recovery preserves monotonic revision. Use `--force` only for an intentional rollback from a valid primary; add `--rebind` only to explicitly transfer a restored run after confirming the prior owner is inactive.
+- For a lock, verify its recorded process is no longer alive, then run `unlock --id <slug> --stale-after <seconds>`. Use `--force` only after an explicit local safety decision.
+- Do not hand-edit, delete, or broadly move `.agent-workflows` files.
+
+`blocked`, `done`, and `aborted` are terminal. Report their evidence; start a new run only with a new authorized budget.
+
+## Response and exit contract
+
+Every command emits one `agent-workflow-response/2` JSON object. Exit `0` means the command or read succeeded; `2` means invalid input; `3` means no selected run; `4` means a gate or terminal refusal; `5` means a revision, lock, binding, or transition conflict; `6` means unsafe or corrupt state; `70` means an unexpected internal failure. Do not infer workflow completion from the process code alone; read `terminal`, `status`, and `stage`.

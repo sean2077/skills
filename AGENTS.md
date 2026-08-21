@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 16 independently installable skills: repository analysis/review workflows, deterministic `autopilot` / `deep-interview` / `ralph` control runtimes, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and the dual-host agent scaffold. No build step — the skills *are* the product.
+`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 16 independently installable skills: repository analysis/review workflows, deterministic `autopilot` / `deep-interview` / `ralph` control runtimes, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and the dual-host agent scaffold. Consumers need no build step; maintainers regenerate the three checked-in standalone workflow runtimes from one shared source before committing.
 
 ## Development Commands
 
@@ -16,6 +16,7 @@ The CI gates must stay green — `.github/workflows/validate.yml` runs them on p
 python -m pip install -r requirements-validation.txt  # pinned StrictYAML + official skills-ref
 python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 python scripts/test_validate_skills.py # focused catalog-contract regression fixtures
+python scripts/generate_workflow_runtimes.py --check # generated standalone runtime drift
 python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
 python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
 python scripts/tests/test_tdd_contract.py # stack-neutral TDD payload and semantic-contract regressions
@@ -41,10 +42,14 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   `scripts/contracts/<skill>.py`, one file per `skills/<name>/`** — discovered by filename, so
   changing one skill's contract touches exactly that file. A skill with no contract module (or a
   module naming no existing skill) is a validation error.
-- `autopilot`, `deep-interview`, and `ralph` must remain independently installable: each runtime
-  lives under its own skill, uses only the Python standard library, records state under
-  `.agent-workflows/<workflow>/<id>.json`, binds mutations to one Git worktree/branch, and never
-  executes verifier commands supplied as data. Keep their behavioral regression suite green.
+- `autopilot`, `deep-interview`, and `ralph` must remain independently installable. Maintainer SSOT
+  is `scripts/workflow_runtime/{common,autopilot,deep_interview,ralph}.py`; run
+  `scripts/generate_workflow_runtimes.py` instead of hand-editing generated skill scripts. Each
+  standalone runtime targets Python 3.8+, uses only the standard library, emits compact JSON by
+  default, stores bounded state at `.agent-workflows/<workflow>/<session>/<id>.json`, bounds discovery
+  through `list --limit`, supports an explicit non-Git `--root`, binds Git mutations to one
+  worktree/branch, and never executes verifier commands supplied as data. Keep generator drift and
+  behavioral/adversarial regressions green on Python 3.8 and on Linux, macOS, and Windows.
 - **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product);
   `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
 - Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
