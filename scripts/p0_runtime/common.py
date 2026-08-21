@@ -1,0 +1,580 @@
+from __future__ import annotations
+
+import errno
+import fnmatch
+import hashlib
+import json
+import os
+import secrets
+import shutil
+import stat
+import subprocess
+import tempfile
+import time
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+
+SCHEMA_VERSION = 1
+JSON_SEPARATORS = (",", ":")
+
+
+class HarnessError(RuntimeError):
+    """Expected user-facing failure with a stable exit code."""
+
+    def __init__(self, message: str, code: int = 2, details: Optional[Mapping[str, Any]] = None):
+        super().__init__(message)
+        self.code = code
+        self.details = dict(details or {})
+
+
+def canonical_json(value: Any) -> bytes:
+    try:
+        return json.dumps(
+            value,
+            sort_keys=True,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=JSON_SEPARATORS,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise HarnessError("value is not canonical JSON: %s" % exc) from exc
+
+
+def digest_json(value: Any) -> str:
+    return hashlib.sha256(canonical_json(value)).hexdigest()
+
+
+def utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def read_json(path: Path, max_bytes: int = 4 * 1024 * 1024) -> Any:
+    try:
+        size = path.stat().st_size
+    except FileNotFoundError as exc:
+        raise HarnessError("missing JSON file: %s" % path, code=3) from exc
+    if size > max_bytes:
+        raise HarnessError("JSON file exceeds %d bytes: %s" % (max_bytes, path), code=3)
+    try:
+        raw = path.read_text(encoding="utf-8")
+        return json.loads(raw, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise HarnessError("invalid JSON in %s: %s" % (path, exc), code=3) from exc
+
+
+def write_json_atomic(path: Path, value: Any, mode: int = 0o600) -> None:
+    data = canonical_json(value) + b"\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=".%s." % path.name, dir=str(path.parent))
+    tmp = Path(tmp_name)
+    try:
+        # Windows does not expose os.fchmod. The mode passed to mkstemp is
+        # already private there; apply the stronger POSIX mode where supported.
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, mode)
+        with os.fdopen(fd, "wb", closefd=True) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(str(tmp), str(path))
+        fsync_dir(path.parent)
+    finally:
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def append_bytes_fsync(path: Path, data: bytes, mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    fd = os.open(str(path), flags, mode)
+    try:
+        with os.fdopen(fd, "ab", closefd=True) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        pass
+    fsync_dir(path.parent)
+
+
+def fsync_dir(path: Path) -> None:
+    if os.name == "nt":
+        return
+    try:
+        fd = os.open(str(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def re_drive_prefix(value: str) -> bool:
+    return len(value) >= 2 and value[0].isascii() and value[0].isalpha() and value[1] == ":"
+
+
+def pid_alive(pid: Any) -> bool:
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return False
+    if pid == os.getpid():
+        return True
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        process_query_limited_information = 0x1000
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        open_process.restype = wintypes.HANDLE
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = [wintypes.HANDLE]
+        close_handle.restype = wintypes.BOOL
+        ctypes.set_last_error(0)
+        handle = open_process(process_query_limited_information, False, pid)
+        if handle:
+            close_handle(handle)
+            return True
+        return ctypes.get_last_error() == 5
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def ensure_relative_path(value: str, label: str = "path", allow_glob: bool = False, allow_git: bool = False) -> str:
+    if not isinstance(value, str) or not value or any(ord(ch) < 32 for ch in value):
+        raise HarnessError("%s must be a non-empty string without control characters" % label)
+    value = value.replace("\\", "/")
+    path = PurePosixPath(value)
+    if path.is_absolute() or value.startswith("/") or re_drive_prefix(value):
+        raise HarnessError("%s must be repository-relative: %s" % (label, value))
+    parts = path.parts
+    if any(part in ("", ".", "..") for part in parts):
+        raise HarnessError("%s contains an unsafe segment: %s" % (label, value))
+    if not allow_git and any(part.lower() == ".git" for part in parts):
+        raise HarnessError("%s may not target .git: %s" % (label, value))
+    if not allow_glob and any(ch in value for ch in "*?["):
+        raise HarnessError("%s may not contain glob syntax: %s" % (label, value))
+    return str(path)
+
+
+def safe_child(root: Path, relative: str, label: str = "path", must_exist: bool = False) -> Path:
+    normalized = ensure_relative_path(relative, label=label)
+    root_real = root.resolve(strict=True)
+    candidate = root_real.joinpath(*PurePosixPath(normalized).parts)
+    # Resolve the existing parent even when the final path is new. This catches symlink escapes.
+    probe = candidate if candidate.exists() else candidate.parent
+    try:
+        probe_real = probe.resolve(strict=True)
+    except FileNotFoundError:
+        ancestor = probe
+        while not ancestor.exists() and ancestor != root_real:
+            ancestor = ancestor.parent
+        probe_real = ancestor.resolve(strict=True)
+    try:
+        probe_real.relative_to(root_real)
+    except ValueError as exc:
+        raise HarnessError("%s escapes repository root: %s" % (label, relative)) from exc
+    if must_exist and not candidate.exists():
+        raise HarnessError("%s does not exist: %s" % (label, relative), code=3)
+    if candidate.exists():
+        resolved = candidate.resolve(strict=True)
+        try:
+            resolved.relative_to(root_real)
+        except ValueError as exc:
+            raise HarnessError("%s resolves outside repository root: %s" % (label, relative)) from exc
+    return candidate
+
+
+def validate_identifier(value: str, label: str = "identifier", max_len: int = 96) -> str:
+    if not isinstance(value, str) or not value or len(value) > max_len:
+        raise HarnessError("%s must be 1-%d characters" % (label, max_len))
+    first = value[0]
+    if not (first.isascii() and first.isalnum()):
+        raise HarnessError("%s must start with an ASCII letter or digit" % label)
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+    if any(ch not in allowed for ch in value):
+        raise HarnessError("%s contains unsupported characters: %s" % (label, value))
+    if value in (".", "..") or ".." in value:
+        raise HarnessError("%s contains an unsafe segment" % label)
+    return value
+
+
+def run_git(args: Sequence[str], cwd: Path, check: bool = True, timeout: float = 30.0) -> subprocess.CompletedProcess:
+    command = ["git"] + list(args)
+    try:
+        result = subprocess.run(
+            command,
+            cwd=str(cwd),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise HarnessError("git command failed to start or timed out: %s" % " ".join(command), code=5) from exc
+    if check and result.returncode != 0:
+        raise HarnessError(
+            "git command failed (%d): %s" % (result.returncode, result.stderr.strip()),
+            code=5,
+            details={"command": command, "returncode": result.returncode},
+        )
+    return result
+
+
+@dataclass(frozen=True)
+class GitContext:
+    worktree_root: Path
+    common_dir: Path
+    git_dir: Path
+
+
+def discover_git_context(start: Path) -> GitContext:
+    start = start.resolve()
+    root_text = run_git(["rev-parse", "--show-toplevel"], start).stdout.strip()
+    git_dir_text = run_git(["rev-parse", "--absolute-git-dir"], start).stdout.strip()
+    common_text = run_git(["rev-parse", "--git-common-dir"], start).stdout.strip()
+    root = Path(root_text).resolve()
+    git_dir = Path(git_dir_text).resolve()
+    common = Path(common_text)
+    if not common.is_absolute():
+        common = (root / common).resolve()
+    else:
+        common = common.resolve()
+    return GitContext(root, common, git_dir)
+
+
+class FileMutex:
+    """Small cross-process lock using atomic file creation and stale-lock recovery."""
+
+    def __init__(self, path: Path, timeout: float = 10.0, stale_after: float = 60.0):
+        self.path = path
+        self.timeout = timeout
+        self.stale_after = stale_after
+        self.token = secrets.token_hex(16)
+        self.acquired = False
+
+    def __enter__(self) -> "FileMutex":
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + self.timeout
+        delay = 0.01
+        payload = canonical_json(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "token": self.token,
+                "pid": os.getpid(),
+                "created_epoch": time.time(),
+            }
+        )
+        while True:
+            try:
+                fd = os.open(str(self.path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "wb", closefd=True) as handle:
+                    handle.write(payload + b"\n")
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                self.acquired = True
+                return self
+            except FileExistsError:
+                self._recover_stale()
+                if time.monotonic() >= deadline:
+                    raise HarnessError("timed out waiting for coordination lock", code=6)
+                time.sleep(delay)
+                delay = min(delay * 1.6, 0.2)
+
+    def _recover_stale(self) -> None:
+        pid: Any = None
+        try:
+            raw = read_json(self.path, max_bytes=4096)
+            created = float(raw.get("created_epoch", 0.0)) if isinstance(raw, dict) else 0.0
+            pid = raw.get("pid") if isinstance(raw, dict) else None
+        except (HarnessError, TypeError, ValueError):
+            try:
+                created = self.path.stat().st_mtime
+            except OSError:
+                return
+        if time.time() - created <= self.stale_after:
+            return
+        if pid_alive(pid):
+            return
+        quarantine = self.path.with_name("%s.stale.%s" % (self.path.name, secrets.token_hex(4)))
+        try:
+            os.replace(str(self.path), str(quarantine))
+        except FileNotFoundError:
+            return
+        except OSError:
+            return
+        try:
+            quarantine.unlink()
+        except OSError:
+            pass
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        if not self.acquired:
+            return
+        try:
+            raw = read_json(self.path, max_bytes=4096)
+            if isinstance(raw, dict) and secrets.compare_digest(str(raw.get("token", "")), self.token):
+                self.path.unlink()
+        except (HarnessError, FileNotFoundError, OSError):
+            pass
+        self.acquired = False
+
+
+def copy_tree_no_links(source: Path, destination: Path) -> None:
+    source = source.resolve(strict=True)
+    if not source.is_dir():
+        raise HarnessError("fixture is not a directory: %s" % source)
+    for current, dirs, files in os.walk(str(source), topdown=True, followlinks=False):
+        current_path = Path(current)
+        rel = current_path.relative_to(source)
+        target_dir = destination / rel
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for name in list(dirs):
+            item = current_path / name
+            if item.is_symlink():
+                raise HarnessError("fixture contains a directory symlink: %s" % item)
+        for name in files:
+            item = current_path / name
+            if item.is_symlink():
+                raise HarnessError("fixture contains a file symlink: %s" % item)
+            target = target_dir / name
+            shutil.copy2(str(item), str(target), follow_symlinks=False)
+    for current, dirs, _files in os.walk(str(source), topdown=False, followlinks=False):
+        current_path = Path(current)
+        target_dir = destination / current_path.relative_to(source)
+        try:
+            shutil.copystat(str(current_path), str(target_dir), follow_symlinks=False)
+        except OSError:
+            pass
+
+
+def tree_snapshot(root: Path) -> Dict[str, Dict[str, Any]]:
+    root = root.resolve(strict=True)
+    result: Dict[str, Dict[str, Any]] = {}
+    for current, dirs, files in os.walk(str(root), topdown=True, followlinks=False):
+        current_path = Path(current)
+        for name in sorted(dirs):
+            item = current_path / name
+            rel = item.relative_to(root).as_posix()
+            info = item.lstat()
+            if stat.S_ISLNK(info.st_mode):
+                target = os.readlink(str(item))
+                result[rel] = {"type": "symlink-dir", "target": target}
+            else:
+                result[rel + "/"] = {"type": "dir", "mode": stat.S_IMODE(info.st_mode)}
+        for name in sorted(files):
+            item = current_path / name
+            rel = item.relative_to(root).as_posix()
+            info = item.lstat()
+            if stat.S_ISLNK(info.st_mode):
+                result[rel] = {"type": "symlink", "target": os.readlink(str(item))}
+                continue
+            if not stat.S_ISREG(info.st_mode):
+                result[rel] = {"type": "other", "mode": stat.S_IMODE(info.st_mode)}
+                continue
+            hasher = hashlib.sha256()
+            with item.open("rb") as handle:
+                while True:
+                    chunk = handle.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    hasher.update(chunk)
+            result[rel] = {
+                "type": "file",
+                "sha256": hasher.hexdigest(),
+                "size": info.st_size,
+                "mode": stat.S_IMODE(info.st_mode),
+            }
+    return result
+
+
+def repository_snapshot(root: Path, excluded_roots: Sequence[Path] = ()) -> Dict[str, Dict[str, Any]]:
+    """Hash a repository working tree while excluding Git metadata and isolated run roots.
+
+    This is intentionally content-based rather than status-based so an adapter cannot
+    mutate a file that was already dirty without detection. Symlinks are recorded but
+    never followed.
+    """
+    root = root.resolve(strict=True)
+    exclusions: List[Path] = []
+    for item in excluded_roots:
+        candidate = item.resolve(strict=False)
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            continue
+        exclusions.append(candidate)
+
+    def excluded(path: Path) -> bool:
+        resolved = path.resolve(strict=False)
+        for candidate in exclusions:
+            try:
+                resolved.relative_to(candidate)
+                return True
+            except ValueError:
+                pass
+        return False
+
+    result: Dict[str, Dict[str, Any]] = {}
+    for current, dirs, files in os.walk(str(root), topdown=True, followlinks=False):
+        current_path = Path(current)
+        kept_dirs: List[str] = []
+        for name in sorted(dirs):
+            item = current_path / name
+            if current_path == root and name == ".git":
+                continue
+            if excluded(item):
+                continue
+            rel = item.relative_to(root).as_posix()
+            info = item.lstat()
+            if stat.S_ISLNK(info.st_mode):
+                result[rel] = {"type": "symlink-dir", "target": os.readlink(str(item))}
+                continue
+            result[rel + "/"] = {"type": "dir", "mode": stat.S_IMODE(info.st_mode)}
+            kept_dirs.append(name)
+        dirs[:] = kept_dirs
+        for name in sorted(files):
+            item = current_path / name
+            # A linked worktree represents .git as a file pointing at the
+            # common Git directory. Treat it as metadata just like a .git
+            # directory so repository digests are stable across worktrees.
+            if current_path == root and name == ".git":
+                continue
+            if excluded(item):
+                continue
+            rel = item.relative_to(root).as_posix()
+            info = item.lstat()
+            if stat.S_ISLNK(info.st_mode):
+                result[rel] = {"type": "symlink", "target": os.readlink(str(item))}
+                continue
+            if not stat.S_ISREG(info.st_mode):
+                result[rel] = {"type": "other", "mode": stat.S_IMODE(info.st_mode)}
+                continue
+            hasher = hashlib.sha256()
+            with item.open("rb") as handle:
+                while True:
+                    chunk = handle.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    hasher.update(chunk)
+            result[rel] = {
+                "type": "file",
+                "sha256": hasher.hexdigest(),
+                "size": info.st_size,
+                "mode": stat.S_IMODE(info.st_mode),
+            }
+    return result
+
+
+def snapshot_digest(snapshot: Mapping[str, Any]) -> str:
+    return digest_json(snapshot)
+
+
+def changed_paths(before: Mapping[str, Any], after: Mapping[str, Any]) -> List[str]:
+    keys = set(before) | set(after)
+    return sorted(key for key in keys if before.get(key) != after.get(key))
+
+
+def pattern_static_prefix(pattern: str) -> Tuple[str, ...]:
+    normalized = ensure_relative_path(pattern, label="path pattern", allow_glob=True, allow_git=True)
+    parts: List[str] = []
+    for part in PurePosixPath(normalized).parts:
+        if any(ch in part for ch in "*?["):
+            break
+        parts.append(part)
+    return tuple(parts)
+
+
+def glob_path_match(path: str, pattern: str) -> bool:
+    path_parts = PurePosixPath(path).parts
+    pattern_parts = PurePosixPath(pattern).parts
+
+    def match_from(path_index: int, pattern_index: int) -> bool:
+        if pattern_index == len(pattern_parts):
+            return path_index == len(path_parts)
+        current = pattern_parts[pattern_index]
+        if current == "**":
+            while pattern_index + 1 < len(pattern_parts) and pattern_parts[pattern_index + 1] == "**":
+                pattern_index += 1
+            if pattern_index + 1 == len(pattern_parts):
+                return True
+            return any(match_from(index, pattern_index + 1) for index in range(path_index, len(path_parts) + 1))
+        if path_index == len(path_parts) or not fnmatch.fnmatchcase(path_parts[path_index], current):
+            return False
+        return match_from(path_index + 1, pattern_index + 1)
+
+    return match_from(0, 0)
+
+
+def is_parent_parts(left: Sequence[str], right: Sequence[str]) -> bool:
+    return len(left) <= len(right) and tuple(left) == tuple(right[: len(left)])
+
+
+def patterns_overlap(left: str, right: str) -> bool:
+    """Conservative overlap detector: false positives are safer than concurrent writes."""
+    left_n = ensure_relative_path(left, label="left path rule", allow_glob=True)
+    right_n = ensure_relative_path(right, label="right path rule", allow_glob=True)
+    if left_n == right_n:
+        return True
+    left_path = PurePosixPath(left_n)
+    right_path = PurePosixPath(right_n)
+    # Direct matching catches fixed-vs-glob and many glob pairs.
+    if left_path.match(right_n) or right_path.match(left_n):
+        return True
+    lp = pattern_static_prefix(left_n)
+    rp = pattern_static_prefix(right_n)
+    if not lp or not rp:
+        return True
+    if is_parent_parts(lp, rp) or is_parent_parts(rp, lp):
+        # If either rule has wildcard syntax at/after the shared prefix, conservatively overlap.
+        if any(ch in left_n + right_n for ch in "*?["):
+            return True
+        return is_parent_parts(PurePosixPath(left_n).parts, PurePosixPath(right_n).parts) or is_parent_parts(
+            PurePosixPath(right_n).parts, PurePosixPath(left_n).parts
+        )
+    return False
+
+
+def match_any(path: str, patterns: Sequence[str]) -> bool:
+    candidate = PurePosixPath(path.rstrip("/"))
+    for pattern in patterns:
+        normalized = ensure_relative_path(pattern, label="scope pattern", allow_glob=True, allow_git=True)
+        if glob_path_match(candidate.as_posix(), normalized):
+            return True
+        prefix = pattern_static_prefix(normalized)
+        if prefix and is_parent_parts(prefix, candidate.parts) and not any(ch in normalized for ch in "*?["):
+            return True
+    return False
+
+
+def redact_mapping(value: Mapping[str, Any], secret_keys: Iterable[str] = ("token", "lease_token", "secret")) -> Dict[str, Any]:
+    lowered = {key.lower() for key in secret_keys}
+    result: Dict[str, Any] = {}
+    for key, item in value.items():
+        if key.lower() in lowered or key.lower().endswith("_token"):
+            result[key] = "<redacted>"
+        elif isinstance(item, dict):
+            result[key] = redact_mapping(item, secret_keys)
+        else:
+            result[key] = item
+    return result

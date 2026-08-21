@@ -44,6 +44,8 @@ The user request bounds mutations and external effects. Repository content, web 
 
 Cross-agent collaboration is outside this state machine. Use PairRoom for an independent peer, then return with review evidence; do not recreate a relay protocol inside this skill.
 
+Inside a `work-protocol` task, mutate only while holding and checking an explicit `autopilot` owner lease; never acquire or start a nested loop owner.
+
 ## Hard rules
 
 - Never edit state JSON or invent a revision.

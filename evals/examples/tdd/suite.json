@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "suite_id": "tdd-behavior",
+  "skill_path": "skills/tdd",
+  "fixture": "evals/examples/tdd/fixture",
+  "adapter": {
+    "command": [
+      "{python}",
+      "{repo}/evals/examples/tdd/fake_adapter.py"
+    ],
+    "timeout_seconds": 10,
+    "max_output_bytes": 262144
+  },
+  "verifier": {
+    "command": [
+      "{python}",
+      "{repo}/evals/examples/tdd/verifier.py"
+    ],
+    "timeout_seconds": 10,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [
+      "src/**",
+      "tests/**"
+    ],
+    "deny": [
+      ".agents/**",
+      ".git/**"
+    ]
+  },
+  "budgets": {
+    "absolute": {
+      "interventions": 0,
+      "tool_calls": 2
+    },
+    "relative": {
+      "input_tokens": {
+        "max_ratio": 1.5,
+        "max_additive": 0
+      },
+      "output_tokens": {
+        "max_ratio": 2.0,
+        "max_additive": 0
+      },
+      "wall_time_seconds": {
+        "max_ratio": 10.0,
+        "max_additive": 2.0
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-red-green",
+      "kind": "positive",
+      "prompt": "Fix add() using a test-first red-green-refactor loop."
+    },
+    {
+      "id": "negative-doc-only",
+      "kind": "negative",
+      "prompt": "Explain what add() does without changing files."
+    },
+    {
+      "id": "confusable-review",
+      "kind": "confusable",
+      "prompt": "Review the naming in calc.py; do not implement a change."
+    }
+  ]
+}

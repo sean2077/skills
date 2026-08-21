@@ -43,6 +43,8 @@ Use `--keep-policy score-improvement --plateau-window <n>` with `--score 0..1` o
 
 A successful transition into a terminal status returns success because the result was recorded. A later mutation attempt returns terminal exit `4`. One pending round accepts exactly one `check`.
 
+Inside a `work-protocol` task, mutate only while holding and checking an explicit `ralph` owner lease; never acquire or start a nested loop owner.
+
 ## Completion report
 
 Report goal, terminal status, rounds used, verifier commands actually run, best score/round when applicable, final signature, changes attempted, and remaining risks. Never translate a non-passing terminal into “done”.
