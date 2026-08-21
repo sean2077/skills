@@ -284,7 +284,8 @@ def _expand_command(command: Sequence[str], repo_root: Path, workspace: Path, mo
     if executable.startswith(".") or "/" in executable or "\\" in executable:
         path = Path(executable)
         if not path.is_absolute():
-            path = (repo_root / path).resolve()
+            path = repo_root / path
+        path = path.resolve(strict=False)
         try:
             path.relative_to(repo_root.resolve())
         except ValueError:

@@ -71,6 +71,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--confirm-send`, and idempotency keys remain transaction-scoped and are never inherited by a new
   logical action.
 
+### Fixed
+
+- Canonicalized the `skill-eval` Python executable before applying repository-boundary checks, so setup-python interpreter symlinks remain valid without allowing arbitrary executable escapes.
+- Accepted platform aliases for the bound worktree root in workflow JSON and artifact paths while continuing to reject descendant symlink traversal and resolved paths outside the worktree.
+- Prevented validation imports from writing `__pycache__` files that could contaminate installed-payload comparisons later in the same CI job.
+
 ### ⚠ Breaking
 
 - The standalone `trace` install target is removed. Existing consumers must replace it with `analyze`, whose causal-investigation mode preserves the read-only hypothesis, falsification, and discriminating-probe workflow, and remove stale `trace` projections to prevent duplicate routing.

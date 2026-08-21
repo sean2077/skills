@@ -375,6 +375,24 @@ def read_json(path: Path, *, kind: str, max_bytes: int) -> Dict[str, Any]:
     return value
 
 
+def lexical_relative_to_root(path: Path, root: Path) -> Tuple[Path, Path]:
+    bound_root = root.resolve()
+    expected = os.path.normcase(str(bound_root))
+    matched_root: Optional[Path] = None
+    for ancestor in path.parents:
+        try:
+            resolved_ancestor = ancestor.resolve(strict=True)
+        except (OSError, RuntimeError):
+            continue
+        if os.path.normcase(str(resolved_ancestor)) == expected:
+            # Keep the outermost match so a descendant symlink that points back
+            # to the worktree root remains part of the path checked below.
+            matched_root = ancestor
+    if matched_root is None:
+        raise ValueError("path is outside the bound root")
+    return matched_root, path.relative_to(matched_root)
+
+
 def load_json_input(value: str, *, root: Path) -> Dict[str, Any]:
     bound_root = root.resolve()
     candidate = Path(value).expanduser()
@@ -382,10 +400,10 @@ def load_json_input(value: str, *, root: Path) -> Dict[str, Any]:
         candidate = bound_root / candidate
     lexical = Path(os.path.abspath(str(candidate)))
     try:
-        relative = lexical.relative_to(bound_root)
+        lexical_root, relative = lexical_relative_to_root(lexical, bound_root)
     except ValueError as exc:
         raise WorkflowError(2, "invalid_input_file", "input file must stay inside the bound worktree", path=value) from exc
-    cursor = bound_root
+    cursor = lexical_root
     for part in relative.parts:
         cursor = cursor / part
         if cursor.is_symlink():
@@ -739,16 +757,16 @@ def resolve_artifact_path(
         candidate = worktree / candidate
     lexical = Path(os.path.abspath(str(candidate)))
     try:
-        lexical_relative = lexical.relative_to(worktree)
+        lexical_root, lexical_relative = lexical_relative_to_root(lexical, worktree)
     except ValueError as exc:
         raise WorkflowError(2, "unsafe_artifact", "%s escapes the bound worktree" % label, path=value) from exc
-    cursor = worktree
+    cursor = lexical_root
     for part in lexical_relative.parts:
         cursor = cursor / part
         if cursor.is_symlink():
             raise WorkflowError(2, "unsafe_artifact", "%s traverses a symlink" % label, path=value)
     try:
-        resolved = candidate.resolve(strict=True)
+        resolved = lexical.resolve(strict=True)
     except (OSError, RuntimeError) as exc:
         raise WorkflowError(2, "invalid_artifact", "%s does not exist" % label, path=value) from exc
     try:

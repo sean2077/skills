@@ -30,6 +30,9 @@ jobs:
       # Windows otherwise defaults Path.read_text() and redirected stdout to a
       # legacy code page, which breaks UTF-8 skill files and non-ASCII repo paths.
       PYTHONUTF8: "1"
+      # Test imports must not add cache files to the skill payloads that the
+      # installer smoke test compares byte-for-byte later in this job.
+      PYTHONDONTWRITEBYTECODE: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -176,6 +179,7 @@ jobs:
     timeout-minutes: 10
     env:
       PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
