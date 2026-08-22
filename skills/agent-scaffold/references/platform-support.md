@@ -69,3 +69,14 @@ this sequence before running a mutating installer mode:
    Link creation uses Python `os.symlink`, not MSYS `ln -s`. The installer pins vendored
    shell/Python files to LF; project-owned hook-manager files keep their existing line endings.
    Capability failure exits 2 before target writes and leaves no copy or partial harness.
+
+## Claude Code checkpoint boundary
+
+The harness intentionally uses real symlinks, but Claude Code checkpoint restore does not rewind symlinked or hard-linked files. In this layout that can affect `CLAUDE.md` and entries under `.claude/skills/`: `/rewind` may report success while skipping those paths and leaving the real `AGENTS.md` or `.agents/skills/<name>/` target changed.
+
+After a rewind that touched harness-linked content:
+
+1. Inspect `git status` and `git diff` for the real target, not only the projection path.
+2. Reverse the edit explicitly or restore the target from version control.
+3. Rerun `bash .agents/relink-skills.sh` when project skill projections changed.
+4. Run `agent-scaffold verify`; do not treat checkpoint completion as symlink verification.

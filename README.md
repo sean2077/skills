@@ -2,9 +2,9 @@
 
 Reusable agent skills for development, ops, and productivity — battle-tested patterns with working examples.
 
-Uses the universal [Agent Skills specification](https://agentskills.io/specification). Compatible with Claude Code, Codex, OpenCode, Cursor, GitHub Copilot, Windsurf, and other Agent Skills hosts.
+Publishes 17 reusable workflows in the open [Agent Skills format](https://agentskills.io/specification). Format conformance, installer discovery, and host runtime support are separate claims: CI runs the pinned official validator across the catalog, smoke-tests discovery with an audited `skills` CLI version, and exercises the repository's Claude Code + Codex scaffold installer and projections. An installer listing another target does not by itself mean this repository has certified that host.
 
-The minimal [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) is installer compatibility metadata: `npx skills` uses it to group the installed skills under **Sean2077 Skills** for every target agent.
+The minimal [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) is catalog metadata used by the repository's tested installer-discovery flow. It declares the catalog name and 17 published skill paths to that flow; it is not a declaration of native runtime compatibility for every installer target. See the [compatibility and verification matrix](docs/compatibility.md).
 
 ## Install
 
@@ -21,20 +21,20 @@ npx skills add sean2077/skills --skill ralph -a claude-code -a codex
 npx skills add sean2077/skills --skill code-review -a codex
 npx skills add sean2077/skills --skill deep-interview -a claude-code
 
-# Optional convenience: install the complete catalog
-npx skills add sean2077/skills -a claude-code -a codex
+# Optional: install the complete catalog for these two targets
+npx skills add sean2077/skills --skill '*' -a claude-code -a codex
 
 # From a local checkout, keep the leading ./ so it is parsed as a path
 npx skills add ./skills/agent-scaffold -a codex
 ```
 
-Repeat the selective command for each additional skill. If skills were installed before the compatibility manifest existed, rerun a catalog-root `add` command once in the same project/global scope so `npx skills` records the group in its lockfile. For a local checkout, use `npx skills add . --skill agent-scaffold -a codex`; installing `./skills/agent-scaffold` directly bypasses the root manifest and therefore remains ungrouped.
+Repeat the selective command for each additional skill. With the current `skills` CLI, omitting `--skill` opens selection; quote `'*'` to select every skill for only the explicitly named `-a` targets. `--all` has broader semantics: every discovered skill to every supported agent. Use the catalog root when catalog metadata matters: for a local checkout run `npx skills add . --skill agent-scaffold -a codex`; installing `./skills/agent-scaffold` directly selects that skill directory and bypasses root catalog metadata.
 
 ## Skills
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
-| [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, merge-owned hooks, subagent projection, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
+| [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
 | [ai-slop-cleaner](skills/ai-slop-cleaner/) | Perform behavior-preserving, bounded cleanup of duplication, dead code, needless abstraction, boundary leaks, and weak coverage with explicit verification. | Engineering, Refactoring |
 | [analyze](skills/analyze/) | Explain repository behavior or investigate failures through one read-only evidence workflow with ranked synthesis, competing hypotheses, falsification, and discriminating probes. | Engineering, Analysis |
 | [autopilot](skills/autopilot/) | Deliver authorized work end to end with a proportional native Agent loop by default and an opt-in persistent runtime for interruption-safe, cross-session, or audit-sensitive execution. | Python, Delivery |
@@ -98,11 +98,19 @@ The runtime scripts emit compact versioned receipts by default. Full state is op
 
 Reference filenames are descriptive lowercase kebab-case. Link every category directly under the resident `SKILL.md` `On-demand references` router, and state its conditional load boundary near the top. Do not add root-level `reference.md` files or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
 
-`npx skills` reads directly from `skills/`, so this repository does not maintain separate `.codex/skills` or `.claude/skills` mirrors.
+`npx skills` reads the published payload directly from `skills/`, so this repository does not maintain generated `.codex/skills` or `.claude/skills` catalog mirrors. The separate `.agents/skills/` tree belongs to this repository's own dogfooded project harness and is not the published catalog.
+
+## Documentation map
+
+- [Compatibility and verification matrix](docs/compatibility.md) — what is format-validated, installer-tested, host-wired, or explicitly not certified.
+- [Documentation maintenance policy](docs/documentation-maintenance.md) — ownership, evidence, freshness, duplication, and command-example rules.
+- [Harness constraint policy](docs/harness-constraint-policy.md) — when mechanical controls earn their complexity.
+- [Agent contract](AGENTS.md) — maintainer commands, architecture, and release boundary.
+- [Changelog](CHANGELOG.md) — release history; historical entries are not silently rewritten to match later behavior.
 
 ## Development and releases
 
-Run the catalog's pinned validation, official spec, discovery, deterministic runtime, shell, and behavioral gates from the [development commands](AGENTS.md#development-commands). Release-facing changes accumulate in the [changelog](CHANGELOG.md). After the release snapshot is merged and validated on `main`, an annotated stable or numbered-prerelease `v` tag triggers the repository-owned release workflow. It reruns the complete validation workflow, extracts the exact matching changelog section from the tagged commit, and creates a GitHub Release only after both steps succeed.
+Run the catalog's pinned validation, official spec, discovery, deterministic runtime, shell, and behavioral gates from the [development commands](AGENTS.md#development-commands). The repository intentionally distinguishes a CI-audited dependency pin from the upstream latest release; see the [compatibility matrix](docs/compatibility.md) before changing either wording or version. Release-facing changes accumulate in the [changelog](CHANGELOG.md). After the release snapshot is merged and validated on `main`, an annotated stable or numbered-prerelease `v` tag triggers the repository-owned release workflow. It reruns the complete validation workflow, extracts the exact matching changelog section from the tagged commit, and creates a GitHub Release only after both steps succeed.
 
 ## License
 

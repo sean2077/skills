@@ -15,8 +15,7 @@ evidence-led boundary methods, contract checks, and an optional structural inven
   model, and verification—not from filenames, noun domains, or the current directory tree.
 - Give each independent Job Boundary one authoritative entry. Keep helpers private; do not hide
   distinct recovery, batch, audit, or low-level jobs inside a happy-path mega-CLI.
-- Build a Contract Profile before choosing placement. Installed paths and service-bound commands
-  remain external contracts until every active consumer moves in one coordinated change.
+- Build a Contract Profile before choosing placement. Installed paths and service-bound commands remain external contracts until every active consumer moves in one coordinated change. README snippets, runbooks, skill references, templates, and generated examples count as consumers.
 - Keep project-specific roots, names, semantic metadata, CLI shape, languages, and deployment
   mechanics project-owned. Require safe outcomes without inventing flags, exit numbers, resolver
   languages, logging formats, or write mechanisms.
@@ -41,8 +40,7 @@ evidence-led boundary methods, contract checks, and an optional structural inven
    Record** defined in `classification-methods.md`.
 6. When implementing or auditing executable behavior, derive only the applicable command-contract
    cards from the Contract Profile in [`script-contract.md`](references/script-contract.md).
-7. For a move, rename, or deletion, follow [`path-migrations.md`](references/path-migrations.md)
-   and update all active consumers in the same coordinated change.
+7. For a move, rename, or deletion, follow [`path-migrations.md`](references/path-migrations.md) and update all active consumers, including copy-paste documentation commands, in the same coordinated change.
 8. When recurring drift justifies a machine inventory, adapt
    [`inventory-contract.md`](references/inventory-contract.md) and run:
 

@@ -154,7 +154,9 @@ can misclassify a completed write and cause duplicate retries. When a shortcut r
 updated ID, target, status, and warnings, use that as the authoritative result. Read back only when
 those fields are absent/ambiguous, the domain explicitly requires state validation, or the user asks.
 
-## Update notices
+## Version boundary and update notices
+
+The command and safety facts changed in this documentation pass were reviewed on 2026-08-22 against the [`larksuite/cli` v1.0.89 release](https://github.com/larksuite/cli/releases/tag/v1.0.89) and relevant upstream skill references. The installed CLI remains the runtime source of truth: do not add version preflight to normal operations, and use the targeted drift fallback only after actual parser/schema evidence.
 
 Treat `_notice` as advisory metadata, not as the main result. Finish the requested task first.
 `_notice.update` reports a newer CLI, `_notice.skills` reports CLI/skill mismatch, and
@@ -169,10 +171,11 @@ Exit code `10` plus `error.type == "confirmation"` and
 
 1. Show `error.action`, `error.risk`, the exact target, and material parameters.
 2. Obtain explicit user approval.
-3. Follow `error.hint` to append the exact confirmation flag (usually `--yes`) to the original argv,
-   then retry once without changing the target or material parameters.
+3. Follow `error.hint` to append the exact confirmation flag (usually `--yes`) to the original argv only when the user has explicitly approved that exact target and impact, then retry once without changing material parameters.
 4. On rejection, stop. Never auto-add a confirmation flag or reinterpret confirmation as
    auth/network failure.
+
+A request to perform a high-risk operation is not automatically confirmation of its consequences. For an ask-first contract such as `apps +cache-clear`, the first call must omit `--yes`: use the required `--dry-run` preview or explain the exact app, environment, and whole-environment impact, then stop for confirmation. Exit 10 proves the gate works; it is not permission to add `--yes`.
 
 Use `--dry-run` when a domain reference requires a preview for a risky/bounded write. Do not run it
 for every exact ordinary action merely because the flag exists.

@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-`sean2077/skills` is a universal [SKILL.md](https://github.com/anthropics/skills) **catalog** — reusable agent skills installed into any project via `npx skills` (Claude Code + Codex and other Agent-Skills hosts). It ships 17 independently installable skills: repository analysis/review workflows, optional persistence runtimes for `autopilot` / `deep-interview`, the deterministic `ralph` verifier loop, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and the dual-host agent scaffold. Consumers need no build step; maintainers regenerate the checked-in workflow and P0 standalone runtimes from their shared sources before committing.
+`sean2077/skills` is an [Agent Skills-format](https://agentskills.io/specification) **catalog** with 17 independently installable skills: repository analysis/review workflows, optional persistence runtimes for `autopilot` / `deep-interview`, the deterministic `ralph` verifier loop, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and a Claude Code + Codex project scaffold. CI subjects the catalog to specification validation and installer smoke tests; host support is claimed only at the layer actually verified in [the compatibility matrix](docs/compatibility.md), never inferred from an installer's target list. Consumers need no build step; maintainers regenerate the checked-in workflow and P0 standalone runtimes from their shared sources before committing.
 
 ## Development Commands
 
@@ -28,7 +28,7 @@ python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump pl
 python scripts/tests/test_tdd_contract.py # stack-neutral TDD payload and semantic-contract regressions
 python scripts/tests/test_oma_migration_workflows.py # migrated workflow state/terminal/binding regressions
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
-npx --yes skills@1.5.17 add . -l    # real catalog discovery smoke test
+npx --yes skills@1.5.17 add . -l    # audited CI pin; discovery smoke test, not an "upstream latest" claim
 bash scripts/tests/test-tooling-inventory.sh # tooling structural-inventory reconciliation fixtures
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
 bash scripts/e2e-agent-scaffold.sh      # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
@@ -77,18 +77,15 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
 
 ## Catalog Maintenance Gotchas
 
-- Treat the real `npx skills` CLI as the source of truth for install behavior. After changing
-  `SKILL.md` frontmatter, skill names, or catalog layout, smoke-test discovery with
-  `npx skills add . -l`; after pushing a discovery fix, smoke-test the remote path too.
+- Treat the real `npx skills` CLI as the source of truth for install behavior. After changing `SKILL.md` frontmatter, skill names, catalog metadata, or layout, smoke-test discovery with the CI-audited pin and, when intentionally evaluating an upgrade, the candidate version. Do not describe the audited pin as latest. After pushing a discovery fix, smoke-test the remote path too.
+- `docs/compatibility.md` owns external host/install support claims; `docs/documentation-maintenance.md` owns evidence, freshness, and duplication rules. Reverify volatile claims against current official documentation, record the verification date, and never infer host runtime support from format conformance, an installer target, or a manifest alone.
+- Treat copy-paste commands in README, references, templates, and changelog release instructions as user-facing interfaces. Verify their current semantics and quote shell globs such as `'*'`.
 - Keep frontmatter valid for a strict YAML parser. Plain scalars containing `: `, such as
   `Modes: init`, must be quoted or `npx skills` silently drops that skill during discovery.
 - Local subdirectory installs need an explicit path prefix: use
   `npx skills add ./skills/agent-scaffold`, not `npx skills add skills/agent-scaffold`, because
   the latter is parsed as the GitHub repository `skills/agent-scaffold`.
-- With the pinned CLI, `npx skills add <source> --help` performs an install; inspect options with
-  top-level `npx skills --help` instead. Never run project-scope `skills remove` from this catalog
-  root because it can delete product `skills/*`. Refresh globals from outside the repo with
-  `npx skills@1.5.17 update <names...> -g -y`, then compare installed files with the tagged source.
+- With the CI-audited `skills@1.5.17` pin, `npx skills add <source> --help` performs an install; inspect options with top-level `npx skills --help` instead. Never run project-scope `skills remove` from this catalog root because it can delete product `skills/*`. Refresh globals from outside the repo with `npx skills@1.5.17 update <names...> -g -y`, then compare installed files with the tagged source. Upgrade the pin only as an explicit dependency change with discovery/install smoke tests.
 
 <!-- agent-scaffold:start — managed by the agent-scaffold skill. Edit project prose OUTSIDE these markers; `agent-scaffold upgrade` refreshes this block. -->
 ## Agent Harness (Claude Code + Codex)
@@ -125,7 +122,7 @@ The authority-document budget hook remains advisory; projects may override its d
 | `.agents/subagents/<name>/{metadata.json,instructions.md}` | subagent source | ✅ |
 | `.claude/skills/<name>` | symlink → `.agents/skills/<name>` (CC discovery; Codex reads `.agents/` directly) | ✅ |
 | `.claude/agents/*.md`, `.codex/agents/*.toml` | **generated** subagent projections — do NOT hand-edit | ✅ |
-| `.agents/tools/hooks/` | scaffold-managed hook runtime (doc budget + optional trunk guard) — **managed copies, do NOT hand-edit** | ✅ |
+| `.agents/tools/hooks/` | scaffold-owned hook runtime (doc budget + optional trunk guard) — **managed copies, do NOT hand-edit** | ✅ |
 | `.agents/tools/worktree.sh` | worktree lifecycle — **managed copy, do NOT hand-edit** | ✅ |
 | `.claude/allow-trunk-edit` | worktree escape hatch | ❌ ignored |
 | `.claude/settings.local.json` | personal overrides | ❌ ignored |
@@ -135,5 +132,7 @@ The authority-document budget hook remains advisory; projects may override its d
 - **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. Wire `--check` into the project's own CI or hook manager when desired.
 - **Third-party skills** follow project-owned placement and installation policy. The relinker manages only names sourced from `.agents/skills/`, preserves unrelated entries, and fails on same-name ownership conflicts.
 
-**Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a **trusted** project; until trusted it is silently skipped. Trust once: run `codex` here and accept, or add `[projects."<repo abs path>"] trust_level = "trusted"` to `~/.codex/config.toml`.
+**Codex trust has two independent gates**: trust the project so project-local `.codex/` config, hooks, and rules can load, then verify generated project agents are discoverable. Separately, open `/hooks` and review each exact scaffold-owned, non-managed command-hook definition. Codex records hook trust by definition hash, so an unreviewed or changed hook is skipped even when the project layer itself is trusted.
+
+**Claude checkpoint boundary**: Claude Code checkpoint restore does not rewind symlinked or hard-linked files. For edits reached through `CLAUDE.md` or `.claude/skills/*`, verify the real target with Git and reverse or restore that target explicitly.
 <!-- agent-scaffold:end -->

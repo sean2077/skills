@@ -62,7 +62,7 @@ Schema-version 1 uses these status values:
 2. Run `plan` when authored contracts or host config may need adoption.
 3. Run `verify` after installation and use each failed check's `fix` field.
 4. For Windows symlink failures, follow [platform support](platform-support.md).
-5. For hook mismatches, inspect only the exact current managed commands described
+5. For hook mismatches, inspect only the exact current scaffold-owned commands described
    in [host integration](host-integration.md).
 
 Human-readable output and JSON are rendered from the same checks; a difference

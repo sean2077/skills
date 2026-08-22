@@ -68,7 +68,7 @@ Use these known shortcut families directly when their documented inputs are avai
 - Observability: `+log-list`, `+log-get`, `+trace-list`, `+trace-get`, `+metric-list`,
   `+analytics-list`.
 - Data/storage: `+db-table-list`, `+db-table-get`, `+db-execute`, `+file-upload`,
-  `+file-download`, `+file-list`, `+file-get`.
+  `+file-download`, `+file-list`, `+file-get`, `+cache-get`, `+cache-delete`, `+cache-clear`.
 - Access and collaboration: `+access-scope-get`, `+access-scope-set`, `+member-list`,
   `+member-add`, `+member-update`, `+member-remove`, role and role-member shortcuts.
 - Automation/integration: automation, plugin, OpenAPI-key, and user-ID-conversion shortcuts.
@@ -86,6 +86,27 @@ lark-cli apps +metric-list --app-id 'app_xxx' --metric latency --since '<range>'
 Without `--series`, requests returns total/error and latency returns p50/p99. Add `--api` only when
 the user supplied a concrete endpoint. Use `+analytics-list` rather than `+metric-list` for PV/UV or
 active-user questions. Do not search the local workspace for monitoring data first.
+
+### Runtime cache
+
+Cache reads and single-key deletion require an explicit key. For writes, also pass an explicit `--environment dev|online`; never rely on automatic environment selection when the operation can change production state.
+
+```bash
+lark-cli apps +cache-get --app-id 'app_xxx' --environment dev --key '<key>' --as user
+lark-cli apps +cache-delete --app-id 'app_xxx' --environment dev --key '<key>' --as user
+```
+
+`+cache-delete` is idempotent and does not use `--yes`; report `deleted_key_count=0` as “already missing/expired,” not as proof that a key was deleted. `+cache-clear` affects every key in one environment and is an ask-first high-risk command. “Clear the cache” identifies the requested action but is not confirmation of the whole-environment impact.
+
+```bash
+# First call without confirmation: preview only, no real clear.
+lark-cli apps +cache-clear --app-id 'app_xxx' --environment online --dry-run --as user
+
+# Only after the user explicitly confirms this app + environment + impact.
+lark-cli apps +cache-clear --app-id 'app_xxx' --environment online --yes --as user
+```
+
+Do not put `--yes` on the first call, do not infer an environment, and do not treat exit 10 as approval. After an explicit confirmation, preserve the reviewed app/environment and execute once.
 
 ### Environment variables
 

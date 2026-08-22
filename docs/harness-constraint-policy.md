@@ -52,6 +52,15 @@ Add a targeted `scripts/contracts/<skill>.py` module for executable or high-risk
 
 Reject missing registered modules and orphaned contract modules, but do not require one module per skill.
 
+## Documentation and compatibility claims
+
+Documentation needs two different controls:
+
+- Use deterministic checks for repository-owned structure: skill/manifests parity, frontmatter, references, generated templates, local links, and executable examples that can run safely.
+- Use dated primary-source review for external host paths, trust models, installer flags, releases, and platform limitations. A substring assertion cannot prove a volatile product fact.
+
+Never promote format conformance, installer discovery, or a manifest into a universal host-support claim. State the verified layer and leave untested hosts explicitly unclassified. Keep those claims in [`compatibility.md`](compatibility.md) and follow [`documentation-maintenance.md`](documentation-maintenance.md) rather than duplicating volatile facts throughout resident skill instructions.
+
 ## Skill addition and merge gate
 
 Before adding a new skill, compare it with existing routes:
