@@ -28,7 +28,6 @@ REQUIRED_SKILLS = frozenset(
         "project-docs-organizer",
         "ralph",
         "semver-release",
-        "skill-eval",
         "tdd",
         "tooling-conventions",
         "work-protocol",

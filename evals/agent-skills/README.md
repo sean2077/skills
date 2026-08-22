@@ -9,9 +9,9 @@ The shared verifier treats each mode's expected behavior as a required recursive
 Run a configured suite from a committed revision:
 
 ```bash
-python skills/skill-eval/scripts/skill_eval.py validate evals/agent-skills/analyze/suite.json
-python skills/skill-eval/scripts/skill_eval.py run evals/agent-skills/analyze/suite.json --output /tmp/analyze-skill-eval.json
-python skills/skill-eval/scripts/skill_eval.py validate-result /tmp/analyze-skill-eval.json
+python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/agent-skills/analyze/suite.json
+python .agents/skills/skill-eval/scripts/skill_eval.py run evals/agent-skills/analyze/suite.json --output /tmp/analyze-skill-eval.json
+python .agents/skills/skill-eval/scripts/skill_eval.py validate-result /tmp/analyze-skill-eval.json
 ```
 
 Review treatment selection, verifier results, scope, and cost together. Do not accept a routing change merely because the manifest validates or an offline adapter can reproduce the expected JSON.

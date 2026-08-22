@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Generate/check independently installable P0 runtime payloads.
+"""Generate/check P0 runtime payloads for public and project-private skills.
 
-The catalog's product skills must not import repository-local maintainer modules.
-This generator copies the shared standard-library source into each skill payload
-with a stable generated header, then emits a tiny direct CLI entry point.
+Published and project-local skills must not import repository-local maintainer
+modules at runtime. This generator copies the shared standard-library source
+into each payload with a stable generated header, then emits a tiny direct CLI
+entry point.
 """
 
 from __future__ import annotations
@@ -23,19 +24,23 @@ TARGETS = {
         "module": "skill_eval",
         "entry": "skill_eval.py",
         "package": "skill_eval_runtime",
+        "package_scope": "project-private",
+        "target": ".agents/skills/skill-eval",
     },
     "work-protocol": {
         "module": "workctl",
         "entry": "workctl.py",
         "package": "work_protocol_runtime",
+        "package_scope": "independently installable",
+        "target": "skills/work-protocol",
     },
 }
 
 
-def _render_sources(package: str, module: str) -> Dict[Path, str]:
-    target = ROOT / "skills" / ("skill-eval" if module == "skill_eval" else "work-protocol") / "scripts"
+def _render_sources(package: str, module: str, package_scope: str, target_root: str) -> Dict[Path, str]:
+    target = ROOT / target_root / "scripts"
     package_dir = target / package
-    init_text = HEADER + '"""Generated, independently installable runtime package."""\n'
+    init_text = HEADER + '"""Generated, %s runtime package."""\n' % package_scope
     common_text = HEADER + (SOURCE / "common.py").read_text(encoding="utf-8")
     module_text = HEADER + (SOURCE / (module + ".py")).read_text(encoding="utf-8")
     entry_name = "skill_eval.py" if module == "skill_eval" else "workctl.py"
@@ -58,7 +63,11 @@ raise SystemExit(main())
 def expected_files() -> Dict[Path, str]:
     files: Dict[Path, str] = {}
     for spec in TARGETS.values():
-        files.update(_render_sources(spec["package"], spec["module"]))
+        files.update(
+            _render_sources(
+                spec["package"], spec["module"], spec["package_scope"], spec["target"]
+            )
+        )
     return files
 
 

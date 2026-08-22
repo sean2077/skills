@@ -2,9 +2,9 @@
 
 Reusable agent skills for development, ops, and productivity — battle-tested patterns with working examples.
 
-Publishes 17 reusable workflows in the open [Agent Skills format](https://agentskills.io/specification). Format conformance, installer discovery, and host runtime support are separate claims: CI runs the pinned official validator across the catalog, smoke-tests discovery with an audited `skills` CLI version, and exercises the repository's Claude Code + Codex scaffold installer and projections. An installer listing another target does not by itself mean this repository has certified that host.
+Publishes 16 reusable workflows in the open [Agent Skills format](https://agentskills.io/specification). Format conformance, installer discovery, and host runtime support are separate claims: CI runs the pinned official validator across the catalog, smoke-tests discovery with an audited `skills` CLI version, and exercises the repository's Claude Code + Codex scaffold installer and projections. An installer listing another target does not by itself mean this repository has certified that host.
 
-The minimal [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) is catalog metadata used by the repository's tested installer-discovery flow. It declares the catalog name and 17 published skill paths to that flow; it is not a declaration of native runtime compatibility for every installer target. See the [compatibility and verification matrix](docs/compatibility.md).
+The minimal [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) is catalog metadata used by the repository's tested installer-discovery flow. It declares the catalog name and 16 published skill paths to that flow; it is not a declaration of native runtime compatibility for every installer target. See the [compatibility and verification matrix](docs/compatibility.md).
 
 ## Install
 
@@ -47,7 +47,6 @@ Repeat the selective command for each additional skill. With the current `skills
 | [prototype](skills/prototype/) | Reduce one uncertainty through a disposable, bounded experiment with explicit oracle, safety, conclusion, and cleanup boundaries. | Engineering, Experimentation |
 | [ralph](skills/ralph/) | Run a bounded verifier loop until it passes, stalls, plateaus, or exhausts its round budget, with deterministic state and compact receipts. | Python, Iteration |
 | [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, a preferred changelog-backed tag workflow, project-owned version synchronization, and policy-derived publication verification. | Git, Python, Release |
-| [skill-eval](skills/skill-eval/) | Run deterministic, comparable baseline/treatment evaluations for Agent Skills, including trigger leakage, verifier, changed-path, repository-isolation, and cost gates. | Python, Evaluation |
 | [tdd](skills/tdd/) | Apply explicitly requested test-first implementation across stacks by deriving seams, oracles, test levels, and commands from the target project, with validated RED-GREEN-REFACTOR evidence and guidance for effects, legacy code, and hard cases. | Engineering, Testing |
 | [tooling-conventions](skills/tooling-conventions/) | Derive project-owned command boundaries, placement, and evidence-gated safety contracts, with optional structural inventory reconciliation. | Shell, Governance |
 | [work-protocol](skills/work-protocol/) | Externalize high-risk or cross-session tasks into durable artifacts with one loop-owner lease, CAS state, hash-chained evidence, and isolated writer/reviewer worktrees. | Python, Git, Coordination |
@@ -61,6 +60,7 @@ skills/
     ├── references/         # Optional: category-named, on-demand detail (no catch-all document)
     │   └── <category>.md
     └── scripts/ / assets/  # Optional: deterministic helpers and output resources
+.agents/skills/skill-eval/  # Project-private evaluation skill, reference, and generated runtime
 scripts/
 ├── validate_skills.py       # Catalog-wide frontmatter, name↔dir, README, reference, and placeholder checks
 ├── catalog_core.py          # Shared error/warning collection and repository path constants
@@ -72,8 +72,8 @@ scripts/
 │   ├── deep_interview.py
 │   └── ralph.py
 ├── generate_workflow_runtimes.py # Generates/checks each independently installable single-file runtime
-├── p0_runtime/              # Maintainer SSOT for skill-eval and work-protocol runtime packages
-├── generate_p0_runtimes.py  # Generates/checks independently installable P0 skill runtimes
+├── p0_runtime/              # Maintainer SSOT for private skill-eval and public work-protocol runtimes
+├── generate_p0_runtimes.py  # Generates/checks the private/public P0 skill runtime payloads
 ├── test_validate_skills.py  # Focused catalog-contract regression fixtures
 ├── tests/                    # Behavioral and adversarial skill-specific regressions
 ├── check-agent-scaffold.sh  # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
@@ -88,7 +88,7 @@ requirements-validation.txt  # Pinned official skills-ref + StrictYAML validatio
 ```
 
 `autopilot`, `deep-interview`, and `ralph` each ship one generated, Python 3.8+ standard-library script. The `autopilot` and `deep-interview` runtimes are opt-in persistence/control planes; ordinary single-session delivery and interviewing stay model-native. `ralph` uses its runtime as the normal bounded verifier loop. Installing a single skill creates no sibling-skill, repository-runtime, or OMA CLI dependency. Maintainers edit `scripts/workflow_runtime/`, run `python scripts/generate_workflow_runtimes.py`, and let CI reject generated drift.
-`skill-eval` and `work-protocol` likewise ship generated Python 3.8+ standard-library packages and remain independently installable. Maintainers edit `scripts/p0_runtime/`, run `python scripts/generate_p0_runtimes.py`, and validate the offline TDD A/B fixture plus the P0 behavioral/adversarial suites before committing.
+`skill-eval` is a project-private harness skill under `.agents/skills/skill-eval`; it is available to this repository's trusted Codex and Claude Code project layers but is not published through the catalog. `work-protocol` remains an independently installable catalog skill. Both use generated Python 3.8+ standard-library packages: maintainers edit `scripts/p0_runtime/`, run `python scripts/generate_p0_runtimes.py`, and validate the offline TDD A/B fixture plus the P0 behavioral/adversarial suites before committing.
 
 Use model-native reasoning for reversible single-session work. Add deterministic scripts only around machine state or costly machine-checkable boundaries such as external side effects, Git/release integrity, concurrency/CAS, path and identity safety, generated drift, or comparable evaluation. Targeted per-skill contract modules are optional; the reviewed high-risk subset is registered so accidental deletion fails validation, while prompt-only semantics belong in `SKILL.md` and live evaluations rather than brittle phrase checks. See the [harness constraint policy](docs/harness-constraint-policy.md).
 
@@ -98,7 +98,7 @@ The runtime scripts emit compact versioned receipts by default. Full state is op
 
 Reference filenames are descriptive lowercase kebab-case. Link every category directly under the resident `SKILL.md` `On-demand references` router, and state its conditional load boundary near the top. Do not add root-level `reference.md` files or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
 
-`npx skills` reads the published payload directly from `skills/`, so this repository does not maintain generated `.codex/skills` or `.claude/skills` catalog mirrors. The separate `.agents/skills/` tree belongs to this repository's own dogfooded project harness and is not the published catalog.
+`npx skills` reads the published payload directly from `skills/`, so this repository does not maintain generated `.codex/skills` or `.claude/skills` catalog mirrors. The separate `.agents/skills/` tree belongs to this repository's own dogfooded project harness, currently contains the private `skill-eval` workflow, and is not part of the published catalog.
 
 ## Documentation map
 
