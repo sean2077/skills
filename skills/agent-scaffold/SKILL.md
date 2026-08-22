@@ -22,7 +22,7 @@ and runs the subagent generator in every mutating mode.
 - Treat `.agents/` as the SSOT; never hand-edit generated host-agent files.
 - Require real file and directory symlinks; never fall back to copies.
 - Keep `CLAUDE.md` as a symlink to the lean `AGENTS.md` entry point.
-- Reconcile only exact managed hook identities; preserve unrelated host config.
+- Reconcile only exact scaffold-owned hook identities; preserve unrelated host config.
 - Keep formatter, hook-manager, package, CI, nested-contract, and example-agent
   choices project-owned.
 
@@ -48,8 +48,7 @@ needs stable check IDs and statuses.
    hook-config, runtime-shape, subagent-import, and symlink conflicts before the
    first target write.
 4. Run the selected mutating mode, then `verify` with the same profile.
-5. Report created or refreshed assets, preserved project-owned state, and the
-   Codex trust reminder.
+5. Report created or refreshed assets, preserved project-owned state, Codex project/hook trust steps, and any symlink-checkpoint caveat relevant to the changed files.
 
 ## On-demand references
 
@@ -58,11 +57,11 @@ Read only the category needed for the current task:
 | Task | Reference |
 |---|---|
 | Installed assets, profiles, SSOT, third-party coexistence | [`harness-layout.md`](references/harness-layout.md) |
-| Managed host hooks, merge ownership, Codex trust | [`host-integration.md`](references/host-integration.md) |
+| Scaffold-owned host hooks, merge ownership, Codex project/hook trust | [`host-integration.md`](references/host-integration.md) |
 | Project-owned format-on-edit integration | [`format-hooks.md`](references/format-hooks.md) |
 | Root and nested authority-document policy | [`authority-docs.md`](references/authority-docs.md) |
 | Subagent authoring, projection, and drift integration | [`subagents.md`](references/subagents.md) |
 | Importing hand-authored Claude/Codex agents | [`subagent-import.md`](references/subagent-import.md) |
 | Adopting an existing AGENTS/CLAUDE or host-agent setup | [`retrofit.md`](references/retrofit.md) |
-| Runtime prerequisites, Windows/Git Bash, symlink repair | [`platform-support.md`](references/platform-support.md) |
+| Runtime prerequisites, Windows/Git Bash, symlink repair, Claude checkpoint boundary | [`platform-support.md`](references/platform-support.md) |
 | Structured plan/doctor/verify output and target troubleshooting | [`diagnostics.md`](references/diagnostics.md) |

@@ -16,5 +16,4 @@ Rules:
 - Prefix support-only directories with `_`; the relinker skips them.
 - The relinker preserves unrelated entries, but a same-name project and third-party skill is an ownership conflict.
 
-For full authoring conventions, naming, and third-party policy details, load the
-`agent-scaffold` skill's `references/harness-layout.md` on demand.
+For full authoring conventions, naming, and third-party policy details, load the `agent-scaffold` skill's `references/harness-layout.md` on demand.

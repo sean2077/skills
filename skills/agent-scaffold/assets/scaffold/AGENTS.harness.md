@@ -35,7 +35,7 @@ The authority-document budget hook remains advisory; projects may override its d
 | `.agents/subagents/<name>/{metadata.json,instructions.md}` | subagent source | ✅ |
 | `.claude/skills/<name>` | symlink → `.agents/skills/<name>` (CC discovery; Codex reads `.agents/` directly) | ✅ |
 | `.claude/agents/*.md`, `.codex/agents/*.toml` | **generated** subagent projections — do NOT hand-edit | ✅ |
-| `.agents/tools/hooks/` | scaffold-managed hook runtime (doc budget + optional trunk guard) — **managed copies, do NOT hand-edit** | ✅ |
+| `.agents/tools/hooks/` | scaffold-owned hook runtime (doc budget + optional trunk guard) — **managed copies, do NOT hand-edit** | ✅ |
 | `.agents/tools/worktree.sh` | worktree lifecycle — **managed copy, do NOT hand-edit** | ✅ <!-- agent-scaffold:worktree-only --> |
 | `.claude/allow-trunk-edit` | worktree escape hatch | ❌ ignored <!-- agent-scaffold:worktree-only --> |
 | `.claude/settings.local.json` | personal overrides | ❌ ignored |
@@ -45,5 +45,7 @@ The authority-document budget hook remains advisory; projects may override its d
 - **Add a subagent** (needs python): edit `.agents/subagents/` → run `python .agents/tools/generate-subagents.py` → commit source + generated. Wire `--check` into the project's own CI or hook manager when desired.
 - **Third-party skills** follow project-owned placement and installation policy. The relinker manages only names sourced from `.agents/skills/`, preserves unrelated entries, and fails on same-name ownership conflicts.
 
-**Codex trust**: project-level `.codex/` (config + hooks + agents) only loads for a **trusted** project; until trusted it is silently skipped. Trust once: run `codex` here and accept, or add `[projects."<repo abs path>"] trust_level = "trusted"` to `~/.codex/config.toml`.
+**Codex trust has two independent gates**: trust the project so project-local `.codex/` config, hooks, and rules can load, then verify generated project agents are discoverable. Separately, open `/hooks` and review each exact scaffold-owned, non-managed command-hook definition. Codex records hook trust by definition hash, so an unreviewed or changed hook is skipped even when the project layer itself is trusted.
+
+**Claude checkpoint boundary**: Claude Code checkpoint restore does not rewind symlinked or hard-linked files. For edits reached through `CLAUDE.md` or `.claude/skills/*`, verify the real target with Git and reverse or restore that target explicitly.
 <!-- agent-scaffold:end -->

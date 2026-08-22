@@ -27,8 +27,8 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/runtime/relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
 | `assets/runtime/symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, sync, and verification |
 | `assets/runtime/generate-subagents.py` | `.agents/tools/generate-subagents.py` | subagent projection + `--check` drift mode |
-| `assets/host/claude.settings.json` | merged into `.claude/settings.json` | Claude Code managed hook source |
-| `assets/host/codex.hooks.json` | merged into `.codex/hooks.json` | Codex managed hook source |
+| `assets/host/claude.settings.json` | merged into `.claude/settings.json` | Claude Code scaffold-owned hook source |
+| `assets/host/codex.hooks.json` | merged into `.codex/hooks.json` | Codex scaffold-owned hook source |
 | `assets/scaffold/AGENTS.harness.md` | managed block in `AGENTS.md` | only the marker-bounded block is scaffold-owned |
 | `assets/scaffold/agents-skills.README.md` | `.agents/skills/README.md` if missing | lean ownership boundary |
 | `assets/scaffold/agents-subagents.README.md` | `.agents/subagents/README.md` if missing | lean ownership boundary |

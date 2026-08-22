@@ -17,7 +17,7 @@ universal directory template.
   navigation, metadata, or checks instead of parallel directory taxonomies.
 - Keep entry-point READMEs focused on orientation and routing; move durable detail to
   canonical topic pages.
-- Give each durable fact one authoritative home and update every active route to it.
+- Give each durable fact one authoritative home and update every active route to it. Classify volatile external facts, compatibility claims, version pins, and command examples explicitly; date/source them or bind them to a tested version instead of presenting them as timeless.
 - When a high-impact axis choice remains tied, present two or three candidates with evidence,
   tradeoffs, and a recommendation, then wait for the user before mutation.
 - Create directories only for real content or committed near-term work. No empty category or
@@ -46,8 +46,7 @@ universal directory template.
    [`numbering-patterns.md`](references/numbering-patterns.md).
 7. Apply the reorganization, consolidating duplicates into canonical pages and keeping
    project-specific terminology intact.
-8. Follow [`migration-and-links.md`](references/migration-and-links.md) to update navigation,
-   backlinks, configs, and stale path references, then run the repository's doc checks.
+8. Follow [`migration-and-links.md`](references/migration-and-links.md) to update navigation, backlinks, configs, stale path references, duplicated factual claims, and copy-paste commands; then run the repository's doc checks and any real tool smoke required by changed command facts.
 9. Report the IA decision record, resulting entry points, moves/merges/deletions, deletion
    evidence, checks, and intentionally deferred risks.
 
