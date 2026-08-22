@@ -21,6 +21,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Documented that Claude Code checkpoint restore skips symlinked and hard-linked files, which affects this harness's `CLAUDE.md` and project-skill projections.
 - Reconciled the dogfooded `.agents/skills/README.md` with the scaffold template's project-owned third-party placement policy.
 
+### ⚠ Breaking
+
+- Removed `skill-eval` from the published catalog and installer manifest. It now lives under `.agents/skills/skill-eval` as a project-private harness skill, with its generated runtime and evaluation contracts retained for this repository's CI and maintainers.
+
 ## [v5.0.0] — 2026-08-21
 
 ### Added

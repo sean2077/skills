@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-`sean2077/skills` is an [Agent Skills-format](https://agentskills.io/specification) **catalog** with 17 independently installable skills: repository analysis/review workflows, optional persistence runtimes for `autopilot` / `deep-interview`, the deterministic `ralph` verifier loop, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and a Claude Code + Codex project scaffold. CI subjects the catalog to specification validation and installer smoke tests; host support is claimed only at the layer actually verified in [the compatibility matrix](docs/compatibility.md), never inferred from an installer's target list. Consumers need no build step; maintainers regenerate the checked-in workflow and P0 standalone runtimes from their shared sources before committing.
+`sean2077/skills` is an [Agent Skills-format](https://agentskills.io/specification) **catalog** with 16 independently installable skills: repository analysis/review workflows, optional persistence runtimes for `autopilot` / `deep-interview`, the deterministic `ralph` verifier loop, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and a Claude Code + Codex project scaffold. The repository also carries a project-private `skill-eval` workflow under `.agents/skills/`; it is not a catalog install target. CI subjects the catalog to specification validation and installer smoke tests; host support is claimed only at the layer actually verified in [the compatibility matrix](docs/compatibility.md), never inferred from an installer's target list. Consumers need no build step; maintainers regenerate the checked-in workflow and P0 runtime payloads from their shared sources before committing.
 
 ## Development Commands
 
@@ -20,14 +20,16 @@ python scripts/generate_workflow_runtimes.py --check # generated standalone runt
 python scripts/generate_p0_runtimes.py --check # generated skill-eval/work-protocol package drift
 python scripts/tests/test_p0_agent_workflows.py # P0 behavior, concurrency, path, state, and evidence regressions
 python scripts/tests/test_p0_hardening.py # repository isolation, current-cycle verification, and claim hardening
-python skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
-for suite in evals/agent-skills/*/suite.json; do python skills/skill-eval/scripts/skill_eval.py validate "$suite"; done # live routing-suite contract validation
-python skills/skill-eval/scripts/skill_eval.py run evals/examples/tdd/suite.json --output /tmp/tdd-skill-eval.json
+python scripts/tests/test_private_skill_eval_contract.py # private payload, projection, and non-publication contract
+python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
+for suite in evals/agent-skills/*/suite.json; do python .agents/skills/skill-eval/scripts/skill_eval.py validate "$suite"; done # live routing-suite contract validation
+python .agents/skills/skill-eval/scripts/skill_eval.py run evals/examples/tdd/suite.json --output /tmp/tdd-skill-eval.json
 python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
 python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
 python scripts/tests/test_tdd_contract.py # stack-neutral TDD payload and semantic-contract regressions
 python scripts/tests/test_oma_migration_workflows.py # migrated workflow state/terminal/binding regressions
 for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
+python -m skills_ref.cli validate .agents/skills/skill-eval # validate the private project skill too
 npx --yes skills@1.5.17 add . -l    # audited CI pin; discovery smoke test, not an "upstream latest" claim
 bash scripts/tests/test-tooling-inventory.sh # tooling structural-inventory reconciliation fixtures
 bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
@@ -54,15 +56,8 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   an explicit non-Git `--root`, binds Git mutations to one worktree/branch, and never executes
   verifier commands supplied as data. Keep generator drift and behavioral/adversarial regressions
   green on Python 3.8 and on Linux, macOS, and Windows.
-- `skill-eval` and `work-protocol` must remain independently installable. Maintainer SSOT is
-  `scripts/p0_runtime/{common,skill_eval,workctl}.py`; run `scripts/generate_p0_runtimes.py`
-  instead of hand-editing generated package files. `skill-eval` owns comparable A/B execution,
-  deterministic verification, trigger/scope/cost gates, and repository-isolation checks.
-  `work-protocol` owns optional task artifacts, CAS state, one expiring loop-owner lease,
-  hash-chained evidence, and commit-pinned isolated worktrees. Native Agent loops still own
-  reasoning and tools; do not add a second orchestration loop to either runtime.
-- **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product);
-  `.agents/skills/` (harness SSOT, below) is for *this repo's own* internal skills — currently empty.
+- `skill-eval` is project-private at `.agents/skills/skill-eval`, while `work-protocol` must remain independently installable from `skills/work-protocol`. Maintainer SSOT is `scripts/p0_runtime/{common,skill_eval,workctl}.py`; run `scripts/generate_p0_runtimes.py` instead of hand-editing generated package files. `skill-eval` owns comparable A/B execution, deterministic verification, trigger/scope/cost gates, and repository-isolation checks. `work-protocol` owns optional task artifacts, CAS state, one expiring loop-owner lease, hash-chained evidence, and commit-pinned isolated worktrees. Native Agent loops still own reasoning and tools; do not add a second orchestration loop to either runtime.
+- **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product); `.agents/skills/` is this repository's private harness SSOT and currently contains `skill-eval`.
 - Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
   green before any merge back to `main`.
 - **Release boundary** — after the release snapshot passes `main` CI, push its annotated

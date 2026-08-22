@@ -13,6 +13,8 @@ Audit base: **2026-08-22**, repository `main` at `88a9d9a9d3c9e56945d0d421b8c3cc
 | Host skill discovery | Codex is wired to project skills in `.agents/skills/`; Claude Code is wired through real directory symlinks in `.claude/skills/`. The scaffold verifies the repository shape and projections. | Cloud-hosted variants, enterprise policy layers, plugins, or other agents unless a separate test says so. |
 | Project harness behavior | The bundled scaffold installs and verifies shared hook runtimes, generated subagent projections, authority docs, worktree governance, and host JSON for Claude Code + Codex. | That a host has accepted project trust, that a user has approved a hook, or that organization policy permits the behavior. |
 
+The published catalog currently contains 16 skills. `skill-eval` is intentionally excluded from all four public catalog claims: its source, references, generated runtime, and Claude Code projection live under `.agents/skills/skill-eval` for this repository's trusted project harness only. Its `metadata.internal: true` marker excludes it from normal `skills` CLI discovery unless internal skills are explicitly enabled. It is validated by the repository's private contract and CI, but it is not listed in `.claude-plugin/plugin.json`, README catalog rows, or normal `npx skills` discovery.
+
 ## Current host facts that affect this harness
 
 ### Codex

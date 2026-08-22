@@ -1,21 +1,23 @@
 ---
 name: skill-eval
-description: Use when adding, changing, accepting, or benchmarking an Agent Skill and evidence is needed that it improves behavior without trigger leakage, scope violations, or unjustified cost.
+description: Use in this repository when adding, changing, accepting, or benchmarking an Agent Skill and evidence is needed that it improves behavior without trigger leakage, scope violations, or unjustified cost.
+metadata:
+  internal: true
 ---
 
 # skill-eval
 
-Evaluate one skill against a fixed Git revision and fixture. The bundled Python 3.8+ standard-library runtime executes the same case as a baseline and treatment through a host adapter, then applies deterministic trigger, verifier, changed-path, comparability, and cost gates. It never calls a model by itself and never treats an LLM self-report as correctness evidence.
+Evaluate one skill against a fixed Git revision and fixture. This project-private Python 3.8+ standard-library runtime executes the same case as a baseline and treatment through a host adapter, then applies deterministic trigger, verifier, changed-path, comparability, and cost gates. It never calls a model by itself and never treats an LLM self-report as correctness evidence.
 
-Invoke the quoted installed path:
+Invoke the repository-local entry point from the repository root:
 
 ```bash
-python3 "<installed-skill-dir>/scripts/skill_eval.py" validate <suite.json>
-python3 "<installed-skill-dir>/scripts/skill_eval.py" run <suite.json> --output <result.json>
-python3 "<installed-skill-dir>/scripts/skill_eval.py" validate-result <result.json>
+python .agents/skills/skill-eval/scripts/skill_eval.py validate <suite.json>
+python .agents/skills/skill-eval/scripts/skill_eval.py run <suite.json> --output <result.json>
+python .agents/skills/skill-eval/scripts/skill_eval.py validate-result <result.json>
 ```
 
-Use `python` when that is the host's Python 3 command, or `py -3` on Windows.
+Use `python3` when that is the repository's Python 3 command, or `py -3` on Windows. The `metadata.internal: true` marker keeps the project skill out of the `skills` CLI's public discovery unless internal skills are explicitly enabled. This skill is part of the project harness and must not be added to the published catalog manifest or advertised as an install target.
 
 ## Evaluation loop
 

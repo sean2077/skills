@@ -575,7 +575,7 @@ class GeneratedPayloadTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         for entry in (
-            ROOT / "skills" / "skill-eval" / "scripts" / "skill_eval.py",
+            ROOT / ".agents" / "skills" / "skill-eval" / "scripts" / "skill_eval.py",
             ROOT / "skills" / "work-protocol" / "scripts" / "workctl.py",
         ):
             help_result = subprocess.run(
