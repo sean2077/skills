@@ -4,12 +4,30 @@ Read this only when changing subagent source, import, projection, or drift behav
 
 ## Contents
 
+- [When a project-owned subagent earns its cost](#when-a-project-owned-subagent-earns-its-cost)
+- [Dispatch and return contract](#dispatch-and-return-contract)
 - [Subagent generator](#subagent-generator)
 - [Project-owned source shape](#project-owned-source-shape)
 - [Project-owned drift integration](#project-owned-drift-integration)
 - [Optional example](#optional-example)
 - [Adopting hand-authored subagents](#adopting-hand-authored-subagents)
 - [Drift troubleshooting](#drift-troubleshooting)
+
+## When a project-owned subagent earns its cost
+
+Prefer the host's ephemeral subagent for one-off delegation. Add a source under `.agents/subagents/` only when a repeated stable role or a versioned tool, model, reasoning, or sandbox boundary needs durable project configuration, and all of these are true:
+
+- the role has a distinct responsibility and dispatch boundary;
+- isolated context or parallel execution materially reduces main-context noise or elapsed work;
+- the expected benefit exceeds dispatch, duplicated context, result compression, and integration cost.
+
+Do not persist generic planner, implementer, tester, or reviewer clones merely because a host can run subagents. Keep a role ephemeral until repeated evidence shows that project-owned configuration is more valuable than the maintenance and routing surface.
+
+## Dispatch and return contract
+
+The parent Agent owns the objective, authority boundary, integration, and final verification. Give a worker one bounded unit with explicit inputs, write scope, and acceptance evidence. One mutable file, path set, or external resource has one active writer at a time; hand off explicitly. Parallel read-only investigation is the safe default.
+
+Require a compact return containing conclusions, supporting paths or evidence, changed paths, commands and observed results, risks, and unresolved questions. Do not request a full transcript or repeat repository context that the parent already holds.
 
 ## Subagent generator
 
@@ -97,8 +115,7 @@ The scaffold does not create, rewrite, or validate those files or keys; they rem
 
 ## Optional example
 
-Create an example only when the project actually wants a reusable reviewer. This reference is not
-installed automatically:
+Create an example only when repeated project work has justified a reusable reviewer. This reference is not installed automatically:
 
 ```json
 {

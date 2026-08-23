@@ -12,6 +12,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Separated execution topology from durable control state across harness guidance: one Agent remains the default, ephemeral subagents require bounded independent work and compact returns, project-owned subagents require a repeated stable role, and host durable goals precede persistence runtimes unless explicit machine-state semantics add value.
+- Tightened `autopilot`, `ralph`, and `work-protocol` selection boundaries to avoid duplicate controllers, overlapping writers, and unnecessary persistent state.
 - Reworked README and maintainer guidance to use bounded compatibility claims, identify `skills@1.5.17` as an audited CI pin rather than upstream latest, and use `--skill '*'` when installing the complete catalog to only Claude Code and Codex.
 - Updated the Lark command cache to the official `lark-cli` v1.0.89 safety boundary for `apps +cache-clear`: an imperative clear request is not confirmation, the first call must not self-supply `--yes`, and the environment must be explicit.
 
