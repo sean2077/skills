@@ -40,6 +40,27 @@ Do not introduce a mandatory state machine merely to enforce:
 
 Use explicit outcome and safety boundaries, then let the current model choose the shortest adequate path.
 
+## Native orchestration: select topology and state separately
+
+Subagents, durable goals, and persistence runtimes solve different problems. Do not adopt one merely because another is useful. A task can use temporary workers without durable state, or a durable objective without workers. Select the smallest execution topology and the smallest state plane independently.
+
+### Execution topology
+
+- Default to one Agent. Coordination must earn its context, latency, and integration cost.
+- Delegate only a bounded unit whose inputs, write scope, and acceptance evidence can be stated before dispatch. Isolation is most valuable for verbose read-only investigation, independent verification, or genuinely disjoint implementation.
+- Keep one active writer at a time for each mutable file, path set, or external resource; hand off ownership explicitly. Parallel read-only analysis is cheap, while overlapping speculative edits are not.
+- The primary Agent owns the objective, authority boundary, integration decisions, and final verifier. A worker returns conclusions, evidence, changed paths, observed verification, risks, and unresolved questions—not a transcript or a repeated copy of the task.
+- Create a project-owned custom subagent only when a repeated stable role or a versioned tool, model, reasoning, or sandbox boundary justifies durable configuration. Prefer an ephemeral host subagent for one-off work.
+
+### State and control plane
+
+- Use the native session loop when ordinary conversational context is sufficient.
+- Use a host-provided durable objective or goal when work needs continuation or resume but does not need repository-owned phase, revision, binding, receipt, or stall state.
+- Use a skill runtime only when its explicit machine-state semantics materially improve recovery, auditability, bounded retries, or handoff. Once started, it is the sole controller for the state it owns.
+- Use `work-protocol` only when coordination state itself must survive: multiple isolated writers, one lease owner, commit-fixed review, evidence integrity, or high-risk cross-session delivery. Native subagents or a long-running goal alone do not justify it.
+
+If the host lacks a capability, degrade to the next simpler available shape rather than emulating the host with another prompt framework. Never nest retry or ownership controllers around the same work.
+
 ## Hybrid workflows
 
 Some skills benefit from both modes. Keep the native mode as the default and make persistent state opt-in when interruption, multiple writers, formal audit, or high consequence makes it valuable. The runtime may become authoritative only after it is explicitly started; it must not create work solely to justify its own state.

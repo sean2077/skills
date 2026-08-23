@@ -1,11 +1,11 @@
 ---
 name: ralph
-description: Use when a verifiable goal needs bounded iterative attempts with mechanical pass, stall, plateau, exhaustion, and resume judgment.
+description: Use when a verifiable goal needs a fixed attempt budget and mechanical pass, stall, plateau, exhaustion, or resume state; not for ordinary native goal execution.
 ---
 
 # ralph
 
-Iterate toward one verifiable goal under a fixed budget. The agent changes the system and runs the verifier; the bundled standard-library runtime owns rounds, revisions, stable signatures, optional scores, binding, and stop conditions. It never executes verifier commands.
+Use only when a verifiable goal needs fixed rounds plus mechanical stop or resume evidence; a native loop or host durable goal is enough when objective and acceptance suffice. The Agent changes the system and runs the verifier; this standard-library runtime is the sole round controller: it owns rounds, revisions, stable signatures, optional scores, binding, and stop conditions, never executes verifier commands, and never lets workers own transitions or overlapping writes.
 
 Invoke the quoted script path directly:
 

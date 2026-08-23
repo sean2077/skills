@@ -5,18 +5,19 @@ description: Use when the user delegates an authorized task end to end or asks f
 
 # autopilot
 
-Deliver one authorized task from understanding through verified handoff. Default to the native Agent loop for ordinary single-session work; the bundled runtime is an optional control plane, not a ceremony every task must pay for.
+Deliver one authorized task from understanding through verified handoff. Choose execution topology and durable state separately; default to one Agent in the native session loop.
 
-## Choose the control plane
+## Choose the execution shape
 
-Use the native loop by default when one Agent can finish in the current session, one workspace owns the writes, failures are cheap to inspect, and a compact conversational plan is enough.
+A host-provided durable goal is enough for continuation or resume unless explicit machine state is part of acceptance.
+
+Delegate only bounded, independent work when isolation or parallelism repays coordination cost. The primary Agent owns the objective, integration, and final verifier; keep one active writer per mutable surface and require evidence-first summaries, not transcripts.
 
 Use the persistent runtime only when at least one condition is material:
 
-- the user requests interruption-safe resume or durable receipts;
-- work is likely to cross sessions, context resets, worktrees, or handoffs;
-- revision, binding, or retry state must be shared without relying on conversation memory;
-- the task is high-risk or audit-sensitive enough that explicit phase transitions add value.
+- state must survive host conversation across sessions, worktrees, or handoffs;
+- phase, revision, binding, retry, or durable receipt state is part of acceptance;
+- high risk or formal audit makes repository-owned control state valuable.
 
 Do not create runtime state after the work is understood or complete merely to satisfy a workflow ritual.
 

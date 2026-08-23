@@ -4,6 +4,8 @@ Each project-owned subagent lives in
 `.agents/subagents/<name>/{metadata.json,instructions.md}`. The generator writes
 the Claude Code and Codex projections; never hand-edit those generated files.
 
+Prefer a native ephemeral subagent for one-off work. Add durable project source only for a repeated stable role or a versioned tool, model, reasoning, or sandbox boundary whose benefit exceeds dispatch and integration cost. The parent owns the goal, integration, and final verification; keep one active writer per mutable surface and require compact evidence-first returns.
+
 ```bash
 python .agents/tools/generate-subagents.py
 python .agents/tools/generate-subagents.py --check

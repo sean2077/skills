@@ -1,11 +1,11 @@
 ---
 name: work-protocol
-description: Use when one task needs durable cross-session state, a single loop owner, multiple isolated writers, an independent commit-fixed reviewer, or evidence-backed high-risk delivery.
+description: 'Use when a task needs repository-owned coordination state: one loop owner, isolated writers, commit-fixed review, or evidence-backed high-risk delivery. Not for native goals or temporary subagents unless durable lease, CAS, evidence, or workspace state is required.'
 ---
 
 # work-protocol
 
-Externalize only work that benefits from coordination. The bundled Python 3.8+ standard-library runtime owns compare-and-swap state, one expiring loop-owner lease, a hash-chained evidence log, and Git worktree isolation. Native Agent loops continue to own reasoning and tool use.
+Use only when coordination state must survive. The Python 3.8+ standard-library runtime owns CAS state, one expiring loop-owner lease, hash-chained evidence, and Git worktree isolation; native Agent loops still own reasoning and tools. Task length, native subagents, or a durable goal alone do not trigger it.
 
 Invoke the quoted installed path:
 
@@ -18,7 +18,7 @@ Use `python` when that is the host's Python 3 command, or `py -3` on Windows.
 
 ## Task spine
 
-1. Use `risk` first. Skip the protocol for a low-risk, single-session task with one writer and clear acceptance.
+1. Use `risk` first. Skip the protocol for a low-risk task with one writer and clear acceptance.
 2. `init` creates `.agents/work/<task-id>/brief.md`, `plan.md`, `state.json`, and `evidence.jsonl` in one authoritative worktree.
 3. Acquire exactly one loop owner: `native`, `autopilot`, `ralph`, `pairroom`, or `custom:<slug>`. Pass the returned token through a protected environment variable or file; use `owner check` before owned actions and `owner heartbeat` only with the current state version.
 4. Every mutation supplies `--expect-version`; stale writers fail instead of overwriting newer state.
