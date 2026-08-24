@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import sys
 import tempfile
@@ -64,10 +65,15 @@ class TddContractTests(unittest.TestCase):
         with copied_skill() as skill_dir:
             path = skill_dir / "SKILL.md"
             text = path.read_text(encoding="utf-8")
-            start = text.index('description: "')
-            end = text.index('"\n---', start) + 1
+            mutated, replacements = re.subn(
+                r"(?m)^description:.*$",
+                'description: "Use for all implementation work."',
+                text,
+                count=1,
+            )
+            self.assertEqual(1, replacements)
             path.write_text(
-                text[:start] + 'description: "Use for all implementation work."' + text[end:],
+                mutated,
                 encoding="utf-8",
             )
             found = self.validate(skill_dir)

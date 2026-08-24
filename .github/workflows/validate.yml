@@ -80,6 +80,8 @@ jobs:
 
       - name: Validate catalog rules
         run: |
+          python scripts/catalog_health.py
+          python scripts/test_catalog_health.py
           python scripts/validate_skills.py
           python scripts/test_validate_skills.py
           python scripts/tests/test_semver_release_plan.py
@@ -161,6 +163,13 @@ jobs:
             skill="$(basename "$source_skill")"
             installed_skill="$fixture/.agents/skills/$skill"
             test -d "$installed_skill"
+            for payload in "$source_skill" "$installed_skill"; do
+              unexpected="$(find "$payload" ! -type d ! -type f -print -quit)"
+              if [ -n "$unexpected" ]; then
+                printf '%s payload contains a symlink or special entry: %s\n' "$skill" "$unexpected" >&2
+                exit 1
+              fi
+            done
             expected="$(cd "$source_skill" && find . -type f -print | sort)"
             actual="$(cd "$installed_skill" && find . -type f -print | sort)"
             if [ "$actual" != "$expected" ]; then
@@ -191,6 +200,8 @@ jobs:
 
       - name: Validate generated runtimes and compatibility floor
         run: |
+          python scripts/catalog_health.py
+          python scripts/test_catalog_health.py
           python scripts/generate_workflow_runtimes.py --check
           python scripts/generate_p0_runtimes.py --check
           python -m compileall -q \

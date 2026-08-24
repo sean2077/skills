@@ -73,6 +73,10 @@ Add a targeted `scripts/contracts/<skill>.py` module for executable or high-risk
 
 Reject missing registered modules and orphaned contract modules, but do not require one module per skill.
 
+Always-resident routing metadata is a catalog-wide cost and selection boundary. Keep every published `description` on one physical line and within the repository's 320-character budget, retaining the decisive positive trigger and only the exclusions needed to distinguish adjacent routes. Reject normalized duplicate route descriptions mechanically; evaluate semantic selection quality with real-host positive, negative, and confusable cases rather than adding phrase quotas.
+
+Published skill source trees may contain only regular files and directories. A skill runtime may create target symlinks after its documented preflight, but the installable payload itself must not carry symlinks or special filesystem entries that ordinary file inventories can omit.
+
 ## Documentation and compatibility claims
 
 Documentation needs two different controls:

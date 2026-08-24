@@ -14,6 +14,8 @@ The CI gates must stay green — `.github/workflows/validate.yml` runs them on p
 
 ```bash
 python -m pip install -r requirements-validation.txt  # pinned StrictYAML + official skills-ref
+python scripts/catalog_health.py       # per-route resident budget, duplicate routes, payload entry types
+python scripts/test_catalog_health.py  # focused catalog-health regression fixtures
 python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
 python scripts/test_validate_skills.py # focused catalog-contract regression fixtures
 python scripts/generate_workflow_runtimes.py --check # generated standalone runtime drift
@@ -44,7 +46,7 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   ships. Keep the resident file lean (router + invariants + skeleton); use descriptive lowercase
   kebab-case category names and link each file directly from `SKILL.md`. Do not use root-level
   `reference.md` or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
-- `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI. `validate_skills.py` owns only catalog-wide rules; `catalog_core.py` holds the shared `errors`/`warnings` lists and path constants. Targeted `scripts/contracts/<skill>.py` modules are optional and reserved for executable or high-risk invariants that generic validation cannot express; prompt-only skills need no module by default. `scripts/contracts/__init__.py` lists the reviewed required subset so an accidental deletion cannot silently disable a high-risk contract, and validation still rejects orphaned modules. Follow the [harness constraint policy](docs/harness-constraint-policy.md) instead of adding phrase-only checks that merely restate `SKILL.md`.
+- `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI. `validate_skills.py` owns structural catalog rules, `catalog_health.py` owns the resident-description budget/duplicate-route gate and published payload entry-type boundary, and `catalog_core.py` holds shared validator state and path constants. Targeted `scripts/contracts/<skill>.py` modules are optional and reserved for executable or high-risk invariants that generic validation cannot express; prompt-only skills need no module by default. `scripts/contracts/__init__.py` lists the reviewed required subset so an accidental deletion cannot silently disable a high-risk contract, and validation still rejects orphaned modules. Follow the [harness constraint policy](docs/harness-constraint-policy.md) instead of adding phrase-only checks that merely restate `SKILL.md`.
 - `autopilot`, `deep-interview`, and `ralph` must remain independently installable. Maintainer SSOT
   is `scripts/workflow_runtime/{common,autopilot,deep_interview,ralph}.py`; run
   `scripts/generate_workflow_runtimes.py` instead of hand-editing generated skill scripts. The first
@@ -77,6 +79,7 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
 - Treat copy-paste commands in README, references, templates, and changelog release instructions as user-facing interfaces. Verify their current semantics and quote shell globs such as `'*'`.
 - Keep frontmatter valid for a strict YAML parser. Plain scalars containing `: `, such as
   `Modes: init`, must be quoted or `npx skills` silently drops that skill during discovery.
+- Keep every published `description` on one physical line and at or below 320 characters. Preserve the decisive positive trigger and the most important exclusions instead of compressing it into generic keywords; `catalog_health.py` rejects normalized duplicate routes and non-regular entries under `skills/`.
 - Local subdirectory installs need an explicit path prefix: use
   `npx skills add ./skills/agent-scaffold`, not `npx skills add skills/agent-scaffold`, because
   the latter is parsed as the GitHub repository `skills/agent-scaffold`.

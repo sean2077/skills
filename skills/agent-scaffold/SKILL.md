@@ -1,6 +1,6 @@
 ---
 name: agent-scaffold
-description: 'Use when setting up, standardizing, retrofitting, planning, diagnosing, verifying, or refreshing a vendored dual-host Claude Code + Codex agent harness. Covers .agents/ SSOT, real-symlink projections, AGENTS.md/CLAUDE.md adoption, hooks, subagent import/generation, and default or light governance profiles. Modes: apply, plan, doctor, verify, upgrade. Not for a single commit message (use conventional-commit), a standalone CLAUDE.md when no harness is wanted, or third-party skill installation (use npx skills).'
+description: 'Use when a repository needs planning, installation, retrofit, diagnosis, verification, or upgrade of a vendored Claude Code + Codex harness with .agents/ SSOT, real-symlink host projections, hooks, authority docs, or subagents. Not for one commit, a standalone authority file, or third-party skill installation.'
 ---
 
 # Agent Scaffold

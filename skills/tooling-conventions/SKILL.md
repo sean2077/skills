@@ -1,6 +1,6 @@
 ---
 name: tooling-conventions
-description: 'Use when adding, moving, renaming, splitting, or removing committed commands under a project-owned tool root; auditing tooling sprawl; or establishing contextual command governance. Derives job boundaries, contract profiles, placement decisions, safe command contracts, path migrations, and optional structural inventory checks without imposing one directory tree or semantic schema. Not for application source layout, documentation systems (use project-docs-organizer), or uncommitted throwaway scripts.'
+description: 'Use when committed project commands need to be added, moved, renamed, split, removed, audited, or governed consistently. Not for application source layout, documentation systems, or uncommitted throwaway scripts.'
 ---
 
 # Tooling Conventions

@@ -62,6 +62,8 @@ skills/
     └── scripts/ / assets/  # Optional: deterministic helpers and output resources
 .agents/skills/skill-eval/  # Project-private evaluation skill, reference, and generated runtime
 scripts/
+├── catalog_health.py        # Resident route budget, duplicate-route, and payload-entry-type gate
+├── test_catalog_health.py   # Focused catalog-health regression fixtures
 ├── validate_skills.py       # Catalog-wide frontmatter, name↔dir, README, reference, and placeholder checks
 ├── catalog_core.py          # Shared error/warning collection and repository path constants
 ├── contracts/               # Optional targeted executable/high-risk contracts, discovered by filename
@@ -91,6 +93,8 @@ requirements-validation.txt  # Pinned official skills-ref + StrictYAML validatio
 `skill-eval` is a project-private harness skill under `.agents/skills/skill-eval`; it is available to this repository's trusted Codex and Claude Code project layers but is not published through the catalog. `work-protocol` remains an independently installable catalog skill. Both use generated Python 3.8+ standard-library packages: maintainers edit `scripts/p0_runtime/`, run `python scripts/generate_p0_runtimes.py`, and validate the offline TDD A/B fixture plus the P0 behavioral/adversarial suites before committing.
 
 Use model-native reasoning for reversible single-session work. Select execution topology and durable state independently: one Agent is the default; ephemeral host subagents are for bounded independent work with compact returns; project-owned subagents require a repeated stable role; and a host durable goal should precede a persistence runtime unless explicit machine-state semantics add value. The primary Agent owns integration and final verification, and each mutable surface has one active writer at a time. Add deterministic scripts only around machine state or costly machine-checkable boundaries such as external side effects, Git/release integrity, concurrency/CAS, path and identity safety, generated drift, or comparable evaluation. Targeted per-skill contract modules are optional; the reviewed high-risk subset is registered so accidental deletion fails validation, while prompt-only semantics belong in `SKILL.md` and live evaluations rather than brittle phrase checks. See the [harness constraint policy](docs/harness-constraint-policy.md).
+
+Catalog health treats each frontmatter description as always-resident routing context: it must fit a 320-character, one-line budget, and normalized duplicate routes fail validation. Published skill trees may contain only regular files and directories, so the real-installer inventory cannot silently omit a symlink or special entry.
 
 The former `trace` route is now the causal-investigation mode of `analyze`. Existing installations should replace `trace` with `analyze` and remove any stale `trace` projection to avoid duplicate routing.
 

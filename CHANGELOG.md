@@ -8,10 +8,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added a cross-platform catalog-health gate and focused fixtures for per-route resident-context budgets, duplicate routing metadata, and non-regular published payload entries.
 - Added a dated compatibility/verification matrix and a documentation maintenance policy that separate format validation, installer discovery, host wiring, runtime behavior, and unverified targets.
 
 ### Changed
 
+- Compressed the six longest published routing descriptions while preserving their decisive triggers and adjacent-skill exclusions, reducing always-resident catalog metadata without adding a new route.
 - Separated execution topology from durable control state across harness guidance: one Agent remains the default, ephemeral subagents require bounded independent work and compact returns, project-owned subagents require a repeated stable role, and host durable goals precede persistence runtimes unless explicit machine-state semantics add value.
 - Tightened `autopilot`, `ralph`, and `work-protocol` selection boundaries to avoid duplicate controllers, overlapping writers, and unnecessary persistent state.
 - Reworked README and maintainer guidance to use bounded compatibility claims, identify `skills@1.5.17` as an audited CI pin rather than upstream latest, and use `--skill '*'` when installing the complete catalog to only Claude Code and Codex.
@@ -19,6 +21,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Made the real-installer payload smoke test fail before file comparison when either source or installed skill contains a symlink or special filesystem entry, closing the `find -type f` omission boundary.
 - Documented Codex's two independent gates for project-local hooks: project trust plus review of each exact non-managed hook definition, with re-review after a hook hash changes.
 - Documented that Claude Code checkpoint restore skips symlinked and hard-linked files, which affects this harness's `CLAUDE.md` and project-skill projections.
 - Reconciled the dogfooded `.agents/skills/README.md` with the scaffold template's project-owned third-party placement policy.

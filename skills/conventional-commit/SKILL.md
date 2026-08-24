@@ -1,6 +1,6 @@
 ---
 name: conventional-commit
-description: 'Create exactly one local Git commit with a Conventional Commits subject, or return one subject when explicitly asked for message-only output. Use for scoped commit requests and history-aware message selection. Not for releases or tags (use semver-release), pushes or PRs, history rewriting, worktree cleanup, or continuing an in-progress merge, rebase, cherry-pick, revert, or bisect.'
+description: 'Use when the user wants exactly one scoped local Conventional Commit, or explicitly requests one history-aware message-only subject. Not for releases/tags, pushes/PRs, history rewriting, worktree cleanup, or an active merge/rebase/cherry-pick/revert/bisect.'
 ---
 
 # Conventional Commit
