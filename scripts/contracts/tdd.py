@@ -137,13 +137,12 @@ def validate_tdd_contract(
         frontmatter,
         (
             "name: tdd",
-            "Use when the user explicitly requests test-driven or test-first implementation",
-            "a failing regression test before a bug fix",
-            "Applies across languages, frameworks, services, CLIs, libraries, data "
-            "systems, infrastructure, and embedded targets",
+            "Use only when the user explicitly requests test-first/TDD",
+            "RED-GREEN-REFACTOR",
+            "a failing regression test before a fix",
             "Do not use merely because a change should include tests",
             "coverage-only work",
-            "exploratory prototypes whose behavior has not stabilized",
+            "unstable exploratory prototypes",
         ),
         "explicit trigger and non-trigger boundary",
     )

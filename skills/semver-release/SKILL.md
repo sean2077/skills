@@ -1,6 +1,6 @@
 ---
 name: semver-release
-description: 'Cut and publish a SemVer release from conventional commits: choose or validate the target, update project-owned notes and version files, create the release commit/tag, push, and verify the repository-owned completion boundary. Prefer changelog-backed tag-triggered automation for a new release path; preserve or explicitly migrate existing policy. Use for releases, tags, bumps, prereleases, or stable promotion. Not for one ordinary commit (use conventional-commit) or a feature-branch push.'
+description: 'Use when a repository needs a SemVer release, version bump, tag, prerelease, stable promotion, or publication verification. Not for one ordinary commit or a feature-branch push.'
 ---
 
 # Semver Release

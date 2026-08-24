@@ -1,6 +1,6 @@
 ---
 name: project-docs-organizer
-description: 'Design, reorganize, or prune a software project documentation system from observed readers, tasks, domains, ownership, lifecycles, and retrieval failures. Covers README and docs trees, onboarding, architecture, ADRs, specs, plans, runbooks, reference, archives, navigation, and optional evidence-gated local numbering when stable order materially improves reader navigation. Use when readers cannot find or trust project docs. Not for application source layout, tool-command governance (use tooling-conventions), or AGENTS.md/CLAUDE.md harness policy (use agent-scaffold).'
+description: 'Use when readers cannot find or trust a software project''s README/docs and the documentation system needs design, reorganization, pruning, navigation, ownership, lifecycle, or archival. Not for source layout, command governance, or AGENTS.md/CLAUDE.md harness policy.'
 ---
 
 # Project Docs Organizer

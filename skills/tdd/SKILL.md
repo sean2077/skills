@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: "Use when the user explicitly requests test-driven or test-first implementation, RED-GREEN-REFACTOR, or a failing regression test before a bug fix. Applies across languages, frameworks, services, CLIs, libraries, data systems, infrastructure, and embedded targets by deriving seams and commands from the target project. Do not use merely because a change should include tests, for coverage-only work, or for exploratory prototypes whose behavior has not stabilized."
+description: 'Use only when the user explicitly requests test-first/TDD, RED-GREEN-REFACTOR, or a failing regression test before a fix. Do not use merely because a change should include tests, for coverage-only work, or for unstable exploratory prototypes.'
 ---
 
 # Test-Driven Development
