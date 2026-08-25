@@ -402,8 +402,10 @@ class WorkProtocolTest(unittest.TestCase):
         self.assertEqual(sum(1 for item in results if item[0] == "ok"), 1)
         winner = next(item for item in results if item[0] == "ok")
         old_token = winner[3]
-        state, new_token = handoff_owner(self.store, 2, old_token, "pairroom", 60, "test")
+        with mock.patch("p0_runtime.workctl.secrets.token_urlsafe", return_value="-leading-option"):
+            state, new_token = handoff_owner(self.store, 2, old_token, "pairroom", 60, "test")
         self.assertEqual(state["loop_owner"], "pairroom")
+        self.assertEqual(new_token, "workctl_-leading-option")
         with self.assertRaises(HarnessError):
             transition_task(self.store, 3, old_token, "planned", "test", "old token")
         state = release_owner(self.store, 3, new_token, "test")
