@@ -1,63 +1,72 @@
 # Compatibility and verification matrix
 
-Audit base: **2026-08-25**, repository `main` at `ed6f1a2565114eca89ad1fde111ce313e558b03f`. Re-run the checks below before carrying these claims into a later commit or release.
+Review baseline:
 
-“Compatible” is not one binary property. This repository separates four layers so a true statement at one layer is not promoted into an unsupported claim at another.
+- Repository: local `main` at `8fa013752416a7aa082d023489e8141a0764f8b6`
+- Repository and official documentation reviewed: **2026-08-25**
+- CI-audited installer pin: `skills@1.5.17`
+- Upstream release observed on the review date: [`v1.5.23`](https://github.com/vercel-labs/skills/releases/tag/v1.5.23)
+
+“Compatible” is not one binary property. Carry a claim forward only when the named evidence still applies to the current commit.
 
 ## Support layers
 
-| Layer | What this repository verifies | What it does not prove |
-|---|---|---|
-| Agent Skills format | CI is configured to run the repository-pinned official `skills-ref` validator for every published `skills/<name>/`; the catalog validator also checks frontmatter, names, references, and payload structure. | That every client discovers the same paths, loads the same optional fields, or can execute every bundled language. |
-| Installer discovery | CI runs `skills@1.5.17` against the catalog root and checks the discovered/installed payload. `1.5.17` is an audited pin, not a claim that it is the current upstream release. | That every target advertised by a newer or older installer is runtime-tested here. |
-| Host skill discovery | Codex is wired to project skills in `.agents/skills/`; Claude Code is wired through real directory symlinks in `.claude/skills/`. The scaffold verifies the repository shape and projections. | Cloud-hosted variants, enterprise policy layers, plugins, or other agents unless a separate test says so. |
-| Project harness behavior | The bundled scaffold installs and verifies shared hook runtimes, generated subagent projections, authority docs, worktree governance, and host JSON for Claude Code + Codex. | That a host has accepted project trust, that a user has approved a hook, or that organization policy permits the behavior. |
+| Layer | Repository evidence | Bounded claim | Does not prove |
+|---|---|---|---|
+| Agent Skills format | `requirements-validation.txt`, `scripts/validate_skills.py`, `scripts/catalog_health.py`, and the pinned official `skills-ref` validation in `.github/workflows/validate.yml` | Published skill payloads are checked for repository rules and the pinned Agent Skills specification. | Identical discovery, optional-field support, or executable-language support in every client. |
+| Installer discovery | CI runs `skills@1.5.17` against the catalog root, compares the discovered names, installs the catalog, rejects special entries, and byte-diffs installed payloads. | The audited CLI pin discovers and copies this catalog as tested by the workflow. | Runtime support for every target listed by any installer version. |
+| Host wiring | `agent-scaffold` static, core, and throwaway-repository E2E checks cover `.agents/`, Claude Code symlink projections, Codex project paths, hooks, and generated subagents. | The repository can create and verify its project-owned Claude Code + Codex harness shape. | User trust, hook approval, organization policy, cloud variants, or untested hosts. |
+| Harness behavior | Runtime generators, P0 behavior/hardening tests, skill-eval contracts, and work-protocol risk checks exercise owned state and safety boundaries. | The checked repository behavior is bounded by those executable tests. | Universal task effectiveness or host behavior outside the tested permissions and fixtures. |
 
-The published catalog currently contains 16 skills. `skill-eval` is intentionally excluded from all four public catalog claims: its source, references, generated runtime, and Claude Code projection live under `.agents/skills/skill-eval` for this repository's trusted project harness only. Its `metadata.internal: true` marker excludes it from normal `skills` CLI discovery unless internal skills are explicitly enabled. It is validated by the repository's private contract and CI, but it is not listed in `.claude-plugin/plugin.json`, README catalog rows, or normal `npx skills` discovery.
+The public catalog contains 16 skills. `.agents/skills/skill-eval` is project-private: its `metadata.internal: true` marker, manifest exclusion, README exclusion, and normal discovery exclusion keep it outside public catalog claims unless internal skills are explicitly enabled.
 
-## Current host facts that affect this harness
+## Codex facts
 
-### Codex
+Official Codex documentation reviewed on 2026-08-25 establishes that:
 
 - Codex scans `.agents/skills` from the working directory through the repository root and follows symlinked skill directories.
-- Native Codex plugins use a `.codex-plugin/plugin.json` package manifest and may bundle skills, an MCP server, or both. That is a separate distribution boundary from this repository's installer-oriented `.claude-plugin/plugin.json` grouping manifest.
-- Project `.codex/` configuration, hooks, and rules require a trusted project layer. The scaffold treats its generated agent projections as part of the same project-owned harness boundary.
-- Trusting the project is not sufficient to run scaffold-owned command hooks. In Codex terminology these are **non-managed hooks**, not policy-managed hooks. Review them in `/hooks`; Codex stores trust against the exact hook-definition hash, so an unreviewed or changed definition is skipped until reviewed again. This hook gate is independent: it does not revoke trust from the rest of the project layer.
+- Native Codex plugins use `.codex-plugin/plugin.json` and may bundle skills, an MCP server, or both. This is a separate distribution boundary from this repository's installer-oriented `.claude-plugin/plugin.json` grouping manifest.
+- Project `.codex/` configuration, hooks, and rules load only from a trusted project layer.
+- Scaffold command hooks are non-managed hooks. Project trust and hook-definition review are independent gates; Codex records approval against the exact definition hash and skips an unreviewed or changed hook until it is reviewed again in `/hooks`.
 
-Official references:
-[skills](https://developers.openai.com/codex/build-skills),
-[plugins](https://developers.openai.com/codex/build-plugins),
-[hooks](https://developers.openai.com/codex/hooks), and
-[configuration](https://developers.openai.com/codex/config-reference).
+References: [skills](https://developers.openai.com/codex/build-skills), [plugins](https://developers.openai.com/codex/build-plugins), [hooks](https://developers.openai.com/codex/hooks), and [configuration](https://developers.openai.com/codex/config-reference).
 
-### Claude Code
+## Claude Code facts
 
-- Project skills live in `.claude/skills/<name>/SKILL.md`; a skill directory may be a symlink and Claude Code follows the target.
-- Repository-provided project settings and plugin-like behavior remain subject to workspace trust and the user's policy.
-- Checkpoint restore does not rewind symlinked or hard-linked files. A successful `/rewind` can therefore leave edits in `AGENTS.md` or `.agents/skills/*` when they were reached through a harness symlink. Use Git or an explicit reverse edit for the real target.
+Official Claude Code documentation reviewed on 2026-08-25 establishes that:
 
-Official references:
-[skills](https://code.claude.com/docs/en/skills),
-[settings](https://code.claude.com/docs/en/settings), and
-[checkpointing](https://code.claude.com/docs/en/checkpointing).
+- Project skills live in `.claude/skills/<name>/SKILL.md`; Claude Code follows a symlinked skill directory to its target.
+- Shared project settings sit below managed settings, command-line overrides, and project-local settings in the documented precedence. Trust-gated keys such as `permissions.allow`, `permissions.additionalDirectories`, `extraKnownMarketplaces`, and most `env` values apply only after folder trust; `deny` and `ask` rules apply immediately.
+- Checkpoint restore does not rewind symlinked or hard-linked files. A successful `/rewind` can therefore leave changes in real targets reached through `CLAUDE.md` or `.claude/skills/*`; inspect and restore the target with Git or an explicit reverse edit.
 
-## Installer semantics used in this repository
+References: [skills](https://code.claude.com/docs/en/skills), [settings](https://code.claude.com/docs/en/settings), and [checkpointing](https://code.claude.com/docs/en/checkpointing).
 
-The upstream `skills` CLI supports many targets. That target list is useful discovery metadata, not this repository's certification matrix.
+## Installer semantics
 
-- Install selected skills to selected targets with repeated `--skill` and `-a` options.
-- Install every skill from this catalog to only Claude Code and Codex with:
+The upstream `skills` CLI target list is discovery metadata, not this repository's certification matrix.
 
-  ```bash
-  npx skills add sean2077/skills --skill '*' -a claude-code -a codex
-  ```
+```bash
+# Selected skills to selected targets; repeat --skill and -a as needed
+npx skills add sean2077/skills --skill analyze -a claude-code -a codex
 
-- `--all` is intentionally not used for that example because its current upstream meaning is all discovered skills to all supported agents without prompts.
-- `.claude-plugin/plugin.json` is maintained here as catalog discovery/grouping metadata for the tested installer flow. It is not the `.codex-plugin/plugin.json` manifest used by a native Codex plugin, and its presence does not certify native runtime support for an agent.
-- At this audit date the upstream CLI release is [`v1.5.23`](https://github.com/vercel-labs/skills/releases/tag/v1.5.23), while repository CI deliberately remains pinned to `1.5.17`. A reproducibility pin and the upstream latest version answer different questions and must not be presented as the same fact.
+# Every catalog skill to only these two targets
+npx skills add sean2077/skills --skill '*' -a claude-code -a codex
 
-Official reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
+# Use root catalog metadata from a local checkout
+npx skills add . --skill agent-scaffold -a codex
 
-## Maintenance rule
+# Direct directory install; the explicit ./ prevents repository-name parsing
+npx skills add ./skills/agent-scaffold -a codex
+```
 
-Reverify this page whenever a host path, trust model, hook schema, installer flag, compatibility claim, or audited pin changes. Prefer a dated, bounded claim over “universal,” “all hosts,” “latest,” or similar wording that silently expires. Follow the [documentation maintenance policy](documentation-maintenance.md) for source and duplication rules.
+- Omitting `--skill` opens selection in the audited CLI flow.
+- Quote `'*'` so the shell does not expand it. `--all` is broader: all discovered skills to all supported agents without prompts.
+- Root installation uses `.claude-plugin/plugin.json` as installer catalog-grouping metadata. It is not a native Codex `.codex-plugin/plugin.json` package manifest; direct skill-directory installation bypasses root metadata.
+- With the current audited pin, inspect global options with `npx skills --help`; `npx skills add <source> --help` may execute the add flow.
+- A reproducibility pin and the current upstream release answer different questions. Upgrade the pin only as an explicit dependency change with discovery, install, payload, and platform smoke tests.
+
+Official installer reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
+
+## Maintenance trigger
+
+Reverify this page when a host path, trust model, hook schema, installer flag, compatibility claim, audited pin, or public/private catalog boundary changes. Prefer dated, bounded language over “universal,” “all hosts,” or unqualified “latest.” Follow the [documentation maintenance policy](documentation-maintenance.md) for source selection and duplication rules.
