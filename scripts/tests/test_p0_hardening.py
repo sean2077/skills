@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -327,7 +328,9 @@ class WorkProtocolHardeningTest(unittest.TestCase):
         self.assertEqual(state["version"], 2)
 
     def test_secret_like_evidence_payload_is_rejected_by_cli(self) -> None:
-        _, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
+        with mock.patch("p0_runtime.workctl.secrets.token_urlsafe", return_value="-leading-option"):
+            _, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
+        self.assertEqual(token, "workctl_-leading-option")
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
             code = workctl_main(

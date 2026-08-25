@@ -93,6 +93,10 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _new_owner_token() -> str:
+    return "workctl_" + secrets.token_urlsafe(32)
+
+
 def _token_from_args(args: argparse.Namespace, required: bool = True) -> Optional[str]:
     values = []
     direct = getattr(args, "token", None)
@@ -551,7 +555,7 @@ def acquire_owner(
     owner = validate_owner(owner)
     if ttl < 10 or ttl > 86400:
         raise HarnessError("lease TTL must be 10..86400 seconds", code=EXIT_DATA)
-    token = secrets.token_urlsafe(32)
+    token = _new_owner_token()
     now = time.time()
 
     def callback(state: Dict[str, Any], registry: Dict[str, Any]) -> None:
@@ -596,7 +600,7 @@ def handoff_owner(
     new_owner = validate_owner(new_owner)
     if ttl < 10 or ttl > 86400:
         raise HarnessError("lease TTL must be 10..86400 seconds", code=EXIT_DATA)
-    new_token = secrets.token_urlsafe(32)
+    new_token = _new_owner_token()
     now = time.time()
 
     def callback(state: Dict[str, Any], registry: Dict[str, Any]) -> None:
