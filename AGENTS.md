@@ -1,89 +1,45 @@
 # PROJECT — Agent Contract
 
-> `AGENTS.md` is the canonical agent contract; `CLAUDE.md` is a symlink to it. It is
-> shared by Claude Code and Codex. Keep it an **entry point**, not a detail dump —
-> put detail in `docs/` and link back; inline only important, frequently-needed points.
+> `AGENTS.md` is the canonical repository-level contract; `CLAUDE.md` is a symlink to it. Keep this file an actionable entry point and put durable detail in `docs/`.
 
-## Project Overview
+## Project
 
-`sean2077/skills` is an [Agent Skills-format](https://agentskills.io/specification) **catalog** with 16 independently installable skills: repository analysis/review workflows, optional persistence runtimes for `autopilot` / `deep-interview`, the deterministic `ralph` verifier loop, Lark operations, release/documentation/tooling workflows, stack-neutral TDD, and a Claude Code + Codex project scaffold. The repository also carries a project-private `skill-eval` workflow under `.agents/skills/`; it is not a catalog install target. CI subjects the catalog to specification validation and installer smoke tests; host support is claimed only at the layer actually verified in [the compatibility matrix](docs/compatibility.md), never inferred from an installer's target list. Consumers need no build step; maintainers regenerate the checked-in workflow and P0 runtime payloads from their shared sources before committing.
+`sean2077/skills` publishes 16 independently installable Agent Skills under `skills/`. The repository-private `.agents/skills/skill-eval` workflow belongs to the dogfooded project harness and is not a catalog target. Consumers need no build step; maintainers must regenerate checked-in runtime payloads from their source modules before committing.
 
-## Development Commands
+## Required workflow
 
-The CI gates must stay green — `.github/workflows/validate.yml` runs them on push/PR:
+1. Read this contract and any applicable nested `AGENTS.md` before changing files.
+2. Follow the scaffold-managed worktree rule below; documentation-only work is not an exception.
+3. Edit the canonical source, not a generated projection or scaffold-owned managed copy. Use the ownership map in [repository architecture](docs/architecture.md).
+4. Run the changed-surface checks and the appropriate full gates from the [development guide](docs/development.md). `.github/workflows/validate.yml` is the normative CI definition.
+5. Add an Unreleased changelog entry for user- or maintainer-visible behavior. Use Conventional Commits, omit `Co-Authored-By`, and keep all required gates green before merging to `main`.
 
-```bash
-python -m pip install -r requirements-validation.txt  # pinned StrictYAML + official skills-ref
-python scripts/catalog_health.py       # per-route resident budget, duplicate routes, payload entry types
-python scripts/test_catalog_health.py  # focused catalog-health regression fixtures
-python scripts/validate_skills.py      # frontmatter, name↔dir, README + reference links, allowed-tools, placeholders
-python scripts/test_validate_skills.py # focused catalog-contract regression fixtures
-python scripts/generate_workflow_runtimes.py --check # generated standalone runtime drift
-python scripts/generate_p0_runtimes.py --check # generated skill-eval/work-protocol package drift
-python scripts/tests/test_p0_agent_workflows.py # P0 behavior, concurrency, path, state, and evidence regressions
-python scripts/tests/test_p0_hardening.py # repository isolation, current-cycle verification, and claim hardening
-python scripts/tests/test_private_skill_eval_contract.py # private payload, projection, and non-publication contract
-python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
-for suite in evals/agent-skills/*/suite.json; do python .agents/skills/skill-eval/scripts/skill_eval.py validate "$suite"; done # live routing-suite contract validation
-python .agents/skills/skill-eval/scripts/skill_eval.py run evals/examples/tdd/suite.json --output /tmp/tdd-skill-eval.json
-python scripts/tests/test_agent_scaffold_core.py # deterministic manifest, hook, and JSON-report core
-python scripts/tests/test_semver_release_plan.py # read-only SemVer/base/bump planner fixtures
-python scripts/tests/test_tdd_contract.py # stack-neutral TDD payload and semantic-contract regressions
-python scripts/tests/test_oma_migration_workflows.py # migrated workflow state/terminal/binding regressions
-for d in skills/*; do python -m skills_ref.cli validate "$d"; done  # official Agent Skills spec validator
-python -m skills_ref.cli validate .agents/skills/skill-eval # validate the private project skill too
-npx --yes skills@1.5.17 add . -l    # audited CI pin; discovery smoke test, not an "upstream latest" claim
-bash scripts/tests/test-tooling-inventory.sh # tooling structural-inventory reconciliation fixtures
-bash scripts/check-agent-scaffold.sh    # agent-scaffold static gate: syntax + install-depth invariant + dogfood drift
-bash scripts/e2e-agent-scaffold.sh      # agent-scaffold behavioral gate: install into a throwaway repo, assert it works
-find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
-```
+## Repository boundaries
 
-## Architecture
+- `skills/` is the published product; `.agents/skills/` is the private project harness. Never infer one catalog from the other.
+- `scripts/workflow_runtime/` and `scripts/p0_runtime/` are maintainer source. Run their generators instead of editing generated skill runtime payloads.
+- Format validation, installer discovery, host wiring, and runtime behavior are different evidence layers. Keep support claims in [compatibility.md](docs/compatibility.md).
+- Prefer model-native reasoning for reversible single-session work. Add deterministic controls only for the costly machine-checkable boundaries described in the [harness constraint policy](docs/harness-constraint-policy.md).
+- Skills and bundled scripts target Linux, macOS, and Windows through Git Bash, with LF line endings and real symlinks where the scaffold requires them.
 
-- `skills/<name>/SKILL.md` — the **distributable** catalog (what `npx skills` consumers install);
-  optional `references/<category>.md` files hold on-demand depth, plus any scripts/templates a skill
-  ships. Keep the resident file lean (router + invariants + skeleton); use descriptive lowercase
-  kebab-case category names and link each file directly from `SKILL.md`. Do not use root-level
-  `reference.md` or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
-- `scripts/` — the CI quality gates above; `.github/workflows/validate.yml` runs them in CI. `validate_skills.py` owns structural catalog rules, `catalog_health.py` owns the resident-description budget/duplicate-route gate and published payload entry-type boundary, and `catalog_core.py` holds shared validator state and path constants. Targeted `scripts/contracts/<skill>.py` modules are optional and reserved for executable or high-risk invariants that generic validation cannot express; prompt-only skills need no module by default. `scripts/contracts/__init__.py` lists the reviewed required subset so an accidental deletion cannot silently disable a high-risk contract, and validation still rejects orphaned modules. Follow the [harness constraint policy](docs/harness-constraint-policy.md) instead of adding phrase-only checks that merely restate `SKILL.md`.
-- `autopilot`, `deep-interview`, and `ralph` must remain independently installable. Maintainer SSOT
-  is `scripts/workflow_runtime/{common,autopilot,deep_interview,ralph}.py`; run
-  `scripts/generate_workflow_runtimes.py` instead of hand-editing generated skill scripts. The first
-  two runtimes are opt-in persistence/control planes; native delivery and adaptive interviewing are
-  the default for ordinary single-session work. `ralph` keeps deterministic runtime control as its
-  normal bounded verifier loop. Each standalone runtime targets Python 3.8+, uses only the standard
-  library, emits compact JSON by default, stores bounded state at
-  `.agent-workflows/<workflow>/<session>/<id>.json`, bounds discovery through `list --limit`, supports
-  an explicit non-Git `--root`, binds Git mutations to one worktree/branch, rejects non-standard JSON numbers, attempts a best-effort POSIX parent-directory sync after atomic state replacement, and never executes
-  verifier commands supplied as data. Keep generator drift and behavioral/adversarial regressions
-  green on Python 3.8 and on Linux, macOS, and Windows.
-- `skill-eval` is project-private at `.agents/skills/skill-eval`, while `work-protocol` must remain independently installable from `skills/work-protocol`. Maintainer SSOT is `scripts/p0_runtime/{common,skill_eval,workctl}.py`; run `scripts/generate_p0_runtimes.py` instead of hand-editing generated package files. `skill-eval` owns comparable A/B execution, deterministic verification, trigger/scope/cost gates, and repository-isolation checks. `work-protocol` owns optional task artifacts, CAS state, one expiring loop-owner lease, hash-chained evidence, and commit-pinned isolated worktrees. Native Agent loops still own reasoning and tools; do not add a second orchestration loop to either runtime.
-- **Two skill layouts coexist — do not conflate:** `skills/` is the published catalog (the product); `.agents/skills/` is this repository's private harness SSOT and currently contains `skill-eval`.
-- Conventions: Conventional Commits, **no `Co-Authored-By`**; worktree-per-change (below); all gates
-  green before any merge back to `main`.
-- **Release boundary** — after the release snapshot passes `main` CI, push its annotated
-  `vX.Y.Z` or numbered `-alpha.N`/`-beta.N`/`-rc.N` tag. `.github/workflows/release.yml` reuses the
-  full validation workflow, extracts the exact tag section from `CHANGELOG.md`, and owns GitHub
-  Release creation; never race it with a manual publisher.
-- **Cross-platform (design goal)** — skills + bundled scripts target macOS / Linux / Windows
-  (**Git Bash only**): keep them POSIX-bash + GNU-coreutils compatible, **LF** line endings
-  (enforced by `.gitattributes` + a CI CRLF check), and **real-symlink-required** (preflight
-  fails before mutation when the OS lacks symlink support; copying is forbidden). Harness
-  symlink management, subagents, and hook JSON parsing use `python`.
+## High-cost maintenance traps
 
-## Catalog Maintenance Gotchas
+- Keep frontmatter strict-YAML compatible. Quote a scalar containing `: `.
+- Keep every published `description` on one physical line and within the 320-character routing budget; preserve decisive triggers and exclusions.
+- Treat copy-paste commands as interfaces: verify working directory, scope, quoting, identity, side effects, and expected result. Quote shell globs such as `'*'`.
+- Prefix local skill directories with `./`; otherwise the installer may interpret the value as a GitHub repository.
+- Do not describe the CI-audited `skills@1.5.17` pin as upstream latest. Do not run project-scope `skills remove` from the catalog root.
 
-- Treat the real `npx skills` CLI as the source of truth for install behavior. After changing `SKILL.md` frontmatter, skill names, catalog metadata, or layout, smoke-test discovery with the CI-audited pin and, when intentionally evaluating an upgrade, the candidate version. Do not describe the audited pin as latest. After pushing a discovery fix, smoke-test the remote path too.
-- `docs/compatibility.md` owns external host/install support claims; `docs/documentation-maintenance.md` owns evidence, freshness, and duplication rules. Reverify volatile claims against current official documentation, record the verification date, and never infer host runtime support from format conformance, an installer target, or a manifest alone.
-- Treat copy-paste commands in README, references, templates, and changelog release instructions as user-facing interfaces. Verify their current semantics and quote shell globs such as `'*'`.
-- Keep frontmatter valid for a strict YAML parser. Plain scalars containing `: `, such as
-  `Modes: init`, must be quoted or `npx skills` silently drops that skill during discovery.
-- Keep every published `description` on one physical line and at or below 320 characters. Preserve the decisive positive trigger and the most important exclusions instead of compressing it into generic keywords; `catalog_health.py` rejects normalized duplicate routes and non-regular entries under `skills/`.
-- Local subdirectory installs need an explicit path prefix: use
-  `npx skills add ./skills/agent-scaffold`, not `npx skills add skills/agent-scaffold`, because
-  the latter is parsed as the GitHub repository `skills/agent-scaffold`.
-- With the CI-audited `skills@1.5.17` pin, `npx skills add <source> --help` performs an install; inspect options with top-level `npx skills --help` instead. Never run project-scope `skills remove` from this catalog root because it can delete product `skills/*`. Refresh globals from outside the repo with `npx skills@1.5.17 update <names...> -g -y`, then compare installed files with the tagged source. Upgrade the pin only as an explicit dependency change with discovery/install smoke tests.
+## Canonical references
+
+| Topic | Source |
+|---|---|
+| Product surfaces, generated ownership, and validation boundaries | [docs/architecture.md](docs/architecture.md) |
+| Local workflow, commands, platform checks, and releases | [docs/development.md](docs/development.md) |
+| Host, installer, trust, and certification claims | [docs/compatibility.md](docs/compatibility.md) |
+| Documentation ownership, evidence, and freshness | [docs/documentation-maintenance.md](docs/documentation-maintenance.md) |
+| Mechanical-control selection | [docs/harness-constraint-policy.md](docs/harness-constraint-policy.md) |
+| Pending and historical release changes | [CHANGELOG.md](CHANGELOG.md) |
 
 <!-- agent-scaffold:start — managed by the agent-scaffold skill. Edit project prose OUTSIDE these markers; `agent-scaffold upgrade` refreshes this block. -->
 ## Agent Harness (Claude Code + Codex)

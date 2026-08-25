@@ -19,6 +19,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Tightened `autopilot`, `ralph`, and `work-protocol` selection boundaries to avoid duplicate controllers, overlapping writers, and unnecessary persistent state.
 - Reworked README and maintainer guidance to use bounded compatibility claims, identify `skills@1.5.17` as an audited CI pin rather than upstream latest, and use `--skill '*'` when installing the complete catalog to only Claude Code and Codex.
 - Updated the Lark command cache to the official `lark-cli` v1.0.89 safety boundary for `apps +cache-clear`: an imperative clear request is not confirmation, the first call must not self-supply `--yes`, and the environment must be explicit.
+- Established canonical architecture and development pages, reduced README and AGENTS to audience-specific entry points, and updated documentation ownership and navigation.
 
 ### Fixed
 
@@ -27,6 +28,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Documented Codex's two independent gates for project-local hooks: project trust plus review of each exact non-managed hook definition, with re-review after a hook hash changes.
 - Documented that Claude Code checkpoint restore skips symlinked and hard-linked files, which affects this harness's `CLAUDE.md` and project-skill projections.
 - Reconciled the dogfooded `.agents/skills/README.md` with the scaffold template's project-owned third-party placement policy.
+- Repaired the local catalog-root install example so it remains one copy-pasteable command instead of wrapping inside inline code.
 
 ### ⚠ Breaking
 
