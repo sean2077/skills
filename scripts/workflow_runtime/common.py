@@ -77,8 +77,21 @@ def configure_streams() -> None:
                 pass
 
 
+def reject_json_constant(value: str) -> Any:
+    raise ValueError("non-standard JSON constant: %s" % value)
+
+
 def emit(payload: Dict[str, Any], *, stream: Any = sys.stdout) -> None:
-    print(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")), file=stream)
+    print(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            allow_nan=False,
+            separators=(",", ":"),
+        ),
+        file=stream,
+    )
 
 
 def bounded_text(
@@ -365,10 +378,10 @@ def read_json(path: Path, *, kind: str, max_bytes: int) -> Dict[str, Any]:
         size = path.stat().st_size
         if size > max_bytes:
             raise WorkflowError(6, kind, "JSON file exceeds its size limit", path=str(path), limit=max_bytes)
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"), parse_constant=reject_json_constant)
     except WorkflowError:
         raise
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
         raise WorkflowError(6, kind, "JSON file is unreadable", path=str(path), error=type(exc).__name__) from exc
     if not isinstance(value, dict):
         raise WorkflowError(6, kind, "JSON root must be an object", path=str(path))
@@ -497,6 +510,21 @@ def load_state(
         raise
 
 
+def fsync_directory(path: Path) -> None:
+    if os.name == "nt":
+        return
+    try:
+        fd = os.open(str(path), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
 def atomic_write(path: Path, payload: bytes) -> None:
     ensure_safe_directory(path.parent, create=True)
     fd, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
@@ -515,6 +543,7 @@ def atomic_write(path: Path, payload: bytes) -> None:
             os.chmod(path, 0o600)
         except OSError:
             pass
+        fsync_directory(path.parent)
     finally:
         try:
             temp_path.unlink()
@@ -536,7 +565,9 @@ def save_state(path: Path, backup: Path, state: Dict[str, Any]) -> None:
         if path.is_symlink() or not path.is_file():
             raise WorkflowError(6, "unsafe_state_file", "workflow state must be a regular file", path=str(path))
         atomic_write(backup, path.read_bytes())
-    payload = (json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    payload = (
+        json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    ).encode("utf-8")
     atomic_write(path, payload)
 
 
@@ -615,7 +646,7 @@ def command_lock(lock_path: Path) -> Iterator[None]:
         raise WorkflowError(5, "locked", "another workflow mutation may be active", lock=lock_details(lock_path)) from exc
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(owner, fh, ensure_ascii=False, sort_keys=True)
+            json.dump(owner, fh, ensure_ascii=False, sort_keys=True, allow_nan=False)
             fh.write("\n")
             fh.flush()
             os.fsync(fh.fileno())
@@ -996,7 +1027,9 @@ def command_recover(args: argparse.Namespace) -> int:
             session=session,
             path=path,
         )
-        payload = (json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        payload = (
+            json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n"
+        ).encode("utf-8")
         atomic_write(path, payload)
     emit_state(state, context, full=args.full, changed=True)
     return 0

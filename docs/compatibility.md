@@ -1,6 +1,6 @@
 # Compatibility and verification matrix
 
-Audit base: **2026-08-22**, repository `main` at `88a9d9a9d3c9e56945d0d421b8c3ccd3b5a806ca`. Re-run the checks below before carrying these claims into a later commit or release.
+Audit base: **2026-08-25**, repository `main` at `ed6f1a2565114eca89ad1fde111ce313e558b03f`. Re-run the checks below before carrying these claims into a later commit or release.
 
 “Compatible” is not one binary property. This repository separates four layers so a true statement at one layer is not promoted into an unsupported claim at another.
 
@@ -20,11 +20,13 @@ The published catalog currently contains 16 skills. `skill-eval` is intentionall
 ### Codex
 
 - Codex scans `.agents/skills` from the working directory through the repository root and follows symlinked skill directories.
+- Native Codex plugins use a `.codex-plugin/plugin.json` package manifest and may bundle skills, an MCP server, or both. That is a separate distribution boundary from this repository's installer-oriented `.claude-plugin/plugin.json` grouping manifest.
 - Project `.codex/` configuration, hooks, and rules require a trusted project layer. The scaffold treats its generated agent projections as part of the same project-owned harness boundary.
 - Trusting the project is not sufficient to run scaffold-owned command hooks. In Codex terminology these are **non-managed hooks**, not policy-managed hooks. Review them in `/hooks`; Codex stores trust against the exact hook-definition hash, so an unreviewed or changed definition is skipped until reviewed again. This hook gate is independent: it does not revoke trust from the rest of the project layer.
 
 Official references:
 [skills](https://developers.openai.com/codex/build-skills),
+[plugins](https://developers.openai.com/codex/build-plugins),
 [hooks](https://developers.openai.com/codex/hooks), and
 [configuration](https://developers.openai.com/codex/config-reference).
 
@@ -51,7 +53,7 @@ The upstream `skills` CLI supports many targets. That target list is useful disc
   ```
 
 - `--all` is intentionally not used for that example because its current upstream meaning is all discovered skills to all supported agents without prompts.
-- `.claude-plugin/plugin.json` is maintained here as catalog discovery/grouping metadata for the tested installer flow. Its presence does not certify native runtime support for an agent.
+- `.claude-plugin/plugin.json` is maintained here as catalog discovery/grouping metadata for the tested installer flow. It is not the `.codex-plugin/plugin.json` manifest used by a native Codex plugin, and its presence does not certify native runtime support for an agent.
 - At this audit date the upstream CLI release is [`v1.5.23`](https://github.com/vercel-labs/skills/releases/tag/v1.5.23), while repository CI deliberately remains pinned to `1.5.17`. A reproducibility pin and the upstream latest version answer different questions and must not be presented as the same fact.
 
 Official reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
