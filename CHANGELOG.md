@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v6.0.0] — 2026-08-25
+
 ### Added
 
 - Added a cross-platform catalog-health gate and focused fixtures for per-route resident-context budgets, duplicate routing metadata, and non-regular published payload entries.
