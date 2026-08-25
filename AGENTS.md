@@ -55,7 +55,7 @@ find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
   normal bounded verifier loop. Each standalone runtime targets Python 3.8+, uses only the standard
   library, emits compact JSON by default, stores bounded state at
   `.agent-workflows/<workflow>/<session>/<id>.json`, bounds discovery through `list --limit`, supports
-  an explicit non-Git `--root`, binds Git mutations to one worktree/branch, and never executes
+  an explicit non-Git `--root`, binds Git mutations to one worktree/branch, rejects non-standard JSON numbers, attempts a best-effort POSIX parent-directory sync after atomic state replacement, and never executes
   verifier commands supplied as data. Keep generator drift and behavioral/adversarial regressions
   green on Python 3.8 and on Linux, macOS, and Windows.
 - `skill-eval` is project-private at `.agents/skills/skill-eval`, while `work-protocol` must remain independently installable from `skills/work-protocol`. Maintainer SSOT is `scripts/p0_runtime/{common,skill_eval,workctl}.py`; run `scripts/generate_p0_runtimes.py` instead of hand-editing generated package files. `skill-eval` owns comparable A/B execution, deterministic verification, trigger/scope/cost gates, and repository-isolation checks. `work-protocol` owns optional task artifacts, CAS state, one expiring loop-owner lease, hash-chained evidence, and commit-pinned isolated worktrees. Native Agent loops still own reasoning and tools; do not add a second orchestration loop to either runtime.

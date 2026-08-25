@@ -13,6 +13,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Refreshed the dated compatibility evidence against current Codex skill, plugin, hook, and configuration documentation, and clarified that the installer's `.claude-plugin/plugin.json` grouping manifest is not a native Codex `.codex-plugin/plugin.json` package.
 - Compressed the six longest published routing descriptions while preserving their decisive triggers and adjacent-skill exclusions, reducing always-resident catalog metadata without adding a new route.
 - Separated execution topology from durable control state across harness guidance: one Agent remains the default, ephemeral subagents require bounded independent work and compact returns, project-owned subagents require a repeated stable role, and host durable goals precede persistence runtimes unless explicit machine-state semantics add value.
 - Tightened `autopilot`, `ralph`, and `work-protocol` selection boundaries to avoid duplicate controllers, overlapping writers, and unnecessary persistent state.
@@ -21,6 +22,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Made the generated `autopilot`, `deep-interview`, and `ralph` runtimes reject non-finite JSON constants at state and input boundaries, forbid them in state and CLI output, and attempt a best-effort parent-directory sync after atomic state replacement on POSIX hosts.
 - Made the real-installer payload smoke test fail before file comparison when either source or installed skill contains a symlink or special filesystem entry, closing the `find -type f` omission boundary.
 - Documented Codex's two independent gates for project-local hooks: project trust plus review of each exact non-managed hook definition, with re-review after a hook hash changes.
 - Documented that Claude Code checkpoint restore skips symlinked and hard-linked files, which affects this harness's `CLAUDE.md` and project-skill projections.

@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import importlib.util
+import io
 import json
 import os
 import shutil
@@ -13,9 +15,11 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "scripts" / "generate_workflow_runtimes.py"
+COMMON = ROOT / "scripts" / "workflow_runtime" / "common.py"
 AUTO = ROOT / "skills" / "autopilot" / "scripts" / "autopilot_state.py"
 INTERVIEW = ROOT / "skills" / "deep-interview" / "scripts" / "interview_state.py"
 RALPH = ROOT / "skills" / "ralph" / "scripts" / "ralph_state.py"
@@ -392,6 +396,35 @@ class RuntimeTests(unittest.TestCase):
         interview_path.write_text(json.dumps(interview_state), encoding="utf-8")
         formula_error, _ = self.run_cli(INTERVIEW, "status", "--id", "formula-corrupt", expected=6)
         self.assertEqual(formula_error["error"], "corrupt_state")
+
+    def test_nonstandard_json_numbers_are_rejected(self) -> None:
+        for index, literal in enumerate(("NaN", "Infinity", "-Infinity")):
+            with self.subTest(literal=literal):
+                run_id = "nonfinite-%d" % index
+                self.run_cli(AUTO, "start", "--id", run_id, "--goal", "strict JSON")
+                path = self.state_path("autopilot", run_id)
+                raw = path.read_text(encoding="utf-8").rstrip()
+                self.assertTrue(raw.endswith("}"))
+                path.write_text(raw[:-1] + ',\n  "unvalidated_probe": ' + literal + "\n}\n", encoding="utf-8")
+                error, cp = self.run_cli(AUTO, "status", "--id", run_id, "--full", expected=6)
+                self.assertEqual(error["error"], "corrupt_state")
+                self.assertNotIn(literal, cp.stdout + cp.stderr)
+
+    def test_shared_json_output_and_atomic_write_boundaries(self) -> None:
+        spec = importlib.util.spec_from_file_location("workflow_common_under_test", COMMON)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        common = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(common)
+
+        with self.assertRaises(ValueError):
+            common.emit({"value": float("nan")}, stream=io.StringIO())
+
+        target = self.repo / "atomic-state.json"
+        with mock.patch.object(common, "fsync_directory") as sync_directory:
+            common.atomic_write(target, b"{}\n")
+        self.assertEqual(target.read_bytes(), b"{}\n")
+        sync_directory.assert_called_once_with(target.parent)
 
     def test_doctor_and_unlock_handle_stale_and_live_locks(self) -> None:
         self.run_cli(RALPH, "start", "--id", "locked", "--goal", "lock safety")
