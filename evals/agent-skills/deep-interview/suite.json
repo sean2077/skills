@@ -34,7 +34,65 @@
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "interview", "mode": "adaptive", "approval_required": true},
-          "treatment": {"route": "deep-interview", "workflow": "interview", "mode": "adaptive", "question_batch_max": 3, "approval_required": true, "external_research": "conditional"}
+          "treatment": {
+            "route": "deep-interview",
+            "workflow": "interview",
+            "mode": "adaptive",
+            "question_batch_policy": "adaptive",
+            "question_batch_default_max": 3,
+            "fixed_question_cap": false,
+            "approval_required": true,
+            "external_research": "conditional"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-structured-intake-batch",
+      "kind": "positive",
+      "prompt": "Interview me to define a small internal tool. To minimize back-and-forth, ask these five independent decisions together in your first turn: target users, supported platforms, data sensitivity, delivery deadline, and success metric. This is one session and no external research is needed.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "interview",
+            "mode": "adaptive",
+            "approval_required": true
+          },
+          "treatment": {
+            "route": "deep-interview",
+            "workflow": "interview",
+            "mode": "adaptive",
+            "question_batch_policy": "adaptive",
+            "first_turn_question_count": 5,
+            "structured_answer_template": true,
+            "approval_required": true,
+            "external_research": "conditional"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-branching-sequential-interview",
+      "kind": "positive",
+      "prompt": "Interview me to decide whether to replace a production database. Begin with one question about the current failure mode because the later questions depend on that answer; do not send a checklist up front. This is one session and no external research is needed.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "interview",
+            "mode": "adaptive",
+            "approval_required": true
+          },
+          "treatment": {
+            "route": "deep-interview",
+            "workflow": "interview",
+            "mode": "adaptive",
+            "question_batch_policy": "adaptive",
+            "first_turn_question_count": 1,
+            "approval_required": true,
+            "external_research": "conditional"
+          }
         }
       }
     },
