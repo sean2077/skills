@@ -28,20 +28,42 @@
   },
   "cases": [
     {
-      "id": "positive-human-facing-rewrite",
+      "id": "positive-approved-notes-to-rfc",
       "kind": "positive",
-      "prompt": "Rewrite this engineering proposal for product, test, and cross-component developers. Keep the final behavior, architecture, interfaces, and acceptance criteria; move discussion history and rationale to a short decision record instead of repeating it in the proposal.",
+      "prompt": "Turn these approved meeting notes into an RFC for the engineers and testers who will review it. Keep the settled behavior and interfaces, remove the meeting back-and-forth, and call out any still-open question rather than guessing.",
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "documentation", "audience": "unspecified"},
-          "treatment": {"route": "spec-writing", "workflow": "documentation", "audience": "human-readers", "separate-decision-history": true, "deduplicate": true}
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "audience": "human-readers", "preserve-meaning": true, "separate-decision-history": true}
         }
       }
     },
     {
-      "id": "positive-solution-structure",
+      "id": "positive-requirements-for-build-and-test",
       "kind": "positive",
-      "prompt": "Create one concise, self-contained requirements and solution document from approved requirements. Explain topology, ownership, main flow, interfaces, state, failure handling, and human-readable protocol fields, while linking the exact schema as validation authority.",
+      "prompt": "Write a PRD from these already-decided requirements for the development and QA teams. Make each important requirement observable, identify the responsible actor, and ensure acceptance covers the material scenarios without changing the product decisions.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation"},
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "observable-acceptance": true, "preserve-decisions": true}
+        }
+      }
+    },
+    {
+      "id": "positive-current-target-boundary",
+      "kind": "positive",
+      "prompt": "Revise this requirements spec where current behavior and proposed target behavior are mixed together. Clarify the boundary and mark assumptions or unresolved questions without inventing a decision.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation"},
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "separate-current-target": true, "label-open-questions": true}
+        }
+      }
+    },
+    {
+      "id": "positive-architecture-proposal",
+      "kind": "positive",
+      "prompt": "Prepare a cross-team architecture proposal that explains topology, responsibilities, data flow, state, interfaces, and important failure recovery in a form people can review. Keep exact validation rules linked to the project's executable contract when one exists.",
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "documentation"},
@@ -61,6 +83,17 @@
       }
     },
     {
+      "id": "positive-no-contract-authority",
+      "kind": "positive",
+      "prompt": "There is no machine-readable contract yet. Write the human-facing requirements and solution spec with the exact fields and limits reviewers need, and state which source is intended to become authoritative rather than pretending a schema exists.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation"},
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "include-exact-detail": true, "identify-intended-authority": true}
+        }
+      }
+    },
+    {
       "id": "negative-interview-clarification",
       "kind": "negative",
       "prompt": "Interview stakeholders to resolve an ambiguous requirement and obtain explicit approval before implementation.",
@@ -72,13 +105,68 @@
       }
     },
     {
-      "id": "negative-contract-review",
+      "id": "negative-docs-reorganization",
+      "kind": "negative",
+      "prompt": "Reorganize the entire docs tree: derive a navigation taxonomy, move pages, prune stale content, and define ownership and archival lifecycle.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation-organization"},
+          "treatment": {"route": "project-docs-organizer", "workflow": "documentation-organization"}
+        }
+      }
+    },
+    {
+      "id": "negative-general-copyedit",
+      "kind": "negative",
+      "prompt": "Polish this blog post for grammar and marketing tone; it is not a requirements, RFC, or design document.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "general-writing"},
+          "treatment": {"route": "none", "workflow": "general-writing"}
+        }
+      }
+    },
+    {
+      "id": "confusable-contract-review",
       "kind": "confusable",
       "prompt": "Review an AsyncAPI and JSON Schema package for ownership, enum drift, parser validity, and compatibility defects.",
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "spec-review"},
           "treatment": {"route": "none", "workflow": "spec-review"}
+        }
+      }
+    },
+    {
+      "id": "confusable-evidence-review",
+      "kind": "confusable",
+      "prompt": "Compare this proposal with the running code and test evidence to determine whether the documented current behavior is true. Do not rewrite the proposal.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "evidence-review"},
+          "treatment": {"route": "none", "workflow": "evidence-review"}
+        }
+      }
+    },
+    {
+      "id": "confusable-rollout-plan",
+      "kind": "confusable",
+      "prompt": "Turn the approved design into an implementation rollout plan with delivery waves, commands, activation checks, rollback steps, and observed test evidence.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "implementation-planning"},
+          "treatment": {"route": "none", "workflow": "implementation-planning"}
+        }
+      }
+    },
+    {
+      "id": "confusable-best-practice-research",
+      "kind": "confusable",
+      "prompt": "Research current external benchmarks and standards to recommend whether Kafka or NATS is the better choice for this workload. Cite the sources and trade-offs; do not rewrite an existing spec.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "research"},
+          "treatment": {"route": "best-practice-research", "workflow": "research"}
         }
       }
     }
