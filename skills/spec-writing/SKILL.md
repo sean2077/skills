@@ -1,26 +1,27 @@
 ---
 name: spec-writing
-description: Write or revise human-facing requirements and architecture/solution documents so final decisions and material implementation choices are clear, concise, and non-redundant, with recommendations in the document and discussion history in separate decision records.
+description: Use when writing or revising a PRD, requirements, RFC, design doc, or architecture proposal from settled or authoritative inputs. Preserve meaning; clarify behavior, ownership, interfaces, failures, acceptance; remove process history. Not for unresolved intake, whole-project docs reorganization, or contract review.
 ---
 
 # Human-facing Specification Writing
 
-Shape requirements and solution documents for readers who need to understand the intended behavior, architecture, interfaces, and acceptance result. This skill complements repository-specific evidence or contract-review skills; it does not choose product behavior or replace an approval process.
+Turn settled or authoritative facts and decisions into the smallest coherent document a reviewer, implementer, or tester can use. This skill governs document quality; it does not choose product behavior, replace approval, or become the authority for evidence or machine contracts.
 
-## Separate reader content from working history
+## Establish the document boundary
 
-- Write the settled goal, scope, responsibilities, behavior, interfaces, and acceptance results in the main document.
-- Do not copy interview notes, abandoned names, unresolved debate, approval choreography, or author self-justification into the main document.
-- Keep decisions that affect future implementation in a short ADR or decision record: decision, reason, alternatives, impact, and revisit condition.
-- If a historical choice is needed for compatibility or migration, state the resulting behavior and link the decision record; do not reconstruct the discussion.
+- Identify the audience, review object, document status, authority model, and whether each statement describes current or target behavior.
+- Follow project-local templates, terminology, lifecycle metadata, and source-of-truth rules.
+- Preserve identifiers, exact values, compatibility constraints, and normative strength. Do not silently reconcile conflicting sources, invent decisions, or present an assumption as fact.
+- Keep material assumptions and unresolved questions visible with their impact and owner where known. Surface conflicting sources and their impact; continue a bounded draft unless a blocking authority decision is required. Omit debate transcripts and approval history.
 
-## Keep the document easy to scan
+## Write for the reader
 
-- Start with the outcome and the problem it solves. Introduce architecture and flows before detailed fields.
-- Define each important concept once. Use a short cross-reference instead of repeating a definition, table, or failure rule.
-- Prefer positive, normative statements describing what the system does. Include a negative boundary only when it prevents a real safety, compatibility, ownership, or acceptance mistake.
-- Keep non-goals short and business-relevant. Absence of a topic already means it is outside the document's scope.
-- Explain an internal term at first use or replace it with a domain term that readers can understand.
+- Lead with the outcome, problem, scope, and status. Explain the main behavior or architecture flow before detailed fields.
+- Define each important concept once; cross-reference instead of repeating definitions, tables, or failure rules.
+- State requirements positively and observably, naming the responsible actor, relevant condition, and expected result when useful.
+- List a non-goal only when a reasonable reader might otherwise assume it is included or when the boundary prevents real scope creep; do not treat silence as proof of exclusion.
+- Keep the concise rationale needed to understand a non-obvious constraint, compatibility requirement, or design choice.
+- Move deliberation history, rejected alternatives, and durable cross-cutting decisions to a linked ADR or decision record when one exists. Create one only when project convention or an explicit need calls for recording a materially costly-to-reverse, cross-cutting, or compatibility- or migration-sensitive choice; otherwise keep concise rationale here.
 
 ## Present material choices for review
 
@@ -30,16 +31,23 @@ Shape requirements and solution documents for readers who need to understand the
 
 ## Route detail to the right authority
 
-- Prefer one self-contained human-facing document for one review object, combining requirements and solution sections when readers benefit from a continuous explanation. Split human-readable pages only for a distinct authority, lifecycle, or scale-driven reader job.
-- Requirements sections describe user/system outcomes, scenarios, quality expectations, dependencies, and observable acceptance.
-- Architecture or solution sections describe topology, ownership, data flow, state, persistence, and necessary failure handling.
-- Keep the human-facing document self-contained with readable definitions and the field tables needed to understand the protocol. Machine contracts own the exact enforceable fields, enums, error codes, wire limits, and schema constraints; link them from the prose as validation authority.
-- Implementation plans and verification records own delivery waves, commands, test evidence, activation status, and rollback evidence.
+- Use one document for one review object when requirements and solution share an audience, owner, and lifecycle. Split when authority, reuse, approval, update cadence, scale, or reader job differs.
+- Requirements cover outcomes, scenarios, constraints, dependencies, quality expectations, and observable acceptance criteria.
+- Solution sections cover responsibilities, topology, flow, state, persistence, interfaces, and material failure or recovery behavior.
+- Keep enough protocol detail for human understanding. When a project-documented machine-readable or executable contract, generated schema, code source, or other explicit authority exists, link it for volatile machine-checkable fields, enums, codes, and limits while retaining a readable summary. Otherwise include the exact detail needed here and identify its intended authority.
+- Keep delivery sequencing, commands, observed test evidence, activation status, and rollback evidence in plans or verification records.
 
-## Review before handing off
+## Review before handoff
 
-Check that a reader can answer what is being built, who owns each fact, how the main flow works, what happens on important failures, and how success is verified without reading the author's working notes. Remove duplicate sections and process language before polishing terminology. Preserve project-specific lifecycle metadata when a repository validator requires it, but keep its explanatory governance text out of the product narrative when a separate record can carry it.
+Check that:
+
+- current and target behavior are not conflated;
+- every material behavior, authority, compatibility, ownership, or acceptance claim is settled or verified, explicitly assumed, or visibly open;
+- responsibility, source authority, main flow, material failures, recovery, and acceptance are clear;
+- acceptance criteria are observable and cover the material requirements and scenarios;
+- terms, identifiers, tables, diagrams, links, and authority references agree;
+- no definition, volatile contract fact, decision history, or process narrative is unnecessarily duplicated.
 
 ## Boundaries
 
-Use a repository's local specification skill for authority resolution, current-versus-target evidence, contracts, diagrams, and project gates. Use `deep-interview` for adaptive clarification and explicit approval; do not add interview ledgers or approval gates to this skill.
+Use `deep-interview` when decisions need clarification and explicit approval. Use `project-docs-organizer` for documentation information architecture, navigation, moves, pruning, lifecycle, and archival. Follow repository-local specification or evidence skills for current-state discovery, authority resolution, contract validation, diagrams, and project gates. Do not add interview ledgers, approval gates, or a universal document template here.

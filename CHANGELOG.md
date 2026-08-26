@@ -9,11 +9,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Recast `deep-interview`'s one-to-three question range as a soft default, allowing larger structured batches for independent low-effort intake while preserving sequential probing for branching or consequential decisions.
-- Extended `spec-writing` to present material implementation and technology choices with explicit comparison criteria, a recommendation, and decision status without turning the main document into a discussion log.
+- Extended `spec-writing` to preserve semantic boundaries, distinguish current from target behavior, compare material implementation options, resolve detail against the project's authority model, and keep only high-value rationale in the reader document.
 
 ### Added
 
-- Added `spec-writing`, a focused skill for concise human-facing requirements and architecture documents that keeps discussion history and decision rationale in separate records.
+- Added `spec-writing`, a focused skill for concise human-facing requirements and architecture documents that preserves settled meaning, keeps material rationale with the reader narrative, and routes working history to separate records.
 
 ## [v6.0.0] — 2026-08-25
 
