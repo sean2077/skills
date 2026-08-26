@@ -4,7 +4,7 @@
   "skill_path": "skills/deep-interview",
   "fixture": "evals/agent-skills/fixture",
   "adapter": {
-    "command": ["agent-skill-host-adapter"],
+    "command": ["{python}", "{repo}/evals/agent-skills/host_adapter.py"],
     "timeout_seconds": 300,
     "max_output_bytes": 1048576
   },
