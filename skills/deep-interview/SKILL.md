@@ -22,9 +22,10 @@ Use the persistent runtime only when at least one condition is material:
 
 1. Inspect safe repository facts and supplied material before asking the user to repeat discoverable information. Consult current primary sources only when external or time-sensitive facts can materially change a decision.
 2. Keep a compact ledger of decisions, assumptions, constraints, acceptance examples, risks, owners, and open questions. Do not narrate a heavyweight state machine.
-3. Ask one to three related decision-bearing questions per turn. Offer concrete options and a recommendation when evidence supports one, while preserving free text; do not force artificial choices or exactly one question when a small batch is more efficient.
-4. Adapt depth to consequence and uncertainty. Skip low-value dimensions, but label material assumptions instead of silently deciding them.
-5. Continue until the goal and users, scope and non-goals, key constraints, decision ownership, acceptance evidence, and material risks are resolved enough for this task.
+3. Choose question granularity by dependency and user effort. Default to one to three related decision-bearing questions, but treat that range as a usability heuristic, not a ceiling. Ask one focused question when its answer may change the next question or the decision needs depth. Batch more than three only when the questions are independent, low-effort, and one structured reply is clearly easier—especially for explicit intake/checklist requests or a stated preference to minimize turns. Never dump a long or unrelated questionnaire merely to reduce round trips.
+4. Offer concrete options and a recommendation when evidence supports one while preserving free text. For multi-question batches, add a compact answer template when it reduces effort.
+5. Adapt depth to consequence and uncertainty. Skip low-value dimensions, but label material assumptions instead of silently deciding them.
+6. Continue until the goal and users, scope and non-goals, key constraints, decision ownership, acceptance evidence, and material risks are resolved enough for this task.
 
 ## Specification and approval gate
 
