@@ -15,6 +15,7 @@
     "./skills/prototype",
     "./skills/ralph",
     "./skills/semver-release",
+    "./skills/spec-writing",
     "./skills/tdd",
     "./skills/tooling-conventions",
     "./skills/work-protocol"

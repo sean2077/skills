@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "suite_id": "spec-writing-routing",
+  "skill_path": "skills/spec-writing",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": ["agent-skill-host-adapter"],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+  },
+  "budgets": {
+    "absolute": {"interventions": 0},
+    "relative": {
+      "input_tokens": {"max_ratio": 4.0, "max_additive": 2000},
+      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
+      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
+      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-human-facing-rewrite",
+      "kind": "positive",
+      "prompt": "Rewrite this engineering proposal for product, test, and cross-component developers. Keep the final behavior, architecture, interfaces, and acceptance criteria; move discussion history and rationale to a short decision record instead of repeating it in the proposal.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation", "audience": "unspecified"},
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "audience": "human-readers", "separate-decision-history": true, "deduplicate": true}
+        }
+      }
+    },
+    {
+      "id": "positive-solution-structure",
+      "kind": "positive",
+      "prompt": "Create one concise, self-contained requirements and solution document from approved requirements. Explain topology, ownership, main flow, interfaces, state, failure handling, and human-readable protocol fields, while linking the exact schema as validation authority.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation"},
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "self-contained-human-document": true, "route-detail-to-contract": true}
+        }
+      }
+    },
+    {
+      "id": "negative-interview-clarification",
+      "kind": "negative",
+      "prompt": "Interview stakeholders to resolve an ambiguous requirement and obtain explicit approval before implementation.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "requirements"},
+          "treatment": {"route": "deep-interview", "workflow": "requirements"}
+        }
+      }
+    },
+    {
+      "id": "negative-contract-review",
+      "kind": "confusable",
+      "prompt": "Review an AsyncAPI and JSON Schema package for ownership, enum drift, parser validity, and compatibility defects.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "spec-review"},
+          "treatment": {"route": "none", "workflow": "spec-review"}
+        }
+      }
+    }
+  ]
+}
