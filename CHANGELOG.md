@@ -9,6 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Recast `deep-interview`'s one-to-three question range as a soft default, allowing larger structured batches for independent low-effort intake while preserving sequential probing for branching or consequential decisions.
+- Extended `spec-writing` to present material implementation and technology choices with explicit comparison criteria, a recommendation, and decision status without turning the main document into a discussion log.
 
 ### Added
 

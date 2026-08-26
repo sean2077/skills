@@ -1,6 +1,6 @@
 ---
 name: spec-writing
-description: Write or revise human-facing requirements and architecture/solution documents so final decisions are clear, concise, and non-redundant, with discussion history and rationale kept in separate decision records.
+description: Write or revise human-facing requirements and architecture/solution documents so final decisions and material implementation choices are clear, concise, and non-redundant, with recommendations in the document and discussion history in separate decision records.
 ---
 
 # Human-facing Specification Writing
@@ -21,6 +21,12 @@ Shape requirements and solution documents for readers who need to understand the
 - Prefer positive, normative statements describing what the system does. Include a negative boundary only when it prevents a real safety, compatibility, ownership, or acceptance mistake.
 - Keep non-goals short and business-relevant. Absence of a topic already means it is outside the document's scope.
 - Explain an internal term at first use or replace it with a domain term that readers can understand.
+
+## Present material choices for review
+
+- When an implementation or technology choice can change behavior, compatibility, reliability, security, operations, cost, or schedule, include a concise options-and-recommendation section in the same human-facing document.
+- Compare only viable, decision-bearing options against explicit criteria. A small table should show the option, relevant benefits, trade-offs or risks, and the recommended choice; record the decision status and owner when it is still open.
+- Describe the selected option and resulting behavior in the main document. Keep exhaustive alternatives, historical debate, and detailed rationale in a linked decision record; do not enumerate trivial or speculative branches.
 
 ## Route detail to the right authority
 
