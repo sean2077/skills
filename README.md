@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of 16 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
+A curated catalog of 17 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
 
 Install only the routes you expect an agent to discover. Each installed skill contributes discovery metadata; its full instructions and bundled resources are loaded only when needed. Format validation, installer discovery, host wiring, and runtime behavior are separate claims—see the [compatibility matrix](docs/compatibility.md).
 
@@ -36,6 +36,7 @@ Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix w
 | [prototype](skills/prototype/) | Reduce one uncertainty through a disposable, bounded experiment with explicit oracle, safety, conclusion, and cleanup boundaries. | Engineering, Experimentation |
 | [ralph](skills/ralph/) | Use a deterministic bounded verifier loop only when fixed attempts and mechanical pass, stall, plateau, exhaustion, or resume state are part of the task boundary. | Python, Iteration |
 | [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, a preferred changelog-backed tag workflow, project-owned version synchronization, and policy-derived publication verification. | Git, Python, Release |
+| [spec-writing](skills/spec-writing/) | Write clear human-facing requirements and architecture/solution documents, keeping discussion history and decision rationale in separate records. | Documentation, Requirements |
 | [tdd](skills/tdd/) | Apply explicitly requested test-first implementation across stacks by deriving seams, oracles, test levels, and commands from the target project, with validated RED-GREEN-REFACTOR evidence and guidance for effects, legacy code, and hard cases. | Engineering, Testing |
 | [tooling-conventions](skills/tooling-conventions/) | Derive project-owned command boundaries, placement, and evidence-gated safety contracts, with optional structural inventory reconciliation. | Shell, Governance |
 | [work-protocol](skills/work-protocol/) | Externalize coordination only when durable ownership, CAS state, evidence integrity, isolated writers, or commit-fixed review materially matter. | Python, Git, Coordination |
