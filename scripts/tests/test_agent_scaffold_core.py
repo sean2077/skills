@@ -21,6 +21,15 @@ SPEC = importlib.util.spec_from_file_location("agent_scaffold_core", CORE_PATH)
 assert SPEC and SPEC.loader
 CORE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CORE)
+SYMLINK_MANAGER_PATH = (
+    REPO / "skills/agent-scaffold/assets/runtime/symlink-manager.py"
+)
+SYMLINK_SPEC = importlib.util.spec_from_file_location(
+    "agent_scaffold_symlink_manager", SYMLINK_MANAGER_PATH
+)
+assert SYMLINK_SPEC and SYMLINK_SPEC.loader
+SYMLINK_MANAGER = importlib.util.module_from_spec(SYMLINK_SPEC)
+SYMLINK_SPEC.loader.exec_module(SYMLINK_MANAGER)
 
 
 class ManagedAssetsTests(unittest.TestCase):
@@ -30,6 +39,7 @@ class ManagedAssetsTests(unittest.TestCase):
         light_ids = {item["id"] for item in CORE.active_assets(manifest, "light")}
         self.assertIn("runtime.worktree", default_ids)
         self.assertIn("runtime.trunk-guard", default_ids)
+        self.assertIn("runtime.hook-launcher", default_ids)
         self.assertNotIn("runtime.worktree", light_ids)
         self.assertNotIn("runtime.trunk-guard", light_ids)
         self.assertIn("runtime.subagent-generator", light_ids)
@@ -87,6 +97,39 @@ class AtomicWriteTests(unittest.TestCase):
 
             self.assertEqual(b"old\n", target.read_bytes())
             self.assertEqual([], list(root.glob("..gitignore.agent-scaffold-*")))
+
+
+class AtomicSymlinkTests(unittest.TestCase):
+    def test_replace_failure_preserves_previous_projection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target"
+            target.mkdir()
+            link = root / "projection"
+            previous = b"target\n"
+            link.write_bytes(previous)
+            try:
+                with mock.patch.object(
+                    SYMLINK_MANAGER.os,
+                    "replace",
+                    side_effect=OSError("interrupted"),
+                ):
+                    with self.assertRaisesRegex(
+                        SYMLINK_MANAGER.ContractError,
+                        "could not atomically replace projection",
+                    ):
+                        SYMLINK_MANAGER.create_relative_link(
+                            link,
+                            target,
+                            "target",
+                            "materialize-placeholder",
+                        )
+            except OSError as exc:
+                self.skipTest(f"real symlink creation unavailable: {exc}")
+
+            self.assertEqual(previous, link.read_bytes())
+            self.assertFalse(link.is_symlink())
+            self.assertEqual([], list(root.glob(".projection.agent-scaffold-link-*")))
 
 
 class TargetInspectionTests(unittest.TestCase):
@@ -239,6 +282,93 @@ class HookReconciliationTests(unittest.TestCase):
         ]
         self.assertFalse(any("trunk_edit_guard" in command for command in commands))
         self.assertTrue(any("authority_doc_budget" in command for command in commands))
+
+    def test_verify_compares_complete_managed_hook_objects(self):
+        manifest = CORE.load_manifest()
+        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "host.codex-hooks")["source"]
+        expected = CORE.prepare_hooks(source, "default")
+        wrong_type = json.loads(json.dumps(expected))
+        wrong_type["hooks"]["PreToolUse"][0]["hooks"][0]["type"] = "http"
+        self.assertFalse(CORE.verify_hooks(wrong_type, expected, self.root))
+
+        wrong_status = json.loads(json.dumps(expected))
+        wrong_status["hooks"]["PreToolUse"][0]["hooks"][0]["statusMessage"] = "stale"
+        self.assertFalse(CORE.verify_hooks(wrong_status, expected, self.root))
+
+    def test_merge_repairs_complete_managed_hook_identity(self):
+        manifest = CORE.load_manifest()
+        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "host.codex-hooks")["source"]
+        expected = CORE.prepare_hooks(source, "default")
+        existing = json.loads(json.dumps(expected))
+        existing["hooks"]["PreToolUse"][0]["hooks"][0].update(
+            {"type": "http", "statusMessage": "stale"}
+        )
+
+        merged = CORE.merge_hooks(existing, expected, self.root)
+
+        self.assertTrue(CORE.verify_hooks(merged, expected, self.root))
+        self.assertEqual(
+            expected["hooks"]["PreToolUse"][0]["hooks"][0],
+            merged["hooks"]["PreToolUse"][0]["hooks"][0],
+        )
+
+    def test_merge_removes_stale_managed_hook_from_wrong_event(self):
+        manifest = CORE.load_manifest()
+        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "host.codex-hooks")["source"]
+        expected = CORE.prepare_hooks(source, "default")
+        existing = {
+            "hooks": {
+                "Stop": [
+                    {
+                        "matcher": "",
+                        "hooks": [self.old_owned],
+                    }
+                ]
+            }
+        }
+
+        merged = CORE.merge_hooks(existing, expected, self.root)
+
+        self.assertNotIn("Stop", merged["hooks"])
+        self.assertTrue(CORE.verify_hooks(merged, expected, self.root))
+
+    def test_hook_type_must_be_a_string(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "hooks.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "hooks": {
+                            "PreToolUse": [
+                                {
+                                    "matcher": "Edit",
+                                    "hooks": [{"type": 7, "command": "echo no"}],
+                                }
+                            ]
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(CORE.CoreError, "type must be a string"):
+                CORE.validate_hook_config(path, "hooks.json")
+
+    def test_managed_host_assets_use_git_bash_dispatcher(self):
+        manifest = CORE.load_manifest()
+        for asset_id in ("host.claude-hooks", "host.codex-hooks"):
+            source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, asset_id)["source"]
+            prepared = CORE.prepare_hooks(source, "default")
+            commands = [
+                hook["command"]
+                for groups in prepared["hooks"].values()
+                for group in groups
+                for hook in group["hooks"]
+            ]
+            self.assertTrue(commands)
+            for command in commands:
+                self.assertTrue(command.startswith("git -c \"alias.agent-scaffold-hook=!sh "))
+                self.assertIn(".agents/tools/hooks/hook-launcher.sh", command)
+                self.assertNotIn("bash -lc", command)
 
 
 class StructuredReportTests(unittest.TestCase):

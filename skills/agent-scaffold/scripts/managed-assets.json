@@ -58,6 +58,14 @@
       "executable": true
     },
     {
+      "id": "runtime.hook-launcher",
+      "source": "assets/runtime/hooks/hook-launcher.sh",
+      "target": ".agents/tools/hooks/hook-launcher.sh",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": true
+    },
+    {
       "id": "runtime.hook-paths",
       "source": "assets/runtime/hooks/hook-paths.py",
       "target": ".agents/tools/hooks/hook-paths.py",
