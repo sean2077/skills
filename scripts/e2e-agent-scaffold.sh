@@ -779,10 +779,16 @@ check "foreign repository HEAD is unchanged" test "$(git -C "$FOREIGN" rev-parse
 
 echo "== worktree round-trip =="
 git -C "$S" add -A && git -C "$S" commit -q -m harness
-( cd "$S" && bash .agents/tools/worktree.sh new demo --type chore ) >/dev/null 2>&1
+demo_create_out="$work/worktree-demo-create.out"
+( cd "$S" && bash .agents/tools/worktree.sh new demo --type chore ) >"$demo_create_out" 2>&1; rc=$?
+check "worktree new exits successfully"         test "$rc" = 0
 check "worktree .worktrees/demo created"     test -d "$S/.worktrees/demo"
-( cd "$S/.worktrees/demo" && echo hi > note.txt && git add -A && git commit -q -m "feat: note" \
-  && bash .agents/tools/worktree.sh "done" --no-push ) >"$work/worktree-round-trip.out" 2>&1; rc=$?
+CANONICAL_S="$(git -C "$S" rev-parse --show-toplevel)"
+DEMO_WT="$CANONICAL_S/.worktrees/demo"
+check "worktree new prints outside-worktree cleanup" \
+  grep -qF "cd \"$CANONICAL_S\" && bash \"$CANONICAL_S/.agents/tools/worktree.sh\" done --dir \"$DEMO_WT\" --trunk \"main\"" "$demo_create_out"
+( cd "$DEMO_WT" && echo hi > note.txt && git add -A && git commit -q -m "feat: note" ) >/dev/null 2>&1
+( cd "$S" && bash .agents/tools/worktree.sh "done" --dir "$DEMO_WT" --no-push ) >"$work/worktree-round-trip.out" 2>&1; rc=$?
 check "worktree done exits successfully"        test "$rc" = 0
 check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
 check "worktree branch removed after done"   test -z "$(git -C "$S" branch --list chore/demo)"
@@ -814,7 +820,6 @@ esac
 check "release revision expression gets a portable basename" test "$portable_release_path" = 1
 release_cleanup_command="$(sed -n 's/^.*done: //p' "$release_out" | tail -1)"
 release_cleanup_command="${release_cleanup_command%$'\r'}"
-CANONICAL_S="$(git -C "$S" rev-parse --show-toplevel)"
 check "release cleanup command quotes helper path" \
   grep -qF "bash \"$CANONICAL_S/.agents/tools/worktree.sh\"" "$release_out"
 check "release cleanup command quotes worktree path" \
@@ -857,6 +862,20 @@ if [[ "${args[$command_index]:-}" == worktree && "${args[$((command_index + 1))]
 fi
 target_index=$((command_index + 2))
 target="${args[$target_index]:-}"
+if [[ "${SIMULATE_TRANSIENT_REMOVE:-0}" == 1 && "${args[$command_index]:-}" == worktree && "${args[$((command_index + 1))]:-}" == remove && "$target" != --force ]]; then
+  count=0
+  [[ -f "${TRANSIENT_REMOVE_COUNT_FILE:?}" ]] && read -r count < "$TRANSIENT_REMOVE_COUNT_FILE"
+  count=$((count + 1))
+  printf '%s\n' "$count" > "$TRANSIENT_REMOVE_COUNT_FILE"
+  (( count > 2 )) || exit 1
+fi
+if [[ "${SIMULATE_EMPTY_RESIDUAL_REMOVE:-0}" == 1 && "${args[$command_index]:-}" == worktree && "${args[$((command_index + 1))]:-}" == remove && "$target" != --force ]]; then
+  "$REAL_GIT" "$@"
+  status=$?
+  [[ $status -eq 0 ]] || exit "$status"
+  mkdir -p "$target"
+  exit 1
+fi
 if [[ "${SIMULATE_PARTIAL_REMOVE:-0}" == 1 && "${args[$command_index]:-}" == worktree && "${args[$((command_index + 1))]:-}" == remove && "$target" != --force ]]; then
   "$REAL_GIT" "$@"
   status=$?
@@ -874,6 +893,84 @@ exec "$REAL_GIT" "$@"
 SH
 chmod +x "$WS/test-bin/git"
 WT_REMOVE_LOG="$WS/.git/worktree-remove.log"; : > "$WT_REMOVE_LOG"
+
+( cd "$WS" && bash "$WS_WT_HELPER" new invalid-retry-config --type fix ) >/dev/null 2>&1
+INVALID_RETRY_WT="$WS/.worktrees/invalid-retry-config"
+printf 'invalid\n' > "$INVALID_RETRY_WT/change.txt"
+git -C "$INVALID_RETRY_WT" add change.txt && git -C "$INVALID_RETRY_WT" commit -q -m "invalid retry config"
+invalid_retry_main_before="$(git -C "$WS" rev-parse main)"
+(
+  cd "$WS" || exit 1
+  WORKTREE_REMOVE_RETRIES=61 bash "$WS_WT_HELPER" "done" --dir "$INVALID_RETRY_WT" --no-push
+) >"$work/worktree-invalid-retry-config.out" 2>&1; rc=$?
+check "invalid removal retry config exits 2" test "$rc" = 2
+check "invalid removal retry config is explained" \
+  grep -qF "WORKTREE_REMOVE_RETRIES must be an integer from 0 to 60" "$work/worktree-invalid-retry-config.out"
+check "invalid removal retry config does not merge" test "$(git -C "$WS" rev-parse main)" = "$invalid_retry_main_before"
+check "invalid removal retry config keeps registration" grep -qF "invalid-retry-config" <(git -C "$WS" worktree list --porcelain)
+check "invalid removal retry config keeps branch" test -n "$(git -C "$WS" branch --list fix/invalid-retry-config)"
+
+( cd "$WS" && bash "$WS_WT_HELPER" new retry-remove --type fix ) >/dev/null 2>&1
+RETRY_WT="$WS/.worktrees/retry-remove"
+printf 'retry\n' > "$RETRY_WT/change.txt"
+git -C "$RETRY_WT" add change.txt && git -C "$RETRY_WT" commit -q -m "retry removal"
+TRANSIENT_REMOVE_COUNT="$WS/.git/transient-remove.count"; printf '0\n' > "$TRANSIENT_REMOVE_COUNT"
+(
+  cd "$WS" || exit 1
+  REAL_GIT="$(command -v git)" WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" \
+    TRANSIENT_REMOVE_COUNT_FILE="$TRANSIENT_REMOVE_COUNT" \
+    PATH="$WS/test-bin:$PATH" SIMULATE_TRANSIENT_REMOVE=1 \
+    WORKTREE_REMOVE_RETRIES=3 WORKTREE_REMOVE_RETRY_DELAY_SECONDS=0 \
+    bash "$WS_WT_HELPER" "done" --dir "$RETRY_WT" --no-push
+) >"$work/worktree-retry-remove.out" 2>&1; rc=$?
+check "registered transient removal retries to success" test "$rc" = 0
+check "registered transient removal uses three attempts" test "$(<"$TRANSIENT_REMOVE_COUNT")" = 3
+check "registered transient removal deletes the worktree" test ! -d "$RETRY_WT"
+check "registered transient removal drops the merged branch" test -z "$(git -C "$WS" branch --list fix/retry-remove)"
+check "registered transient removal reports bounded retry" grep -qF "retrying 1/3" "$work/worktree-retry-remove.out"
+
+RMDIR_BIN="$WS/.git/rmdir-bin"; mkdir -p "$RMDIR_BIN"
+cat > "$RMDIR_BIN/rmdir" <<'SH'
+#!/usr/bin/env bash
+if [[ "${SIMULATE_TRANSIENT_RMDIR:-0}" == 1 ]]; then
+  actual="${1:-}"
+  expected="${TRANSIENT_RMDIR_TARGET:?}"
+  case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*)
+      actual="$(cygpath -m "$actual")"
+      expected="$(cygpath -m "$expected")"
+      ;;
+  esac
+  [[ "$actual" == "$expected" ]] || exec "${REAL_RMDIR:?}" "$@"
+  count=0
+  [[ -f "${TRANSIENT_RMDIR_COUNT_FILE:?}" ]] && read -r count < "$TRANSIENT_RMDIR_COUNT_FILE"
+  count=$((count + 1))
+  printf '%s\n' "$count" > "$TRANSIENT_RMDIR_COUNT_FILE"
+  (( count > 2 )) || exit 1
+fi
+exec "${REAL_RMDIR:?}" "$@"
+SH
+chmod +x "$RMDIR_BIN/rmdir"
+( cd "$WS" && bash "$WS_WT_HELPER" new empty-residue --type fix ) >/dev/null 2>&1
+EMPTY_WT="$WS/.worktrees/empty-residue"
+printf 'empty\n' > "$EMPTY_WT/change.txt"
+git -C "$EMPTY_WT" add change.txt && git -C "$EMPTY_WT" commit -q -m "empty residue"
+TRANSIENT_RMDIR_COUNT="$WS/.git/transient-rmdir.count"; printf '0\n' > "$TRANSIENT_RMDIR_COUNT"
+(
+  cd "$WS" || exit 1
+  REAL_GIT="$(command -v git)" REAL_RMDIR="$(command -v rmdir)" \
+    WORKTREE_REMOVE_LOG="$WT_REMOVE_LOG" PATH="$RMDIR_BIN:$WS/test-bin:$PATH" \
+    SIMULATE_EMPTY_RESIDUAL_REMOVE=1 SIMULATE_TRANSIENT_RMDIR=1 \
+    TRANSIENT_RMDIR_TARGET="$EMPTY_WT" TRANSIENT_RMDIR_COUNT_FILE="$TRANSIENT_RMDIR_COUNT" \
+    WORKTREE_REMOVE_RETRIES=3 WORKTREE_REMOVE_RETRY_DELAY_SECONDS=0 \
+    bash "$WS_WT_HELPER" "done" --dir "$EMPTY_WT" --no-push
+) >"$work/worktree-empty-residue.out" 2>&1; rc=$?
+check "empty unregistered residue retries to success" test "$rc" = 0
+check "empty unregistered residue uses three rmdir attempts" test "$(<"$TRANSIENT_RMDIR_COUNT")" = 3
+check "empty unregistered residue is removed" test ! -d "$EMPTY_WT"
+check "empty unregistered residue drops the merged branch" test -z "$(git -C "$WS" branch --list fix/empty-residue)"
+check "empty unregistered residue reports rmdir retry" grep -qF "retrying rmdir 1/3" "$work/worktree-empty-residue.out"
+
 ( cd "$WS" && bash "$WS_WT_HELPER" new partial-remove --type fix ) >/dev/null 2>&1
 PARTIAL_WT="$WS/.worktrees/partial-remove"
 printf 'partial\n' > "$PARTIAL_WT/change.txt"

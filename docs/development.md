@@ -25,8 +25,13 @@ Never edit `main` directly. The scaffold-managed rule and escape-hatch boundary 
 bash .agents/tools/worktree.sh new docs-example
 cd .worktrees/docs-example
 # edit, validate, and commit here
-bash .agents/tools/worktree.sh done
+wt="$(git rev-parse --show-toplevel)"
+root="$(dirname "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)")"
+cd "$root"
+bash "$root/.agents/tools/worktree.sh" done --dir "$wt"
 ```
+
+Leave the target worktree before invoking cleanup. This is required for reliable deletion on Windows, where the calling shell or Agent process may otherwise keep the directory open; `new` prints the exact outside-worktree command.
 
 `done` is not a local-only cleanup command: the scaffold-managed contract defines it as merge-to-local-trunk, cleanup, and an ff-only push. Run it only when that publication step is intended.
 
