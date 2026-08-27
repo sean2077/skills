@@ -96,7 +96,7 @@ share_dirs() {
 }
 
 primary_dir_for_trunk() {
-    git -C "$HELPER_REPO" worktree list --porcelain | awk -v want="refs/heads/$1" '
+    git -C "$ROOT" worktree list --porcelain | awk -v want="refs/heads/$1" '
         /^worktree /{dir=substr($0,10)} /^branch /{if (substr($0,8)==want) {print dir; exit}}'
 }
 
@@ -156,7 +156,7 @@ worktree_is_registered() {
     temp_suffix="${REGISTRY#"$temp_prefix"}"
     [[ "$REGISTRY" == "$temp_prefix"* && -n "$temp_suffix" && -f "$REGISTRY" ]] \
         || die "mktemp returned an unsafe worktree registry path: ${REGISTRY:-<empty>}"
-    if ! git -C "$HELPER_REPO" worktree list --porcelain -z >"$REGISTRY"; then
+    if ! git -C "$ROOT" worktree list --porcelain -z >"$REGISTRY"; then
         rm -f "$REGISTRY"
         die "could not inspect the worktree registry"
     fi
@@ -172,7 +172,10 @@ worktree_is_registered() {
 
 remove_done_worktree() {
     local WT="$1"
-    git -C "$HELPER_REPO" worktree remove "$WT" && return 0
+    # Keep Git's process cwd in the stable primary worktree. On Windows, using
+    # the worktree that is being removed as `git -C` can lock or invalidate the
+    # command context midway through cleanup.
+    git -C "$ROOT" worktree remove "$WT" && return 0
 
     worktree_is_registered "$WT" \
         && die "worktree removal failed and '$WT' remains registered; refusing force removal. Worktree and branch kept"
@@ -223,7 +226,7 @@ $(git -C "$WT" status --short | head -10)"
         [[ $branch_rc -eq 1 ]] || die "could not resolve the worktree branch"
         cd "$ROOT"
         remove_done_worktree "$WT"
-        git -C "$HELPER_REPO" worktree prune
+        git -C "$ROOT" worktree prune
         log "done. removed clean detached release worktree: $WT"
         return 0
     fi
@@ -261,7 +264,7 @@ Never force-push from here — that is the user's call."
     remove_done_worktree "$WT"
     [[ $KEEP -eq 1 ]] || git branch -d "$BRANCH" 2>/dev/null \
         || log "WARN: branch $BRANCH not fully merged into $TRUNK - kept; delete: git branch -D $BRANCH"
-    git -C "$HELPER_REPO" worktree prune
+    git -C "$ROOT" worktree prune
     log "done. (if your shell is still in the removed dir, run: cd $PD)"
 }
 
