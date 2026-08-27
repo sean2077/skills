@@ -69,6 +69,27 @@ Windows is supported through **Git Bash only**. Install Python 3.8+ and Git for 
    shell/Python files to LF; project-owned hook-manager files keep their existing line endings.
    Capability failure exits 2 before target writes and leaves no copy or partial harness.
 
+## Windows / Git Bash: finish a worktree without leaving a locked directory
+
+Run `done` from the primary worktree, not from the worktree being removed. This releases the invoking shell's current-directory handle before Git starts cleanup:
+
+```bash
+wt="$(git rev-parse --show-toplevel)"
+root="$(dirname "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)")"
+cd "$root"
+bash "$root/.agents/tools/worktree.sh" done --dir "$wt"
+```
+
+`new` prints the equivalent command with absolute paths. Cleanup also retries transient sharing violations while the worktree remains registered and clean, then separately retries `rmdir` when Git has already unregistered the worktree but Windows still holds the empty root directory. The defaults are eight retries at one-second intervals; bounded overrides are available when a host needs a longer shutdown window:
+
+```bash
+WORKTREE_REMOVE_RETRIES=20 \
+WORKTREE_REMOVE_RETRY_DELAY_SECONDS=1 \
+bash "$root/.agents/tools/worktree.sh" done --dir "$wt"
+```
+
+The helper validates retry settings before merging or pushing. It never kills processes, invokes `git worktree remove --force`, or recursively deletes residue. If the worktree remains registered, close terminals, Agent runtimes, editors, dev servers, or MCP processes that use its path, then rerun the original `done` command from the primary worktree; the branch is kept for that retry. If Git already unregistered it and only an empty directory remains, leave the directory in every shell or Agent process and run `rmdir "$wt"`. Inspect any non-empty residue before removing it manually.
+
 ## Claude Code checkpoint boundary
 
 The harness intentionally uses real symlinks, but Claude Code checkpoint restore does not rewind symlinked or hard-linked files. In this layout that can affect `CLAUDE.md` and entries under `.claude/skills/`: `/rewind` may report success while skipping those paths and leaving the real `AGENTS.md` or `.agents/skills/<name>/` target changed.

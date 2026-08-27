@@ -25,6 +25,10 @@
 # repo-relative *gitignored/untracked* dirs (e.g. "node_modules") to hardlink-share
 # into a new/release worktree — zero extra disk, kept out of `git status`.
 #
+# Removal retries are bounded by WORKTREE_REMOVE_RETRIES (default 8; 0 disables)
+# and WORKTREE_REMOVE_RETRY_DELAY_SECONDS (default 1). Retries never use --force
+# or recursive deletion; an unregistered residue is removed only when empty.
+#
 # Trunk defaults to $WORKTREE_TRUNK or "main"; override per-call with --trunk.
 # Push is fast-forward-only; it never force-pushes — that stays the user's call.
 # ---8<--- help ends here
@@ -122,7 +126,8 @@ cmd_new() {
     git -C "$ROOT" worktree add "$WTDIR" -b "$BRANCH" "$TRUNK"
     share_dirs "$WTDIR"
     log "ready: $WTDIR  (branch $BRANCH ← $TRUNK tip)"
-    log "when done, run inside it: bash .agents/tools/worktree.sh done   # merge back to $TRUNK + clean up + push"
+    log "when done, leave it before cleanup:"
+    log "  cd \"$ROOT\" && bash \"$ROOT/.agents/tools/worktree.sh\" done --dir \"$WTDIR\" --trunk \"$TRUNK\""
 }
 
 cmd_release() {
@@ -143,7 +148,7 @@ cmd_release() {
     ensure_worktrees_ignored
     git -C "$ROOT" worktree add --detach "$WTDIR" "$COMMIT"
     share_dirs "$WTDIR"
-    log "ready: $WTDIR  (detached @ $REF) — when packaging is done: bash \"$ROOT/.agents/tools/worktree.sh\" done --dir \"$WTDIR\""
+    log "ready: $WTDIR  (detached @ $REF) — when packaging is done: cd \"$ROOT\" && bash \"$ROOT/.agents/tools/worktree.sh\" done --dir \"$WTDIR\""
 }
 
 worktree_is_registered() {
@@ -170,27 +175,91 @@ worktree_is_registered() {
     return "$FOUND"
 }
 
+validate_remove_retry_config() {
+    local RETRIES_RAW="${WORKTREE_REMOVE_RETRIES:-8}"
+    local DELAY_RAW="${WORKTREE_REMOVE_RETRY_DELAY_SECONDS:-1}"
+
+    [[ "$RETRIES_RAW" =~ ^[0-9]{1,2}$ ]] \
+        || die "WORKTREE_REMOVE_RETRIES must be an integer from 0 to 60 (got: $RETRIES_RAW)"
+    [[ "$DELAY_RAW" =~ ^[0-9]{1,2}$ ]] \
+        || die "WORKTREE_REMOVE_RETRY_DELAY_SECONDS must be an integer from 0 to 30 (got: $DELAY_RAW)"
+    WORKTREE_REMOVE_RETRIES_VALUE=$((10#$RETRIES_RAW))
+    WORKTREE_REMOVE_RETRY_DELAY_SECONDS_VALUE=$((10#$DELAY_RAW))
+    (( WORKTREE_REMOVE_RETRIES_VALUE <= 60 )) \
+        || die "WORKTREE_REMOVE_RETRIES must be an integer from 0 to 60 (got: $RETRIES_RAW)"
+    (( WORKTREE_REMOVE_RETRY_DELAY_SECONDS_VALUE <= 30 )) \
+        || die "WORKTREE_REMOVE_RETRY_DELAY_SECONDS must be an integer from 0 to 30 (got: $DELAY_RAW)"
+}
+
 remove_done_worktree() {
     local WT="$1"
+    local RETRIES="$WORKTREE_REMOVE_RETRIES_VALUE"
+    local DELAY="$WORKTREE_REMOVE_RETRY_DELAY_SECONDS_VALUE"
+    local RETRY=0 STATUS ATTEMPTS
+
     # Keep Git's process cwd in the stable primary worktree. On Windows, using
     # the worktree that is being removed as `git -C` can lock or invalidate the
     # command context midway through cleanup.
-    git -C "$ROOT" worktree remove "$WT" && return 0
+    while true; do
+        if git -C "$ROOT" worktree remove "$WT"; then
+            (( RETRY == 0 )) || log "removed worktree after $RETRY cleanup retries: $WT"
+            return 0
+        fi
 
-    worktree_is_registered "$WT" \
-        && die "worktree removal failed and '$WT' remains registered; refusing force removal. Worktree and branch kept"
+        if ! worktree_is_registered "$WT"; then
+            break
+        fi
+
+        STATUS="$(git -C "$WT" status --porcelain 2>/dev/null)" \
+            || die "worktree removal failed and '$WT' remains registered but its status cannot be inspected; refusing force removal. Worktree and branch kept"
+        [[ -z "$STATUS" ]] \
+            || die "worktree removal failed and '$WT' is no longer clean after the removal attempt; refusing force removal. Worktree and branch kept"
+
+        if (( RETRY >= RETRIES )); then
+            ATTEMPTS=$((RETRY + 1))
+            die "worktree removal failed after $ATTEMPTS attempts and '$WT' remains registered; refusing force removal.
+Close processes whose current directory or open files are under it, then rerun done from a stable worktree. Worktree and branch kept"
+        fi
+
+        RETRY=$((RETRY + 1))
+        log "worktree removal is blocked; retrying $RETRY/$RETRIES in ${DELAY}s: $WT"
+        (( DELAY == 0 )) || sleep "$DELAY"
+    done
 
     # Git can unregister a worktree before Windows finishes deleting its
     # directory. Registration is the safety boundary: continue branch cleanup,
     # but never recursively or forcibly delete residue that may contain new data.
     log "worktree removal reported failure after '$WT' was already unregistered; continuing cleanup"
-    if [[ -d "$WT" ]]; then
+    [[ -d "$WT" ]] || return 0
+
+    RETRY=0
+    while true; do
         if rmdir "$WT" 2>/dev/null; then
-            log "removed empty residual worktree directory: $WT"
-        else
-            log "WARNING: unregistered residual directory remains (no recursive delete attempted): $WT"
+            if (( RETRY == 0 )); then
+                log "removed empty residual worktree directory: $WT"
+            else
+                log "removed empty residual worktree directory after $RETRY retries: $WT"
+            fi
+            return 0
         fi
-    fi
+        [[ -d "$WT" ]] || return 0
+
+        if find "$WT" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null | grep -q .; then
+            log "WARNING: unregistered residual directory is non-empty; left untouched (no recursive delete attempted): $WT"
+            return 0
+        fi
+
+        if (( RETRY >= RETRIES )); then
+            ATTEMPTS=$((RETRY + 1))
+            log "WARNING: empty unregistered residual directory remains locked after $ATTEMPTS attempts: $WT"
+            log "after the owning process exits, run from outside it: rmdir \"$WT\""
+            return 0
+        fi
+
+        RETRY=$((RETRY + 1))
+        log "empty residual directory is still in use; retrying rmdir $RETRY/$RETRIES in ${DELAY}s: $WT"
+        (( DELAY == 0 )) || sleep "$DELAY"
+    done
 }
 
 cmd_done() {
@@ -206,6 +275,7 @@ cmd_done() {
         esac
         shift
     done
+    validate_remove_retry_config
     WT="$(git -C "$WT" rev-parse --show-toplevel)" || die "--dir is not inside a git repository"
     local WT_COMMON WT_COMMON_CANON
     WT_COMMON="$(git -C "$WT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
@@ -216,6 +286,14 @@ cmd_done() {
         || die "--dir belongs to a different repository than this worktree helper: $WT"
     worktree_is_registered "$WT" \
         || die "--dir is not an exact registered worktree of this repository: $WT"
+    local CALLER_TOP=""
+    CALLER_TOP="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            [[ "$CALLER_TOP" != "$WT" ]] \
+                || log "WARNING: caller is inside the target worktree; Windows may keep its final directory locked. Prefer the outside-worktree --dir command printed by 'new'."
+            ;;
+    esac
     [[ -z "$(git -C "$WT" status --porcelain)" ]] || die "worktree is dirty, commit/stash first:
 $(git -C "$WT" status --short | head -10)"
     local BRANCH branch_rc=0

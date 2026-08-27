@@ -13,6 +13,8 @@ bash .agents/tools/worktree.sh new <name>   # edit inside .worktrees/<name>/  (b
 bash .agents/tools/worktree.sh done         # merge back to local trunk (--no-ff) + clean up + ff-only push
 ```
 
+On Windows, leave the target before cleanup and run `done --dir <absolute-wt>` from the primary worktree; `new` prints the exact command. This prevents the invoking shell from holding the target directory open.
+
 `.agents/tools/hooks/trunk_edit_guard.sh` (PreToolUse) mechanically blocks edits to tracked files while on trunk. Escape hatch — only when the user explicitly authorizes a trunk edit: `touch .claude/allow-trunk-edit` (auto-expires in 2 h) or `WORKTREE_ALLOW_TRUNK_EDIT=1`.
 <!-- agent-scaffold:worktree:end -->
 
