@@ -322,25 +322,19 @@ check "hook resolver probes candidates in documented order" test \
   "$(sed -n '1,3p' "$resolver_log")" = \
   "$(printf '%s\n' explicit-python:probe python:probe python3:probe)"
 
-cat > "$resolver_bin/jq" <<'SH'
-#!/usr/bin/env bash
-printf '%s\n' jq >> "${PYTHON_RESOLVER_LOG:?}"
-printf '/fixture/AGENTS.md\n'
-SH
-chmod +x "$resolver_bin/jq"
-resolver_log="$work/hook-jq-fallback.log"; : > "$resolver_log"
+resolver_log="$work/hook-no-python.log"; : > "$resolver_log"
 # shellcheck disable=SC2016  # bash -c expands its own positional parameters
 hook_paths="$({
   PATH="$resolver_path" REAL_PYTHON="$real_python" PYTHON_RESOLVER_LOG="$resolver_log" \
     PYTHON_BIN="$resolver_bin/explicit-python" RESOLVER_EXPLICIT_MODE=broken \
     RESOLVER_PYTHON_MODE=py37 RESOLVER_PYTHON3_MODE=broken RESOLVER_PY_MODE=py37 \
-    bash -c 'source "$1"; hook_extract_paths "$2"' _ \
+    bash -c 'source "$1"; hook_extract_paths <<<"$2"' _ \
       "$repo/skills/agent-scaffold/assets/runtime/hooks/hook-common.sh" \
       '{"tool_input":{"file_path":"ignored"}}'
 } 2>/dev/null)"; rc=$?
-check "hook path extraction remains fail-open" test "$rc" = 0
-check "hook uses jq when every Python candidate is incompatible" grep -qxF jq "$resolver_log"
-check "jq fallback returns the extracted path" test "$hook_paths" = /fixture/AGENTS.md
+check "hook path extraction fails without compatible Python" test "$rc" = 1
+check "hook path extraction emits no unverified path" test -z "$hook_paths"
+check "hook parser has no jq fallback" test -z "$(grep -xF jq "$resolver_log" || true)"
 
 echo "== worktree push rejection: retain a retryable feature worktree =="
 R="$work/worktree-push-origin.git"
@@ -630,6 +624,7 @@ husky_before="$(git hash-object "$S/.husky/pre-commit")"
 check "no bogus '*' symlink in .claude/skills" test -z "$(ls -A "$S/.claude/skills" 2>/dev/null)"
 check "worktree.sh installed"                test -f "$S/.agents/tools/worktree.sh"
 check "trunk_edit_guard.sh installed"        test -f "$S/.agents/tools/hooks/trunk_edit_guard.sh"
+check "cross-platform hook launcher installed" test -f "$S/.agents/tools/hooks/hook-launcher.sh"
 check "shared hook parser installed"         test -f "$S/.agents/tools/hooks/hook-paths.py"
 check "greenfield install adds no tools root" test ! -e "$S/tools"
 check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" = AGENTS.md
@@ -764,6 +759,24 @@ check "apply-merge exits 0"               test "$rc" = 0
 check "trunk_edit_guard still wired"         grep -q trunk_edit_guard "$S/.claude/settings.json"
 check "pre-existing user hook preserved"     grep -q user-custom "$S/.claude/settings.json"
 
+echo "== worktree helper rejects foreign repository targets =="
+FOREIGN="$work/foreign-repository"
+mkdir -p "$FOREIGN"
+git -C "$FOREIGN" init -q -b fix/collision
+git -C "$FOREIGN" config user.email t@t.t
+git -C "$FOREIGN" config user.name tester
+printf 'foreign\n' > "$FOREIGN/keep.txt"
+git -C "$FOREIGN" add keep.txt
+git -C "$FOREIGN" commit -q -m foreign
+foreign_head="$(git -C "$FOREIGN" rev-parse HEAD)"
+( cd "$FOREIGN" && bash "$S/.agents/tools/worktree.sh" "done" --dir "$FOREIGN" --no-push ) \
+  >"$work/worktree-foreign-repo.out" 2>&1; rc=$?
+check "foreign repository target exits 2" test "$rc" = 2
+check "foreign repository identity is explained" \
+  grep -qF -- "--dir belongs to a different repository" "$work/worktree-foreign-repo.out"
+check "foreign repository remains intact" test -f "$FOREIGN/keep.txt"
+check "foreign repository HEAD is unchanged" test "$(git -C "$FOREIGN" rev-parse HEAD)" = "$foreign_head"
+
 echo "== worktree round-trip =="
 git -C "$S" add -A && git -C "$S" commit -q -m harness
 ( cd "$S" && bash .agents/tools/worktree.sh new demo --type chore ) >/dev/null 2>&1
@@ -773,6 +786,17 @@ check "worktree .worktrees/demo created"     test -d "$S/.worktrees/demo"
 check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
 merge_subject="$(git -C "$S" log -1 --format=%s)"
 check "merge commit landed on main"          test "$merge_subject" = "Merge branch 'chore/demo'"
+
+echo "== Git-owned hook dispatch preserves cross-worktree identity =="
+( cd "$S" && bash .agents/tools/worktree.sh new hook-identity --type fix ) >/dev/null 2>&1
+HOOK_IDENTITY_WT="$S/.worktrees/hook-identity"
+identity_guard_command="$(python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); print(d["hooks"]["PreToolUse"][0]["hooks"][0]["command"])' "$HOOK_IDENTITY_WT/.codex/hooks.json")"
+python -c 'import json,sys; print(json.dumps({"tool_input":{"file_path":sys.argv[1]}}))' "$S/AGENTS.md" \
+  | ( cd "$HOOK_IDENTITY_WT" && bash -c "$identity_guard_command" ) >"$work/hook-cross-worktree.out" 2>&1; rc=$?
+check "launcher classifies the target worktree rather than its own branch" test "$rc" = 2
+check "cross-worktree block names main" grep -qF "trunk branch 'main'" "$work/hook-cross-worktree.out"
+( cd "$HOOK_IDENTITY_WT" && bash .agents/tools/worktree.sh "done" --no-push ) >/dev/null 2>&1
+check "hook identity fixture worktree is cleaned" test ! -d "$HOOK_IDENTITY_WT"
 
 echo "== detached release worktree uses guarded done cleanup =="
 release_out="$work/worktree-release-create.out"
@@ -821,19 +845,26 @@ printf '.worktrees/\ntest-bin/\n' > "$WS/.git/info/exclude"
 mkdir -p "$WS/test-bin"
 cat > "$WS/test-bin/git" <<'SH'
 #!/usr/bin/env bash
-if [[ "${1:-}" == worktree && "${2:-}" == remove ]]; then
+args=("$@")
+command_index=0
+if [[ "${args[0]:-}" == -C ]]; then
+  command_index=2
+fi
+if [[ "${args[$command_index]:-}" == worktree && "${args[$((command_index + 1))]:-}" == remove ]]; then
   printf '%s\n' "$*" >> "${WORKTREE_REMOVE_LOG:?}"
 fi
-if [[ "${SIMULATE_PARTIAL_REMOVE:-0}" == 1 && "${1:-}" == worktree && "${2:-}" == remove && "${3:-}" != --force ]]; then
+target_index=$((command_index + 2))
+target="${args[$target_index]:-}"
+if [[ "${SIMULATE_PARTIAL_REMOVE:-0}" == 1 && "${args[$command_index]:-}" == worktree && "${args[$((command_index + 1))]:-}" == remove && "$target" != --force ]]; then
   "$REAL_GIT" "$@"
   status=$?
   [[ $status -eq 0 ]] || exit "$status"
-  mkdir -p "$3"
-  printf 'must remain\n' > "$3/locked-residue.txt"
+  mkdir -p "$target"
+  printf 'must remain\n' > "$target/locked-residue.txt"
   exit 1
 fi
-if [[ "${SIMULATE_POST_PREFLIGHT_WRITE:-0}" == 1 && "${1:-}" == worktree && "${2:-}" == remove && "${3:-}" != --force ]]; then
-  printf 'must survive\n' > "$3/precious-untracked.txt"
+if [[ "${SIMULATE_POST_PREFLIGHT_WRITE:-0}" == 1 && "${args[$command_index]:-}" == worktree && "${args[$((command_index + 1))]:-}" == remove && "$target" != --force ]]; then
+  printf 'must survive\n' > "$target/precious-untracked.txt"
   "$REAL_GIT" "$@"
   exit $?
 fi
@@ -893,8 +924,8 @@ check "unsafe registry temp is rejected" \
   grep -qF "mktemp returned an unsafe worktree registry path" "$work/worktree-unsafe-registry.out"
 check "unsafe registry temp preserves sentinel" \
   test "$(git hash-object "$registry_sentinel")" = "$registry_before"
-check "unsafe registry temp keeps post-preflight data" \
-  test -f "$UNSAFE_REGISTRY_WT/precious-untracked.txt"
+check "unsafe registry temp stops before remove-time injection" \
+  test ! -e "$UNSAFE_REGISTRY_WT/precious-untracked.txt"
 check "unsafe registry temp keeps registration" \
   grep -qF "unsafe-registry" <(git -C "$WS" worktree list --porcelain)
 
@@ -907,11 +938,26 @@ check "block message requires explicit trunk-edit authorization" \
   grep -qF "Only if the user explicitly authorized a trunk edit in this conversation:" "$guard_block_out"
 check "block message never lowers authorization to mentioning trunk" \
   no_fixed_text "$guard_block_out" "explicitly named a trunk"
+guard_host_command="$(python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); print(d["hooks"]["PreToolUse"][0]["hooks"][0]["command"])' "$S/.codex/hooks.json")"
+printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" \
+  | ( cd "$S" && bash -c "$guard_host_command" ) >"$work/trunk-guard-dispatch.out" 2>&1; rc=$?
+check "host config dispatches through the Git-owned launcher" test "$rc" = 2
+check "host config avoids bare bash lookup" no_fixed_text "$S/.codex/hooks.json" '"command": "bash '
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "escape hatch allows (exit 0)"         test "$rc" = 0
 python -c 'import json,sys; print(json.dumps({"cwd": sys.argv[1], "tool_input": {"file_path": "AGENTS.md"}}))' "$S" \
   | CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "relative hook path uses payload cwd" test "$rc" = 2
+python -c 'import json,sys; print(json.dumps({"cwd":sys.argv[1],"padding":"x"*(2*1024*1024),"tool_input":{"file_path":"AGENTS.md"}}))' "$S" \
+  | CLAUDE_PROJECT_DIR="$S" bash "$g" >"$work/trunk-guard-large-payload.out" 2>&1; rc=$?
+check "large hook payload remains guarded" test "$rc" = 2
+printf '{not-json' | CLAUDE_PROJECT_DIR="$S" bash "$g" >"$work/trunk-guard-invalid-json.out" 2>&1; rc=$?
+check "invalid guard payload fails closed" test "$rc" = 2
+check "invalid guard payload is diagnosed" \
+  grep -qF "cannot parse hook input safely" "$work/trunk-guard-invalid-json.out"
+python -c 'import json,sys; print(json.dumps({"cwd":sys.argv[1],"tool_input":{"file_path":"AGENTS.md\nsecond-path"}}))' "$S" \
+  | CLAUDE_PROJECT_DIR="$S" bash "$g" >"$work/trunk-guard-record-injection.out" 2>&1; rc=$?
+check "record-separator path fails closed" test "$rc" = 2
 case "$(uname -s)" in
   MINGW* | MSYS*)
     native_root="$(cygpath -w "$S")"
@@ -931,6 +977,10 @@ esac
 
 echo "== authority budgets classify root and nested contracts across path namespaces =="
 budget_hook="$S/.agents/tools/hooks/authority_doc_budget.sh"
+printf '{not-json' | CLAUDE_PROJECT_DIR="$S" bash "$budget_hook" >"$work/budget-invalid-json.out" 2>&1; rc=$?
+check "invalid budget payload stays advisory" test "$rc" = 0
+check "invalid budget payload is diagnosed" \
+  grep -qF "advisory skipped" "$work/budget-invalid-json.out"
 mkdir -p "$S/docs/budget-fixture"
 printf 'nested\nentry\n' > "$S/docs/budget-fixture/AGENTS.md"
 budget_root="$S"

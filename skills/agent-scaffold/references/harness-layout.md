@@ -23,7 +23,8 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/runtime/worktree.sh` | `.agents/tools/worktree.sh` | default profile only: worktree-per-change lifecycle |
 | `assets/runtime/hooks/trunk_edit_guard.sh` | `.agents/tools/hooks/trunk_edit_guard.sh` | default profile only: PreToolUse trunk-edit blocker |
 | `assets/runtime/hooks/authority_doc_budget.sh` | `.agents/tools/hooks/authority_doc_budget.sh` | PostToolUse AGENTS.md line/character-budget advisor |
-| `assets/runtime/hooks/hook-common.sh` + `hook-paths.py` | `.agents/tools/hooks/` | shared path parsing and normalization |
+| `assets/runtime/hooks/hook-launcher.sh` | `.agents/tools/hooks/hook-launcher.sh` | Git-owned cross-platform dispatch; selects Git Bash explicitly on Windows |
+| `assets/runtime/hooks/hook-common.sh` + `hook-paths.py` | `.agents/tools/hooks/` | single-pass stdin path parsing and normalization |
 | `assets/runtime/relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
 | `assets/runtime/symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, sync, and verification |
 | `assets/runtime/generate-subagents.py` | `.agents/tools/generate-subagents.py` | subagent projection + `--check` drift mode |

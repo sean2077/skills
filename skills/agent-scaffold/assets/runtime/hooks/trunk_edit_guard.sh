@@ -12,7 +12,8 @@
 # Reads the tool-call JSON on stdin and exits:
 #   0  allow
 #   2  block — the message on stderr tells the agent what to run instead
-# Any other exit is treated as a non-blocking error (fails open / allows).
+# Invalid or unparseable hook input exits 2 so a transport failure cannot turn a
+# protected edit into an allow decision. Other host/runtime failures stay visible.
 #
 # Only guards files in the project repo (same git-common-dir); nested/sibling
 # repos pass through, and gitignored paths (build output, caches) are never blocked.
@@ -33,14 +34,13 @@ source "$common"
 proj="$(hook_project_root 2>/dev/null || true)"
 [[ -n "$proj" ]] || { echo "trunk_edit_guard: cannot resolve project root, allowing" >&2; exit 0; }
 wt_cmd="${WORKTREE_GUARD_CMD:-bash .agents/tools/worktree.sh}"
-input="$(cat || true)"
 
 # Pull every file path the tool call would touch out of the hook JSON on stdin.
 # Handles Edit/Write/NotebookEdit (file_path/notebook_path/path) and apply_patch
 # style payloads (*** Add|Update|Delete File: …). The shared helper uses python
 # only for JSON parsing, then Git Bash/cygpath normalizes native Windows paths.
 extract_paths() {
-    hook_extract_paths "$input"
+    hook_extract_paths
 }
 
 check_path() {
@@ -96,11 +96,18 @@ EOF
     return 2
 }
 
+paths=""
+if ! paths="$(extract_paths)"; then
+    echo "trunk_edit_guard: cannot parse hook input safely; blocking the edit" >&2
+    exit 2
+fi
+
 blocked=0
 while IFS= read -r path; do
+    [[ -n "$path" ]] || continue
     if ! check_path "$path"; then
         blocked=2
     fi
-done < <(extract_paths)
+done <<<"$paths"
 
 exit "$blocked"

@@ -312,7 +312,9 @@ def managed_hook_pattern(root: Path) -> re.Pattern:
     )
 
 
-def validate_hook_config(path: Path, display_name: str) -> Dict[str, Any]:
+def validate_hook_config(
+    path: Path, display_name: str, *, strict_commands: bool = False
+) -> Dict[str, Any]:
     data = load_json(path, display_name)
     if not isinstance(data, dict):
         raise CoreError("{0}: top level must be a JSON object".format(display_name))
@@ -329,6 +331,10 @@ def validate_hook_config(path: Path, display_name: str) -> Dict[str, Any]:
             field = "hooks.{0}[{1}]".format(event, group_index)
             if not isinstance(group, dict):
                 raise CoreError("{0}: {1} must be a JSON object".format(display_name, field))
+            if "matcher" in group and not isinstance(group["matcher"], str):
+                raise CoreError(
+                    "{0}: {1}.matcher must be a string".format(display_name, field)
+                )
             entries = group.get("hooks")
             if entries is None:
                 continue
@@ -341,30 +347,56 @@ def validate_hook_config(path: Path, display_name: str) -> Dict[str, Any]:
                             display_name, field, hook_index
                         )
                     )
-                if "command" in hook and not isinstance(hook["command"], str):
+                hook_type = hook.get("type")
+                command = hook.get("command")
+                if "type" in hook and not isinstance(hook_type, str):
+                    raise CoreError(
+                        "{0}: {1}.hooks[{2}].type must be a string".format(
+                            display_name, field, hook_index
+                        )
+                    )
+                if "command" in hook and not isinstance(command, str):
                     raise CoreError(
                         "{0}: {1}.hooks[{2}].command must be a string".format(
+                            display_name, field, hook_index
+                        )
+                    )
+                if hook_type == "command" and (not isinstance(command, str) or not command):
+                    raise CoreError(
+                        "{0}: {1}.hooks[{2}] command hooks require a non-empty command".format(
+                            display_name, field, hook_index
+                        )
+                    )
+                if strict_commands and hook_type != "command":
+                    raise CoreError(
+                        "{0}: {1}.hooks[{2}] managed entries require type 'command'".format(
                             display_name, field, hook_index
                         )
                     )
     return data
 
 
-def hook_tuples(data: Dict[str, Any]) -> Set[Tuple[str, Any, str]]:
-    found: Set[Tuple[str, Any, str]] = set()
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def hook_tuples(data: Dict[str, Any]) -> Set[Tuple[str, str, str]]:
+    found: Set[Tuple[str, str, str]] = set()
     for event, groups in (data.get("hooks") or {}).items():
         for group in groups or []:
             if not isinstance(group, dict):
                 continue
-            matcher = group.get("matcher")
+            group_identity = canonical_json(
+                {key: value for key, value in group.items() if key != "hooks"}
+            )
             for hook in group.get("hooks") or []:
-                if isinstance(hook, dict) and "command" in hook:
-                    found.add((event, matcher, str(hook["command"])))
+                if isinstance(hook, dict):
+                    found.add((event, group_identity, canonical_json(hook)))
     return found
 
 
 def prepare_hooks(source: Path, profile: str) -> Dict[str, Any]:
-    data = validate_hook_config(source, str(source))
+    data = validate_hook_config(source, str(source), strict_commands=True)
     disabled = [] if profile == "default" else ["trunk_edit_guard"]
     for event, groups in list((data.get("hooks") or {}).items()):
         kept = []
@@ -391,33 +423,50 @@ def merge_hooks(existing: Dict[str, Any], addition: Dict[str, Any], target: Path
 
     def union(current: Sequence[Dict[str, Any]], incoming: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
         output = list(current or [])
-        seen = {hook.get("command") for hook in output}
+        seen = {canonical_json(hook) for hook in output}
         for hook in incoming or []:
-            if hook.get("command") not in seen:
+            identity = canonical_json(hook)
+            if identity not in seen:
                 output.append(hook)
-                seen.add(hook.get("command"))
+                seen.add(identity)
         return output
 
-    for event in ("PreToolUse", "PostToolUse"):
-        if event not in (addition.get("hooks") or {}):
+    def group_identity(group: Dict[str, Any]) -> str:
+        return canonical_json({key: value for key, value in group.items() if key != "hooks"})
+
+    for event, groups in list(existing["hooks"].items()):
+        if not isinstance(groups, list):
             continue
         cleaned = []
-        for original in existing["hooks"].get(event) or []:
+        for original in groups:
             if not isinstance(original, dict):
                 cleaned.append(original)
                 continue
             group = dict(original)
             group["hooks"] = [
-                hook for hook in group.get("hooks") or [] if not is_managed(hook.get("command", ""))
+                hook
+                for hook in group.get("hooks") or []
+                if not isinstance(hook, dict)
+                or not is_managed(hook.get("command", ""))
             ]
             if group["hooks"] or any(key not in {"matcher", "hooks"} for key in group):
                 cleaned.append(group)
+        if cleaned:
+            existing["hooks"][event] = cleaned
+        else:
+            existing["hooks"].pop(event, None)
+
+    for event in ("PreToolUse", "PostToolUse"):
+        if event not in (addition.get("hooks") or {}):
+            continue
+        cleaned = list(existing["hooks"].get(event) or [])
         for incoming in addition["hooks"].get(event) or []:
             index = next(
                 (
                     position
                     for position, current in enumerate(cleaned)
-                    if isinstance(current, dict) and current.get("matcher") == incoming.get("matcher")
+                    if isinstance(current, dict)
+                    and group_identity(current) == group_identity(incoming)
                 ),
                 -1,
             )
@@ -438,9 +487,20 @@ def verify_hooks(existing: Dict[str, Any], expected: Dict[str, Any], target: Pat
     actual_tuples = hook_tuples(existing)
     expected_tuples = hook_tuples(expected)
     owned = managed_hook_pattern(target)
-    managed_actual = {
-        item for item in actual_tuples if owned.search(item[2].replace("\\", "/"))
-    }
+    managed_actual: Set[Tuple[str, str, str]] = set()
+    for event, groups in (existing.get("hooks") or {}).items():
+        for group in groups or []:
+            if not isinstance(group, dict):
+                continue
+            group_key = canonical_json(
+                {key: value for key, value in group.items() if key != "hooks"}
+            )
+            for hook in group.get("hooks") or []:
+                if not isinstance(hook, dict):
+                    continue
+                command = str(hook.get("command", "")).replace("\\", "/")
+                if owned.search(command):
+                    managed_actual.add((event, group_key, canonical_json(hook)))
     return expected_tuples <= actual_tuples and managed_actual <= expected_tuples
 
 
@@ -1119,12 +1179,16 @@ def command_hooks(args: argparse.Namespace) -> int:
     if args.hooks_command == "merge":
         existing_path = Path(args.existing) if args.existing else None
         existing = validate_hook_config(existing_path, str(existing_path)) if existing_path and existing_path.exists() else {}
-        addition = validate_hook_config(Path(args.addition), args.addition)
+        addition = validate_hook_config(
+            Path(args.addition), args.addition, strict_commands=True
+        )
         write_json(Path(args.output), merge_hooks(existing, addition, Path(args.target)))
         return 0
     if args.hooks_command == "verify":
         existing = validate_hook_config(Path(args.existing), args.existing)
-        expected = validate_hook_config(Path(args.expected), args.expected)
+        expected = validate_hook_config(
+            Path(args.expected), args.expected, strict_commands=True
+        )
         return 0 if verify_hooks(existing, expected, Path(args.target)) else 1
     raise CoreError("unknown hooks command")
 

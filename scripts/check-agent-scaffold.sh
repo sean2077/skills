@@ -80,6 +80,12 @@ for hook in trunk_edit_guard authority_doc_budget; do
   [ -f "$file" ] || { fail "missing runtime hook: $hook.sh"; continue; }
   grep -qF 'hook-common.sh' "$file" || fail "$hook.sh does not source hook-common.sh"
 done
+launcher="$skill/assets/runtime/hooks/hook-launcher.sh"
+[ -f "$launcher" ] || fail "missing runtime hook launcher"
+grep -qF 'MINGW* | MSYS*) bash_bin=/usr/bin/bash' "$launcher" \
+  || fail "hook-launcher.sh no longer selects Git for Windows Bash explicitly"
+grep -qF 'unset GIT_DIR GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR' "$launcher" \
+  || fail "hook-launcher.sh leaks transient Git-alias repository identity into hook probes"
 common="$skill/assets/runtime/hooks/hook-common.sh"
 grep -qF '/../../..' "$common" || fail "hook-common.sh lost the 3-level install fallback"
 grep -qF 'rev-parse --show-toplevel' "$common" || fail "hook-common.sh lost the git-root fallback"
@@ -87,7 +93,11 @@ grep -qF 'cygpath -u' "$common" || fail "hook-common.sh lost Windows/MSYS path c
 
 for config in claude.settings.json codex.hooks.json; do
   file="$skill/assets/host/$config"
-  grep -q '"command": "bash ' "$file" || fail "$config does not invoke hooks through bash"
+  grep -qF 'alias.agent-scaffold-hook=!sh .agents/tools/hooks/hook-launcher.sh' "$file" \
+    || fail "$config does not enter hooks through the Git-owned launcher"
+  if grep -qF '"command": "bash ' "$file"; then
+    fail "$config still performs a bare bash PATH lookup"
+  fi
 done
 grep -qF '<!-- agent-scaffold:worktree:start -->' "$skill/assets/scaffold/AGENTS.harness.md" \
   || fail "AGENTS.harness.md lost the profile boundary"

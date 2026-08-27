@@ -53,6 +53,8 @@ HELPER_REPO="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
     || die "worktree helper is not installed inside a git repository"
 COMMON_GIT="$(git -C "$HELPER_REPO" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
     || die "could not resolve the repository common git directory"
+COMMON_GIT_CANON="$(cd "$COMMON_GIT" 2>/dev/null && pwd -P)" \
+    || die "could not canonicalize the repository common git directory"
 ROOT="$(dirname "$COMMON_GIT")"
 WT_BASE="$ROOT/.worktrees"
 TRUNK_DEFAULT="${WORKTREE_TRUNK:-main}"
@@ -94,7 +96,7 @@ share_dirs() {
 }
 
 primary_dir_for_trunk() {
-    git worktree list --porcelain | awk -v want="refs/heads/$1" '
+    git -C "$HELPER_REPO" worktree list --porcelain | awk -v want="refs/heads/$1" '
         /^worktree /{dir=substr($0,10)} /^branch /{if (substr($0,8)==want) {print dir; exit}}'
 }
 
@@ -154,9 +156,9 @@ worktree_is_registered() {
     temp_suffix="${REGISTRY#"$temp_prefix"}"
     [[ "$REGISTRY" == "$temp_prefix"* && -n "$temp_suffix" && -f "$REGISTRY" ]] \
         || die "mktemp returned an unsafe worktree registry path: ${REGISTRY:-<empty>}"
-    if ! git worktree list --porcelain -z >"$REGISTRY"; then
+    if ! git -C "$HELPER_REPO" worktree list --porcelain -z >"$REGISTRY"; then
         rm -f "$REGISTRY"
-        die "could not inspect the worktree registry after remove failed"
+        die "could not inspect the worktree registry"
     fi
     while IFS= read -r -d '' FIELD; do
         if [[ "$FIELD" == "worktree $TARGET" ]]; then
@@ -170,7 +172,7 @@ worktree_is_registered() {
 
 remove_done_worktree() {
     local WT="$1"
-    git worktree remove "$WT" && return 0
+    git -C "$HELPER_REPO" worktree remove "$WT" && return 0
 
     worktree_is_registered "$WT" \
         && die "worktree removal failed and '$WT' remains registered; refusing force removal. Worktree and branch kept"
@@ -202,6 +204,15 @@ cmd_done() {
         shift
     done
     WT="$(git -C "$WT" rev-parse --show-toplevel)" || die "--dir is not inside a git repository"
+    local WT_COMMON WT_COMMON_CANON
+    WT_COMMON="$(git -C "$WT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
+        || die "could not resolve --dir's repository identity"
+    WT_COMMON_CANON="$(cd "$WT_COMMON" 2>/dev/null && pwd -P)" \
+        || die "could not canonicalize --dir's repository identity"
+    [[ "$WT_COMMON_CANON" == "$COMMON_GIT_CANON" ]] \
+        || die "--dir belongs to a different repository than this worktree helper: $WT"
+    worktree_is_registered "$WT" \
+        || die "--dir is not an exact registered worktree of this repository: $WT"
     [[ -z "$(git -C "$WT" status --porcelain)" ]] || die "worktree is dirty, commit/stash first:
 $(git -C "$WT" status --short | head -10)"
     local BRANCH branch_rc=0
@@ -212,7 +223,7 @@ $(git -C "$WT" status --short | head -10)"
         [[ $branch_rc -eq 1 ]] || die "could not resolve the worktree branch"
         cd "$ROOT"
         remove_done_worktree "$WT"
-        git worktree prune
+        git -C "$HELPER_REPO" worktree prune
         log "done. removed clean detached release worktree: $WT"
         return 0
     fi
@@ -250,7 +261,7 @@ Never force-push from here — that is the user's call."
     remove_done_worktree "$WT"
     [[ $KEEP -eq 1 ]] || git branch -d "$BRANCH" 2>/dev/null \
         || log "WARN: branch $BRANCH not fully merged into $TRUNK - kept; delete: git branch -D $BRANCH"
-    git worktree prune
+    git -C "$HELPER_REPO" worktree prune
     log "done. (if your shell is still in the removed dir, run: cd $PD)"
 }
 

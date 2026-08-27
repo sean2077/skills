@@ -16,6 +16,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Added `spec-writing`, a focused skill for concise human-facing requirements and architecture documents that preserves settled meaning, keeps material rationale with the reader narrative, and routes working history to separate records.
 
+### Fixed
+
+- Made scaffold-owned Windows hooks enter through Git for Windows and select its Bash explicitly, avoiding accidental resolution to the native WSL launcher; hook payloads now parse stdin once without argv/environment-size exposure, and malformed guard input fails closed while the document-budget hook remains advisory.
+- Made hook reconciliation and verification compare complete managed hook/group JSON rather than command strings alone, so drift in `type`, `statusMessage`, or future execution fields is repaired and reported.
+- Bound `worktree.sh done --dir` to an exact registered worktree in the helper's own common Git directory before reading status or merging, preventing a foreign repository or same-named branch from crossing the lifecycle boundary.
+- Replaced symlink projections atomically without unlinking the prior projection first, preserving the old link or placeholder when replacement fails.
+
 ## [v6.0.0] — 2026-08-25
 
 ### Added
