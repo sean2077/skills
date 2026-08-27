@@ -782,8 +782,10 @@ git -C "$S" add -A && git -C "$S" commit -q -m harness
 ( cd "$S" && bash .agents/tools/worktree.sh new demo --type chore ) >/dev/null 2>&1
 check "worktree .worktrees/demo created"     test -d "$S/.worktrees/demo"
 ( cd "$S/.worktrees/demo" && echo hi > note.txt && git add -A && git commit -q -m "feat: note" \
-  && bash .agents/tools/worktree.sh "done" --no-push ) >/dev/null 2>&1
+  && bash .agents/tools/worktree.sh "done" --no-push ) >"$work/worktree-round-trip.out" 2>&1; rc=$?
+check "worktree done exits successfully"        test "$rc" = 0
 check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
+check "worktree branch removed after done"   test -z "$(git -C "$S" branch --list chore/demo)"
 merge_subject="$(git -C "$S" log -1 --format=%s)"
 check "merge commit landed on main"          test "$merge_subject" = "Merge branch 'chore/demo'"
 
