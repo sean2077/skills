@@ -104,6 +104,22 @@ grep -qF '<!-- agent-scaffold:worktree:start -->' "$skill/assets/scaffold/AGENTS
 grep -qF 'Third-party skills** follow project-owned placement and installation policy' \
   "$skill/assets/scaffold/AGENTS.harness.md" \
   || fail "AGENTS.harness.md lost project-owned third-party policy wording"
+grep -qF '### Project terminology (hard rule)' \
+  "$skill/assets/scaffold/AGENTS.harness.md" \
+  || fail "AGENTS.harness.md lost the project terminology contract"
+grep -qF 'Every Agent, project skill, and subagent' \
+  "$skill/assets/scaffold/AGENTS.harness.md" \
+  || fail "AGENTS.harness.md no longer applies terminology to every Agent surface"
+grep -qF 'Never seed an empty glossary.' \
+  "$skill/assets/scaffold/AGENTS.harness.md" \
+  || fail "AGENTS.harness.md lost lazy glossary creation"
+[ -f "$skill/references/terminology.md" ] \
+  || fail "missing terminology reference"
+[ -f "$repo/CONTEXT.md" ] \
+  || fail "dogfood project terminology source missing: CONTEXT.md"
+grep -qF '| Canonical project terminology and avoided aliases | [CONTEXT.md](CONTEXT.md) |' \
+  "$repo/AGENTS.md" \
+  || fail "dogfood AGENTS.md no longer declares CONTEXT.md as the terminology source"
 # shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
 if grep -qF 'they land as real dirs in `.claude/skills/`' \
   "$skill/assets/scaffold/AGENTS.harness.md" >/dev/null 2>&1; then

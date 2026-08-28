@@ -62,7 +62,10 @@ authority_laws_present() {
     && grep -qF '**Keep scopes honest.**' "$file" \
     && grep -qF 'directory structure alone never justifies one.' "$file" \
     && grep -qF '**Resolve conflicts explicitly.**' "$file" \
-    && grep -qF 'budget hook remains advisory; projects may override its default line and character limits' "$file"
+    && grep -qF 'budget hook remains advisory; projects may override its default line and character limits' "$file" \
+    && grep -qF '### Project terminology (hard rule)' "$file" \
+    && grep -qF 'Every Agent, project skill, and subagent' "$file" \
+    && grep -qF 'Never seed an empty glossary.' "$file"
 }
 # shellcheck disable=SC2317,SC2329
 no_partial_harness() {
@@ -642,6 +645,7 @@ check "package scripts are not scaffolded" no_fixed_text "$S/package.json" "gene
 check "greenfield creates no Codex config" test ! -e "$S/.codex/config.toml"
 check "greenfield creates no example source" test ! -e "$S/.agents/subagents/code-reviewer"
 check "greenfield creates no example projection" both_absent "$S/.claude/agents/code-reviewer.md" "$S/.codex/agents/code-reviewer.toml"
+check "greenfield creates no empty terminology source" test ! -e "$S/CONTEXT.md"
 check "AGENTS.md contains no project overview" no_fixed_text "$S/AGENTS.md" "## Project Overview"
 check "AGENTS.md starts at the managed boundary" grep -qF '<!-- agent-scaffold:start' "$S/AGENTS.md"
 check "AGENTS.md carries the common authority laws" authority_laws_present "$S/AGENTS.md"
@@ -1273,6 +1277,8 @@ check "verify rejects missing generator" test "$rc" != 0
 mv "$work/generate-subagents.missing.py" "$S/.agents/tools/generate-subagents.py"
 
 echo "== upgrade refreshes only current managed runtime =="
+printf '# Project-owned terminology\n' > "$S/CONTEXT.md"
+context_before="$(git hash-object "$S/CONTEXT.md")"
 printf '\n# runtime drift fixture\n' >> "$S/.agents/tools/worktree.sh"
 ( cd "$S" && bash "$H" apply ) >"$work/apply-runtime-drift.out" 2>&1; rc=$?
 check "apply rejects managed runtime drift" test "$rc" = 2
@@ -1289,6 +1295,7 @@ check "upgrade refreshes the drifted runtime" cmp -s \
   "$repo/skills/agent-scaffold/assets/runtime/worktree.sh" "$S/.agents/tools/worktree.sh"
 check "upgrade preserves project-owned Husky hook" test "$(git hash-object "$S/.husky/pre-commit")" = "$husky_before"
 check "upgrade preserves project-owned package.json" test "$(git hash-object "$S/package.json")" = "$package_before"
+check "upgrade preserves project-owned terminology" test "$(git hash-object "$S/CONTEXT.md")" = "$context_before"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "refreshed current layout verifies" test "$rc" = 0
 

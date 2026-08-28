@@ -25,6 +25,8 @@ and runs the subagent generator in every mutating mode.
 - Reconcile only exact scaffold-owned hook identities; preserve unrelated host config.
 - Keep formatter, hook-manager, package, CI, nested-contract, and example-agent
   choices project-owned.
+- Keep project terminology project-owned; route every Agent to its applicable
+  glossary from the managed contract.
 
 ## Modes
 
@@ -60,6 +62,7 @@ Read only the category needed for the current task:
 | Scaffold-owned host hooks, merge ownership, Codex project/hook trust | [`host-integration.md`](references/host-integration.md) |
 | Project-owned format-on-edit integration | [`format-hooks.md`](references/format-hooks.md) |
 | Root and nested authority-document policy | [`authority-docs.md`](references/authority-docs.md) |
+| Project terminology SSOT, glossary format, multi-context routing, and legacy names | [`terminology.md`](references/terminology.md) |
 | Subagent authoring, projection, and drift integration | [`subagents.md`](references/subagents.md) |
 | Importing hand-authored Claude/Codex agents | [`subagent-import.md`](references/subagent-import.md) |
 | Adopting an existing AGENTS/CLAUDE or host-agent setup | [`retrofit.md`](references/retrofit.md) |
