@@ -648,11 +648,10 @@ check "AGENTS.md carries the common authority laws" authority_laws_present "$S/A
 check "AGENTS.md keeps third-party policy project-owned" grep -qF "Third-party skills** follow project-owned placement and installation policy" "$S/AGENTS.md"
 # shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
 check "AGENTS.md omits unconditional third-party placement" no_fixed_text "$S/AGENTS.md" 'they land as real dirs in `.claude/skills/`'
-# The invariant is that stripping the worktree-only marker leaves a well-formed
-# closing cell — not any particular Role wording, which is free to be reworded.
-# shellcheck disable=SC2016  # backticks are literal Markdown in the expected table row
-check "managed table keeps its closing cell spacing" grep -qE '^\| `\.agents/tools/worktree\.sh` \| .+ \| ✅ \|$' "$S/AGENTS.md"
-check "managed table strips the worktree-only marker" no_fixed_text "$S/AGENTS.md" 'agent-scaffold:worktree-only'
+check "managed contract names relinker ownership" grep -qF '.agents/relink-skills.sh' "$S/AGENTS.md"
+check "managed contract names symlink-manager ownership" grep -qF '.agents/symlink-manager.py' "$S/AGENTS.md"
+check "managed contract keeps done push side effect" grep -qF 'merge, clean up, and ff-only push' "$S/AGENTS.md"
+check "managed contract strips worktree profile markers" no_fixed_text "$S/AGENTS.md" 'agent-scaffold:worktree:'
 check "resident skill README stays thin" test "$(wc -l < "$S/.agents/skills/README.md" | tr -d ' ')" -le 24
 check "resident skill README routes to depth" grep -qF 'references/harness-layout.md' "$S/.agents/skills/README.md"
 check "resident subagent README stays thin" test "$(wc -l < "$S/.agents/subagents/README.md" | tr -d ' ')" -le 26
@@ -777,34 +776,49 @@ check "foreign repository identity is explained" \
 check "foreign repository remains intact" test -f "$FOREIGN/keep.txt"
 check "foreign repository HEAD is unchanged" test "$(git -C "$FOREIGN" rev-parse HEAD)" = "$foreign_head"
 
-echo "== worktree round-trip =="
+echo "== worktree round-trip follows the primary worktree's active trunk =="
 git -C "$S" add -A && git -C "$S" commit -q -m harness
+main_before="$(git -C "$S" rev-parse main)"
+git -C "$S" checkout -q -b dev/v2.0
+primary_done_out="$work/worktree-primary-done.out"
+( cd "$S" && bash .agents/tools/worktree.sh "done" --dir "$S" --no-push ) >"$primary_done_out" 2>&1; rc=$?
+check "worktree done rejects the primary worktree" test "$rc" = 2
+check "primary worktree rejection is explicit" grep -qF -- "--dir is the primary worktree" "$primary_done_out"
 demo_create_out="$work/worktree-demo-create.out"
 ( cd "$S" && bash .agents/tools/worktree.sh new demo --type chore ) >"$demo_create_out" 2>&1; rc=$?
 check "worktree new exits successfully"         test "$rc" = 0
 check "worktree .worktrees/demo created"     test -d "$S/.worktrees/demo"
 CANONICAL_S="$(git -C "$S" rev-parse --show-toplevel)"
 DEMO_WT="$CANONICAL_S/.worktrees/demo"
-check "worktree new prints outside-worktree cleanup" \
-  grep -qF "cd \"$CANONICAL_S\" && bash \"$CANONICAL_S/.agents/tools/worktree.sh\" done --dir \"$DEMO_WT\" --trunk \"main\"" "$demo_create_out"
+check "worktree new prints the active trunk" \
+  grep -qF "cd \"$CANONICAL_S\" && bash \"$CANONICAL_S/.agents/tools/worktree.sh\" done --dir \"$DEMO_WT\" --trunk \"dev/v2.0\"" "$demo_create_out"
+check "worktree new records the active trunk" \
+  test "$(git -C "$S" config --get branch.chore/demo.agentScaffoldTrunk)" = "dev/v2.0"
 ( cd "$DEMO_WT" && echo hi > note.txt && git add -A && git commit -q -m "feat: note" ) >/dev/null 2>&1
+git -C "$S" checkout -q main
+DEV_TRUNK_WT="$work/dev-v2-trunk"
+git -C "$S" worktree add -q "$DEV_TRUNK_WT" dev/v2.0
 ( cd "$S" && bash .agents/tools/worktree.sh "done" --dir "$DEMO_WT" --no-push ) >"$work/worktree-round-trip.out" 2>&1; rc=$?
 check "worktree done exits successfully"        test "$rc" = 0
 check "worktree removed after done"          test ! -d "$S/.worktrees/demo"
 check "worktree branch removed after done"   test -z "$(git -C "$S" branch --list chore/demo)"
-merge_subject="$(git -C "$S" log -1 --format=%s)"
-check "merge commit landed on main"          test "$merge_subject" = "Merge branch 'chore/demo'"
+check "worktree done leaves main unchanged"  test "$(git -C "$S" rev-parse main)" = "$main_before"
+merge_subject="$(git -C "$DEV_TRUNK_WT" log -1 --format=%s)"
+check "merge commit landed on dev/v2.0"       test "$merge_subject" = "Merge branch 'chore/demo'"
+git -C "$S" worktree remove "$DEV_TRUNK_WT"
+git -C "$S" checkout -q dev/v2.0
 
-echo "== Git-owned hook dispatch preserves cross-worktree identity =="
+echo "== Git-owned hook dispatch preserves active-trunk identity =="
 ( cd "$S" && bash .agents/tools/worktree.sh new hook-identity --type fix ) >/dev/null 2>&1
 HOOK_IDENTITY_WT="$S/.worktrees/hook-identity"
 identity_guard_command="$(python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); print(d["hooks"]["PreToolUse"][0]["hooks"][0]["command"])' "$HOOK_IDENTITY_WT/.codex/hooks.json")"
 python -c 'import json,sys; print(json.dumps({"tool_input":{"file_path":sys.argv[1]}}))' "$S/AGENTS.md" \
   | ( cd "$HOOK_IDENTITY_WT" && bash -c "$identity_guard_command" ) >"$work/hook-cross-worktree.out" 2>&1; rc=$?
 check "launcher classifies the target worktree rather than its own branch" test "$rc" = 2
-check "cross-worktree block names main" grep -qF "trunk branch 'main'" "$work/hook-cross-worktree.out"
+check "cross-worktree block names dev/v2.0" grep -qF "active trunk branch 'dev/v2.0'" "$work/hook-cross-worktree.out"
 ( cd "$HOOK_IDENTITY_WT" && bash .agents/tools/worktree.sh "done" --no-push ) >/dev/null 2>&1
 check "hook identity fixture worktree is cleaned" test ! -d "$HOOK_IDENTITY_WT"
+git -C "$S" checkout -q main
 
 echo "== detached release worktree uses guarded done cleanup =="
 release_out="$work/worktree-release-create.out"
