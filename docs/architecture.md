@@ -34,7 +34,7 @@ Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata
 | `scripts/p0_runtime/{common,skill_eval,workctl}.py` | Private `skill-eval` and public `work-protocol` runtime packages | Run `python scripts/generate_p0_runtimes.py`; keep the public/private publication boundary intact. |
 | `.agents/skills/<name>/` | `.claude/skills/<name>` real-directory symlink projections | Run `.agents/relink-skills.sh`; preserve unrelated entries and fail on ownership conflicts. |
 | `.agents/subagents/<name>/` | `.claude/agents/*.md` and `.codex/agents/*.toml` | Run `.agents/tools/generate-subagents.py`; generated projections are not edit targets. |
-| The bundled `agent-scaffold` assets | Managed copies under `.agents/tools/` and related harness files | Change the skill-owned source and run `agent-scaffold upgrade`; direct edits are drift. |
+| The `agent-scaffold` catalog skill assets | Scaffold runtime under `.agents/tools/` and related harness files | Change the catalog skill source and run `agent-scaffold upgrade`; direct edits are drift. |
 
 `CLAUDE.md` is a tracked symlink to `AGENTS.md`. On Windows, CI enables native symlink checkout, rematerializes `CLAUDE.md`, and verifies the link before testing.
 
@@ -57,7 +57,7 @@ The [harness constraint policy](harness-constraint-policy.md) is authoritative f
 | Frontmatter, names, README coverage, references, manifests, and generic catalog rules | `scripts/validate_skills.py` and focused fixtures |
 | High-risk skill-specific executable invariants | Registered `scripts/contracts/<skill>.py` modules and targeted tests |
 | Generated runtime parity and behavior | Runtime generators plus P0, hardening, and migration workflow tests |
-| Official Agent Skills format | Pinned `skills-ref` validation for every public skill and the private `skill-eval` skill |
+| Official Agent Skills format | Pinned `skills-ref` validation for every catalog skill and the `skill-eval` project skill |
 | Scaffold shape, managed drift, symlinks, hooks, and throwaway installation | Agent-scaffold core, static, and E2E checks |
 | Installer discovery and payload fidelity | The audited `skills` CLI discovery/install smoke tests and byte comparison in CI |
 | Shell and platform behavior | ShellCheck, the Linux/macOS/Windows matrix, and the separate Python 3.8 runtime-floor job |
@@ -73,7 +73,7 @@ Release-facing changes accumulate under `CHANGELOG.md` Unreleased. After the rel
 
 | Change | Start with |
 |---|---|
-| Public skill route, workflow, reference, script, or asset | The affected `skills/<name>/` source and its targeted contract/evaluation |
+| Catalog skill route, workflow, reference, script, or asset | The affected `skills/<name>/` source and its targeted contract/evaluation |
 | Shared deterministic runtime logic | `scripts/workflow_runtime/` or `scripts/p0_runtime/`, then regenerate |
 | Project harness tool, hook, or projection | The owning `agent-scaffold` asset or `.agents/` SSOT—not the managed/generated copy |
 | Support, trust, installer, or host claim | `docs/compatibility.md` with dated first-party evidence |

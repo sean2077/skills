@@ -39,6 +39,7 @@
 | Host, installer, trust, and certification claims | [docs/compatibility.md](docs/compatibility.md) |
 | Documentation ownership, evidence, and freshness | [docs/documentation-maintenance.md](docs/documentation-maintenance.md) |
 | Mechanical-control selection | [docs/harness-constraint-policy.md](docs/harness-constraint-policy.md) |
+| Canonical project terminology and avoided aliases | [CONTEXT.md](CONTEXT.md) |
 | Pending and historical release changes | [CHANGELOG.md](CHANGELOG.md) |
 
 <!-- agent-scaffold:start — managed; keep project prose outside; upgrade refreshes this block. -->
@@ -70,12 +71,23 @@ The trunk guard blocks non-ignored project-file edits in the primary worktree, r
 
 The authority-document budget hook remains advisory; projects may override its default line and character limits.
 
+### Project terminology (hard rule)
+
+Every Agent, project skill, and subagent uses the canonical terminology source declared in project-owned `AGENTS.md` prose. If none is declared, use root `CONTEXT.md`; root `CONTEXT-MAP.md` may route multi-context repositories to context-local `CONTEXT.md` files.
+
+- **Load only what applies.** Before naming or interpreting project concepts, read the declared glossary or map and only the relevant context file.
+- **Use canonical terms.** Use them in project-controlled code, APIs, tests, docs, plans, and commits. Treat `_Avoid_` names as migration/search aliases; preserve externally fixed names only at compatibility boundaries.
+- **Close vocabulary drift.** When a durable concept, ambiguity, or synonym appears, resolve it against repository evidence and project-owner intent, then update the applicable glossary in the same change. Do not silently introduce a second name.
+- **Keep glossaries focused.** Define project-specific concepts briefly and without behavior, architecture, or decision detail.
+
+If no source is declared, adopt an existing project glossary rather than duplicating it; if none exists, create root `CONTEXT.md` only when the first durable project term is resolved. Never seed an empty glossary.
+
 ### Sources and projections
 
 - Edit project skills in `.agents/skills/<name>/`, then run `bash .agents/relink-skills.sh`; commit source and symlink.
 - Edit project subagents in `.agents/subagents/<name>/`, then run `python .agents/tools/generate-subagents.py`; commit source and projections.
 - Do not hand-edit harness projections: `CLAUDE.md`, `.claude/skills/<name>` entries owned by `.agents/skills/`, `.claude/agents/*.md`, or `.codex/agents/*.toml`.
-- Do not hand-edit scaffold runtime: `.agents/tools/**`, `.agents/relink-skills.sh`, or `.agents/symlink-manager.py`. Refresh it from the bundled skill with `agent-scaffold upgrade`, then run `agent-scaffold verify`.
+- Do not hand-edit scaffold runtime: `.agents/tools/**`, `.agents/relink-skills.sh`, or `.agents/symlink-manager.py`. Refresh it with `agent-scaffold upgrade`, then run `agent-scaffold verify`.
 - **Third-party skills** follow project-owned placement and installation policy. The relinker preserves unrelated names and rejects same-name conflicts.
 
 For Codex, trust the project, confirm generated agents are discoverable, and review each exact hook definition in `/hooks`; re-review changed definitions. Claude checkpoints do not rewind symlinked or hard-linked targets (`CLAUDE.md`, `.claude/skills/*`); inspect and restore the real target with Git.

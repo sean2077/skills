@@ -23,7 +23,7 @@ Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix w
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
-| [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
+| [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, lean authority and terminology contracts, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
 | [ai-slop-cleaner](skills/ai-slop-cleaner/) | Perform behavior-preserving, bounded cleanup of duplication, dead code, needless abstraction, boundary leaks, and weak coverage with explicit verification. | Engineering, Refactoring |
 | [analyze](skills/analyze/) | Explain repository behavior or investigate failures through one read-only evidence workflow with ranked synthesis, competing hypotheses, falsification, and discriminating probes. | Engineering, Analysis |
 | [autopilot](skills/autopilot/) | Deliver authorized work end to end with a proportional native loop, selective bounded delegation, and persistent state only when explicit resume, handoff, revision, or audit semantics add value. | Python, Delivery |
@@ -65,6 +65,7 @@ The catalog is read directly from `skills/`; there are no generated `.claude/ski
 | Check host, installer, trust, and support claims | [Compatibility and verification matrix](docs/compatibility.md) |
 | Maintain documentation and evidence freshness | [Documentation maintenance policy](docs/documentation-maintenance.md) |
 | Decide when mechanical controls justify their cost | [Harness constraint policy](docs/harness-constraint-policy.md) |
+| Use the repository's canonical terminology and avoided aliases | [Project language](CONTEXT.md) |
 | Follow repository-level Agent rules | [Agent contract](AGENTS.md) |
 | Review release history and pending changes | [Changelog](CHANGELOG.md) |
 

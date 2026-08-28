@@ -119,11 +119,11 @@ python scripts/generate_workflow_runtimes.py
 python scripts/generate_p0_runtimes.py
 ```
 
-Review the generated diff, then rerun the corresponding `--check` command and behavior tests. For scaffold-owned copies under `.agents/tools/`, edit the bundled `agent-scaffold` source and use `agent-scaffold upgrade`; for project skills and subagents, use the relink/generator commands documented in the managed `AGENTS.md` block.
+Review the generated diff, then rerun the corresponding `--check` command and behavior tests. For scaffold runtime under `.agents/tools/`, edit the `agent-scaffold` catalog skill source and use `agent-scaffold upgrade`; for project skills and subagents, use the relink/generator commands documented in the managed `AGENTS.md` block.
 
 ## Installer checks
 
-The audited reproducibility pin is `skills@1.5.17`; the current upstream release is tracked separately in [compatibility.md](compatibility.md). After changing public skill names, frontmatter, catalog metadata, or layout:
+The audited reproducibility pin is `skills@1.5.17`; the current upstream release is tracked separately in [compatibility.md](compatibility.md). After changing catalog skill names, frontmatter, catalog metadata, or layout:
 
 1. Run local root discovery with the audited pin.
 2. Install into a fresh temporary Git repository for the intended target.

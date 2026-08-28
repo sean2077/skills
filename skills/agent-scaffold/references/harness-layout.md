@@ -34,9 +34,9 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/scaffold/agents-skills.README.md` | `.agents/skills/README.md` if missing | lean ownership boundary |
 | `assets/scaffold/agents-subagents.README.md` | `.agents/subagents/README.md` if missing | lean ownership boundary |
 
-Project prose, nested authority-document structure, subagent examples, Codex settings,
-package scripts, and CI/hook-manager integration are reference recipes rather than installed
-templates. Existing project-owned copies are preserved on upgrade. Formatter, linter, test, and
+Project prose, terminology files, nested authority-document structure, subagent examples,
+Codex settings, package scripts, and CI/hook-manager integration are reference recipes rather than
+installed templates. Existing project-owned copies are preserved on upgrade. Formatter, linter, test, and
 code-generation hooks likewise stay outside `.agents/tools/`; see
 [format hooks](format-hooks.md) and
 [subagents](subagents.md#project-owned-drift-integration).
