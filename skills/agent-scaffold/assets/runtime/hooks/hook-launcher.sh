@@ -39,10 +39,10 @@ else
     esac
 fi
 
-[ -n "$bash_bin" ] && [ -x "$bash_bin" ] || {
+if [ -z "$bash_bin" ] || [ ! -x "$bash_bin" ]; then
     printf 'hook-launcher: supported Bash is unavailable; install Git for Windows or set AGENT_SCAFFOLD_BASH\n' >&2
     exit "$failure_status"
-}
+fi
 
 # A !-alias exports repository-local Git discovery variables. They are correct
 # for locating the launcher, but would pin every nested git -C probe to the
