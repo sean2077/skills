@@ -19,7 +19,7 @@ export PYTHONDONTWRITEBYTECODE=1
 
 ## Worktree flow
 
-Never edit `main` directly. The scaffold-managed rule and escape-hatch boundary in [AGENTS.md](../AGENTS.md#worktree-per-change-hard-rule) are authoritative.
+Never edit the primary worktree directly. Its checked-out branch is the active trunk unless `--trunk` overrides it; the scaffold-managed rule and escape-hatch boundary in [AGENTS.md](../AGENTS.md#worktree-per-change-hard-rule) are authoritative.
 
 ```bash
 bash .agents/tools/worktree.sh new docs-example
@@ -35,7 +35,7 @@ Leave the target worktree before invoking cleanup. This is required for reliable
 
 `done` is not a local-only cleanup command: the scaffold-managed contract defines it as merge-to-local-trunk, cleanup, and an ff-only push. Run it only when that publication step is intended.
 
-Before editing, record the exact local trunk commit used to create the worktree. When publication is intended, also fetch and compare `origin/main`; replay the change if the target trunk advanced.
+Before editing, record the exact local active-trunk commit used to create the worktree. When publication is intended, also fetch and compare the corresponding remote trunk; replay the change if the target trunk advanced.
 
 ## Select checks by changed surface
 

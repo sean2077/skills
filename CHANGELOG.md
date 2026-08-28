@@ -8,6 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Reduced the scaffold-managed `AGENTS.md` harness block while preserving its worktree, authority, ownership, trust, and checkpoint boundaries.
 - Moved the live Agent Skill host adapter into `evals/agent-skills/host_adapter.py` and updated routing suites to invoke it through the repository's Python runtime instead of requiring a user-level `PATH` installation.
 - Recast `deep-interview`'s one-to-three question range as a soft default, allowing larger structured batches for independent low-effort intake while preserving sequential probing for branching or consequential decisions.
 - Extended `spec-writing` to preserve semantic boundaries, distinguish current from target behavior, compare material implementation options, resolve detail against the project's authority model, and keep only high-value rationale in the reader document.
@@ -18,6 +19,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Made the primary worktree's checked-out branch the default active trunk, recorded that trunk per generated change branch for `done`, and guarded the primary worktree by Git role rather than fixed branch names.
 - Made `worktree.sh done` leave and target worktrees explicitly in its generated guidance, validate retry settings before merge or push, retry transient Windows sharing violations while the worktree remains registered and clean, and retry only empty residual directories after Git unregisters them, without force or recursive deletion.
 - Made scaffold-owned Windows hooks enter through Git for Windows and select its Bash explicitly, avoiding accidental resolution to the native WSL launcher; hook payloads now parse stdin once without argv/environment-size exposure, and malformed guard input fails closed while the document-budget hook remains advisory.
 - Made hook reconciliation and verification compare complete managed hook/group JSON rather than command strings alone, so drift in `type`, `statusMessage`, or future execution fields is repaired and reported.

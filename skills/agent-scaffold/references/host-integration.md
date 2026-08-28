@@ -18,7 +18,7 @@ Both scaffold-owned hooks read the tool-call JSON on **stdin**. `hook-paths.py` 
 
 - Installed and wired only by `--profile default`; `--profile light` removes the scaffold-owned wiring.
 - **Exit 0** allow · **exit 2** block (message on stderr). Invalid hook transport/input also exits 2; other unexpected host errors are reported according to host semantics.
-- Blocks an edit to a file in a worktree whose branch is a **trunk** (`main` / `master` / `release/*` / `maintenance/*`), unless an escape hatch is active.
+- Blocks non-ignored project edits in the **primary worktree**; its checked-out branch is the active trunk regardless of branch name. Linked worktrees pass unless another guard applies.
 - **Escape hatches** (only when the user explicitly authorizes a trunk edit):
   - `WORKTREE_ALLOW_TRUNK_EDIT=1` — one-shot env bypass.
   - `touch <repo>/.claude/allow-trunk-edit` — flag file, auto-expires **2 h** (mtime check `now - mtime <= 7200`); re-touch to renew.

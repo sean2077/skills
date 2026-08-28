@@ -122,6 +122,7 @@ The runtime still partitions entries by **managed target (ours) vs unrelated ent
 
 ## Runtime workflow troubleshooting
 
+- `worktree.sh new` resolves trunk as `--trunk`, then `WORKTREE_TRUNK`, then the primary worktree's current branch, and records the result on the generated branch. `done` reuses that record even if the primary worktree later switches branches; pass `--trunk` to override it explicitly. Change worktrees created by an older helper have no record, so pass their intended `--trunk` when finishing them.
 - If `relink-skills.sh` reports a same-name conflict, the differing real directory or unrelated
   symlink in `.claude/skills/` remains untouched. Rename one owner and rerun the relinker.
 - If `worktree.sh done` reports a rejected push, the feature worktree and branch remain available.

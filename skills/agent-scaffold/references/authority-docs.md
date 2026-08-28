@@ -78,9 +78,7 @@ block:
 - Unbalanced, duplicated, or reversed markers → abort before target mutation; repair the marker
   pair manually, then rerun `plan` or the requested install/upgrade command.
 
-Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade`
-refreshes everything between them. The template's inner worktree boundary is installer-owned:
-`--profile light` removes that complete policy and its worktree-only layout rows.
+Keep project prose **outside** the `<!-- agent-scaffold:start … end -->` markers; `upgrade` refreshes everything between them. The template's inner worktree boundary is installer-owned: `--profile light` removes that complete policy.
 
 The managed template uses semantic source lines: one paragraph, list item, table row, or command per
 physical line. It does not hard-wrap prose to a fixed display width. The installer applies this

@@ -113,6 +113,20 @@ fi
 worktree_helper="$skill/assets/runtime/worktree.sh"
 grep -qF 'removed clean detached release worktree' "$worktree_helper" \
   || fail "worktree.sh lost guarded detached-release cleanup"
+# shellcheck disable=SC2016  # the command substitution is literal source text
+grep -qF 'branch="$(git -C "$ROOT" symbolic-ref --short -q HEAD' "$worktree_helper" \
+  || fail "worktree.sh no longer derives the default trunk from the primary worktree"
+grep -qF 'agentScaffoldTrunk' "$worktree_helper" \
+  || fail "worktree.sh no longer records each generated branch's trunk"
+if grep -qF 'WORKTREE_TRUNK:-main' "$worktree_helper" >/dev/null 2>&1; then
+  fail "worktree.sh hard-codes main as the fallback trunk"
+fi
+trunk_guard="$skill/assets/runtime/hooks/trunk_edit_guard.sh"
+grep -qF 'active trunk branch' "$trunk_guard" \
+  || fail "trunk_edit_guard.sh lost dynamic active-trunk diagnostics"
+if grep -qF 'main | master | release/* | maintenance/*' "$trunk_guard" >/dev/null 2>&1; then
+  fail "trunk_edit_guard.sh still classifies trunk by branch-name patterns"
+fi
 if grep -qF 'git worktree remove --force' "$worktree_helper" >/dev/null 2>&1; then
   fail "worktree.sh tells users to force-remove release worktrees"
 fi

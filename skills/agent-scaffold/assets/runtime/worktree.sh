@@ -2,10 +2,11 @@
 # worktree.sh — one-command worktree-per-change lifecycle, the mechanical half
 # of trunk_edit_guard.sh. Installed into a project by the agent-scaffold skill.
 #
-# Discipline (why this exists): never edit a trunk worktree (main / release/*)
-# directly. Every change starts in its own .worktrees/<name> branch cut from the
-# local trunk tip, is merged back into the local trunk, and is cleaned up — with
-# a fast-forward-only push and no history rewrites.
+# Discipline (why this exists): never edit the primary worktree directly. Its
+# checked-out branch is the active trunk, regardless of branch name. Every change
+# starts in its own .worktrees/<name> branch cut from that trunk, is merged back
+# into the recorded trunk, and is cleaned up — with a fast-forward-only push and
+# no history rewrites.
 #
 # Subcommands:
 #   new <name> [--type feat|fix|docs|chore] [--trunk <branch>]
@@ -29,7 +30,8 @@
 # and WORKTREE_REMOVE_RETRY_DELAY_SECONDS (default 1). Retries never use --force
 # or recursive deletion; an unregistered residue is removed only when empty.
 #
-# Trunk defaults to $WORKTREE_TRUNK or "main"; override per-call with --trunk.
+# Trunk resolution: --trunk, then $WORKTREE_TRUNK, then the primary worktree
+# branch. `new` records the result so `done` returns to the same trunk.
 # Push is fast-forward-only; it never force-pushes — that stays the user's call.
 # ---8<--- help ends here
 set -euo pipefail
@@ -50,7 +52,7 @@ if [[ $# -eq 1 && ( "$1" == -h || "$1" == --help ) ]]; then
 fi
 
 # Repo anchors come from the installed helper, not the caller's current directory.
-# COMMON_GIT = shared git dir; ROOT = main worktree (share source).
+# COMMON_GIT = shared git dir; ROOT = primary worktree (share source).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)" \
     || die "could not resolve the installed helper directory"
 HELPER_REPO="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
@@ -61,7 +63,21 @@ COMMON_GIT_CANON="$(cd "$COMMON_GIT" 2>/dev/null && pwd -P)" \
     || die "could not canonicalize the repository common git directory"
 ROOT="$(dirname "$COMMON_GIT")"
 WT_BASE="$ROOT/.worktrees"
-TRUNK_DEFAULT="${WORKTREE_TRUNK:-main}"
+
+default_trunk() {
+    local branch
+    if [[ -n "${WORKTREE_TRUNK:-}" ]]; then
+        printf '%s\n' "$WORKTREE_TRUNK"
+        return 0
+    fi
+    branch="$(git -C "$ROOT" symbolic-ref --short -q HEAD 2>/dev/null)" \
+        || die "primary worktree is detached; check out the intended trunk or pass --trunk <branch>"
+    printf '%s\n' "$branch"
+}
+
+recorded_trunk_for() {
+    git -C "$ROOT" config --get "branch.$1.agentScaffoldTrunk" 2>/dev/null || true
+}
 
 ensure_worktrees_ignored() {
     git -C "$ROOT" check-ignore -q .worktrees 2>/dev/null && return 0
@@ -90,7 +106,7 @@ share_dirs() {
         [[ -e "$wt/$d" ]] && { log "WARN: '$d' already present in worktree, skipping share"; continue; }
         mkdir -p "$wt/$(dirname "$d")"
         if cp -al "$ROOT/$d" "$wt/$d" 2>/dev/null; then
-            log "shared $d ← main worktree (hardlinked, zero new disk)"
+            log "shared $d ← primary worktree (hardlinked, zero new disk)"
         else
             cp -a "$ROOT/$d" "$wt/$d"
             log "WARN: hardlink unsupported here - copied $d (uses disk; not a zero-cost share)"
@@ -118,12 +134,14 @@ cmd_new() {
     [[ "$NAME" =~ ^[a-z][a-z0-9-]{1,46}[a-z0-9]$ ]] \
         || die "name must be lowercase kebab-case, 3-48 chars (got: ${NAME:-<empty>})"
     case "$TYPE" in feat|fix|docs|chore) ;; *) die "--type feat|fix|docs|chore" ;; esac
-    [[ -n "$TRUNK" ]] || TRUNK="$TRUNK_DEFAULT"
+    [[ -n "$TRUNK" ]] || TRUNK="$(default_trunk)"
     git -C "$ROOT" show-ref --verify -q "refs/heads/$TRUNK" || die "no local trunk branch '$TRUNK'"
     local BRANCH="$TYPE/$NAME" WTDIR="$WT_BASE/$NAME"
     [[ ! -e "$WTDIR" ]] || die "already exists: $WTDIR"
     ensure_worktrees_ignored
     git -C "$ROOT" worktree add "$WTDIR" -b "$BRANCH" "$TRUNK"
+    git -C "$ROOT" config "branch.$BRANCH.agentScaffoldTrunk" "$TRUNK" \
+        || die "created $WTDIR but could not record its trunk; rerun done with --trunk \"$TRUNK\""
     share_dirs "$WTDIR"
     log "ready: $WTDIR  (branch $BRANCH ← $TRUNK tip)"
     log "when done, leave it before cleanup:"
@@ -277,7 +295,7 @@ cmd_done() {
     done
     validate_remove_retry_config
     WT="$(git -C "$WT" rev-parse --show-toplevel)" || die "--dir is not inside a git repository"
-    local WT_COMMON WT_COMMON_CANON
+    local WT_COMMON WT_COMMON_CANON WT_GIT_DIR WT_GIT_DIR_CANON
     WT_COMMON="$(git -C "$WT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
         || die "could not resolve --dir's repository identity"
     WT_COMMON_CANON="$(cd "$WT_COMMON" 2>/dev/null && pwd -P)" \
@@ -286,6 +304,12 @@ cmd_done() {
         || die "--dir belongs to a different repository than this worktree helper: $WT"
     worktree_is_registered "$WT" \
         || die "--dir is not an exact registered worktree of this repository: $WT"
+    WT_GIT_DIR="$(git -C "$WT" rev-parse --path-format=absolute --git-dir 2>/dev/null)" \
+        || die "could not resolve --dir's worktree git directory"
+    WT_GIT_DIR_CANON="$(cd "$WT_GIT_DIR" 2>/dev/null && pwd -P)" \
+        || die "could not canonicalize --dir's worktree git directory"
+    [[ "$WT_GIT_DIR_CANON" != "$COMMON_GIT_CANON" ]] \
+        || die "--dir is the primary worktree; done only finishes linked change or release worktrees"
     local CALLER_TOP=""
     CALLER_TOP="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
     case "$(uname -s)" in
@@ -296,7 +320,7 @@ cmd_done() {
     esac
     [[ -z "$(git -C "$WT" status --porcelain)" ]] || die "worktree is dirty, commit/stash first:
 $(git -C "$WT" status --short | head -10)"
-    local BRANCH branch_rc=0
+    local BRANCH RECORDED_TRUNK="" branch_rc=0
     if BRANCH="$(git -C "$WT" symbolic-ref --short -q HEAD)"; then
         :
     else
@@ -308,11 +332,16 @@ $(git -C "$WT" status --short | head -10)"
         log "done. removed clean detached release worktree: $WT"
         return 0
     fi
-    case "$BRANCH" in
-        main|master|release/*|maintenance/*)
-            die "this is a trunk worktree ($BRANCH) — done only finishes feature/fix worktrees" ;;
-    esac
-    [[ -n "$TRUNK" ]] || TRUNK="$TRUNK_DEFAULT"
+    RECORDED_TRUNK="$(recorded_trunk_for "$BRANCH")"
+    if [[ -z "$TRUNK" ]]; then
+        if [[ -n "$RECORDED_TRUNK" ]]; then
+            TRUNK="$RECORDED_TRUNK"
+        else
+            TRUNK="$(default_trunk)"
+        fi
+    fi
+    [[ "$BRANCH" != "$TRUNK" ]] \
+        || die "target worktree checks out trunk '$TRUNK' — done only finishes change worktrees"
     git -C "$ROOT" show-ref --verify -q "refs/heads/$TRUNK" || die "trunk '$TRUNK' does not exist, pass --trunk"
     local PD; PD="$(primary_dir_for_trunk "$TRUNK")"
     [[ -n "$PD" ]] || die "no worktree has '$TRUNK' checked out (git worktree list); check it out somewhere first"
