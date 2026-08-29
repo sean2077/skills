@@ -2,6 +2,10 @@
 
 This file is the canonical glossary for repository-specific concepts. It defines language, not implementation, workflow, or architecture; follow the owning sources for those details.
 
+## Canonical term languages
+
+- `en`
+
 ## Language
 
 **Catalog skill**:

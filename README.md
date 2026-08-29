@@ -65,7 +65,7 @@ The catalog is read directly from `skills/`; there are no generated `.claude/ski
 | Check host, installer, trust, and support claims | [Compatibility and verification matrix](docs/compatibility.md) |
 | Maintain documentation and evidence freshness | [Documentation maintenance policy](docs/documentation-maintenance.md) |
 | Decide when mechanical controls justify their cost | [Harness constraint policy](docs/harness-constraint-policy.md) |
-| Use the repository's canonical terminology and avoided aliases | [Project language](CONTEXT.md) |
+| Use the repository's canonical terminology, language equivalents, and avoided names | [Project language](CONTEXT.md) |
 | Follow repository-level Agent rules | [Agent contract](AGENTS.md) |
 | Review release history and pending changes | [Changelog](CHANGELOG.md) |
 
