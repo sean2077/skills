@@ -1,6 +1,6 @@
 ---
 name: analyze
-description: Use for read-only repository explanation or causal investigation when the answer requires cross-file evidence, competing hypotheses, or a discriminating probe before any change.
+description: Use for read-only repository explanation or causal investigation when the answer requires cross-file evidence, competing hypotheses, or a discriminating probe before any change. Not for defect review of a concrete change set; use code-review.
 ---
 
 # analyze
