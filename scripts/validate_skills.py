@@ -92,6 +92,7 @@ __all__ = [
     "validate_project_doc_method_cards",
     "validate_project_doc_numbering_semantics",
     "validate_project_docs_organizer_contract",
+    "validate_readme_catalog_count",
     "validate_repository_release_automation_contract",
     "validate_resident_contract",
     "validate_semver_automation_contract",
@@ -395,6 +396,24 @@ def validate_npx_payload_contract(workflow_text: str | None = None) -> None:
         )
 
 
+def validate_readme_catalog_count(readme_text: str, skill_count: int) -> None:
+    """Keep any catalog count declared in the README aligned with skills/.
+
+    The count is repository-derived inventory data, not prose opinion: once the
+    README states it, adding or removing a skill must update it in the same
+    change. A README that declares no count has nothing to drift.
+    """
+    match = re.search(r"catalog of (\d+) reusable", readme_text)
+    if match is None:
+        return
+    declared = int(match.group(1))
+    if declared != skill_count:
+        errors.append(
+            f"README declares a catalog of {declared} skills but skills/ contains "
+            f"{skill_count}; update the declared count in the same change"
+        )
+
+
 def validate_grouping_manifest(skill_dirs: list[Path]) -> None:
     """Keep npx skills grouping metadata aligned with the catalog."""
     if not GROUPING_MANIFEST.exists():
@@ -450,6 +469,7 @@ def main() -> int:
     metadata_prose_chars = 0
 
     validate_grouping_manifest(skill_dirs)
+    validate_readme_catalog_count(readme, len(skill_dirs))
     validate_npx_discovery_contract()
     validate_npx_payload_contract()
     validate_repository_release_automation_contract()

@@ -18,7 +18,7 @@ Review baseline:
 | Host wiring | `agent-scaffold` static, core, and throwaway-repository E2E checks cover `.agents/`, Claude Code symlink projections, Codex project paths, hooks, and generated subagents. | The repository can create and verify its project-owned Claude Code + Codex harness shape. | User trust, hook approval, organization policy, cloud variants, or untested hosts. |
 | Harness behavior | Runtime generators, P0 behavior/hardening tests, skill-eval contracts, and work-protocol risk checks exercise owned state and safety boundaries. | The checked repository behavior is bounded by those executable tests. | Universal task effectiveness or host behavior outside the tested permissions and fixtures. |
 
-The public catalog contains 16 skills. `.agents/skills/skill-eval` is project-private: its `metadata.internal: true` marker, manifest exclusion, README exclusion, and normal discovery exclusion keep it outside public catalog claims unless internal skills are explicitly enabled.
+The public catalog is exactly the set of skills published under `skills/`. `.agents/skills/skill-eval` is project-private: its `metadata.internal: true` marker, manifest exclusion, README exclusion, and normal discovery exclusion keep it outside public catalog claims unless internal skills are explicitly enabled.
 
 ## Codex facts
 
