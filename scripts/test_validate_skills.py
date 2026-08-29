@@ -149,6 +149,27 @@ class CategoryReferenceTests(unittest.TestCase):
         self.assertIn("Validate the skills catalog", stdout.getvalue())
 
 
+class ReadmeCatalogCountTests(unittest.TestCase):
+    def validate(self, readme_text: str, skill_count: int) -> list[str]:
+        validator.errors.clear()
+        validator.validate_readme_catalog_count(readme_text, skill_count)
+        return list(validator.errors)
+
+    def test_declared_count_matching_catalog_is_accepted(self) -> None:
+        errors = self.validate("A curated catalog of 17 reusable Agent Skills.", 17)
+        self.assertEqual(errors, [])
+
+    def test_declared_count_drifting_from_catalog_is_rejected(self) -> None:
+        errors = self.validate("A curated catalog of 16 reusable Agent Skills.", 17)
+        self.assertTrue(
+            any("declares a catalog of 16 skills" in error and "17" in error for error in errors)
+        )
+
+    def test_readme_without_declared_count_has_nothing_to_drift(self) -> None:
+        errors = self.validate("A curated catalog of reusable Agent Skills.", 17)
+        self.assertEqual(errors, [])
+
+
 class TargetedContractCoverageTests(unittest.TestCase):
     def validate(
         self, *, skill_names: set[str], covered: set[str], required: set[str]

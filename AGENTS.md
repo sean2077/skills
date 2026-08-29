@@ -4,7 +4,7 @@
 
 ## Project
 
-`sean2077/skills` publishes 17 independently installable Agent Skills under `skills/`. The repository-private `.agents/skills/skill-eval` workflow belongs to the dogfooded project harness and is not a catalog target. Consumers need no build step; maintainers must regenerate checked-in runtime payloads from their source modules before committing.
+`sean2077/skills` publishes independently installable Agent Skills under `skills/`. The repository-private `.agents/skills/skill-eval` workflow belongs to the dogfooded project harness and is not a catalog target. Consumers need no build step; maintainers must regenerate checked-in runtime payloads from their source modules before committing.
 
 ## Required workflow
 
