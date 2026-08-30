@@ -33,8 +33,8 @@
       "prompt": "Update the terminology model incrementally: define Checkout Session in the root CONTEXT.md, keep one owning glossary, and do not create CONTEXT-MAP.md because no durable context boundary is evident.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "domain-modeling", "audience": "unspecified"},
-          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "authorized-scope", "modeling-mode": "incremental", "topology-decision": "evidence-based", "preserve-single-owner": true}
+          "baseline": {"route": "none", "workflow": "domain-modeling"},
+          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "authorized-scope", "modeling_mode": "incremental", "topology_decision": "evidence-based", "preserve_single_owner": true}
         }
       }
     },
@@ -44,8 +44,8 @@
       "prompt": "Assess whether our terminology should split behind CONTEXT-MAP.md, using semantic and ownership evidence. This is read-only; do not edit files.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "domain-modeling", "audience": "unspecified"},
-          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "none", "modeling-mode": "incremental", "topology-decision": "evidence-based"}
+          "baseline": {"route": "none", "workflow": "domain-modeling"},
+          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "none", "modeling_mode": "incremental", "topology_decision": "evidence-based"}
         }
       }
     },
@@ -55,8 +55,8 @@
       "prompt": "Model the bounded contexts up front from the established actors, workflows, ownership boundaries, and overloaded terms, then create the justified CONTEXT-MAP.md and context glossaries.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "domain-modeling", "audience": "unspecified"},
-          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "authorized-scope", "modeling-mode": "up-front", "topology-decision": "evidence-based"}
+          "baseline": {"route": "none", "workflow": "domain-modeling"},
+          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "authorized-scope", "modeling_mode": "up-front", "topology_decision": "evidence-based"}
         }
       }
     },
@@ -66,7 +66,7 @@
       "prompt": "Read CONTEXT.md and use the established terminology to explain the checkout flow. Do not change the glossary or model any new terms.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "analysis", "audience": "unspecified"},
+          "baseline": {"route": "none", "workflow": "analysis"},
           "treatment": {"route": "none", "workflow": "analysis"}
         }
       }
@@ -77,7 +77,7 @@
       "prompt": "Reorganize the entire docs tree into a durable documentation taxonomy based on reader tasks and lifecycle; terminology modeling is out of scope.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "documentation-organization", "audience": "unspecified"},
+          "baseline": {"route": "none", "workflow": "documentation-organization"},
           "treatment": {"route": "project-docs-organizer", "workflow": "documentation-organization"}
         }
       }

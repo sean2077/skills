@@ -29,22 +29,55 @@ def subset_mismatches(expected, actual, path="behavior"):
     return mismatches
 
 
+def status_mismatches(actual):
+    if actual != "completed":
+        return [f"adapter.status: expected 'completed', got {actual!r}"]
+    return []
+
+
+def expected_selection(mode, kind):
+    if mode == "baseline":
+        return False
+    if mode == "treatment" and kind in {"positive", "negative", "confusable"}:
+        return kind == "positive"
+    raise ValueError(f"unsupported evaluation mode/kind: {mode!r}/{kind!r}")
+
+
+def selection_mismatches(mode, kind, actual):
+    try:
+        expected = expected_selection(mode, kind)
+    except ValueError as exc:
+        return [str(exc)]
+    if not isinstance(actual, bool):
+        return [f"adapter.selected: expected boolean {expected!r}, got {type(actual).__name__}"]
+    if actual != expected:
+        return [f"adapter.selected: expected {expected!r}, got {actual!r}"]
+    return []
+
+
 def main():
     request = json.load(sys.stdin)
     mode = request["mode"]
-    metadata = request["case"].get("metadata", {})
+    case = request["case"]
+    metadata = case.get("metadata", {})
     expected_by_mode = metadata.get("expected_behavior", {})
     expected = expected_by_mode.get(mode)
-    behavior = request["adapter"].get("metadata", {}).get("behavior")
+    adapter = request["adapter"]
+    behavior = adapter.get("metadata", {}).get("behavior")
 
+    status_errors = status_mismatches(adapter.get("status"))
+    selection_errors = selection_mismatches(mode, case.get("kind"), adapter.get("selected"))
     if not isinstance(expected, dict):
-        mismatches = [f"case.metadata.expected_behavior.{mode}: expected object"]
+        behavior_errors = [f"case.metadata.expected_behavior.{mode}: expected object"]
     elif not isinstance(behavior, dict):
-        mismatches = ["adapter.metadata.behavior: expected object"]
+        behavior_errors = ["adapter.metadata.behavior: expected object"]
     else:
-        mismatches = subset_mismatches(expected, behavior)
+        behavior_errors = subset_mismatches(expected, behavior)
 
-    passed = not mismatches
+    status_passed = not status_errors
+    selection_passed = not selection_errors
+    behavior_passed = not behavior_errors
+    passed = status_passed and selection_passed and behavior_passed
     json.dump(
         {
             "schema_version": 1,
@@ -53,10 +86,26 @@ def main():
             "passed": passed,
             "checks": [
                 {
+                    "name": "completed-adapter-run",
+                    "passed": status_passed,
+                    "message": "adapter completed"
+                    if status_passed
+                    else "; ".join(status_errors[:4]),
+                },
+                {
+                    "name": "expected-selection",
+                    "passed": selection_passed,
+                    "message": "selection matched"
+                    if selection_passed
+                    else "; ".join(selection_errors[:4]),
+                },
+                {
                     "name": "expected-behavior-subset",
-                    "passed": passed,
-                    "message": "behavior matched" if passed else "; ".join(mismatches[:16]),
-                }
+                    "passed": behavior_passed,
+                    "message": "behavior matched"
+                    if behavior_passed
+                    else "; ".join(behavior_errors[:16]),
+                },
             ],
         },
         sys.stdout,

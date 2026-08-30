@@ -2,9 +2,11 @@
 
 These suites measure routing and decision behavior for changed skills through the existing `skill-eval` runtime. Their adapter is the repository-local `evals/agent-skills/host_adapter.py`; CI validates every manifest but does not claim a behavioral pass without a configured model host.
 
-The adapter implements `agent-skill-eval/v1`, invokes the local `claude` CLI once per baseline or treatment request as a read-only decision probe, reports usage metrics, and returns its normalized observation under `metadata.behavior`. It derives the observation from the host result and request, not by copying `case.metadata.expected_behavior`, even though the trusted adapter receives the complete case envelope. Set `CLAUDE_BIN` when `claude` is not on `PATH`; Claude Code must be installed and authenticated before a live run.
+The adapter implements `agent-skill-eval/v1`, invokes the local `claude` CLI once per baseline or treatment request as a read-only decision probe, reports usage metrics, and returns the observation under `metadata.behavior`. It derives catalog routes from the checked-out `skills/` tree, normalizes only route/workflow vocabulary and behavior-key spelling, and never manufactures task-specific decision fields from prompt heuristics or `case.metadata.expected_behavior`. Set `CLAUDE_BIN` when `claude` is not on `PATH`; Claude Code must be installed and authenticated before a live run.
 
-The shared verifier treats each mode's expected behavior as a required recursive subset, so adapters may report additional observations without coupling suites to one host's prose. A fake or rule-based adapter can exercise protocol plumbing but is not evidence that a skill improves model behavior.
+The shared verifier checks adapter completion and selection separately from behavior: baseline is never selected, a positive treatment must select its candidate, and negative/confusable treatments must reject it. Expected behavior remains a required recursive subset, so adapters may report additional observations without coupling suites to one host's prose. A fake or rule-based adapter can exercise protocol plumbing but is not evidence that a skill improves model behavior.
+
+Behavior keys use `snake_case`. Workflow values come from the adapter's canonical vocabulary; adjacent suites should use the same label for the same user intent rather than defining candidate-local synonyms.
 
 Run a configured suite from a committed revision:
 

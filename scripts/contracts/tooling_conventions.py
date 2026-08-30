@@ -111,11 +111,18 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
     if found_stale:
         errors.append(f"tooling-conventions: generic compatibility-cycle guidance remains: {found_stale}")
     project_owned_contract = {
-        "SKILL.md": ("target repository owns names and roots", "Tool Governance Decision Record"),
+        "SKILL.md": (
+            "target repository owns names and roots",
+            "compact inline decision delta",
+            "full Tool Governance Decision Record",
+        ),
         "references/classification-methods.md": (
             "## Boundary lenses",
             "## Constraint lenses",
             "not required categories or directory names",
+            "## Scale the decision evidence",
+            "Compact inline decision delta",
+            "Full Tool Governance Decision Record",
         ),
         "references/inventory-contract.md": (
             "Only `path` is required",

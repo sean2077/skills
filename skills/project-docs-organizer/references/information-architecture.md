@@ -1,7 +1,7 @@
 # Documentation Information Architecture
 
-Read this when selecting the documentation container, primary axis, secondary lenses, and
-numbering decision before proposing or applying a reorganization.
+Read this when selecting the documentation container, primary axis, secondary lenses, decision
+depth, and numbering behavior before proposing or applying a reorganization.
 
 ## Start with the smallest container
 
@@ -31,6 +31,22 @@ Do not turn this list into six peer directory axes. Read
 [`classification-methods.md`](classification-methods.md), shortlist only lenses supported by
 the evidence, and keep the project's own terminology.
 
+## Scale the decision evidence
+
+Use the smallest artifact that preserves the decision boundary:
+
+- **Compact inline decision delta** — use for a bounded move, merge, deletion, relink, or entry-point
+  repair when the documentation container, primary axis, ownership, lifecycle, and numbering remain
+  unchanged. Record the observed retrieval or duplication issue, the governing boundaries that stay
+  fixed, the affected paths/actions, deletion evidence when applicable, and the verification plan.
+- **Full Documentation IA Decision Record** — use when the change selects or changes a container,
+  primary axis, ownership or lifecycle topology, numbering policy, multi-area navigation model, or
+  when several viable structures need comparison, or when project policy or the user explicitly
+  requires the full record.
+
+A small patch is not automatically compact: use the full record when it establishes a durable new
+boundary. A large mechanical link repair is not automatically full when no IA decision changes.
+
 ## Choose one primary axis per level
 
 Compare candidate lenses qualitatively:
@@ -46,10 +62,10 @@ different primary axis. Keep secondary lenses as local subgroups, navigation or 
 views, metadata, or validation rules; do not create a Cartesian-product hierarchy or duplicate
 canonical content to simulate multiple views.
 
-## Run a representative placement test
+## Run a proportionate placement check
 
-Before moving files, place representative current documents and plausible new documents into
-the candidate design. It passes only when:
+For a full record, place representative current documents and plausible new documents into the
+candidate design. It passes only when:
 
 - each sample has one obvious canonical home;
 - common reader routes avoid unrelated branches;
@@ -57,14 +73,17 @@ the candidate design. It passes only when:
 - no category exists only to complete the method; and
 - secondary lenses remain usable without duplicating content.
 
-If the test fails, refine the primary axis or choose a smaller container. If a high-impact
+For a compact delta, verify that the destination is already governed by the existing axis and
+owner, the change leaves one canonical home, and no new category or lifecycle rule is introduced.
+
+If the check fails, refine the primary axis or choose a smaller container. If a high-impact
 choice remains tied, present two or three candidates with their evidence, migration cost,
 tradeoffs, and a recommendation, then wait for the user before mutation. For a minor,
 reversible tie that preserves semantic ownership, use and report the smallest coherent change.
 
-## Record the decision
+## Record a full decision
 
-Before presenting the proposed tree, report:
+When the full record is required, report before presenting the proposed tree:
 
 1. project evidence and retrieval failures;
 2. candidate lenses and why each was considered;
@@ -86,8 +105,8 @@ Link to canonical setup, architecture, ADR, tool, and runbook pages instead of d
 README-only projects have nothing to number. Preserve an explicit user choice, a coherent
 established convention, or documentation-generator-owned ordering. When creating or materially
 reorganizing a dedicated tree with no governing convention, treat the absence of a convention as
-permission to choose, not evidence for numbering. Enable local numbering only when the decision
-record shows that a stable sibling display or reading order improves an observed reader route and
-the navigation benefit exceeds path/link churn; otherwise keep semantic paths unnumbered. Read
+permission to choose, not evidence for numbering. Enable local numbering only when the full record
+shows that a stable sibling display or reading order improves an observed reader route and the
+navigation benefit exceeds path/link churn; otherwise keep semantic paths unnumbered. Read
 [`numbering-patterns.md`](numbering-patterns.md) when that evidence exists. Reconsider an existing
 convention only when evidence shows that it causes the retrieval or ordering failure being solved.

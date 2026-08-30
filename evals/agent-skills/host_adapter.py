@@ -5,15 +5,111 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 
 CONTRACT = "agent-skill-eval/v1"
 MAX_BUDGET_USD = os.environ.get("SKILL_EVAL_MAX_BUDGET_USD", "0.10")
+WORKFLOWS = (
+    "analysis",
+    "code-review",
+    "research",
+    "implementation",
+    "delivery",
+    "interview",
+    "clarification",
+    "documentation",
+    "documentation-organization",
+    "domain-modeling",
+    "tdd",
+    "prototype",
+    "commit",
+    "release",
+    "tooling-governance",
+    "harness-management",
+    "lark",
+    "iteration",
+    "coordination",
+    "general-writing",
+    "spec-review",
+    "evidence-review",
+    "implementation-planning",
+    "unspecified",
+)
+ROUTE_ALIASES = {
+    "agent-harness": "agent-scaffold",
+    "best-practices-research": "best-practice-research",
+    "bounded-iteration": "ralph",
+    "conventional-commits": "conventional-commit",
+    "docs-organizer": "project-docs-organizer",
+    "documentation-organizer": "project-docs-organizer",
+    "lark": "lark-cli",
+    "semver": "semver-release",
+    "test-driven-development": "tdd",
+    "tooling-governance": "tooling-conventions",
+    "work-coordination": "work-protocol",
+}
+WORKFLOW_ALIASES = {
+    "agent-harness": "harness-management",
+    "bounded-iteration": "iteration",
+    "causal-investigation": "analysis",
+    "docs-organization": "documentation-organization",
+    "experiment": "prototype",
+    "explanation": "analysis",
+    "git-commit": "commit",
+    "requirements": "interview",
+    "requirements-writing": "documentation",
+    "review": "code-review",
+    "semver-release": "release",
+    "specification": "documentation",
+    "test-driven-development": "tdd",
+    "test-first": "tdd",
+    "tooling": "tooling-governance",
+    "work-coordination": "coordination",
+}
+OBSERVATION_GUIDANCE = {
+    "analyze": (
+        "When selected, use workflow=analysis, mode=explanation or causal, mutation=none, "
+        "and result=discriminating-probe only when that outcome is requested."
+    ),
+    "autopilot": (
+        "When selected, use workflow=delivery. Report control_plane=native or persistent, "
+        "persistent_state as a boolean, test_first=conditional or required, and "
+        "external_side_effects=authorized or not-authorized when material."
+    ),
+    "deep-interview": (
+        "When selected, use workflow=interview. Report mode=adaptive or persistent, "
+        "question_batch_policy=adaptive, question counts when explicit, "
+        "structured_answer_template as a boolean, approval_required as a boolean, "
+        "persistent_state as a boolean, and external_research=conditional when material."
+    ),
+    "domain-modeling": (
+        "When selected, use workflow=domain-modeling. Report mutation=none or "
+        "authorized-scope, modeling_mode=incremental or up-front, "
+        "topology_decision=evidence-based, and preserve_single_owner as a boolean when material."
+    ),
+    "project-docs-organizer": (
+        "When selected, use workflow=documentation-organization. Report "
+        "decision_depth=compact or full and decision_artifact=inline-delta or "
+        "documentation-ia-decision-record."
+    ),
+    "spec-writing": (
+        "When selected, use workflow=documentation. Use snake_case keys for material choices, "
+        "including preserve_meaning, preserve_decisions, separate_decision_history, "
+        "observable_acceptance, separate_current_target, label_open_questions, "
+        "self_contained_human_document, route_detail_to_contract, compare_options, "
+        "recommendation, decision_status, include_exact_detail, and identify_intended_authority."
+    ),
+    "tooling-conventions": (
+        "When selected, use workflow=tooling-governance. Report decision_depth=compact or full "
+        "and decision_artifact=inline-delta or tool-governance-decision-record."
+    ),
+}
 
 
 def emit(value: dict[str, Any]) -> None:
@@ -33,38 +129,87 @@ def parse_json(text: str) -> Any:
     raise ValueError("host did not return a JSON object")
 
 
-def skill_name(skill_path: str | None) -> str:
+def load_candidate(
+    skill_path: str | None, repository_root: Path
+) -> tuple[str, str]:
     if not skill_path:
-        return "none"
+        return "none", ""
     path = Path(skill_path)
-    if path.is_dir():
-        path /= "SKILL.md"
-    try:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.startswith("name:"):
-                return line.partition(":")[2].strip()
-    except OSError:
-        pass
-    return Path(skill_path).name
-
-
-def load_skill_text(skill_path: str | None, repository_root: Path) -> str:
-    if not skill_path:
-        return ""
-    path = Path(skill_path).resolve(strict=True)
+    if not path.is_absolute():
+        path = repository_root / path
+    path = path.resolve(strict=True)
     path.relative_to(repository_root)
     if path.is_dir():
         path /= "SKILL.md"
-    return path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8")
+    for line in text.splitlines():
+        if line.startswith("name:"):
+            return line.partition(":")[2].strip().strip("'\""), text
+    return path.parent.name, text
 
 
-def make_prompt(request: dict[str, Any], skill_text: str, candidate: str) -> str:
+def catalog_routes(repository_root: Path) -> tuple[str, ...]:
+    skills_dir = repository_root / "skills"
+    routes = tuple(
+        sorted(
+            path.name
+            for path in skills_dir.iterdir()
+            if path.is_dir() and (path / "SKILL.md").is_file()
+        )
+    )
+    if not routes:
+        raise ValueError("catalog route inventory is empty")
+    return routes
+
+
+def slug(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return re.sub(r"[^a-z0-9]+", "-", value.strip().casefold()).strip("-")
+
+
+def behavior_key(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return re.sub(r"[^a-z0-9]+", "_", value.strip().casefold()).strip("_")
+
+
+def normalize_route(value: Any, routes: Iterable[str]) -> str:
+    allowed = set(routes)
+    normalized = ROUTE_ALIASES.get(slug(value), slug(value))
+    return normalized if normalized in allowed else "none"
+
+
+def normalize_workflow(value: Any) -> str:
+    normalized = WORKFLOW_ALIASES.get(slug(value), slug(value))
+    return normalized if normalized in WORKFLOWS else "unspecified"
+
+
+def normalize_behavior_keys(behavior: dict[str, Any]) -> dict[str, Any]:
+    canonical: dict[str, Any] = {}
+    for key, value in behavior.items():
+        normalized = behavior_key(key)
+        if normalized:
+            canonical[normalized] = value
+    return canonical
+
+
+def make_prompt(
+    request: dict[str, Any], skill_text: str, candidate: str, routes: Iterable[str]
+) -> str:
     mode = request["mode"]
     user_prompt = request["case"]["prompt"]
     skill_section = skill_text or "(No candidate skill is loaded in baseline mode.)"
+    route_vocabulary = ", ".join(("none", *routes))
+    workflow_vocabulary = ", ".join(WORKFLOWS)
+    observation_guide = OBSERVATION_GUIDANCE.get(
+        candidate,
+        "Report only request-visible behavior needed to explain the routing decision; "
+        "do not invent state.",
+    )
     return f"""You are a read-only routing evaluator for the agent-skill-eval/v1 protocol.
 Do not edit files, run commands, call tools, browse, or perform the user's requested work.
-Classify the request and return exactly one JSON object, with no Markdown:
+Return exactly one JSON object, with no Markdown:
 {{"selected": true|false, "behavior": {{"route": "...", "workflow": "...", ...}}}}
 
 Evaluation mode: {mode}
@@ -78,22 +223,15 @@ User request:
 {user_prompt}
 ---
 
-For baseline mode, selected must be false and route must be "none"; still classify
-the request's workflow accurately (documentation, requirements, research, review,
-analysis, implementation-planning, clarification, documentation-organization,
-spec-review, evidence-review, or general-writing). Do not infer an audience in
-baseline mode; use audience "unspecified" only when no audience is explicit.
-For treatment mode, selected is true only when the candidate skill is the right route.
-If treatment is false, route the request to the nearest applicable route or "none".
-Use a concise workflow label such as documentation, requirements, research, review,
-analysis, implementation, clarification, or general-writing. Include only behavior
-properties supported by the request and skill, using clear keys such as audience,
-preserve-meaning, separate-decision-history, deduplicate, observable-acceptance,
-separate-current-target, label-open-questions, compare-options, recommendation,
-decision-status, route-detail-to-contract, include-exact-detail, and
-identify-intended-authority, mutation, modeling-mode, topology-decision, and
-preserve-single-owner when applicable. Do not infer hidden answers or copy an
-expected answer from the request; derive the result from the request and instructions.
+Use one exact route value from: {route_vocabulary}.
+Use one exact workflow value from: {workflow_vocabulary}.
+Use snake_case behavior keys. Always include route and workflow; include other properties only
+when the request and candidate instructions support them. {observation_guide}
+
+In baseline mode, selected must be false and route must be none. In treatment mode, selected is
+true only when the candidate is the right route. When treatment is false, name the nearest catalog
+route or none. Classify from the user request and candidate instructions only. Do not infer hidden
+facts, inspect case metadata, or synthesize an expected answer.
 """
 
 
@@ -107,7 +245,9 @@ def metrics(host: dict[str, Any]) -> dict[str, float]:
     if output_tokens is None:
         output_tokens = sum(item.get("outputTokens", 0) for item in model_usage.values())
     server_tools = usage.get("server_tool_use") or {}
-    tool_calls = sum(value for value in server_tools.values() if isinstance(value, (int, float)))
+    tool_calls = sum(
+        value for value in server_tools.values() if isinstance(value, (int, float))
+    )
     duration_ms = host.get("duration_api_ms", host.get("duration_ms", 0))
     return {
         "input_tokens": float(input_tokens or 0),
@@ -118,136 +258,43 @@ def metrics(host: dict[str, Any]) -> dict[str, float]:
     }
 
 
-def baseline_workflow(prompt: str) -> str:
-    text = prompt.lower()
-    if "use the established terminology" in text or "consume the existing glossary" in text:
-        return "analysis"
-    if "context-map.md" in text or "model the bounded contexts" in text or "terminology model" in text:
-        return "domain-modeling"
-    if "interview" in text or "obtain explicit approval" in text:
-        return "requirements"
-    if "reorganize the entire docs" in text or "documentation taxonomy" in text:
-        return "documentation-organization"
-    if "blog post" in text or "marketing tone" in text or "ordinary readme" in text:
-        return "general-writing"
-    if "openapi" in text or "asyncapi" in text or "json schema" in text:
-        return "spec-review"
-    if "rollout plan" in text or "delivery waves" in text or "activation checks" in text:
-        return "implementation-planning"
-    if "running code" in text or "test evidence" in text or "compare this proposal" in text:
-        return "evidence-review"
-    if "external benchmarks" in text or "current external" in text or "cite the sources" in text:
-        return "research"
-    return "documentation"
-
-
-def adjacent_route(prompt: str) -> tuple[str, str] | None:
-    """Map common neighboring work to the suite's stable route vocabulary."""
-    text = prompt.lower()
-    if "use the established terminology" in text or "consume the existing glossary" in text:
-        return "none", "analysis"
-    if "interview" in text or "obtain explicit approval" in text:
-        return "deep-interview", "requirements"
-    if "reorganize the entire docs" in text or "documentation taxonomy" in text:
-        return "project-docs-organizer", "documentation-organization"
-    if "blog post" in text or "marketing tone" in text or "ordinary readme" in text:
-        return "none", "general-writing"
-    if "openapi" in text or "asyncapi" in text or "json schema" in text:
-        return "none", "spec-review"
-    if "rollout plan" in text or "delivery waves" in text or "activation checks" in text:
-        return "none", "implementation-planning"
-    if "running code" in text or "test evidence" in text or "compare this proposal" in text:
-        return "none", "evidence-review"
-    if "external benchmarks" in text or "current external" in text or "cite the sources" in text:
-        return "best-practice-research", "research"
-    return None
-
-
-def enrich_spec_behavior(behavior: dict[str, Any], prompt: str) -> None:
-    """Add stable, observable labels from the request without suite metadata."""
-    text = prompt.lower()
-    behavior.update({"route": "spec-writing", "workflow": "documentation", "audience": "human-readers"})
-    if any(term in text for term in ("preserve", "settled behavior", "final behavior", "without changing")):
-        behavior["preserve-meaning"] = True
-    if "product decisions" in text or "already-decided requirements" in text:
-        behavior["preserve-decisions"] = True
-    if any(term in text for term in ("meeting notes", "meeting log", "back-and-forth", "discussion history", "historical debate")):
-        behavior["separate-decision-history"] = True
-    if any(term in text for term in ("acceptance", "observable", "testable")):
-        behavior["observable-acceptance"] = True
-    if "current" in text and "target" in text:
-        behavior["separate-current-target"] = True
-    if any(term in text for term in ("open question", "unresolved", "without guessing", "assumption")):
-        behavior["label-open-questions"] = True
-    if "architecture proposal" in text or "self-contained" in text:
-        behavior["self-contained-human-document"] = True
-    if "contract" in text or "schema" in text or "exact validation" in text:
-        behavior["route-detail-to-contract"] = True
-    if "no machine-readable contract" in text or "no machine-readable" in text:
-        behavior["route-detail-to-contract"] = False
-        behavior["include-exact-detail"] = True
-        behavior["identify-intended-authority"] = True
-    if any(term in text for term in ("implementation options", "options for", "compare their trade-offs", "compare options")):
-        behavior["compare-options"] = True
-    if "recommend" in text:
-        behavior["recommendation"] = True
-    if "decision status" in text or "status and owner" in text:
-        behavior["decision-status"] = True
-
-
-def enrich_domain_modeling_behavior(behavior: dict[str, Any], prompt: str) -> None:
-    """Add stable domain-modeling labels derived from the request."""
-    text = prompt.lower()
-    read_only = any(term in text for term in ("do not edit", "read-only", "without changing files"))
-    behavior.update(
-        {
-            "route": "domain-modeling",
-            "workflow": "domain-modeling",
-            "mutation": "none" if read_only else "authorized-scope",
-            "modeling-mode": "up-front" if any(term in text for term in ("up-front", "up front")) else "incremental",
-        }
-    )
-    if "context-map.md" in text or "context map" in text or "bounded contexts" in text:
-        behavior["topology-decision"] = "evidence-based"
-    if "one owning glossary" in text or "single owner" in text:
-        behavior["preserve-single-owner"] = True
-
-
-def canonicalize_behavior(request: dict[str, Any], behavior: dict[str, Any], candidate: str, selected: bool) -> dict[str, Any]:
-    prompt = request["case"]["prompt"]
-    canonical = dict(behavior)
+def canonicalize_behavior(
+    request: dict[str, Any],
+    behavior: dict[str, Any],
+    candidate: str,
+    selected: bool,
+    routes: Iterable[str],
+) -> dict[str, Any]:
+    canonical = normalize_behavior_keys(behavior)
     if request["mode"] == "baseline":
-        canonical.update({"route": "none", "workflow": baseline_workflow(prompt), "audience": "unspecified"})
-        return canonical
-    if selected and candidate == "spec-writing":
-        enrich_spec_behavior(canonical, prompt)
-        return canonical
-    if selected and candidate == "domain-modeling":
-        enrich_domain_modeling_behavior(canonical, prompt)
-        return canonical
-    neighbor = adjacent_route(prompt)
-    if neighbor:
-        canonical["route"], canonical["workflow"] = neighbor
+        canonical["route"] = "none"
+    elif selected:
+        canonical["route"] = normalize_route(candidate, routes)
     else:
-        canonical.update({"route": "none", "workflow": baseline_workflow(prompt)})
+        canonical["route"] = normalize_route(canonical.get("route"), routes)
+    canonical["workflow"] = normalize_workflow(canonical.get("workflow"))
     return canonical
 
 
 def main() -> int:
+    request: dict[str, Any] = {}
     try:
         request = json.load(sys.stdin)
         repository_root = Path(request["repository_root"]).resolve(strict=True)
-        loaded_skill = request.get("skill_path")
-        skill_text = load_skill_text(loaded_skill, repository_root)
-        candidate = skill_name(loaded_skill)
+        routes = catalog_routes(repository_root)
+        candidate, skill_text = load_candidate(
+            request.get("skill_path"), repository_root
+        )
         claude = os.environ.get("CLAUDE_BIN") or shutil.which("claude")
         if not claude:
-            raise FileNotFoundError("Claude Code executable not found; set CLAUDE_BIN or add claude to PATH")
+            raise FileNotFoundError(
+                "Claude Code executable not found; set CLAUDE_BIN or add claude to PATH"
+            )
         completed = subprocess.run(
             [
                 claude,
                 "-p",
-                make_prompt(request, skill_text, candidate),
+                make_prompt(request, skill_text, candidate, routes),
                 "--output-format",
                 "json",
                 "--no-session-persistence",
@@ -275,12 +322,16 @@ def main() -> int:
         if not isinstance(host, dict) or host.get("is_error"):
             raise ValueError("host returned an error")
         decision = parse_json(host.get("result", ""))
-        if not isinstance(decision, dict) or not isinstance(decision.get("behavior"), dict):
+        if not isinstance(decision, dict) or not isinstance(
+            decision.get("behavior"), dict
+        ):
             raise ValueError("host result did not contain a behavior object")
-        selected = bool(decision.get("selected", False))
-        if request["mode"] == "baseline":
-            selected = False
-        behavior = canonicalize_behavior(request, decision["behavior"], candidate, selected)
+        selected = decision.get("selected")
+        if not isinstance(selected, bool):
+            raise ValueError("host result did not contain a boolean selected value")
+        behavior = canonicalize_behavior(
+            request, decision["behavior"], candidate, selected, routes
+        )
         emit(
             {
                 "schema_version": 1,
@@ -294,7 +345,7 @@ def main() -> int:
             }
         )
         return 0
-    except Exception:
+    except Exception as exc:
         emit(
             {
                 "schema_version": 1,
@@ -303,8 +354,17 @@ def main() -> int:
                 "mode": request.get("mode", "baseline"),
                 "selected": False,
                 "status": "failed",
-                "metrics": {"input_tokens": 0.0, "output_tokens": 0.0, "tool_calls": 0.0, "wall_time_seconds": 0.0, "interventions": 0.0},
-                "metadata": {"behavior": {"route": "none", "workflow": "adapter-failed"}},
+                "metrics": {
+                    "input_tokens": 0.0,
+                    "output_tokens": 0.0,
+                    "tool_calls": 0.0,
+                    "wall_time_seconds": 0.0,
+                    "interventions": 0.0,
+                },
+                "metadata": {
+                    "behavior": {"route": "none", "workflow": "adapter-failed"},
+                    "error_type": type(exc).__name__,
+                },
             }
         )
         return 0

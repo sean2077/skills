@@ -16,6 +16,9 @@ evidence-led boundary methods, contract checks, and an optional structural inven
 - Give each independent Job Boundary one authoritative entry. Keep helpers private; do not hide
   distinct recovery, batch, audit, or low-level jobs inside a happy-path mega-CLI.
 - Build a Contract Profile before choosing placement. Installed paths and service-bound commands remain external contracts until every active consumer moves in one coordinated change. README snippets, runbooks, skill references, templates, and generated examples count as consumers.
+- Scale decision evidence to the contract change. Use a compact inline decision delta when a
+  bounded maintenance change preserves the Job Boundary, Contract Profile, placement, and every
+  active consumer contract; use a full Tool Governance Decision Record when any of them changes or project/user policy explicitly requires it.
 - Keep project-specific roots, names, semantic metadata, CLI shape, languages, and deployment
   mechanics project-owned. Require safe outcomes without inventing flags, exit numbers, resolver
   languages, logging formats, or write mechanisms.
@@ -36,8 +39,9 @@ evidence-led boundary methods, contract checks, and an optional structural inven
    own the same job with compatible state/artifact, failure/rollback, and verification semantics.
 4. Build each affected command's Contract Profile, then derive roots, grouping, paths, and names
    from the target project's coherent conventions. A physical directory never defines a job.
-5. Before recommending or applying a Placement Decision, output the **Tool Governance Decision
-   Record** defined in `classification-methods.md`.
+5. Before recommending or applying a change, output the proportionate decision artifact defined
+   in `classification-methods.md`: a compact inline delta for contract-preserving maintenance, or
+   the full **Tool Governance Decision Record** for a material boundary, contract, or placement decision.
 6. When implementing or auditing executable behavior, derive only the applicable command-contract
    cards from the Contract Profile in [`script-contract.md`](references/script-contract.md).
 7. For a move, rename, or deletion, follow [`path-migrations.md`](references/path-migrations.md) and update all active consumers, including copy-paste documentation commands, in the same coordinated change.
@@ -57,15 +61,15 @@ evidence-led boundary methods, contract checks, and an optional structural inven
 
 ## Output contract
 
-Report the Tool Governance Decision Record, affected authoritative entries and helpers, active
-callers updated, checks run, and external coordination still required. In audit-only work,
-present ranked candidates and evidence; do not mass-move commands without change authorization.
+Report the decision artifact, affected authoritative entries and helpers, active callers updated,
+checks run, and external coordination still required. In audit-only work, present ranked candidates
+and evidence; do not mass-move commands without change authorization.
 
 ## On-demand references
 
 | Need | Reference |
 |---|---|
-| Derive Job Boundaries, Contract Profiles, and project-owned placement | [`classification-methods.md`](references/classification-methods.md) |
+| Scale decision evidence; derive Job Boundaries, Contract Profiles, and project-owned placement | [`classification-methods.md`](references/classification-methods.md) |
 | Derive fail-closed input, resolver, state, secret, output, and preview behavior from command evidence | [`script-contract.md`](references/script-contract.md) |
 | Move, rename, or delete a command and reconcile callers | [`path-migrations.md`](references/path-migrations.md) |
 | Adopt the optional path-only structural inventory | [`inventory-contract.md`](references/inventory-contract.md) |
