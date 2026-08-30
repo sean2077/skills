@@ -35,17 +35,23 @@ def status_mismatches(actual):
     return []
 
 
-def expected_selection(mode, kind):
+def expected_selection(mode, kind, configured=None):
     if mode == "baseline":
         return False
     if mode == "treatment" and kind in {"positive", "negative", "confusable"}:
-        return kind == "positive"
+        if configured is None:
+            return kind == "positive"
+        if not isinstance(configured, bool):
+            raise ValueError(
+                f"case.expected_selected: expected boolean, got {type(configured).__name__}"
+            )
+        return configured
     raise ValueError(f"unsupported evaluation mode/kind: {mode!r}/{kind!r}")
 
 
-def selection_mismatches(mode, kind, actual):
+def selection_mismatches(mode, kind, actual, configured=None):
     try:
-        expected = expected_selection(mode, kind)
+        expected = expected_selection(mode, kind, configured)
     except ValueError as exc:
         return [str(exc)]
     if not isinstance(actual, bool):
@@ -66,7 +72,12 @@ def main():
     behavior = adapter.get("metadata", {}).get("behavior")
 
     status_errors = status_mismatches(adapter.get("status"))
-    selection_errors = selection_mismatches(mode, case.get("kind"), adapter.get("selected"))
+    selection_errors = selection_mismatches(
+        mode,
+        case.get("kind"),
+        adapter.get("selected"),
+        case.get("expected_selected"),
+    )
     if not isinstance(expected, dict):
         behavior_errors = [f"case.metadata.expected_behavior.{mode}: expected object"]
     elif not isinstance(behavior, dict):

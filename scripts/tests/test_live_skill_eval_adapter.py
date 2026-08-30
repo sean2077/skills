@@ -172,6 +172,19 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             self.verifier.selection_mismatches("treatment", "confusable", True)
         )
 
+    def test_selection_contract_honors_explicit_positive_override(self) -> None:
+        self.assertEqual(
+            [],
+            self.verifier.selection_mismatches(
+                "treatment", "positive", False, False
+            ),
+        )
+        self.assertTrue(
+            self.verifier.selection_mismatches(
+                "treatment", "positive", True, False
+            )
+        )
+
     def test_all_live_suites_share_route_workflow_and_key_vocabulary(self) -> None:
         routes = set(self.adapter.catalog_routes(ROOT))
         suite_paths = sorted((ROOT / "evals" / "agent-skills").glob("*/suite.json"))
