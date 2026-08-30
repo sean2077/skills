@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "suite_id": "tooling-conventions-proportional-routing",
+  "skill_path": "skills/tooling-conventions",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": ["{python}", "{repo}/evals/agent-skills/host_adapter.py"],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+  },
+  "budgets": {
+    "absolute": {"interventions": 0},
+    "relative": {
+      "input_tokens": {"max_ratio": 4.0, "max_additive": 2500},
+      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
+      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
+      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-material-command-redesign",
+      "kind": "positive",
+      "prompt": "Split this committed mega-CLI into separate operator jobs because the commands own different state, rollback paths, installed consumers, and verification. Compare placements and plan the coordinated migration.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "tooling-governance"},
+          "treatment": {"route": "tooling-conventions", "workflow": "tooling-governance", "decision_depth": "full", "decision_artifact": "tool-governance-decision-record"}
+        }
+      }
+    },
+    {
+      "id": "positive-bounded-private-helper-rename",
+      "kind": "positive",
+      "prompt": "Rename one committed private helper inside the established scripts root and update every caller. Its job boundary, invokers, owned state, failure and rollback behavior, verification, visibility, and placement all remain unchanged.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "tooling-governance"},
+          "treatment": {"route": "tooling-conventions", "workflow": "tooling-governance", "decision_depth": "compact", "decision_artifact": "inline-delta"}
+        }
+      }
+    },
+    {
+      "id": "negative-throwaway-experiment-script",
+      "kind": "negative",
+      "prompt": "Create an uncommitted throwaway script in a temporary directory to test one parser hypothesis, then delete it. Do not add or govern a project command.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "prototype"},
+          "treatment": {"route": "prototype", "workflow": "prototype"}
+        }
+      }
+    },
+    {
+      "id": "confusable-documentation-reorganization",
+      "kind": "confusable",
+      "prompt": "Reorganize the documentation tree by reader route and lifecycle, migrate links, and prune duplicated pages. Do not move or redesign committed commands.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation-organization"},
+          "treatment": {"route": "project-docs-organizer", "workflow": "documentation-organization"}
+        }
+      }
+    }
+  ]
+}

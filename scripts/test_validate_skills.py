@@ -755,15 +755,18 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
         )
         return {
             "SKILL.md": (
-                "The target project owns its information architecture. Prefer the smallest structure and "
-                "preserve a coherent established convention. Select one primary axis per tree level. "
-                "Write a documentation IA decision record. Present two or three candidates and wait for "
+                "The target project owns its information architecture. Prefer the smallest structure and the "
+                "smallest decision artifact and preserve a coherent established convention. Select one "
+                "primary axis per tree level. Use a compact inline decision delta for bounded maintenance "
+                "and a full Documentation IA Decision Record for material changes. Present two or three "
+                "candidates and wait for "
                 "the user before mutation. No empty category is allowed. Resolve the target project root."
             ),
             "references/information-architecture.md": (
-                "Reader-route separation. Vocabulary and ownership cohesion. Lifecycle consistency. "
+                "Scale the decision evidence. Compact inline decision delta. Full Documentation IA Decision "
+                "Record. Reader-route separation. Vocabulary and ownership cohesion. Lifecycle consistency. "
                 "Stability under change. Duplication pressure. Choose one primary axis and retain "
-                "secondary lenses. Run a representative placement test. Present two or three candidates "
+                "secondary lenses. Run a proportionate placement check. Present two or three candidates "
                 "and wait for the user before mutation. Treat the absence of a convention as permission "
                 "to choose, not evidence for numbering. Require stable sibling order and weigh "
                 "path/link churn."

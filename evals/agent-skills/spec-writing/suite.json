@@ -33,8 +33,8 @@
       "prompt": "Turn these approved meeting notes into an RFC for the engineers and testers who will review it. Keep the settled behavior and interfaces, remove the meeting back-and-forth, and call out any still-open question rather than guessing.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "documentation", "audience": "unspecified"},
-          "treatment": {"route": "spec-writing", "workflow": "documentation", "audience": "human-readers", "preserve-meaning": true, "separate-decision-history": true}
+          "baseline": {"route": "none", "workflow": "documentation"},
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "audience": "human-readers", "preserve_meaning": true, "separate_decision_history": true}
         }
       }
     },
@@ -45,7 +45,7 @@
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "documentation"},
-          "treatment": {"route": "spec-writing", "workflow": "documentation", "observable-acceptance": true, "preserve-decisions": true}
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "observable_acceptance": true, "preserve_decisions": true}
         }
       }
     },
@@ -56,7 +56,7 @@
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "documentation"},
-          "treatment": {"route": "spec-writing", "workflow": "documentation", "separate-current-target": true, "label-open-questions": true}
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "separate_current_target": true, "label_open_questions": true}
         }
       }
     },
@@ -67,7 +67,7 @@
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "documentation"},
-          "treatment": {"route": "spec-writing", "workflow": "documentation", "self-contained-human-document": true, "route-detail-to-contract": true}
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "self_contained_human_document": true, "route_detail_to_contract": true}
         }
       }
     },
@@ -78,7 +78,7 @@
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "documentation"},
-          "treatment": {"route": "spec-writing", "workflow": "documentation", "compare-options": true, "recommendation": true, "decision-status": true}
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "compare_options": true, "recommendation": true, "decision_status": true}
         }
       }
     },
@@ -89,7 +89,7 @@
       "metadata": {
         "expected_behavior": {
           "baseline": {"route": "none", "workflow": "documentation"},
-          "treatment": {"route": "spec-writing", "workflow": "documentation", "include-exact-detail": true, "identify-intended-authority": true}
+          "treatment": {"route": "spec-writing", "workflow": "documentation", "include_exact_detail": true, "identify_intended_authority": true}
         }
       }
     },
@@ -99,8 +99,8 @@
       "prompt": "Interview stakeholders to resolve an ambiguous requirement and obtain explicit approval before implementation.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "requirements"},
-          "treatment": {"route": "deep-interview", "workflow": "requirements"}
+          "baseline": {"route": "none", "workflow": "interview"},
+          "treatment": {"route": "deep-interview", "workflow": "interview"}
         }
       }
     },

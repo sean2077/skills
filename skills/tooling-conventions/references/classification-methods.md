@@ -19,6 +19,22 @@ aggregation or constrain placement, but normally do not create peer directory ax
 cards supported by evidence, state why the others do not govern, and never build a Cartesian
 product of every lens.
 
+## Scale the decision evidence
+
+Choose the decision artifact from the changed contract, not file count:
+
+- **Compact inline decision delta** — use when a bounded add, move, rename, delete, or audit keeps
+  the existing Job Boundary, invokers, owned state/artifact, failure and rollback model,
+  verification, distribution contracts, placement convention, and semantic inventory policy.
+  Record the unchanged boundaries, exact path/caller delta, and verification.
+- **Full Tool Governance Decision Record** — use when the work creates, merges, or splits a Job
+  Boundary; changes a Contract Profile, authoritative entry, external consumer, placement model,
+  inventory policy, hazard/recovery behavior, leaves multiple viable placements to compare, or
+  is explicitly required by project policy or the user.
+
+A private helper rename can be compact only after every caller is known and can move atomically.
+A one-file change still needs the full record when it establishes a new public or hazardous entry.
+
 ## Boundary lenses
 
 ### Task or journey
@@ -112,9 +128,9 @@ product of every lens.
 - **Micro-example:** a vendored executable follows the project's vendor/checksum policy while the
   wrapper that exposes a project-owned job follows the wrapper's own command contract.
 
-## Decision record
+## Full decision record
 
-Before recommending or applying a change, report:
+When the full record is required, report before recommending or applying the material change:
 
 1. observed roots, callers, ownership, vocabulary, drift, and existing gates;
 2. selected and rejected method cards with evidence;
@@ -124,4 +140,5 @@ Before recommending or applying a change, report:
 6. migration/coordination impacts and the complete verification plan.
 
 Persist this Tool Governance Decision Record only when the target project already requires a
-manifest, ADR, or design page, or when the user explicitly requests one.
+manifest, ADR, or design page, or when the user explicitly requests one. Otherwise keep either
+artifact inline with the work or handoff.

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "suite_id": "project-docs-organizer-proportional-routing",
+  "skill_path": "skills/project-docs-organizer",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": ["{python}", "{repo}/evals/agent-skills/host_adapter.py"],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+  },
+  "budgets": {
+    "absolute": {"interventions": 0},
+    "relative": {
+      "input_tokens": {"max_ratio": 4.0, "max_additive": 2500},
+      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
+      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
+      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-material-information-architecture",
+      "kind": "positive",
+      "prompt": "Redesign the full documentation system. The current reader routes, primary grouping axis, ownership boundaries, lifecycle classes, and navigation are all disputed; compare viable structures before moving files.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation-organization"},
+          "treatment": {"route": "project-docs-organizer", "workflow": "documentation-organization", "decision_depth": "full", "decision_artifact": "documentation-ia-decision-record"}
+        }
+      }
+    },
+    {
+      "id": "positive-bounded-document-maintenance",
+      "kind": "positive",
+      "prompt": "Move one obsolete setup page into the already-established setup section, merge its duplicate paragraph into the canonical page, update all links, and delete the duplicate. Keep the existing docs root, primary axis, ownership, lifecycle, and numbering unchanged.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation-organization"},
+          "treatment": {"route": "project-docs-organizer", "workflow": "documentation-organization", "decision_depth": "compact", "decision_artifact": "inline-delta"}
+        }
+      }
+    },
+    {
+      "id": "negative-approved-rfc-writing",
+      "kind": "negative",
+      "prompt": "Write an RFC from these settled requirements without changing the documentation tree, navigation, ownership, lifecycle, or archival policy.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation"},
+          "treatment": {"route": "spec-writing", "workflow": "documentation"}
+        }
+      }
+    },
+    {
+      "id": "confusable-command-governance",
+      "kind": "confusable",
+      "prompt": "Split our committed release commands by job boundary, preserve installed paths and callers, and define the verification contract. Documentation organization is out of scope.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "tooling-governance"},
+          "treatment": {"route": "tooling-conventions", "workflow": "tooling-governance"}
+        }
+      }
+    }
+  ]
+}

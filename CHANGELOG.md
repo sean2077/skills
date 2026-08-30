@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Made `project-docs-organizer` and `tooling-conventions` use compact inline decision deltas for contract-preserving maintenance while reserving full decision records for material information-architecture, command-boundary, contract, or placement changes.
+- Reworked the live Agent Skill adapter to derive route vocabulary from the checked-out catalog, preserve host-classified workflows, normalize only route/workflow/key spelling, and stop synthesizing expected fields from prompt heuristics.
 - Added an explicit `code-review` exclusion to the `analyze` routing description so defect review of a concrete change set is decided on the always-resident routing surface, not only inside the body.
 - Reduced the scaffold-managed `AGENTS.md` harness block while preserving its worktree, authority, ownership, trust, and checkpoint boundaries.
 - Added an always-on, project-owned terminology contract to `agent-scaffold`: every Agent, skill, and subagent consumes the declared glossary; multilingual glossaries may define equal canonical equivalents per language without imposing a primary discussion language; multi-context repositories can route through `CONTEXT-MAP.md`; and empty glossaries are never seeded or overwritten during upgrades.
@@ -18,12 +20,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added deterministic live-adapter and verifier regressions plus positive, negative, and confusable routing suites for proportional documentation and command governance.
 - Added a README catalog-count parity gate to `validate_skills.py`: a declared `catalog of N reusable` count must match the `skills/` directory inventory, and a README that declares no count has nothing to drift.
 - Added `domain-modeling`, adapted from Matt Pocock's MIT-licensed skill, for active terminology discovery, ambiguity challenges, user-selectable up-front or incremental context modeling, evidence-based glossary partitioning, and atomic `CONTEXT.md`/`CONTEXT-MAP.md` migration.
 - Added `spec-writing`, a focused skill for concise human-facing requirements and architecture documents that preserves settled meaning, keeps material rationale with the reader narrative, and routes working history to separate records.
 
 ### Fixed
 
+- Made live evaluation gate adapter completion and candidate selection separately from behavior so positive, negative, and confusable routing failures cannot be hidden by normalized metadata; selection checks honor explicit positive-case overrides, and malformed adapter input now returns a stable failed envelope instead of crashing in the exception path.
 - Corrected the stale public-catalog count in `compatibility.md` and removed hard-coded catalog counts from `AGENTS.md` and `compatibility.md` prose so repository-derived skill counts stay in the inventory-checked README instead of drifting across authority documents.
 - Made the hook launcher's Bash availability guard an explicit conditional, preserving its fail-closed behavior while satisfying the Linux CI ShellCheck rule.
 - Made the primary worktree's checked-out branch the default active trunk, recorded that trunk per generated change branch for `done`, and guarded the primary worktree by Git role rather than fixed branch names.

@@ -33,7 +33,7 @@
       "prompt": "Interview me to turn a vague internal dashboard idea into an approved specification. This is one session and no external market facts are needed.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "interview", "mode": "adaptive", "approval_required": true},
+          "baseline": {"route": "none", "workflow": "interview"},
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
@@ -55,9 +55,7 @@
         "expected_behavior": {
           "baseline": {
             "route": "none",
-            "workflow": "interview",
-            "mode": "adaptive",
-            "approval_required": true
+            "workflow": "interview"
           },
           "treatment": {
             "route": "deep-interview",
@@ -80,9 +78,7 @@
         "expected_behavior": {
           "baseline": {
             "route": "none",
-            "workflow": "interview",
-            "mode": "adaptive",
-            "approval_required": true
+            "workflow": "interview"
           },
           "treatment": {
             "route": "deep-interview",
@@ -102,7 +98,7 @@
       "prompt": "Run a resumable requirements interview across sessions with deterministic component scoring and an auditable approval digest before any implementation.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "interview", "mode": "unspecified", "approval_required": true},
+          "baseline": {"route": "none", "workflow": "interview"},
           "treatment": {"route": "deep-interview", "workflow": "interview", "mode": "persistent", "persistent_state": true, "approval_required": true}
         }
       }
@@ -124,8 +120,8 @@
       "prompt": "Before answering, ask me which of the two output formats I prefer; no full specification is needed.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "clarification", "approval_required": false},
-          "treatment": {"route": "none", "workflow": "clarification", "approval_required": false}
+          "baseline": {"route": "none", "workflow": "clarification"},
+          "treatment": {"route": "none", "workflow": "clarification"}
         }
       }
     }
