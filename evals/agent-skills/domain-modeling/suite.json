@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "suite_id": "domain-modeling-routing",
+  "skill_path": "skills/domain-modeling",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": ["{python}", "{repo}/evals/agent-skills/host_adapter.py"],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+  },
+  "budgets": {
+    "absolute": {"interventions": 0},
+    "relative": {
+      "input_tokens": {"max_ratio": 4.0, "max_additive": 3000},
+      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
+      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
+      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-incremental-modeling",
+      "kind": "positive",
+      "prompt": "Update the terminology model incrementally: define Checkout Session in the root CONTEXT.md, keep one owning glossary, and do not create CONTEXT-MAP.md because no durable context boundary is evident.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "domain-modeling", "audience": "unspecified"},
+          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "authorized-scope", "modeling-mode": "incremental", "topology-decision": "evidence-based", "preserve-single-owner": true}
+        }
+      }
+    },
+    {
+      "id": "positive-read-only-topology-assessment",
+      "kind": "positive",
+      "prompt": "Assess whether our terminology should split behind CONTEXT-MAP.md, using semantic and ownership evidence. This is read-only; do not edit files.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "domain-modeling", "audience": "unspecified"},
+          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "none", "modeling-mode": "incremental", "topology-decision": "evidence-based"}
+        }
+      }
+    },
+    {
+      "id": "positive-up-front-modeling",
+      "kind": "positive",
+      "prompt": "Model the bounded contexts up front from the established actors, workflows, ownership boundaries, and overloaded terms, then create the justified CONTEXT-MAP.md and context glossaries.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "domain-modeling", "audience": "unspecified"},
+          "treatment": {"route": "domain-modeling", "workflow": "domain-modeling", "mutation": "authorized-scope", "modeling-mode": "up-front", "topology-decision": "evidence-based"}
+        }
+      }
+    },
+    {
+      "id": "negative-established-vocabulary-consumption",
+      "kind": "negative",
+      "prompt": "Read CONTEXT.md and use the established terminology to explain the checkout flow. Do not change the glossary or model any new terms.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "analysis", "audience": "unspecified"},
+          "treatment": {"route": "none", "workflow": "analysis"}
+        }
+      }
+    },
+    {
+      "id": "confusable-documentation-reorganization",
+      "kind": "confusable",
+      "prompt": "Reorganize the entire docs tree into a durable documentation taxonomy based on reader tasks and lifecycle; terminology modeling is out of scope.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {"route": "none", "workflow": "documentation-organization", "audience": "unspecified"},
+          "treatment": {"route": "project-docs-organizer", "workflow": "documentation-organization"}
+        }
+      }
+    }
+  ]
+}

@@ -91,7 +91,8 @@ properties supported by the request and skill, using clear keys such as audience
 preserve-meaning, separate-decision-history, deduplicate, observable-acceptance,
 separate-current-target, label-open-questions, compare-options, recommendation,
 decision-status, route-detail-to-contract, include-exact-detail, and
-identify-intended-authority when applicable. Do not infer hidden answers or copy an
+identify-intended-authority, mutation, modeling-mode, topology-decision, and
+preserve-single-owner when applicable. Do not infer hidden answers or copy an
 expected answer from the request; derive the result from the request and instructions.
 """
 
@@ -119,6 +120,10 @@ def metrics(host: dict[str, Any]) -> dict[str, float]:
 
 def baseline_workflow(prompt: str) -> str:
     text = prompt.lower()
+    if "use the established terminology" in text or "consume the existing glossary" in text:
+        return "analysis"
+    if "context-map.md" in text or "model the bounded contexts" in text or "terminology model" in text:
+        return "domain-modeling"
     if "interview" in text or "obtain explicit approval" in text:
         return "requirements"
     if "reorganize the entire docs" in text or "documentation taxonomy" in text:
@@ -139,6 +144,8 @@ def baseline_workflow(prompt: str) -> str:
 def adjacent_route(prompt: str) -> tuple[str, str] | None:
     """Map common neighboring work to the suite's stable route vocabulary."""
     text = prompt.lower()
+    if "use the established terminology" in text or "consume the existing glossary" in text:
+        return "none", "analysis"
     if "interview" in text or "obtain explicit approval" in text:
         return "deep-interview", "requirements"
     if "reorganize the entire docs" in text or "documentation taxonomy" in text:
@@ -188,6 +195,24 @@ def enrich_spec_behavior(behavior: dict[str, Any], prompt: str) -> None:
         behavior["decision-status"] = True
 
 
+def enrich_domain_modeling_behavior(behavior: dict[str, Any], prompt: str) -> None:
+    """Add stable domain-modeling labels derived from the request."""
+    text = prompt.lower()
+    read_only = any(term in text for term in ("do not edit", "read-only", "without changing files"))
+    behavior.update(
+        {
+            "route": "domain-modeling",
+            "workflow": "domain-modeling",
+            "mutation": "none" if read_only else "authorized-scope",
+            "modeling-mode": "up-front" if any(term in text for term in ("up-front", "up front")) else "incremental",
+        }
+    )
+    if "context-map.md" in text or "context map" in text or "bounded contexts" in text:
+        behavior["topology-decision"] = "evidence-based"
+    if "one owning glossary" in text or "single owner" in text:
+        behavior["preserve-single-owner"] = True
+
+
 def canonicalize_behavior(request: dict[str, Any], behavior: dict[str, Any], candidate: str, selected: bool) -> dict[str, Any]:
     prompt = request["case"]["prompt"]
     canonical = dict(behavior)
@@ -196,6 +221,9 @@ def canonicalize_behavior(request: dict[str, Any], behavior: dict[str, Any], can
         return canonical
     if selected and candidate == "spec-writing":
         enrich_spec_behavior(canonical, prompt)
+        return canonical
+    if selected and candidate == "domain-modeling":
+        enrich_domain_modeling_behavior(canonical, prompt)
         return canonical
     neighbor = adjacent_route(prompt)
     if neighbor:
