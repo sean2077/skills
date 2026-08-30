@@ -6,7 +6,7 @@ Read this only when choosing, adopting, or changing a project's terminology sour
 
 `agent-scaffold` owns the **loading contract**, not the project's terms. Its managed `AGENTS.md` block makes canonical language an always-on obligation for every Agent, project skill, and subagent. The project owns the glossary content, so `apply` and `upgrade` never overwrite it.
 
-Do not add a terminology skill merely to make other workflows consume vocabulary. Skill discovery is conditional and contributes routing metadata; project language is a cross-cutting contract that must apply even when no terminology-focused workflow is invoked. A separate domain-modeling skill is justified only when the project repeatedly needs active facilitation such as term discovery, ambiguity workshops, scenario stress-testing, translation review, or broad vocabulary migrations. That skill must still read and update the same project-owned glossary rather than create another SSOT.
+Do not add or install a terminology skill merely to make other workflows consume vocabulary. Skill discovery is conditional and contributes routing metadata; project language is a cross-cutting contract that must apply even when no terminology-focused workflow is invoked. The optional `domain-modeling` catalog skill owns active work such as term discovery, ambiguity challenges, scenario stress-testing, context partitioning, translation review, and vocabulary migration. It reads and updates the same project-owned glossary rather than creating another SSOT. `agent-scaffold` does not install it automatically; projects install that route separately when active modeling is useful.
 
 The scaffold deliberately does not seed an empty glossary. An empty file carries no useful authority, adds noise to every repository, and may compete with an established `GLOSSARY.md`, `TERMINOLOGY.md`, or documentation-owned glossary.
 
@@ -77,15 +77,33 @@ Include only project-specific concepts whose naming materially affects understan
 
 Code identifiers, APIs, schemas, protocols, commands, vendor terms, and proper names remain unchanged at the boundary that owns them. A natural-language equivalent may be used in discussion without renaming that external or machine-facing surface.
 
-## Multiple bounded contexts
+## Progressive context topology
 
-Create root `CONTEXT-MAP.md` only when one flat glossary would merge concepts that genuinely have different meanings or owners. Point each entry to the smallest stable context file:
+Glossary organization evolves through three proportional shapes:
+
+| Shape | Use |
+|---|---|
+| Flat root `CONTEXT.md` | The glossary is small and coherent in one scan. |
+| Grouped root `CONTEXT.md` | Subject headings improve retrieval, but terms still share one semantic and ownership context. |
+| Root `CONTEXT-MAP.md` plus context-local glossaries | Durable semantic or ownership boundaries justify separate loading and one glossary would conflate concepts. |
+
+Headings are retrieval groups, not bounded contexts. Promote a group to its own context only when evidence shows a stable language owner, materially different meanings, independent evolution, or repeated task-local loading value. Term count and directory structure alone do not justify a split, and no hard threshold applies.
+
+Both **up-front** and **incremental** modeling are valid:
+
+- Honor an explicit project-owner choice.
+- Use up-front modeling when the owner requests it or established product capabilities, actors, workflows, ownership, events, or semantic collisions already support defensible boundaries.
+- Otherwise use incremental evolution: start with root `CONTEXT.md`, add headings when useful, and split only after durable evidence emerges.
+- When an early project lacks enough context for an up-front map, obtain focused owner input about scope, actors, workflows, ownership, and overloaded terms. Do not manufacture empty domains or placeholder files.
+
+Create root `CONTEXT-MAP.md` only when mapped contexts are justified. Point each entry to the smallest stable owner and state cross-context relationships:
 
 ```markdown
 # Context Map
 
 ## Contexts
 
+- [System language](CONTEXT.md): concepts owned across the whole product
 - [Ordering](src/ordering/CONTEXT.md): accepts and tracks orders
 - [Billing](src/billing/CONTEXT.md): issues invoices and records payment
 
@@ -94,7 +112,9 @@ Create root `CONTEXT-MAP.md` only when one flat glossary would merge concepts th
 - Billing references order identities owned by Ordering; it does not own order state.
 ```
 
-Read the map plus only the context files relevant to the current work. A directory layout alone does not justify multiple contexts, and nested `AGENTS.md` files do not need to duplicate glossary entries; they may link to a local context when the root map is not sufficient.
+A multi-context repository may retain root `CONTEXT.md` for genuinely system-wide terms, but the map must route to it and every concept still has exactly one owning glossary. Keep uncertain terms in their current glossary until ownership resolves; do not create ownerless `Shared`, `Common`, or `Misc` contexts.
+
+The optional `domain-modeling` catalog skill performs the active elicitation, scenario testing, topology selection, and migration workflow. The scaffold keeps only this loading and proportionality contract so ordinary projects do not pay another installed-route cost.
 
 ## Maintenance contract
 

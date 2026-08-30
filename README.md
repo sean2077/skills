@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of 17 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
+A curated catalog of 18 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
 
 Install only the routes you expect an agent to discover. Each installed skill contributes discovery metadata; its full instructions and bundled resources are loaded only when needed. Format validation, installer discovery, host wiring, and runtime behavior are separate claims—see the [compatibility matrix](docs/compatibility.md).
 
@@ -31,6 +31,7 @@ Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix w
 | [code-review](skills/code-review/) | Perform an evidence-based defect review of a concrete change set, including regressions, security, maintainability, and verification gaps. | Engineering, Review |
 | [conventional-commit](skills/conventional-commit/) | Create one scoped local Conventional Commit or return one history-aware message-only subject while preserving unrelated index state. | Git |
 | [deep-interview](skills/deep-interview/) | Turn vague ideas into an explicitly approved specification through an adaptive interview, with opt-in deterministic topology/scoring state for persistent or auditable sessions. | Python, Requirements |
+| [domain-modeling](skills/domain-modeling/) | Actively define, challenge, group, split, and migrate project terminology with user-selectable up-front or incremental modeling, evidence-backed context boundaries, multilingual canonical equivalents, and atomic `CONTEXT.md`/`CONTEXT-MAP.md` evolution. | Domain Modeling, Documentation |
 | [lark-cli](skills/lark-cli/) | Route all 飞书/Feishu/Lark operations through one lean `lark-cli` entry point with on-demand domain references, explicit identity continuity, command discovery, and side-effect safety. | Lark, CLI, Productivity |
 | [project-docs-organizer](skills/project-docs-organizer/) | Derive project-owned documentation structure from reader, task, domain, ownership, lifecycle, and retrieval evidence; use optional sibling-local numbering only when stable order materially improves reader navigation. | Documentation |
 | [prototype](skills/prototype/) | Reduce one uncertainty through a disposable, bounded experiment with explicit oracle, safety, conclusion, and cleanup boundaries. | Engineering, Experimentation |
@@ -65,7 +66,7 @@ The catalog is read directly from `skills/`; there are no generated `.claude/ski
 | Check host, installer, trust, and support claims | [Compatibility and verification matrix](docs/compatibility.md) |
 | Maintain documentation and evidence freshness | [Documentation maintenance policy](docs/documentation-maintenance.md) |
 | Decide when mechanical controls justify their cost | [Harness constraint policy](docs/harness-constraint-policy.md) |
-| Use the repository's canonical terminology, language equivalents, and avoided names | [Project language](CONTEXT.md) |
+| Use the repository's canonical terminology, context grouping, language equivalents, and avoided names | [Project language](CONTEXT.md) |
 | Follow repository-level Agent rules | [Agent contract](AGENTS.md) |
 | Review release history and pending changes | [Changelog](CHANGELOG.md) |
 

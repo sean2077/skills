@@ -82,6 +82,24 @@ def validate_terminology_contract() -> None:
             "Do not add `_Preferred_` or `_Aliases_` fields by default.",
             reference_text,
         ),
+        "managed map-first fallback": (
+            "read root `CONTEXT-MAP.md` when present", template_text
+        ),
+        "managed proportional topology rule": (
+            "subject headings are sufficient", template_text
+        ),
+        "managed user-selected evolution mode": (
+            "explicit up-front or incremental modeling choice", template_text
+        ),
+        "progressive topology guidance": (
+            "## Progressive context topology", reference_text
+        ),
+        "optional active-modeling route": (
+            "`domain-modeling` catalog skill", reference_text
+        ),
+        "no automatic active-route install": (
+            "does not install it automatically", reference_text
+        ),
     }
     missing = [
         label
