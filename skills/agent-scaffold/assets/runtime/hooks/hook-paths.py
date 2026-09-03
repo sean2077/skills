@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Parse edited paths (or the hook cwd) from a Claude/Codex hook payload."""
+"""Parse edited paths (or the hook cwd) from a Claude/Codex/Grok hook payload."""
 
 from __future__ import annotations
 
@@ -31,10 +31,18 @@ def payload() -> dict[object, object]:
     return value
 
 
+def tool_input_map(data: dict[object, object]) -> dict[object, object]:
+    for key in ("tool_input", "toolInput"):
+        value = data.get(key)
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str) and value:
+            return {"input": value}
+    return {}
+
+
 def paths(data: dict[object, object]) -> list[str]:
-    tool_input = data.get("tool_input") or {}
-    if not isinstance(tool_input, dict):
-        tool_input = {"input": str(tool_input)}
+    tool_input = tool_input_map(data)
 
     result: list[str] = []
     for key in ("file_path", "notebook_path", "path"):
@@ -71,6 +79,8 @@ def main() -> int:
     try:
         data = payload()
         cwd = data.get("cwd")
+        if not isinstance(cwd, str) or not cwd:
+            cwd = data.get("workspaceRoot")
         if not isinstance(cwd, str) or not cwd:
             cwd = os.getcwd()
         cwd = record_value("cwd", cwd)
