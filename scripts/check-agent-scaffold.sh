@@ -138,10 +138,11 @@ if grep -qF 'WORKTREE_TRUNK:-main' "$worktree_helper" >/dev/null 2>&1; then
   fail "worktree.sh hard-codes main as the fallback trunk"
 fi
 trunk_guard="$skill/assets/runtime/hooks/trunk_edit_guard.sh"
-grep -qF 'active trunk branch' "$trunk_guard" \
-  || fail "trunk_edit_guard.sh lost dynamic active-trunk diagnostics"
-if grep -qF 'main | master | release/* | maintenance/*' "$trunk_guard" >/dev/null 2>&1; then
-  fail "trunk_edit_guard.sh still classifies trunk by branch-name patterns"
+hook_paths="$skill/assets/runtime/hooks/hook-paths.py"
+grep -qF 'active trunk branch' "$hook_paths" \
+  || fail "hook-paths.py lost dynamic active-trunk diagnostics"
+if grep -qF 'main | master | release/* | maintenance/*' "$trunk_guard" "$hook_paths" >/dev/null 2>&1; then
+  fail "trunk guard still classifies trunk by branch-name patterns"
 fi
 if grep -qF 'git worktree remove --force' "$worktree_helper" >/dev/null 2>&1; then
   fail "worktree.sh tells users to force-remove release worktrees"
