@@ -1139,7 +1139,7 @@ python -c 'import json,sys; print(json.dumps({"cwd":sys.argv[1],"tool_input":{"f
       bash "$budget_hook" >"$work/nested-character-budget.out" 2>&1; rc=$?
 check "character budget hook exits 0" test "$rc" = 0
 check "nested contract uses the character budget" grep -qF "13 characters (budget 1" "$work/nested-character-budget.out"
-check "character budget uses compatible hook Python" test "$(grep -c '^python3:exec$' "$resolver_log")" -ge 2
+check "character budget uses compatible hook Python" test "$(grep -cE '^(python|python3):exec$' "$resolver_log")" -ge 1
 rm -rf "$S/docs/budget-fixture"
 
 echo "== relink coexistence with an npx-installed skill =="

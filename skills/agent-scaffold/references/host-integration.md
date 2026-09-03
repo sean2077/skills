@@ -12,7 +12,7 @@ Read this only when changing scaffold-owned hook behavior, Claude Code or Codex 
 
 ## Hook semantics
 
-Both scaffold-owned hooks read the tool-call JSON on **stdin**. `hook-paths.py` parses the payload once from stdin and emits only typed cwd/path records; `hook-common.sh` converts `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths into the Bash namespace (using `cygpath` on Windows). The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. Once the guard starts, its historical project-root and `hook-common.sh` discovery failures remain visible and non-blocking for compatibility. Launcher failure, a missing managed guard script, missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0.
+Both scaffold-owned hooks read the tool-call JSON on **stdin**. The host still enters through the Git-owned launcher so Windows uses Git for Windows Bash, then the managed script starts **one** Python 3.8+ process. `hook-paths.py --guard` / `--budget` parse the payload, convert `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths in-process, and classify the checkout from `.git` (a directory is the primary worktree; a `gitdir:` file is a linked worktree). `git check-ignore` runs only when a same-repository primary-worktree edit might be blocked. The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. `hook-common.sh` still exposes `hook_extract_paths` and `cygpath` conversion for project-owned format-on-edit hooks. Once the guard starts, its historical project-root and `hook-common.sh` discovery failures remain visible and non-blocking for compatibility. Launcher failure, a missing managed guard script, missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0. The budget hook emits PostToolUse `additionalContext` JSON itself and does not call `jq`.
 
 ### trunk_edit_guard.sh — PreToolUse, blocking
 
@@ -29,7 +29,7 @@ Both scaffold-owned hooks read the tool-call JSON on **stdin**. `hook-paths.py` 
 - Watches `AGENTS.md` / `CLAUDE.md` writes; resolves the `CLAUDE.md → AGENTS.md` symlink so each contract is measured once.
 - Line budgets: **root `AGENTS.md` 320**, **nested `AGENTS.md` 120**. Override with `AUTHORITY_DOC_MAX_ROOT` / `AUTHORITY_DOC_MAX_NESTED`.
 - Character budgets: **root `AGENTS.md` 25,600**, **nested `AGENTS.md` 9,600**. Override with `AUTHORITY_DOC_MAX_ROOT_CHARS` / `AUTHORITY_DOC_MAX_NESTED_CHARS`.
-- Over budget → emits a nudge as PostToolUse `additionalContext` (via jq), else to stderr. Always **exit 0**.
+- Over budget → emits a nudge as PostToolUse `additionalContext` JSON. Always **exit 0**.
 
 ## Dual-host wiring
 
@@ -100,7 +100,7 @@ Codex applies two independent gates to this scaffold:
 ## Integration troubleshooting
 
 - **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then run `git --version` and inspect `hook-launcher.sh` diagnostics. On Windows the dispatcher must enter through Git for Windows and select `/usr/bin/bash`; it does not trust native `PATH` resolution for `bash`. Hook commands do not depend on checkout executable bits.
-- **Grok `pre_tool_use`/`post_tool_use` timeouts on Windows**: Grok observe hooks default to 5 seconds. Scaffold host JSON sets `timeout` to 30. `hook-paths.py` accepts both `tool_input` and Grok `toolInput`. Restart the host session after upgrade so it reloads project hooks.
+- **Grok `pre_tool_use`/`post_tool_use` timeouts on Windows**: Grok observe hooks default to 5 seconds. Scaffold host JSON sets `timeout` to 30. The managed scripts skip the Python version probe, extra git/cygpath/jq processes, and `git check-ignore` on linked worktrees; `hook-paths.py` accepts both `tool_input` and Grok `toolInput`. Restart the host session after upgrade so it reloads project hooks.
 - **Hooks don't fire in Claude Code**: validate `.claude/settings.json`, confirm the command path,
   and restart the host session after changing settings.
 - **The installer rejects an existing hook config**: repair the named JSON file. Mutating modes

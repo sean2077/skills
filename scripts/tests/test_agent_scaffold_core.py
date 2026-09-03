@@ -5,6 +5,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -400,6 +401,144 @@ class HookPathTests(unittest.TestCase):
         }
         self.assertEqual(HOOK_PATHS.paths(claude), [r"C:\repo\AGENTS.md"])
         self.assertEqual(HOOK_PATHS.paths(grok), [r"C:\repo\AGENTS.md"])
+
+    def test_join_cwd_keeps_absolute_and_joins_relative(self) -> None:
+        cwd = os.path.abspath(os.path.join("repo", "root"))
+        relative = HOOK_PATHS.join_cwd(cwd, "AGENTS.md")
+        self.assertEqual(relative, os.path.abspath(os.path.join(cwd, "AGENTS.md")))
+        absolute = os.path.abspath(os.path.join(cwd, "docs", "AGENTS.md"))
+        self.assertEqual(HOOK_PATHS.join_cwd(cwd, absolute), absolute)
+
+    @unittest.skipUnless(os.name == "nt", "Git Bash drive paths are a Windows conversion")
+    def test_filesystem_path_converts_git_bash_and_unc(self) -> None:
+        self.assertEqual(HOOK_PATHS.filesystem_path("/c/Temp/x"), "C:\\Temp\\x")
+        self.assertEqual(HOOK_PATHS.filesystem_path("C:/Temp/x"), "C:\\Temp\\x")
+        self.assertEqual(
+            HOOK_PATHS.filesystem_path("//server/share/x"),
+            "\\\\server\\share\\x",
+        )
+        converted_tmp = HOOK_PATHS.filesystem_path("/tmp/example")
+        self.assertFalse(converted_tmp.lower().replace("/", "\\").startswith("t:\\mp"))
+
+
+class HookGuardBudgetTests(unittest.TestCase):
+    def _run(self, mode, payload, env=None):
+        merged = os.environ.copy()
+        if env:
+            merged.update(env)
+        return subprocess.run(
+            [sys.executable, str(HOOK_PATHS_PATH), mode],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            env=merged,
+            timeout=20,
+        )
+
+    def _init_repo(self, root: Path) -> None:
+        subprocess.run(["git", "init", "-q", "-b", "main", str(root)], check=True)
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.email", "t@t.t"], check=True
+        )
+        subprocess.run(
+            ["git", "-C", str(root), "config", "user.name", "tester"], check=True
+        )
+
+    def test_guard_blocks_primary_and_honors_env_bypass(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            repo = Path(raw) / "repo"
+            repo.mkdir()
+            self._init_repo(repo)
+            agents = repo / "AGENTS.md"
+            agents.write_text("# contract\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "AGENTS.md"], check=True)
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "-qm", "base"], check=True
+            )
+            payload = {"cwd": str(repo), "tool_input": {"file_path": str(agents)}}
+            blocked = self._run("--guard", payload, {"CLAUDE_PROJECT_DIR": str(repo)})
+            self.assertEqual(blocked.returncode, 2)
+            self.assertIn(
+                "Only if the user explicitly authorized a trunk edit in this conversation:",
+                blocked.stderr,
+            )
+            allowed = self._run(
+                "--guard",
+                payload,
+                {
+                    "CLAUDE_PROJECT_DIR": str(repo),
+                    "WORKTREE_ALLOW_TRUNK_EDIT": "1",
+                },
+            )
+            self.assertEqual(allowed.returncode, 0)
+
+    def test_guard_allows_a_linked_worktree_without_git_ignore(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            primary = Path(raw) / "repo"
+            git_dir = primary / ".git"
+            lane_git = git_dir / "worktrees" / "lane"
+            lane = primary / ".worktrees" / "lane"
+            git_dir.mkdir(parents=True)
+            lane_git.mkdir(parents=True)
+            lane.mkdir(parents=True)
+            (git_dir / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
+            (lane_git / "commondir").write_text("../..\n", encoding="utf-8")
+            (lane_git / "HEAD").write_text(
+                "ref: refs/heads/fix/lane\n", encoding="utf-8"
+            )
+            (lane / ".git").write_text(
+                "gitdir: %s\n" % lane_git.as_posix(), encoding="utf-8"
+            )
+            target = lane / "file.py"
+            target.write_text("x\n", encoding="utf-8")
+            ident = HOOK_PATHS.git_identity(str(target))
+            self.assertIsNotNone(ident)
+            self.assertFalse(HOOK_PATHS.is_primary(ident[1], ident[2]))
+            result = self._run(
+                "--guard",
+                {"cwd": str(lane), "tool_input": {"file_path": str(target)}},
+                {"CLAUDE_PROJECT_DIR": str(lane)},
+            )
+            self.assertEqual(result.returncode, 0)
+
+    def test_budget_reports_nested_character_overage(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            repo = Path(raw) / "repo"
+            nested = repo / "docs" / "budget-fixture"
+            nested.mkdir(parents=True)
+            self._init_repo(repo)
+            (repo / "AGENTS.md").write_text("# root\n", encoding="utf-8")
+            contract = nested / "AGENTS.md"
+            contract.write_text("nested\nentry\n", encoding="utf-8", newline="\n")
+            result = self._run(
+                "--budget",
+                {"cwd": str(repo), "tool_input": {"file_path": str(contract)}},
+                {
+                    "CLAUDE_PROJECT_DIR": str(repo),
+                    "AUTHORITY_DOC_MAX_ROOT": "9999",
+                    "AUTHORITY_DOC_MAX_NESTED": "9999",
+                    "AUTHORITY_DOC_MAX_ROOT_CHARS": "999999",
+                    "AUTHORITY_DOC_MAX_NESTED_CHARS": "1",
+                },
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("docs/budget-fixture/AGENTS.md", result.stdout)
+            self.assertIn("13 characters (budget 1", result.stdout)
+
+    def test_budget_skips_non_authority_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            repo = Path(raw) / "repo"
+            repo.mkdir()
+            self._init_repo(repo)
+            readme = repo / "README.md"
+            readme.write_text("hello\n", encoding="utf-8")
+            result = self._run(
+                "--budget",
+                {"cwd": str(repo), "tool_input": {"file_path": str(readme)}},
+                {"CLAUDE_PROJECT_DIR": str(repo)},
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
 
 
 class StructuredReportTests(unittest.TestCase):

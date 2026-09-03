@@ -27,6 +27,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Collapsed scaffold PreToolUse/PostToolUse work into one Python process: skip the separate version probe, classify linked vs primary worktrees from `.git` metadata, run `git check-ignore` only when a primary-worktree edit might be blocked, and emit the authority-doc nudge without jq or a second interpreter, cutting Windows hook latency from extra git/cygpath/python spawns.
 - Set scaffold-owned PreToolUse/PostToolUse hook `timeout` to 30 seconds and taught `hook-paths.py` to parse Grok `toolInput`/`workspaceRoot` as well as Claude/Codex `tool_input`, so Windows Git-Bash hook chains no longer fail-open on Grok's 5-second default.
 - Made live evaluation gate adapter completion and candidate selection separately from behavior so positive, negative, and confusable routing failures cannot be hidden by normalized metadata; selection checks honor explicit positive-case overrides, and malformed adapter input now returns a stable failed envelope instead of crashing in the exception path.
 - Corrected the stale public-catalog count in `compatibility.md` and removed hard-coded catalog counts from `AGENTS.md` and `compatibility.md` prose so repository-derived skill counts stay in the inventory-checked README instead of drifting across authority documents.
