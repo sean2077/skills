@@ -369,6 +369,37 @@ class HookReconciliationTests(unittest.TestCase):
                 self.assertTrue(command.startswith("git -c \"alias.agent-scaffold-hook=!sh "))
                 self.assertIn(".agents/tools/hooks/hook-launcher.sh", command)
                 self.assertNotIn("bash -lc", command)
+            timeouts = [
+                hook.get("timeout")
+                for groups in prepared["hooks"].values()
+                for group in groups
+                for hook in group["hooks"]
+            ]
+            self.assertTrue(timeouts)
+            self.assertTrue(all(timeout == 30 for timeout in timeouts))
+
+
+HOOK_PATHS_PATH = (
+    REPO / "skills/agent-scaffold/assets/runtime/hooks/hook-paths.py"
+)
+HOOK_PATHS_SPEC = importlib.util.spec_from_file_location(
+    "agent_scaffold_hook_paths", HOOK_PATHS_PATH
+)
+assert HOOK_PATHS_SPEC and HOOK_PATHS_SPEC.loader
+HOOK_PATHS = importlib.util.module_from_spec(HOOK_PATHS_SPEC)
+HOOK_PATHS_SPEC.loader.exec_module(HOOK_PATHS)
+
+
+class HookPathTests(unittest.TestCase):
+    def test_claude_tool_input_and_grok_tool_input_are_equivalent(self) -> None:
+        claude = {"tool_input": {"file_path": r"C:\repo\AGENTS.md"}}
+        grok = {
+            "cwd": r"C:\repo",
+            "workspaceRoot": r"C:\repo",
+            "toolInput": {"file_path": r"C:\repo\AGENTS.md"},
+        }
+        self.assertEqual(HOOK_PATHS.paths(claude), [r"C:\repo\AGENTS.md"])
+        self.assertEqual(HOOK_PATHS.paths(grok), [r"C:\repo\AGENTS.md"])
 
 
 class StructuredReportTests(unittest.TestCase):

@@ -100,6 +100,7 @@ Codex applies two independent gates to this scaffold:
 ## Integration troubleshooting
 
 - **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then run `git --version` and inspect `hook-launcher.sh` diagnostics. On Windows the dispatcher must enter through Git for Windows and select `/usr/bin/bash`; it does not trust native `PATH` resolution for `bash`. Hook commands do not depend on checkout executable bits.
+- **Grok `pre_tool_use`/`post_tool_use` timeouts on Windows**: Grok observe hooks default to 5 seconds. Scaffold host JSON sets `timeout` to 30. `hook-paths.py` accepts both `tool_input` and Grok `toolInput`. Restart the host session after upgrade so it reloads project hooks.
 - **Hooks don't fire in Claude Code**: validate `.claude/settings.json`, confirm the command path,
   and restart the host session after changing settings.
 - **The installer rejects an existing hook config**: repair the named JSON file. Mutating modes
