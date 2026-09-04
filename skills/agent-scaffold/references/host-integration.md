@@ -12,7 +12,7 @@ Read this only when changing scaffold-owned hook behavior, Claude Code or Codex 
 
 ## Hook semantics
 
-Both scaffold-owned hooks read the tool-call JSON on **stdin**. The host still enters through the Git-owned launcher so Windows uses Git for Windows Bash, then the managed script starts **one** Python 3.8+ process. `hook-paths.py --guard` / `--budget` parse the payload, convert `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths in-process, and classify the checkout from `.git` (a directory is the primary worktree; a `gitdir:` file is a linked worktree). `git check-ignore` runs only when a same-repository primary-worktree edit might be blocked. The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. `hook-common.sh` still exposes `hook_extract_paths` and `cygpath` conversion for project-owned format-on-edit hooks. Once the guard starts, its historical project-root and `hook-common.sh` discovery failures remain visible and non-blocking for compatibility. Launcher failure, a missing managed guard script, missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0. The budget hook emits PostToolUse `additionalContext` JSON itself and does not call `jq`.
+Both scaffold-owned hooks read the tool-call JSON on **stdin**. Host configs invoke **one** Python 3.8+ process: `python -X utf8 .agents/tools/hooks/hook-paths.py --guard` or `--budget`. That avoids a Git-alias plus Bash launcher on every Edit/Write. `hook-paths.py` parses the payload, converts `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths in-process, and classifies the checkout from `.git` (a directory is the primary worktree; a `gitdir:` file is a linked worktree). The budget hook returns immediately unless a payload path is `AGENTS.md` or `CLAUDE.md`. The trunk guard skips per-file Git identity probes for edits already inside a linked worktree; `git check-ignore` runs only when a same-repository primary-worktree edit might be blocked. The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. `hook-launcher.sh` and `hook-common.sh` remain installed for project-owned Bash hooks. `hook-common.sh` still exposes `hook_extract_paths` and `cygpath` conversion for format-on-edit. Missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 for `--guard` because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0. The budget hook emits PostToolUse `additionalContext` JSON itself and does not call `jq`.
 
 ### trunk_edit_guard.sh — PreToolUse, blocking
 
@@ -32,7 +32,7 @@ Both scaffold-owned hooks read the tool-call JSON on **stdin**. The host still e
 
 ## Dual-host wiring
 
-Both hosts invoke the **same** enabled scaffold scripts under `.agents/tools/hooks/`. Each command starts a transient Git alias; Git runs that alias from the repository root through its owned `sh`, then `hook-launcher.sh` selects Bash. On Windows this deliberately executes Git for Windows `/usr/bin/bash`, so an unrelated `C:\Windows\System32\bash.exe`/WSL launcher earlier on the native `PATH` cannot intercept the hook. Linux and macOS use the available Bash; `AGENT_SCAFFOLD_BASH` is an explicit override for a nonstandard installation. The PreToolUse examples below describe the default worktree profile; the lightweight profile omits them entirely while retaining the authority-document PostToolUse hook.
+Both hosts invoke the **same** enabled `hook-paths.py` entry under `.agents/tools/hooks/`. The command is `python -X utf8` plus `--guard` or `--budget`, so the hot path does not look up `bash` and cannot land on the Windows WSL launcher. Python 3.8+ on `PATH` is a harness prerequisite. `hook-launcher.sh` remains available for project-owned Bash hooks that still need Git for Windows `/usr/bin/bash`; `AGENT_SCAFFOLD_BASH` overrides that Bash only. The PreToolUse examples below describe the default worktree profile; the lightweight profile omits `--guard` while retaining `--budget`.
 
 **Claude Code — `.claude/settings.json` shape** (the canonical full command strings live in `assets/host/claude.settings.json`):
 
@@ -41,23 +41,23 @@ Both hosts invoke the **same** enabled scaffold scripts under `.agents/tools/hoo
   "hooks": {
     "PreToolUse": [
       { "matcher": "Edit|MultiEdit|Write|NotebookEdit",
-        "hooks": [ { "type": "command", "command": "git -c \"alias.agent-scaffold-hook=!sh .agents/tools/hooks/hook-launcher.sh .agents/tools/hooks/trunk_edit_guard.sh\" agent-scaffold-hook" } ] }
+        "hooks": [ { "type": "command", "command": "python -X utf8 .agents/tools/hooks/hook-paths.py --guard" } ] }
     ],
     "PostToolUse": [
       { "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "git -c \"alias.agent-scaffold-hook=!sh .agents/tools/hooks/hook-launcher.sh .agents/tools/hooks/authority_doc_budget.sh\" agent-scaffold-hook" }
+          { "type": "command", "command": "python -X utf8 .agents/tools/hooks/hook-paths.py --budget" }
         ] }
     ]
   }
 }
 ```
 
-**Codex — `.codex/hooks.json`:** matcher `Edit|Write|apply_patch`; the same Git-owned dispatcher resolves the repository root without relying on `$CLAUDE_PROJECT_DIR`:
+**Codex — `.codex/hooks.json`:** matcher `Edit|Write|apply_patch`; `hook-paths.py` resolves the repository root without relying on `$CLAUDE_PROJECT_DIR`:
 
 ```json
 { "type": "command",
-  "command": "git -c \"alias.agent-scaffold-hook=!sh .agents/tools/hooks/hook-launcher.sh .agents/tools/hooks/trunk_edit_guard.sh\" agent-scaffold-hook",
+  "command": "python -X utf8 .agents/tools/hooks/hook-paths.py --guard",
   "statusMessage": "Checking worktree policy" }
 ```
 
@@ -70,7 +70,7 @@ proj="$(hook_posix_path "$raw")"
 
 ## Hook configuration reconciliation
 
-Apply/upgrade refresh scaffold-owned hook definitions without clobbering user hooks. The Python reconciler parses JSON, removes only entries whose command invokes the exact owned paths under `.agents/tools/hooks/` (`trunk_edit_guard.sh` and `authority_doc_budget.sh`), then merges the current assets by event plus complete group metadata and deduplicates complete hook objects. Verification compares the complete managed hook object, including `type`, `command`, `statusMessage`, and future JSON fields, so execution-affecting drift cannot hide behind an unchanged command string. Basename lookalikes and every command outside those exact current paths remain project-owned. Case-equivalent spellings reconcile only when the target filesystem resolves them to the same installed hook; case-distinct paths remain user-owned. `--profile light` omits the guard and removes its scaffold-owned entry while leaving every user command and unrelated config key intact. Empty scaffold-owned events are removed rather than written as empty matcher groups. Python is a harness prerequisite, so this path has no jq-dependent behavior or unsafe paste fallback.
+Apply/upgrade refresh scaffold-owned hook definitions without clobbering user hooks. The Python reconciler parses JSON, removes only entries whose command invokes the exact owned paths under `.agents/tools/hooks/` (`trunk_edit_guard.sh`, `authority_doc_budget.sh`, and `hook-paths.py`), then merges the current assets by event plus complete group metadata and deduplicates complete hook objects. Verification compares the complete managed hook object, including `type`, `command`, `statusMessage`, and future JSON fields, so execution-affecting drift cannot hide behind an unchanged command string. Basename lookalikes and every command outside those exact current paths remain project-owned. Case-equivalent spellings reconcile only when the target filesystem resolves them to the same installed hook; case-distinct paths remain user-owned. `--profile light` omits the guard and removes its scaffold-owned entry while leaving every user command and unrelated config key intact. Empty scaffold-owned events are removed rather than written as empty matcher groups. Python is a harness prerequisite, so this path has no jq-dependent behavior or unsafe paste fallback.
 
 Harness-owned runtime, hook JSON, authority-contract, ignore, and attributes updates are written
 to unique siblings in the destination directory, flushed, and atomically replaced. An interrupted
@@ -98,8 +98,8 @@ Codex applies two independent gates to this scaffold:
 
 ## Integration troubleshooting
 
-- **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then run `git --version` and inspect `hook-launcher.sh` diagnostics. On Windows the dispatcher must enter through Git for Windows and select `/usr/bin/bash`; it does not trust native `PATH` resolution for `bash`. Hook commands do not depend on checkout executable bits.
-- **Grok `pre_tool_use`/`post_tool_use` timeouts on Windows**: Grok observe hooks default to 5 seconds. Scaffold host JSON sets `timeout` to 30. The managed scripts skip the Python version probe, extra git/cygpath/jq processes, and `git check-ignore` on linked worktrees; `hook-paths.py` accepts both `tool_input` and Grok `toolInput`. Restart the host session after upgrade so it reloads project hooks.
+- **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then confirm `python -X utf8 .agents/tools/hooks/hook-paths.py --guard` is on `PATH`. Project-owned Bash hooks still use `hook-launcher.sh` and Git for Windows `/usr/bin/bash`. Hook commands do not depend on checkout executable bits.
+- **Grok `pre_tool_use`/`post_tool_use` timeouts on Windows**: Grok observe hooks default to 5 seconds. Scaffold host JSON sets `timeout` to 30. Host JSON invokes Python directly. The guard skips per-file Git probes inside a linked worktree, and the budget hook returns immediately unless the path is `AGENTS.md` or `CLAUDE.md`. `hook-paths.py` accepts both `tool_input` and Grok `toolInput`. Restart the host session after upgrade so it reloads project hooks.
 - **Hooks don't fire in Claude Code**: validate `.claude/settings.json`, confirm the command path,
   and restart the host session after changing settings.
 - **The installer rejects an existing hook config**: repair the named JSON file. Mutating modes

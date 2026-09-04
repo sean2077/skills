@@ -38,7 +38,7 @@ jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(
 # shellcheck disable=SC2317,SC2329
 jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
-jcommand_count() { python -c 'import json,re,sys; d=json.load(open(sys.argv[1])); p=re.compile(r"(?:^|[/\s\"\x27;&|()<>]).agents/tools/hooks/"+re.escape(sys.argv[2])+r"\.sh(?=$|[\s\"\x27;&|()<>])"); n=sum(bool(p.search(str(h.get("command", "")).replace("\\", "/"))) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
+jcommand_count() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); needle=sys.argv[2]; n=sum(needle in str(h.get("command", "")).replace("\\", "/") for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
 fixed_text_in_both() { grep -qF "$1" "$2" && grep -qF "$1" "$3"; }
 # shellcheck disable=SC2317,SC2329
@@ -759,7 +759,7 @@ json.dump(d, open(p, "w"))
 PY
 ( cd "$S" && bash "$H" apply ) >/dev/null 2>&1; rc=$?
 check "apply-merge exits 0"               test "$rc" = 0
-check "trunk_edit_guard still wired"         grep -q trunk_edit_guard "$S/.claude/settings.json"
+check "trunk_edit_guard still wired"         grep -qF "hook-paths.py --guard" "$S/.claude/settings.json"
 check "pre-existing user hook preserved"     grep -q user-custom "$S/.claude/settings.json"
 
 echo "== worktree helper rejects foreign repository targets =="
@@ -1058,7 +1058,7 @@ check "block message never lowers authorization to mentioning trunk" \
 guard_host_command="$(python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); print(d["hooks"]["PreToolUse"][0]["hooks"][0]["command"])' "$S/.codex/hooks.json")"
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" \
   | ( cd "$S" && bash -c "$guard_host_command" ) >"$work/trunk-guard-dispatch.out" 2>&1; rc=$?
-check "host config dispatches through the Git-owned launcher" test "$rc" = 2
+check "host config dispatches the Python guard" test "$rc" = 2
 check "host config avoids bare bash lookup" no_fixed_text "$S/.codex/hooks.json" '"command": "bash '
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "escape hatch allows (exit 0)"         test "$rc" = 0
@@ -1309,9 +1309,9 @@ git -C "$L" commit -q --allow-empty -m init
 check "light-profile apply exits 0"                test "$rc" = 0
 check "light-profile omits worktree.sh"            test ! -e "$L/.agents/tools/worktree.sh"
 check "light-profile omits trunk guard script"     test ! -e "$L/.agents/tools/hooks/trunk_edit_guard.sh"
-check "Claude config omits trunk guard"          jcommand_count "$L/.claude/settings.json" trunk_edit_guard 0
-check "Codex config omits trunk guard"           jcommand_count "$L/.codex/hooks.json" trunk_edit_guard 0
-check "authority hook remains wired"             jcommand_count "$L/.claude/settings.json" authority_doc_budget 1
+check "Claude config omits trunk guard"          jcommand_count "$L/.claude/settings.json" "hook-paths.py --guard" 0
+check "Codex config omits trunk guard"           jcommand_count "$L/.codex/hooks.json" "hook-paths.py --guard" 0
+check "authority hook remains wired"             jcommand_count "$L/.claude/settings.json" "hook-paths.py --budget" 1
 check "managed AGENTS block omits hard rule"     no_fixed_text "$L/AGENTS.md" "Worktree-per-change (hard rule)"
 check "light-profile keeps common authority laws" authority_laws_present "$L/AGENTS.md"
 check "light-profile omits .worktrees ignore"      no_exact_line "$L/.gitignore" ".worktrees/"
@@ -1328,7 +1328,7 @@ check "light-profile apply is idempotent"        test -z "$(git -C "$L" status -
 ( cd "$L" && bash "$H" upgrade ) >/dev/null 2>&1; rc=$?
 check "default upgrade re-enables worktree flow" test "$rc" = 0
 check "re-enabled worktree.sh is installed"      test -f "$L/.agents/tools/worktree.sh"
-check "re-enabled Claude guard is wired once"    jcommand_count "$L/.claude/settings.json" trunk_edit_guard 1
+check "re-enabled Claude guard is wired once"    jcommand_count "$L/.claude/settings.json" "hook-paths.py --guard" 1
 check "re-enabled AGENTS block has hard rule"    grep -qF "Worktree-per-change (hard rule)" "$L/AGENTS.md"
 
 echo "== plan + apply adopt a real CLAUDE.md into AGENTS.md =="
@@ -1382,7 +1382,7 @@ printf '{"hooks": null, "model": "opus"}' > "$HN/.claude/settings.json"
 ( cd "$HN" && HARNESS_NO_JQ=1 bash "$H" apply ) >/dev/null 2>&1; rc=$?
 check "apply over hooks:null (python path) exits 0"   test "$rc" = 0
 check "hooks:null apply preserves user's other keys"  grep -q '"model"' "$HN/.claude/settings.json"
-check "hooks:null apply wires the trunk guard"        grep -q trunk_edit_guard "$HN/.claude/settings.json"
+check "hooks:null apply wires the trunk guard"        grep -qF "hook-paths.py --guard" "$HN/.claude/settings.json"
 
 # M3: a hand-authored agent whose PROSE contains the phrase "do not edit by hand"
 # must still be adopted by --import (the banner test keys on "Generated from
