@@ -156,7 +156,7 @@ those fields are absent/ambiguous, the domain explicitly requires state validati
 
 ## Version boundary and update notices
 
-The command and safety facts changed in this documentation pass were reviewed on 2026-08-22 against the [`larksuite/cli` v1.0.89 release](https://github.com/larksuite/cli/releases/tag/v1.0.89) and relevant upstream skill references. The installed CLI remains the runtime source of truth: do not add version preflight to normal operations, and use the targeted drift fallback only after actual parser/schema evidence.
+The command and safety facts changed in this documentation pass were reviewed on 2026-09-04 against the [`larksuite/cli` v1.0.93 release](https://github.com/larksuite/cli/releases/tag/v1.0.93) and relevant upstream skill references. The installed CLI remains the runtime source of truth: do not add version preflight to normal operations, and use the targeted drift fallback only after actual parser/schema evidence.
 
 Treat `_notice` as advisory metadata, not as the main result. Finish the requested task first.
 `_notice.update` reports a newer CLI, `_notice.skills` reports CLI/skill mismatch, and

@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Reviewed the Lark command cache against official `lark-cli` v1.0.93 on 2026-09-04: `calendar +get` does not include attendees or rooms (`+list-attendees` is the attendee path), share-token joins use `calendar +join-event`, official meeting coverage includes `lark-meeting`, and the documented sheets surface stays on `+` shortcuts after the legacy command surface was removed. `apps +cache-clear` and cwd-relative file paths remain the agent-facing safety boundary.
+
 ## [v6.1.0] — 2026-09-04
 
 ### Changed
