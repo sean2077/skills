@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Use when a change set, pull request, patch, or implementation needs an evidence-based defect review focused on correctness, regressions, security, maintainability, and verification gaps.
+description: Use when a change set, pull request, patch, or implementation needs an evidence-based defect review focused on correctness, regressions, security, maintainability, and verification gaps. Not for read-only explanation or causal investigation without a change set; use analyze.
 ---
 
 # code-review

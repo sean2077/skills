@@ -42,12 +42,14 @@ $WORKCTL evidence <task-id> --expect-version 5 --kind test \
 $WORKCTL verify <task-id>
 ```
 
-Payloads must be JSON objects. Keys that look like passwords, credentials, secrets, or tokens are rejected recursively. Store durable evidence, not full hidden reasoning or private transcripts.
+Payloads must be JSON objects. Keys that look like passwords, credentials, secrets, or tokens are rejected recursively. Store durable evidence, not full hidden reasoning or private transcripts. Only events with kind `test`, `verify`, `verification`, `ci`, or `quality-gate` count as deterministic verification for the `done` gate; other kinds remain audit context.
 
 ## Exit classes
 
 - `0`: success.
 - `2–3`: usage or invalid data/schema.
+- `5`: a required Git command failed to start, timed out, or exited nonzero.
+- `6`: coordination lock timeout.
 - `10`: compare-and-swap or ownership conflict.
 - `11`: missing, invalid, active, or expired lease.
 - `12`: invalid state transition or retry exhaustion.

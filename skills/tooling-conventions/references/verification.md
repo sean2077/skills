@@ -10,7 +10,7 @@ python -c 'import pathlib,sys; compile(pathlib.Path(sys.argv[1]).read_bytes(), s
 <script> --help                     # exit 0 + usage
 <script> --dry-run ...              # dangerous scripts: prove the no-op path
 bash <skill-dir>/scripts/inventory-check.sh <inventory> # reconcile structural inventory vs disk
-rg -n '<old-path>' <docs> <skills> <units>   # after a move: no stale active references
+rg -n -F '<old-path>' <docs> <skills> <units>   # after a move: no stale active references
 # plus any domain test the project already has
 ```
 

@@ -89,7 +89,7 @@ After two consecutive rounds whose answers do not contain `[from-user]`, the run
 }
 ```
 
-Round numbers are contiguous. Scores must cover every active component and exactly the dimensions for the chosen interview type. `pressure_pass` records that the answer was challenged for counterexamples, boundary conditions, or a concrete acceptance example rather than accepted at face value.
+Round numbers are contiguous. Scores must cover every active component and exactly the dimensions for the chosen interview type. `pressure_pass` records that the answer was challenged for counterexamples, boundary conditions, or a concrete acceptance example rather than accepted at face value. Every answer must carry exactly one provenance tag — `[from-user]`, `[from-code]`, `[from-research]`, or `[from-prototype]`; an untagged answer is rejected (exit `2`, `invalid_evidence`).
 
 ## Ontology stability
 
@@ -109,8 +109,8 @@ Submit the adopted suggestion as `"challenge_mode_used": "<mode>"`. When the las
 
 ## Gate and spec content
 
-`gate` returns exit `4` while ambiguity exceeds threshold. `waive` is a deliberate user-accepted exception, not an automatic escape from the 20-round cap.
+`gate` returns exit `4` while the numeric gate has not passed and no waiver exists. `waive` is a deliberate user-accepted exception, not an automatic escape from the 20-round cap.
 
-`crystallize` accepts only an existing regular UTF-8 file inside the bound worktree/root, rejects symlink traversal, and validates these non-empty headings (English or supported Chinese aliases): Goal, Topology, Constraints, Non-goals, Decision Boundaries, Acceptance Criteria, Ontology, and Open Assumptions. Decision Boundaries must name an owner and revisit/trigger condition. A waived run also needs Remaining Gaps or Remaining Risks.
+`crystallize` accepts only an existing regular UTF-8 file inside the bound worktree/root, rejects symlink traversal, and validates these non-empty headings (English or supported Chinese aliases): Goal, Topology, Constraints, Non-goals, Decision Boundaries, Acceptance Criteria, Ontology, and Open Assumptions. Decision Boundaries must name an owner and revisit/trigger condition. A waived run also needs Remaining Gaps or Remaining Risks. Crystallization additionally requires at least one recorded round with `pressure_pass: true`; otherwise it fails with exit `5` (`pressure_pass_required`).
 
 The file must contain `pending approval` (or the supported Chinese marker). `approve` records explicit evidence separately. `complete` re-reads the file and rejects a changed digest; re-run `crystallize`, obtain fresh approval, and then complete.

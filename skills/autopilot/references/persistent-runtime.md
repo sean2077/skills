@@ -27,10 +27,12 @@ Use `--id` only for parallel runs. Host session variables isolate runs automatic
 6. Exit `0` enters delivery. The first failed verification returns to implementation; the second enters terminal **blocked**. Never reinterpret blocked as delivery.
 7. Report changes and evidence, then run `finish` to enter terminal **done**.
 
+To record an authorized early stop instead, use `abort --reason <text>` with the latest `--expected-revision`; `aborted` is terminal.
+
 A read-only status may report `binding.ok=false`; do not mutate until ownership is resolved or explicitly rebound. Never edit state JSON or invent a revision.
 
 ## Coordination and side effects
 
 Inside a `work-protocol` task, mutate only while holding its explicit autopilot owner lease; never acquire or start a nested loop owner. Use PairRoom for an independent peer rather than recreating a relay protocol here.
 
-The runtime does not authorize merge, push, deployment, publication, or any other external side effect. Stop on terminal state, unsafe path, revision or binding conflict, user interruption, or unresolved authority.
+The runtime does not authorize merge, push, deployment, publication, or any other external side effect. Apply the stop conditions in the SKILL.md hard rules.

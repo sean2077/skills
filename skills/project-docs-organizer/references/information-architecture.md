@@ -103,10 +103,9 @@ Link to canonical setup, architecture, ADR, tool, and runbook pages instead of d
 ## Decide numbering after semantics
 
 README-only projects have nothing to number. Preserve an explicit user choice, a coherent
-established convention, or documentation-generator-owned ordering. When creating or materially
-reorganizing a dedicated tree with no governing convention, treat the absence of a convention as
-permission to choose, not evidence for numbering. Enable local numbering only when the full record
-shows that a stable sibling display or reading order improves an observed reader route and the
-navigation benefit exceeds path/link churn; otherwise keep semantic paths unnumbered. Read
-[`numbering-patterns.md`](numbering-patterns.md) when that evidence exists. Reconsider an existing
-convention only when evidence shows that it causes the retrieval or ordering failure being solved.
+established convention, or documentation-generator-owned ordering. In a new or materially
+reorganized tree, the absence of a convention is permission to choose, not evidence for
+numbering. The enable gate weighs a stable sibling display or reading order against path/link
+churn; read [`numbering-patterns.md`](numbering-patterns.md) for the full gate and sibling-local
+tokens. Reconsider an existing convention only when evidence shows that it causes the retrieval
+or ordering failure being solved.

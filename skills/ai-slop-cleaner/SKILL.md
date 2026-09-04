@@ -23,7 +23,7 @@ The pass is complete only when a verifier actually run over the touched behavior
 
 ## Reviewer-only mode
 
-When asked only to review a cleanup, do not edit. Check preserved behavior, deletion safety, leftover duplication/dead code, boundary drift, and test strength. A high-impact cleanup must not be both authored and independently approved by the same pass.
+When asked only to review a cleanup, do not edit. Check preserved behavior, deletion safety, leftover duplication/dead code, boundary drift, and test strength. A high-impact cleanup must not be both authored and independently approved by the same pass. Defect review of a change set beyond cleanup quality belongs to code-review.
 
 ## Hard rules
 

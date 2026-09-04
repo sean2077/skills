@@ -17,6 +17,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Moved the live Agent Skill host adapter into `evals/agent-skills/host_adapter.py` and updated routing suites to invoke it through the repository's Python runtime instead of requiring a user-level `PATH` installation.
 - Recast `deep-interview`'s one-to-three question range as a soft default, allowing larger structured batches for independent low-effort intake while preserving sequential probing for branching or consequential decisions.
 - Extended `spec-writing` to preserve semantic boundaries, distinguish current from target behavior, compare material implementation options, resolve detail against the project's authority model, and keep only high-value rationale in the reader document.
+- Reduced reference duplication without changing load boundaries: the `project-docs-organizer` numbering enable gate is hosted once, `agent-scaffold` budget numbers and override variables live only in `authority-docs.md`, the `agent-scaffold` retrofit reference no longer restates the plan/apply workflow, and `autopilot`/`deep-interview` persistent-runtime references defer stop conditions to their resident hard rules.
+- Clarified in `agent-scaffold` that `scripts/check-agent-scaffold.sh` is this repository's CI guard, not an installed asset, and matched `tooling-conventions`' stale-path search example to fixed-string matching.
+- Routed general defect review from `ai-slop-cleaner`'s reviewer-only mode to `code-review`, and scoped `analyze`'s two evidence rankings to their modes so explanation and causal investigations no longer carry conflicting ladders.
+
 
 ### Added
 
@@ -38,6 +42,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Made hook reconciliation and verification compare complete managed hook/group JSON rather than command strings alone, so drift in `type`, `statusMessage`, or future execution fields is repaired and reported.
 - Bound `worktree.sh done --dir` to an exact registered worktree in the helper's own common Git directory before reading status or merging, preventing a foreign repository or same-named branch from crossing the lifecycle boundary.
 - Replaced symlink projections atomically without unlinking the prior projection first, preserving the old link or placeholder when replacement fails.
+- Documented `deep-interview` persistent-mode gates that previously existed only in the runtime: `crystallize` requires at least one recorded `pressure_pass` round, every answer must carry one of the four provenance tags, the `gate` exit-4 wording accounts for waivers, and `--depth`/`--threshold` gate values are published.
+- Corrected `work-protocol` state documentation: `blocked` is resumable rather than terminal, only `test`/`verify`/`verification`/`ci`/`quality-gate` evidence kinds count toward the `done` gate, exit classes `5`/`6` are listed, and forced workspace removal evidence records the reason and forced flag.
+- Documented `autopilot`'s `abort --reason` path to the `aborted` terminal in the persistent-runtime reference.
+- Fixed a stale `semver-release` pointer that sent readers to `SKILL.md` for created tag forms now defined by the prerelease increment rules, added the missing alpha increment rule, and surfaced the extractor's fail-closed contract in its `--help` text.
+- Added a `code-review` routing exclusion so read-only explanation or causal investigation without a change set routes to `analyze` on the always-resident surface.
+
 
 ## [v6.0.0] — 2026-08-25
 

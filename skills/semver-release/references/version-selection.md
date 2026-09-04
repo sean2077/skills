@@ -61,6 +61,7 @@ Default to a stable release. Use a prerelease only when the user wants a preview
 
 Prerelease increment rules:
 
+- first alpha: `-alpha.1`; subsequent under the same `vX.Y.Z`: `-alpha.2`, `-alpha.3`; alpha precedes beta.
 - first beta: `-beta.1`; subsequent under the same `vX.Y.Z`: `-beta.2`, `-beta.3`.
 - beta → rc: switch prefix and restart at `.1` → `v0.5.0-rc.1`.
 - final: drop all suffixes → `v0.5.0`.
@@ -69,7 +70,7 @@ Prerelease increment rules:
 
 Before enumerating tags, run `git rev-parse --is-shallow-repository`. In a shallow repository that flag covers every ref, so a repository-level `true` is not sufficient to prove that HEAD history is incomplete. List each apparent HEAD root with `git rev-list --max-parents=0 HEAD`, then inspect its raw commit headers before the first blank line with `git cat-file -p <root>`. A true root has no `parent` header; an apparent root whose raw object still records a `parent` is a HEAD-reachable shallow boundary. Stop before base selection only if an apparent HEAD root has a raw `parent` header, then deepen or unshallow the checkout; fetched tag refs alone do not restore missing ancestry. Never interpret tags hidden by such a boundary as a first release.
 
-Enumerate every HEAD-reachable `v`-prefixed candidate first with `git tag --merged HEAD --list 'v[0-9]*'`. Strip exactly one leading `v`, then validate the remainder as full SemVer 2.0.0 before ranking it. Historical base tags may use the full specification even though this skill deliberately creates the narrower stable or numbered-prerelease forms documented in `SKILL.md`.
+Enumerate every HEAD-reachable `v`-prefixed candidate first with `git tag --merged HEAD --list 'v[0-9]*'`. Strip exactly one leading `v`, then validate the remainder as full SemVer 2.0.0 before ranking it. Historical base tags may use the full specification even though this skill deliberately creates the narrower stable or numbered-prerelease forms defined in the **Prerelease increment rules** above.
 
 Strict validity requires:
 

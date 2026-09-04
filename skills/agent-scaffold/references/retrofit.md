@@ -5,18 +5,11 @@ or hand-authored host agent into the current harness.
 
 ## Preview before mutation
 
-Run `plan` from the target repository. It reports stable concern IDs with a
-status such as `create`, `merge`, `adopt`, `refresh`, `present`, or `attention`.
-Resolve every `attention` item, then run the reported `apply_mode`:
-
-```bash
-bash <skill-dir>/agent-scaffold.sh plan --profile default
-bash <skill-dir>/agent-scaffold.sh apply --profile default
-```
-
-Use `upgrade` instead of `apply` when `plan` reports runtime `refresh` states.
-`apply` preserves matching runtime files and refuses drift; `upgrade` refreshes
-current managed runtime files from the skill assets.
+Follow the SKILL.md workflow from the target repository: run `plan`, resolve
+every `attention` item, then run the reported `apply_mode` and `verify`. For
+adoption, `plan` surfaces `adopt` states alongside `create`, `merge`,
+`refresh`, `present`, and `attention`; a reported `upgrade` mode refreshes
+managed runtime files before reconciling the contract.
 
 ## Adopt an existing CLAUDE.md
 
