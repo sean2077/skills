@@ -281,8 +281,8 @@ class HookReconciliationTests(unittest.TestCase):
             for group in groups
             for hook in group["hooks"]
         ]
-        self.assertFalse(any("trunk_edit_guard" in command for command in commands))
-        self.assertTrue(any("authority_doc_budget" in command for command in commands))
+        self.assertFalse(any("--guard" in command for command in commands))
+        self.assertTrue(any("--budget" in command for command in commands))
 
     def test_verify_compares_complete_managed_hook_objects(self):
         manifest = CORE.load_manifest()
@@ -354,7 +354,7 @@ class HookReconciliationTests(unittest.TestCase):
             with self.assertRaisesRegex(CORE.CoreError, "type must be a string"):
                 CORE.validate_hook_config(path, "hooks.json")
 
-    def test_managed_host_assets_use_git_bash_dispatcher(self):
+    def test_managed_host_assets_invoke_python_directly(self):
         manifest = CORE.load_manifest()
         for asset_id in ("host.claude-hooks", "host.codex-hooks"):
             source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, asset_id)["source"]
@@ -367,8 +367,9 @@ class HookReconciliationTests(unittest.TestCase):
             ]
             self.assertTrue(commands)
             for command in commands:
-                self.assertTrue(command.startswith("git -c \"alias.agent-scaffold-hook=!sh "))
-                self.assertIn(".agents/tools/hooks/hook-launcher.sh", command)
+                self.assertTrue(command.startswith("python -X utf8 "))
+                self.assertIn(".agents/tools/hooks/hook-paths.py", command)
+                self.assertNotIn("hook-launcher.sh", command)
                 self.assertNotIn("bash -lc", command)
             timeouts = [
                 hook.get("timeout")

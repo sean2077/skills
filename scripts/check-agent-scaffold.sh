@@ -93,8 +93,11 @@ grep -qF 'cygpath -u' "$common" || fail "hook-common.sh lost Windows/MSYS path c
 
 for config in claude.settings.json codex.hooks.json; do
   file="$skill/assets/host/$config"
-  grep -qF 'alias.agent-scaffold-hook=!sh .agents/tools/hooks/hook-launcher.sh' "$file" \
-    || fail "$config does not enter hooks through the Git-owned launcher"
+  grep -qF 'python -X utf8 .agents/tools/hooks/hook-paths.py --' "$file" \
+    || fail "$config does not invoke hook-paths.py directly"
+  if grep -qF 'alias.agent-scaffold-hook' "$file"; then
+    fail "$config still uses the Git-alias dispatcher on the hot path"
+  fi
   if grep -qF '"command": "bash ' "$file"; then
     fail "$config still performs a bare bash PATH lookup"
   fi

@@ -25,7 +25,11 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = Path(__file__).with_name("managed-assets.json")
 PROFILES = {"default", "light"}
 STRATEGIES = {"copy", "seed", "merge-json", "managed-block"}
-MANAGED_HOOK_NAMES = ("trunk_edit_guard", "authority_doc_budget")
+MANAGED_HOOK_FILES = (
+    "trunk_edit_guard.sh",
+    "authority_doc_budget.sh",
+    "hook-paths.py",
+)
 CHECK_STATUSES = {
     "adopt",
     "attention",
@@ -303,11 +307,11 @@ def _case_insensitive_paths(root: Path) -> bool:
 
 def managed_hook_pattern(root: Path) -> re.Pattern:
     flags = re.IGNORECASE if _case_insensitive_paths(root) else 0
-    names = "|".join(re.escape(name) for name in MANAGED_HOOK_NAMES)
+    names = "|".join(re.escape(name) for name in MANAGED_HOOK_FILES)
     return re.compile(
         r"(?:^|[/\s\"\x27;&|()<>])\.agents/tools/hooks/(?:"
         + names
-        + r")\.sh(?=$|[\s\"\x27;&|()<>])",
+        + r")(?=$|[\s\"\x27;&|()<>])",
         flags,
     )
 
@@ -397,7 +401,7 @@ def hook_tuples(data: Dict[str, Any]) -> Set[Tuple[str, str, str]]:
 
 def prepare_hooks(source: Path, profile: str) -> Dict[str, Any]:
     data = validate_hook_config(source, str(source), strict_commands=True)
-    disabled = [] if profile == "default" else ["trunk_edit_guard"]
+    disabled = [] if profile == "default" else ["hook-paths.py --guard"]
     for event, groups in list((data.get("hooks") or {}).items()):
         kept = []
         for original in groups or []:

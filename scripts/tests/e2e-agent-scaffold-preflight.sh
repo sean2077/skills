@@ -31,7 +31,7 @@ jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(
 # shellcheck disable=SC2317,SC2329
 jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
-jcommand_count() { python -c 'import json,re,sys; d=json.load(open(sys.argv[1])); p=re.compile(r"(?:^|[/\s\"\x27;&|()<>]).agents/tools/hooks/"+re.escape(sys.argv[2])+r"\.sh(?=$|[\s\"\x27;&|()<>])"); n=sum(bool(p.search(str(h.get("command", "")).replace("\\", "/"))) for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
+jcommand_count() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); needle=sys.argv[2]; n=sum(needle in str(h.get("command", "")).replace("\\", "/") for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
 fixed_text_in_both() { grep -qF "$1" "$2" && grep -qF "$1" "$3"; }
 # shellcheck disable=SC2317,SC2329
