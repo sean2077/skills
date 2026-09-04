@@ -22,7 +22,7 @@ Use `python` when that is the host's Python 3 command, or `py -3` on Windows.
 2. `init` creates `.agents/work/<task-id>/brief.md`, `plan.md`, `state.json`, and `evidence.jsonl` in one authoritative worktree.
 3. Acquire exactly one loop owner: `native`, `autopilot`, `ralph`, `pairroom`, or `custom:<slug>`. Pass the returned token through a protected environment variable or file; use `owner check` before owned actions and `owner heartbeat` only with the current state version.
 4. Every mutation supplies `--expect-version`; stale writers fail instead of overwriting newer state.
-5. Follow `clarifying → planned → executing → verifying → done`. A bounded verify retry may return to executing; `done` requires the latest deterministic verification event in the current verifying cycle to pass. Explicit blocked and cancelled terminals remain visible.
+5. Follow `clarifying → planned → executing → verifying → done`. A bounded verify retry may return to executing; `done` requires the latest deterministic verification event in the current verifying cycle to pass. Explicit `blocked` (resumable) and `cancelled` (terminal) states remain visible.
 6. Append commands, exit codes, commits, approvals, and review verdicts as evidence. Never write secrets into committed artifacts.
 7. Run `verify` before handoff or delivery, then release or hand off the owner explicitly.
 

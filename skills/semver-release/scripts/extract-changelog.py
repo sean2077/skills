@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-"""Extract one fail-closed release-notes body from the preferred changelog format."""
+"""Extract one fail-closed release-notes body from the preferred changelog format.
+
+Fails closed and never falls back to generated notes when the exact tag heading
+is missing, duplicated, malformed, mismatched against --tag, carries an invalid
+calendar date, or yields an empty body.
+"""
 
 from __future__ import annotations
 

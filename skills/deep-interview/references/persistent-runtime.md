@@ -14,7 +14,7 @@ python3 "<installed-skill-dir>/scripts/interview_state.py" start \
   --idea "<one-line summary>" --depth deep --type greenfield
 ```
 
-Use `python` when that is the host's Python 3 command, or `py -3` on Windows. Exit `3` from `status` means the selected run does not exist.
+Use `python` when that is the host's Python 3 command, or `py -3` on Windows. Exit `3` from `status` means the selected run does not exist. `--depth` sets the ambiguity gate (`quick` 0.30, `standard` 0.20, `deep` 0.10); `--threshold <0..1>` overrides it explicitly.
 
 Use `brownfield` for an existing system. Use `--id` only for parallel runs and bounded `list --all-sessions --limit 20`, `--latest`, `--full`, or `history --tail <1..20>` only when discovery or diagnosis requires them.
 
@@ -32,4 +32,4 @@ After `gate` passes or an authorized waiver exists, write the full specification
 
 Ask the user to review the crystallized specification. Only explicit approval may be recorded with `approve --evidence <text>`. Run `complete` only from the separately approved state and only while the spec digest is unchanged. Completion does not authorize implementation.
 
-Never edit state JSON, invent evidence or revisions, or treat a numeric gate as authority over an unresolved blocker. Stop on user exit, terminal state, binding/revision conflict, unsafe path, invalid evidence, or unresolved authority.
+Never edit state JSON, invent evidence or revisions, or treat a numeric gate as authority over an unresolved blocker. Apply the stop conditions in the SKILL.md hard rules.

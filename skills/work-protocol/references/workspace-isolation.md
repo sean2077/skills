@@ -41,4 +41,4 @@ $WORKCTL workspace remove <task-id> worker-a \
   --merged-into HEAD --expect-version <n>
 ```
 
-Normal removal requires a registered, unmoved workspace with no unresolved merge, no unsafe dirty state, and—where applicable—a branch merged into the declared target. `--force` still requires `--reason`; the reason and observed safety state are appended to evidence. Use `prune-stale` only when both the filesystem path and Git worktree metadata prove the record is stale.
+Normal removal requires a registered, unmoved workspace with no unresolved merge, no unsafe dirty state, and—where applicable—a branch merged into the declared target. `--force` still requires `--reason`; the reason and forced flag are appended to evidence. Use `prune-stale` only when both the filesystem path and Git worktree metadata prove the record is stale.

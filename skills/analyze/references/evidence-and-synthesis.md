@@ -4,7 +4,7 @@ Read this only when an analysis spans several boundaries, sources conflict, or t
 
 ## Evidence order
 
-Prefer, in order: observed runtime/test output; executable behavior and invariants; configuration actually loaded; caller/callee contracts; focused tests; current documentation; comments; history; naming alone.
+In explanation mode, prefer, in order: observed runtime/test output; executable behavior and invariants; configuration actually loaded; caller/callee contracts; focused tests; current documentation; comments; history; naming alone. Causal investigations use a different ladder; see [causal-evidence.md](causal-evidence.md).
 
 A lower-ranked source may still win when it is the only source addressing the exact condition. Say why.
 

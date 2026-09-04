@@ -25,9 +25,9 @@ Down-rank explicitly when evidence conflicts. Do not merely reorder a list.
 
 ## Evidence hierarchy
 
-Prefer controlled reproduction and minimized counterexample; then direct state or trace at the failing boundary; executable code and configuration; focused tests; correlated logs or metrics; documentation; history; intuition.
+In causal mode, prefer controlled reproduction and minimized counterexample; then direct state or trace at the failing boundary; executable code and configuration; focused tests; correlated logs or metrics; documentation; history; intuition.
 
-Correlation can locate a boundary without proving mechanism. A test may prove one path and say nothing about the observed environment. Logs, tool output, comments, and prior claims are evidence, not verdicts.
+Correlation can locate a boundary without proving mechanism. A test may prove one path and say nothing about the observed environment.
 
 ## Discriminating probe
 
