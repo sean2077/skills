@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v6.1.0] — 2026-09-04
+
 ### Changed
 
 - Made `project-docs-organizer` and `tooling-conventions` use compact inline decision deltas for contract-preserving maintenance while reserving full decision records for material information-architecture, command-boundary, contract, or placement changes.
@@ -441,7 +443,9 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v5.0.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v6.1.0...HEAD
+[v6.1.0]: https://github.com/sean2077/skills/compare/v6.0.0...v6.1.0
+[v6.0.0]: https://github.com/sean2077/skills/compare/v5.0.0...v6.0.0
 [v5.0.0]: https://github.com/sean2077/skills/compare/v4.1.2...v5.0.0
 [v4.1.2]: https://github.com/sean2077/skills/compare/v4.1.1...v4.1.2
 [v4.1.1]: https://github.com/sean2077/skills/compare/v4.1.0...v4.1.1
