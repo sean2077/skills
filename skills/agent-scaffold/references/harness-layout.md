@@ -46,7 +46,9 @@ layout-independent once they land at the paths above. **They are intentionally t
 `.agents/tools/` install depth** — e.g. `trunk_edit_guard.sh` resolves `proj` three levels up
 (`.agents/tools/hooks/` → repo root) plus a git-toplevel fallback for Codex. Do not "simplify" that
 resolver to a shallower path: the git-toplevel fallback is what makes the hooks work under Codex
-(which has no `$CLAUDE_PROJECT_DIR`), and `scripts/check-agent-scaffold.sh` guards this invariant.
+(which has no `$CLAUDE_PROJECT_DIR`). This repository's CI script
+`scripts/check-agent-scaffold.sh` guards that invariant for the catalog's own vendored harness;
+it is not an installed asset.
 
 ### Light profile
 

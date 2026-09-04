@@ -8,6 +8,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Reduced reference duplication without changing load boundaries: the `project-docs-organizer` numbering enable gate is hosted once, `agent-scaffold` budget numbers and override variables live only in `authority-docs.md`, the `agent-scaffold` retrofit reference no longer restates the plan/apply workflow, and `autopilot`/`deep-interview` persistent-runtime references defer stop conditions to their resident hard rules.
+- Clarified in `agent-scaffold` that `scripts/check-agent-scaffold.sh` is this repository's CI guard, not an installed asset, and matched `tooling-conventions`' stale-path search example to fixed-string matching.
+- Routed general defect review from `ai-slop-cleaner`'s reviewer-only mode to `code-review`, and scoped `analyze`'s two evidence rankings to their modes so explanation and causal investigations no longer carry conflicting ladders.
+
+### Fixed
+
+- Documented `deep-interview` persistent-mode gates that previously existed only in the runtime: `crystallize` requires at least one recorded `pressure_pass` round, every answer must carry one of the four provenance tags, the `gate` exit-4 wording accounts for waivers, and `--depth`/`--threshold` gate values are published.
+- Corrected `work-protocol` state documentation: `blocked` is resumable rather than terminal, only `test`/`verify`/`verification`/`ci`/`quality-gate` evidence kinds count toward the `done` gate, exit classes `5`/`6` are listed, and forced workspace removal evidence records the reason and forced flag.
+- Documented `autopilot`'s `abort --reason` path to the `aborted` terminal in the persistent-runtime reference.
+- Fixed a stale `semver-release` pointer that sent readers to `SKILL.md` for created tag forms now defined by the prerelease increment rules, added the missing alpha increment rule, and surfaced the extractor's fail-closed contract in its `--help` text.
+- Added a `code-review` routing exclusion so read-only explanation or causal investigation without a change set routes to `analyze` on the always-resident surface.
+
 - Made `project-docs-organizer` and `tooling-conventions` use compact inline decision deltas for contract-preserving maintenance while reserving full decision records for material information-architecture, command-boundary, contract, or placement changes.
 - Reworked the live Agent Skill adapter to derive route vocabulary from the checked-out catalog, preserve host-classified workflows, normalize only route/workflow/key spelling, and stop synthesizing expected fields from prompt heuristics.
 - Added an explicit `code-review` exclusion to the `analyze` routing description so defect review of a concrete change set is decided on the always-resident routing surface, not only inside the body.
