@@ -27,6 +27,7 @@ REFERENCE_COVERAGE = {
     "references/tables-and-records.md": ("lark-base", "lark-sheets"),
     "references/calendar-and-meetings.md": (
         "lark-calendar",
+        "lark-meeting",
         "lark-minutes",
         "lark-note",
         "lark-vc-agent",
@@ -232,11 +233,15 @@ def validate_lark_cli_contract(
             "one focused `+record-list`/`+record-search` acceptance read",
             "border_styles",
             "Borders belong inside each `cell_styles` item",
+            "Do not reconstruct retired sheets resource commands",
         ),
         "references/calendar-and-meetings.md": (
             "Fast-path contract and call budget",
             "lark-cli calendar +agenda",
             "lark-cli calendar +suggestion",
+            "lark-cli calendar +list-attendees",
+            "does not include attendees",
+            "lark-cli calendar +join-event",
             "Do not automatically issue a second `+get`/`+agenda` query",
             "reusing it when its relevant recipe is already in active context",
             "Future or scheduled event",

@@ -9,7 +9,11 @@ transcripts, or meeting-summary workflows.
 Use the documented shortcuts directly; do not preflight calendar/VC/Note/Minutes service help.
 
 - Today's or a bounded agenda: one `calendar +agenda` call.
-- Known `calendar_id + event_id`: one `calendar +get` call.
+- Known `calendar_id + event_id` for event metadata: one `calendar +get` call. `+get` does not
+  include attendees or rooms.
+- Known event attendees or rooms: one `calendar +list-attendees` call.
+- Calendar share token from a share URL, QR code, share card, or RSVP card: one
+  `calendar +join-event` call.
 - Search a future/scheduled event: one `calendar +search-event` call; fetch details only for the
   selected event when basic search fields are insufficient.
 - Exact create request with known attendee IDs and time: one `calendar +create` call.
@@ -26,8 +30,8 @@ Do not resolve known `ou_`, `oc_`, `omm_`, calendar, event, meeting, note, or mi
 - Future or scheduled event, attendee, room, busy/free, or recommended slot: `calendar`.
 - Ended meeting search, participant snapshot, meeting products, active-meeting discovery/events, or
   in-meeting message: `vc`.
-- Application bot actually joining/leaving a live meeting: current `vc +meeting-join` / `+meeting-leave`
-  capability with bot identity; this is the `lark-vc-agent` boundary.
+- Application bot actually joining/leaving a live meeting: `vc +meeting-join` / `+meeting-leave`
+  with bot identity (`lark-meeting`; `lark-vc-agent` is a compatibility alias).
 - Known `minute_token`, uploaded media, Minutes transcript/summary/todo/chapter: `minutes`.
 - Known `note_id`, note display type, or unified Note transcript: `note`.
 - Known returned document token whose body is needed: `docs`, preserving identity.
@@ -45,8 +49,16 @@ lark-cli calendar +agenda --as user
 # Bounded agenda
 lark-cli calendar +agenda --start '2026-08-17' --end '2026-08-18' --as user
 
-# Known event; omit --calendar-id to use primary when supported
+# Known event metadata; omit --calendar-id to use primary when supported.
+# +get does not include attendees or rooms.
 lark-cli calendar +get --calendar-id '<calendar-id>' --event-id '<event-id>' --as user
+
+# Attendees and rooms for a known event
+lark-cli calendar +list-attendees --calendar-id '<calendar-id>' --event-id '<event-id>' --as user
+lark-cli calendar +list-attendees --event-id '<event-id>' --type user --as user
+
+# Join by share token from a calendar share URL (.../calendar/share?token=<token>)
+lark-cli calendar +join-event --token '<share-token>' --as user
 
 # Event search; returns basic fields
 lark-cli calendar +search-event --query '<keyword>' --start '2026-08-17' --end '2026-08-24' \
@@ -58,7 +70,8 @@ lark-cli calendar +freebusy --start '2026-08-17' --end '2026-08-18' \
 ```
 
 Do not call `+agenda` and `+freebusy` for the same question unless both event detail and privacy-safe
-availability are genuinely needed. Do not fetch full event detail for every search result.
+availability are genuinely needed. Do not fetch full event detail for every search result. Do not
+use `+get` when the question is who is attending or which rooms are booked.
 
 ## Scheduling fast paths
 
@@ -187,5 +200,5 @@ Meeting-product and bot capabilities may change or be limited-release, so discov
 shortcut/resource and cache the result. Preserve availability error codes/hints instead of running
 broad service help or repeatedly requesting scopes.
 
-**Official coverage:** `lark-calendar`, `lark-minutes`, `lark-note`, `lark-vc-agent`, `lark-vc`,
-`lark-workflow-meeting-summary`, `lark-workflow-standup-report`.
+**Official coverage:** `lark-calendar`, `lark-meeting`, `lark-minutes`, `lark-note`, `lark-vc-agent`,
+`lark-vc`, `lark-workflow-meeting-summary`, `lark-workflow-standup-report`.

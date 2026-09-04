@@ -160,6 +160,8 @@ workflow enable/disable, or AppMode publication-visible changes.
 For a documented shortcut, run exact help only after an unknown option/command or payload-shape
 error. For complex shortcut JSON, prefer its targeted `--print-schema`/flag schema when exposed;
 use registered method schema only after selecting the exact method. Do not begin a common Sheet or
-Base task with broad service help.
+Base task with broad service help. Do not reconstruct retired sheets resource commands. The
+maintained surface is the documented `+` shortcuts; a missing legacy resource name is not a reason
+to invent a replacement.
 
 **Official coverage:** `lark-base`, `lark-sheets`.
