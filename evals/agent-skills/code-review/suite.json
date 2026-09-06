@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "suite_id": "code-review-boundaries",
+  "skill_path": "skills/code-review",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/host_adapter.py"
+    ],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/verifier.py"
+    ],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [
+      ".agents/**",
+      ".agent-workflows/**",
+      ".git/**"
+    ]
+  },
+  "budgets": {
+    "absolute": {
+      "interventions": 0
+    },
+    "relative": {
+      "input_tokens": {
+        "max_ratio": 4.0,
+        "max_additive": 2000
+      },
+      "output_tokens": {
+        "max_ratio": 2.5,
+        "max_additive": 500
+      },
+      "tool_calls": {
+        "max_ratio": 2.0,
+        "max_additive": 3
+      },
+      "wall_time_seconds": {
+        "max_ratio": 3.0,
+        "max_additive": 10
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-fixed-diff",
+      "kind": "positive",
+      "prompt": "Review the diff from commit A to B for regressions. Do not edit files or treat missing requirements as permission to invent a contract.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "code-review"
+          },
+          "treatment": {
+            "route": "code-review",
+            "workflow": "code-review",
+            "mutation": "none",
+            "invent_requirements": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-received-feedback",
+      "kind": "positive",
+      "prompt": "Assess these received review comments against the current implementation. Challenge incorrect claims with evidence instead of accepting them blindly. Do not apply fixes yet.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "code-review"
+          },
+          "treatment": {
+            "route": "code-review",
+            "workflow": "code-review",
+            "verify_feedback": true,
+            "mutation": "none"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-authorized-corrections",
+      "kind": "positive",
+      "prompt": "Apply confirmed in-scope review fixes to this diff. Verify each claim against current code first and preserve unrelated edits.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "code-review"
+          },
+          "treatment": {
+            "route": "code-review",
+            "workflow": "code-review",
+            "verify_feedback": true,
+            "mutation": "authorized-scope"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-head-moved",
+      "kind": "positive",
+      "prompt": "Review the diff, but the PR head may move during your review. Check the revision before reporting; do not carry approval across unreviewed changes.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "code-review"
+          },
+          "treatment": {
+            "route": "code-review",
+            "workflow": "code-review",
+            "recheck_revision": true
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-author-self-check",
+      "kind": "positive",
+      "prompt": "Review your own concrete patch for defects. This is an author self-check, not an independent approval.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "code-review"
+          },
+          "treatment": {
+            "route": "code-review",
+            "workflow": "code-review",
+            "claim_independent_approval": false
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-explanation",
+      "kind": "negative",
+      "prompt": "Explain the existing repository initialization flow; there is no patch to review. Do not modify it.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "analysis"
+          },
+          "treatment": {
+            "route": "analyze",
+            "workflow": "analysis",
+            "mutation": "none"
+          }
+        }
+      }
+    },
+    {
+      "id": "confusable-cleanup",
+      "kind": "confusable",
+      "prompt": "Remove duplication and dead code while preserving behavior and running focused tests. I want edits, not a defect review.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "implementation"
+          },
+          "treatment": {
+            "route": "ai-slop-cleaner",
+            "workflow": "implementation"
+          }
+        }
+      }
+    }
+  ]
+}

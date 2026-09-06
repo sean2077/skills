@@ -21,6 +21,8 @@ Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix w
 
 ## Catalog
 
+Use the [selection and composition guide](docs/skill-composition.md) to distinguish adjacent routes without loading a whole workflow chain.
+
 | Skill | Description | Stack |
 |-------|-------------|-------|
 | [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, lean authority and terminology contracts, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
@@ -28,7 +30,7 @@ Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix w
 | [analyze](skills/analyze/) | Explain repository behavior or investigate failures through one read-only evidence workflow with ranked synthesis, competing hypotheses, falsification, and discriminating probes. | Engineering, Analysis |
 | [autopilot](skills/autopilot/) | Deliver authorized work end to end with a proportional native loop, selective bounded delegation, and persistent state only when explicit resume, handoff, revision, or audit semantics add value. | Python, Delivery |
 | [best-practice-research](skills/best-practice-research/) | Compare current primary sources and viable trade-offs to produce a repository-specific technical recommendation. | Research, Engineering |
-| [code-review](skills/code-review/) | Perform an evidence-based defect review of a concrete change set, including regressions, security, maintainability, and verification gaps. | Engineering, Review |
+| [code-review](skills/code-review/) | Review concrete changes and received findings against current code, with revision-bound evidence, actionable defects, and explicit authoring boundaries. | Engineering, Review |
 | [conventional-commit](skills/conventional-commit/) | Create one scoped local Conventional Commit or return one history-aware message-only subject while preserving unrelated index state. | Git |
 | [deep-interview](skills/deep-interview/) | Turn vague ideas into an explicitly approved specification through an adaptive interview, with opt-in deterministic topology/scoring state for persistent or auditable sessions. | Python, Requirements |
 | [domain-modeling](skills/domain-modeling/) | Actively define, challenge, group, split, and migrate project terminology with user-selectable up-front or incremental modeling, evidence-backed context boundaries, multilingual canonical equivalents, and atomic `CONTEXT.md`/`CONTEXT-MAP.md` evolution. | Domain Modeling, Documentation |
@@ -38,7 +40,7 @@ Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix w
 | [ralph](skills/ralph/) | Use a deterministic bounded verifier loop only when fixed attempts and mechanical pass, stall, plateau, exhaustion, or resume state are part of the task boundary. | Python, Iteration |
 | [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, a preferred changelog-backed tag workflow, project-owned version synchronization, and policy-derived publication verification. | Git, Python, Release |
 | [spec-writing](skills/spec-writing/) | Write or revise human-facing requirements and design documents, compare material implementation options, preserve settled meaning, clarify authority and acceptance, and separate working history from the reader narrative. | Documentation, Requirements |
-| [tdd](skills/tdd/) | Apply explicitly requested test-first implementation across stacks by deriving seams, oracles, test levels, and commands from the target project, with validated RED-GREEN-REFACTOR evidence and guidance for effects, legacy code, and hard cases. | Engineering, Testing |
+| [tdd](skills/tdd/) | Apply user- or project-required test-first implementation across stacks by deriving seams, oracles, test levels, and commands from the target project, with validated RED-GREEN-REFACTOR evidence and guidance for effects, legacy code, and hard cases. | Engineering, Testing |
 | [tooling-conventions](skills/tooling-conventions/) | Derive project-owned command boundaries, placement, and evidence-gated safety contracts, with optional structural inventory reconciliation. | Shell, Governance |
 | [work-protocol](skills/work-protocol/) | Externalize coordination only when durable ownership, CAS state, evidence integrity, isolated writers, or commit-fixed review materially matter. | Python, Git, Coordination |
 

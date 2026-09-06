@@ -15,7 +15,7 @@ Research current external practice and translate it into a repository-specific r
 4. Add high-quality secondary sources only to compare real-world trade-offs or fill an explicit primary-source gap.
 5. Record source date/version, scope, claim supported, and applicability to this repository.
 6. Compare at least two viable approaches when a meaningful alternative exists; include costs, migration risk, and operational burden.
-7. Recommend one approach, explain rejected alternatives, and identify assumptions that require local validation.
+7. Recommend one approach, explain rejected alternatives, and identify assumptions that require local validation. Stop searching when additional evidence no longer changes the feasible options, ranking, or material risks; unresolved local behavior calls for a discriminating experiment, not another generic source sweep.
 
 ## Output contract
 
@@ -30,7 +30,8 @@ Research current external practice and translate it into a repository-specific r
 
 - Browse for current or niche facts; do not rely on remembered versions or policies.
 - Prefer primary sources for technical claims and cite the claim where used.
-- Do not copy a popular pattern without testing its fit to the target repository.
+- Do not copy a popular pattern without testing its fit to the target repository. Stars, benchmark wins, and vendor claims are discovery signals, not evidence of local utility.
+- Reuse already-verified sources within their date/version boundary. Fetch changed claims, not an entire ecosystem again; keep source findings separate from local inferences.
 - Distinguish “required by a standard”, “recommended by a vendor”, and “common practice”.
 - Do not turn research into code changes unless the user also authorizes implementation.
 

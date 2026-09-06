@@ -23,11 +23,12 @@ Do not create runtime state after the work is understood or complete merely to s
 
 ## Native delivery loop
 
-1. Confirm authority, success evidence, scope, and only the uncertainties that can change the work.
+1. Confirm authority, success evidence, scope, and only the uncertainties that can change the work. Reuse approved decisions and current evidence; do not restart discovery at each skill boundary.
 2. Make the plan proportional. Small obvious tasks need no standalone plan file; complex work should expose ordered slices, risks, and exact verification.
 3. Implement the smallest coherent slices and add focused tests when they are part of the acceptance evidence. Use a RED–GREEN–REFACTOR loop only when the user or applicable project policy explicitly requires test-first development.
 4. Run the real verifier and inspect its observed output. Retry only when new evidence changes the next attempt; stop rather than repeating the same failed approach.
-5. Deliver changes, evidence, limits, and deferrals.
+5. Review the integrated change against acceptance and resolve actionable findings with fresh evidence. Do not label an author self-check as independent review.
+6. Deliver changes, evidence, limits, and deferrals. For an authorized PR or other remote deliverable, retrieve the resulting object and verify its target, revision, and state before reporting its real identifier; a local commit or successful push is not a PR.
 
 When persistent runtime mode is selected, read its control-plane reference before the first state mutation. The runtime becomes authoritative only after `start`; it never executes commands supplied as data.
 
@@ -40,6 +41,8 @@ When persistent runtime mode is selected, read its control-plane reference befor
 - Stop on terminal state, unsafe path, conflict, user interruption, or unresolved authority.
 
 ## On-demand references
+
+- Read [composition and handoff](references/composition-and-handoff.md) when selecting specialist work, delegating, receiving review findings, or transferring an unfinished task. Do not load every specialist or restart another delivery controller.
 
 - Read [persistent runtime](references/persistent-runtime.md) only when durable workflow state is selected for resume, handoff, revision/binding ownership, or formal receipts.
 - Read [resume and recovery](references/resume-and-recovery.md) only after runtime mode is active and discovery, interruption, mismatch, conflict, stale lock, corruption, or non-Git workspace handling is needed.

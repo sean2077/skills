@@ -122,6 +122,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                 "case": {"prompt": "Explain the flow."},
             }
             host = {
+                "usage": {"input_tokens": 10, "output_tokens": 5},
                 "result": json.dumps(
                     {
                         "selected": True,
@@ -131,7 +132,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             }
             stdin = io.StringIO(json.dumps(request))
             stdout = io.StringIO()
-            completed = types.SimpleNamespace(stdout=json.dumps(host))
+            completed = types.SimpleNamespace(stdout=json.dumps(host), returncode=0)
             with contextlib.redirect_stdout(stdout), mock.patch(
                 "sys.stdin", stdin
             ), mock.patch.object(
@@ -184,6 +185,142 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                 "treatment", "positive", True, False
             )
         )
+
+
+    def run_host(self, host, *, returncode=0, raw_stdout=None):
+        request = {
+            "repository_root": str(ROOT), "run_id": "host-contract",
+            "mode": "baseline", "case": {"prompt": "Explain the flow."},
+        }
+        output = io.StringIO()
+        completed = types.SimpleNamespace(
+            stdout=json.dumps(host) if raw_stdout is None else raw_stdout,
+            returncode=returncode,
+        )
+        with contextlib.redirect_stdout(output), mock.patch(
+            "sys.stdin", io.StringIO(json.dumps(request))
+        ), mock.patch.object(self.adapter.shutil, "which", return_value="/fake/claude"), mock.patch.object(
+            self.adapter.subprocess, "run", return_value=completed
+        ):
+            self.assertEqual(0, self.adapter.main())
+        return json.loads(output.getvalue())
+
+    @staticmethod
+    def successful_host():
+        return {
+            "usage": {"input_tokens": 10, "output_tokens": 5},
+            "duration_api_ms": 1,
+            "result": json.dumps({
+                "selected": False, "behavior": {"route": "none", "workflow": "analysis"}
+            }),
+        }
+
+    def test_nonzero_host_exit_cannot_become_a_success(self):
+        payload = self.run_host(self.successful_host(), returncode=7)
+        self.assertEqual("failed", payload["status"])
+        self.assertEqual(7, payload["metadata"]["host_exit_code"])
+        self.assertTrue(payload["metadata"]["usage_available"])
+        self.assertEqual(10, payload["metrics"]["input_tokens"])
+
+    def test_cached_input_is_counted_without_double_counting_model_totals(self):
+        host = self.successful_host()
+        host["usage"].update(cache_read_input_tokens=200, cache_creation_input_tokens=30)
+        host["modelUsage"] = {"model": {
+            "inputTokens": 10, "outputTokens": 5,
+            "cacheReadInputTokens": 200, "cacheCreationInputTokens": 30,
+        }}
+        result = self.run_host(host)
+        self.assertEqual("completed", result["status"])
+        self.assertEqual(240, result["metrics"]["input_tokens"])
+        self.assertEqual(5, result["metrics"]["output_tokens"])
+
+    def test_model_usage_fallback_includes_each_models_cache(self):
+        host = self.successful_host()
+        del host["usage"]
+        host["modelUsage"] = {
+            "a": {"inputTokens": 3, "outputTokens": 2, "cacheReadInputTokens": 7},
+            "b": {"inputTokens": 4, "outputTokens": 5, "cacheCreationInputTokens": 9},
+        }
+        result = self.run_host(host)
+        self.assertEqual("completed", result["status"])
+        self.assertEqual(23, result["metrics"]["input_tokens"])
+        self.assertEqual(7, result["metrics"]["output_tokens"])
+
+
+    def test_whole_call_model_usage_precedes_partial_top_level_usage(self):
+        host = self.successful_host()
+        host["modelUsage"] = {"model": {
+            "inputTokens": 20, "outputTokens": 8, "cacheReadInputTokens": 100,
+        }}
+        result = self.run_host(host, returncode=1)
+        self.assertEqual("failed", result["status"])
+        self.assertEqual(120, result["metrics"]["input_tokens"])
+        self.assertEqual(8, result["metrics"]["output_tokens"])
+
+    def test_missing_or_invalid_usage_is_not_a_zero_cost_success(self):
+        invalid = [None, {}, {"input_tokens": 1}, {"input_tokens": True, "output_tokens": 1},
+                   {"input_tokens": -1, "output_tokens": 1},
+                   {"input_tokens": 1.5, "output_tokens": 1},
+                   {"input_tokens": "10", "output_tokens": 1},
+                   {"input_tokens": 1, "output_tokens": 1, "cache_read_input_tokens": -1}]
+        for usage in invalid:
+            with self.subTest(usage=usage):
+                host = self.successful_host()
+                host["usage"] = usage
+                result = self.run_host(host)
+                self.assertEqual("failed", result["status"])
+                self.assertFalse(result["metadata"]["usage_available"])
+
+    def test_elapsed_time_is_measured_not_copied_from_api_duration(self):
+        with mock.patch.object(self.adapter.time, "monotonic", side_effect=[100.0, 102.5]):
+            result = self.run_host(self.successful_host())
+        self.assertEqual(2.5, result["metrics"]["wall_time_seconds"])
+
+    def test_json_parser_requires_one_unambiguous_finite_object(self):
+        for text in ('{}{}', 'log {"selected": true}', '[{}]',
+                     '{"selected":false,"selected":true}', '{"x":NaN}',
+                     '{"x":Infinity}', '{"x":1e999}'):
+            with self.subTest(text=text), self.assertRaises((ValueError, TypeError)):
+                self.adapter.parse_json(text)
+        self.assertEqual({"ok": True}, self.adapter.parse_json('  {"ok":true}\n'))
+
+    def test_behavior_key_collisions_are_not_silently_overwritten(self):
+        with self.assertRaises(ValueError):
+            self.adapter.normalize_behavior_keys({"persistent-state": True, "persistent_state": False})
+
+    def test_candidate_symlink_cannot_escape_the_repository(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            outer = Path(temporary)
+            root = outer / "repo"
+            skill = root / "candidate"
+            skill.mkdir(parents=True)
+            secret = outer / "outside.md"
+            secret.write_text("outside candidate", encoding="utf-8")
+            try:
+                (skill / "SKILL.md").symlink_to(secret)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symlink creation is unavailable: {exc}")
+            with self.assertRaises(ValueError):
+                self.adapter.load_candidate("candidate", root)
+
+    def test_behavior_comparison_does_not_coerce_booleans_to_numbers(self):
+        for expected, actual in ((True, 1), (False, 0), (1, True),
+                                 ({"a": True}, {"a": 1}), ([False], [0]),
+                                 ([{"a": True}], [{"a": 1}])):
+            with self.subTest(expected=expected, actual=actual):
+                self.assertTrue(self.verifier.subset_mismatches(expected, actual))
+        for expected, actual in ((1, 1.0), (None, None), ([1], [1, 2]),
+                                 ({"a": True}, {"a": True, "extra": 3})):
+            with self.subTest(expected=expected, actual=actual):
+                self.assertEqual([], self.verifier.subset_mismatches(expected, actual))
+
+    def test_non_object_request_still_emits_failed_envelope(self):
+        for raw in ("[]", "null", '"text"'):
+            with self.subTest(raw=raw):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output), mock.patch("sys.stdin", io.StringIO(raw)):
+                    self.assertEqual(0, self.adapter.main())
+                self.assertEqual("failed", json.loads(output.getvalue())["status"])
 
     def test_all_live_suites_share_route_workflow_and_key_vocabulary(self) -> None:
         routes = set(self.adapter.catalog_routes(ROOT))

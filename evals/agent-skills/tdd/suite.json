@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "suite_id": "tdd-boundaries",
+  "skill_path": "skills/tdd",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/host_adapter.py"
+    ],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/verifier.py"
+    ],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [
+      ".agents/**",
+      ".agent-workflows/**",
+      ".git/**"
+    ]
+  },
+  "budgets": {
+    "absolute": {
+      "interventions": 0
+    },
+    "relative": {
+      "input_tokens": {
+        "max_ratio": 4.0,
+        "max_additive": 2000
+      },
+      "output_tokens": {
+        "max_ratio": 2.5,
+        "max_additive": 500
+      },
+      "tool_calls": {
+        "max_ratio": 2.0,
+        "max_additive": 3
+      },
+      "wall_time_seconds": {
+        "max_ratio": 3.0,
+        "max_additive": 10
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-explicit-test-first",
+      "kind": "positive",
+      "prompt": "Implement this parser fix with RED-GREEN-REFACTOR; show the failing regression before changing production code.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "tdd"
+          },
+          "treatment": {
+            "route": "tdd",
+            "workflow": "tdd",
+            "test_first": "required"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-project-policy",
+      "kind": "positive",
+      "prompt": "The applicable project AGENTS.md explicitly requires test-first implementation for this module. Implement the parser fix under that policy.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "tdd"
+          },
+          "treatment": {
+            "route": "tdd",
+            "workflow": "tdd",
+            "test_first": "required"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-parent-contract",
+      "kind": "positive",
+      "prompt": "Within the active delivery plan, implement the next authorized slice using required TDD. Keep the parent scope, acceptance and completion contract; do not start another orchestrator.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "tdd"
+          },
+          "treatment": {
+            "route": "tdd",
+            "workflow": "tdd",
+            "test_first": "required",
+            "preserve_parent_contract": true
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-coverage-only",
+      "kind": "negative",
+      "prompt": "Add coverage for the existing behavior. No user or project policy requires test-first development; do not change production code.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "implementation"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "implementation"
+          }
+        }
+      }
+    },
+    {
+      "id": "confusable-experiment",
+      "kind": "confusable",
+      "prompt": "Build a disposable experiment to find out whether this interface is feasible. Its behavior and oracle are not stable yet; do not apply production TDD.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "prototype"
+          },
+          "treatment": {
+            "route": "prototype",
+            "workflow": "prototype"
+          }
+        }
+      }
+    }
+  ]
+}
