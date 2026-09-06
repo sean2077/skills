@@ -18,7 +18,7 @@ python .agents/skills/skill-eval/scripts/skill_eval.py validate-result /tmp/anal
 
 On Windows, use a temporary output path and the same commands from PowerShell. The adapter is not a public package and is not installed into a user-level bin directory.
 
-Review treatment selection, verifier results, scope, and cost together. Do not accept a routing change merely because the manifest validates or an offline adapter can reproduce the expected JSON.
+Review treatment selection, verifier results, scope, and cost together. Both executions must complete with valid selection/trigger and scope boundaries; an invalid baseline cannot yield a passing comparison. A completed, correctly isolated baseline may still fail the task oracle. Do not accept a routing change merely because the manifest validates or an offline adapter can reproduce the expected JSON.
 
 ## Measurement and failure boundaries
 

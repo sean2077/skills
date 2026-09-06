@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Require valid baseline execution, trigger, and scope before accepting an evaluation comparison; reject historical false-green pairs while allowing a functioning baseline to fail the task oracle.
+
 - Made live routing evaluations reject nonzero host exits, ambiguous/non-finite JSON, normalized-key collisions, escaped candidate files, incomplete usage, and boolean/number equality false positives; preserve observed failure usage and mark unknown measurements explicitly.
 - Count cached input and whole-call model usage without double counting, and measure adapter wall time rather than labeling API duration as elapsed time. Old and new token measurements require fresh paired runs.
 

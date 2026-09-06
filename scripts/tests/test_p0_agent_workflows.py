@@ -317,6 +317,32 @@ json.dump({'schema_version':1,'contract':'agent-skill-eval/v1','run_id':r['run_i
             run_suite(self.manifest, Path(self.temp.name) / "mutate.json", case_filter=["positive-red-green"])
         self.assertEqual(caught.exception.code, EXIT_VERIFIER)
 
+    def test_baseline_execution_must_be_valid_but_may_fail_task_oracle(self) -> None:
+        result = run_suite(
+            self.manifest, Path(self.temp.name) / "baseline-validity.json",
+            case_filter=["positive-red-green"],
+        )
+        pair = result["cases"][0]
+        budgets = {"absolute": {}, "relative": {}}
+        for boundary in ("adapter_completed", "trigger", "scope"):
+            baseline = json.loads(json.dumps(pair["baseline"]))
+            if boundary == "adapter_completed":
+                baseline["adapter"]["status"] = "failed"
+            else:
+                baseline[boundary]["passed"] = False
+            with self.subTest(boundary=boundary):
+                comparison = compare_pair(baseline, pair["treatment"], budgets)
+                self.assertFalse(comparison["passed"])
+                self.assertFalse(comparison["correctness"]["checks"][boundary])
+        # A functioning control may get the task wrong: that is valid evidence
+        # of a treatment improvement, unlike an invalid execution or scope.
+        baseline = json.loads(json.dumps(pair["baseline"]))
+        baseline["verifier"]["passed"] = False
+        self.assertTrue(compare_pair(baseline, pair["treatment"], budgets)["passed"])
+        result["cases"][0]["baseline"]["adapter"]["status"] = "failed"
+        with self.assertRaises(HarnessError):
+            validate_result(result)
+
     def test_incomparable_pair_is_rejected(self) -> None:
         result = run_suite(
             self.manifest,
