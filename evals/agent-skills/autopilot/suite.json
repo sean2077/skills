@@ -4,26 +4,50 @@
   "skill_path": "skills/autopilot",
   "fixture": "evals/agent-skills/fixture",
   "adapter": {
-    "command": ["{python}", "{repo}/evals/agent-skills/host_adapter.py"],
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/host_adapter.py"
+    ],
     "timeout_seconds": 300,
     "max_output_bytes": 1048576
   },
   "verifier": {
-    "command": ["{python}", "{repo}/evals/agent-skills/verifier.py"],
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/verifier.py"
+    ],
     "timeout_seconds": 30,
     "max_output_bytes": 262144
   },
   "scope": {
     "allow": [],
-    "deny": [".agents/**", ".agent-workflows/**", ".git/**"]
+    "deny": [
+      ".agents/**",
+      ".agent-workflows/**",
+      ".git/**"
+    ]
   },
   "budgets": {
-    "absolute": {"interventions": 0},
+    "absolute": {
+      "interventions": 0
+    },
     "relative": {
-      "input_tokens": {"max_ratio": 4.0, "max_additive": 2000},
-      "output_tokens": {"max_ratio": 2.5, "max_additive": 500},
-      "tool_calls": {"max_ratio": 2.0, "max_additive": 3},
-      "wall_time_seconds": {"max_ratio": 3.0, "max_additive": 10}
+      "input_tokens": {
+        "max_ratio": 4.0,
+        "max_additive": 2000
+      },
+      "output_tokens": {
+        "max_ratio": 2.5,
+        "max_additive": 500
+      },
+      "tool_calls": {
+        "max_ratio": 2.0,
+        "max_additive": 3
+      },
+      "wall_time_seconds": {
+        "max_ratio": 3.0,
+        "max_additive": 10
+      }
     }
   },
   "cases": [
@@ -33,8 +57,18 @@
       "prompt": "Take this small authorized documentation correction end to end in the current session, verify it, and report the result. Do not push.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "delivery"},
-          "treatment": {"route": "autopilot", "workflow": "delivery", "control_plane": "native", "persistent_state": false, "test_first": "conditional", "external_side_effects": "not-authorized"}
+          "baseline": {
+            "route": "none",
+            "workflow": "delivery"
+          },
+          "treatment": {
+            "route": "autopilot",
+            "workflow": "delivery",
+            "control_plane": "native",
+            "persistent_state": false,
+            "test_first": "conditional",
+            "external_side_effects": "not-authorized"
+          }
         }
       }
     },
@@ -44,8 +78,17 @@
       "prompt": "Run this migration end to end with interruption-safe resume across sessions and durable phase receipts. Do not deploy or push.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "delivery"},
-          "treatment": {"route": "autopilot", "workflow": "delivery", "control_plane": "persistent", "persistent_state": true, "external_side_effects": "not-authorized"}
+          "baseline": {
+            "route": "none",
+            "workflow": "delivery"
+          },
+          "treatment": {
+            "route": "autopilot",
+            "workflow": "delivery",
+            "control_plane": "persistent",
+            "persistent_state": true,
+            "external_side_effects": "not-authorized"
+          }
         }
       }
     },
@@ -55,8 +98,16 @@
       "prompt": "Explain why this configuration is loaded twice. Do not change files.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "analysis", "mutation": "none"},
-          "treatment": {"route": "none", "workflow": "analysis", "mutation": "none"}
+          "baseline": {
+            "route": "none",
+            "workflow": "analysis",
+            "mutation": "none"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "analysis",
+            "mutation": "none"
+          }
         }
       }
     },
@@ -66,8 +117,90 @@
       "prompt": "Implement the parser fix using strict RED-GREEN-REFACTOR and show the failing regression test before the fix.",
       "metadata": {
         "expected_behavior": {
-          "baseline": {"route": "none", "workflow": "tdd"},
-          "treatment": {"route": "none", "workflow": "tdd", "test_first": "required"}
+          "baseline": {
+            "route": "none",
+            "workflow": "tdd"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "tdd",
+            "test_first": "required"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-approved-plan-reuse",
+      "kind": "positive",
+      "prompt": "Deliver the already-approved parser plan end to end. Keep settled decisions; only re-open them if new evidence invalidates them. Do not push.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "delivery"
+          },
+          "treatment": {
+            "route": "autopilot",
+            "workflow": "delivery",
+            "preserve_decisions": true,
+            "nested_controller": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-verified-pr-delivery",
+      "kind": "positive",
+      "prompt": "Implement this authorized change and open a PR to main. Verify the actual PR, target branch and head revision before reporting the result. Do not merge.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "delivery"
+          },
+          "treatment": {
+            "route": "autopilot",
+            "workflow": "delivery",
+            "remote_readback": true,
+            "external_side_effects": "authorized"
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-serial-self-review",
+      "kind": "positive",
+      "prompt": "Deliver this scoped fix using the current Agent; no independent reviewer is available. Verify and self-review it, but do not describe that as independent approval.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "delivery"
+          },
+          "treatment": {
+            "route": "autopilot",
+            "workflow": "delivery",
+            "claim_independent_approval": false,
+            "persistent_state": false
+          }
+        }
+      }
+    },
+    {
+      "id": "confusable-review-only",
+      "kind": "confusable",
+      "prompt": "Review this concrete diff for defects and verify the reviewer comments against current code. Do not implement or orchestrate delivery.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "code-review"
+          },
+          "treatment": {
+            "route": "code-review",
+            "workflow": "code-review",
+            "mutation": "none"
+          }
         }
       }
     }

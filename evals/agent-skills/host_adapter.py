@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -80,7 +82,18 @@ OBSERVATION_GUIDANCE = {
     "autopilot": (
         "When selected, use workflow=delivery. Report control_plane=native or persistent, "
         "persistent_state as a boolean, test_first=conditional or required, and "
-        "external_side_effects=authorized or not-authorized when material."
+        "external_side_effects=authorized or not-authorized when material. "
+        "Report preserve_decisions, nested_controller, remote_readback, "
+        "recheck_revision, and claim_independent_approval as booleans when material."
+    ),
+    "code-review": (
+        "When selected, use workflow=code-review. Report mutation=none or authorized-scope; "
+        "report verify_feedback, recheck_revision, invent_requirements, and "
+        "claim_independent_approval as booleans when material."
+    ),
+    "tdd": (
+        "When selected, use workflow=tdd and test_first=required. "
+        "Report preserve_parent_contract as a boolean when a delivery owner is active."
     ),
     "deep-interview": (
         "When selected, use workflow=interview. Report mode=adaptive or persistent, "
@@ -116,17 +129,43 @@ def emit(value: dict[str, Any]) -> None:
     json.dump(value, sys.stdout, ensure_ascii=True, separators=(",", ":"))
 
 
-def parse_json(text: str) -> Any:
-    decoder = json.JSONDecoder()
-    for index, char in enumerate(text):
-        if char != "{":
-            continue
-        try:
-            value, _ = decoder.raw_decode(text[index:])
-        except json.JSONDecodeError:
-            continue
-        return value
-    raise ValueError("host did not return a JSON object")
+def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key")
+        result[key] = value
+    return result
+
+
+def reject_constant(value: str) -> None:
+    raise ValueError("non-finite JSON number")
+
+
+def finite_number(value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("expected a numeric measurement")
+    result = float(value)
+    if not math.isfinite(result) or result < 0:
+        raise ValueError("expected a finite nonnegative measurement")
+    return result
+
+
+def parse_float(value: str) -> float:
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError("non-finite JSON number")
+    return result
+
+
+def parse_json(text: str) -> dict[str, Any]:
+    # Both --output-format json and the decision prompt promise one object.
+    # Picking a plausible object out of noisy/contradictory output masks failure.
+    value = json.loads(text, object_pairs_hook=unique_object,
+                       parse_constant=reject_constant, parse_float=parse_float)
+    if not isinstance(value, dict):
+        raise ValueError("expected exactly one JSON object")
+    return value
 
 
 def load_candidate(
@@ -140,7 +179,10 @@ def load_candidate(
     path = path.resolve(strict=True)
     path.relative_to(repository_root)
     if path.is_dir():
-        path /= "SKILL.md"
+        path = (path / "SKILL.md").resolve(strict=True)
+    path.relative_to(repository_root)
+    if not path.is_file():
+        raise ValueError("candidate must be a regular file")
     text = path.read_text(encoding="utf-8")
     for line in text.splitlines():
         if line.startswith("name:"):
@@ -189,8 +231,9 @@ def normalize_behavior_keys(behavior: dict[str, Any]) -> dict[str, Any]:
     canonical: dict[str, Any] = {}
     for key, value in behavior.items():
         normalized = behavior_key(key)
-        if normalized:
-            canonical[normalized] = value
+        if not normalized or normalized in canonical:
+            raise ValueError("empty or colliding behavior key")
+        canonical[normalized] = value
     return canonical
 
 
@@ -235,25 +278,54 @@ facts, inspect case metadata, or synthesize an expected answer.
 """
 
 
-def metrics(host: dict[str, Any]) -> dict[str, float]:
-    usage = host.get("usage") or {}
-    model_usage = host.get("modelUsage") or {}
-    input_tokens = usage.get("input_tokens")
-    output_tokens = usage.get("output_tokens")
-    if input_tokens is None:
-        input_tokens = sum(item.get("inputTokens", 0) for item in model_usage.values())
-    if output_tokens is None:
-        output_tokens = sum(item.get("outputTokens", 0) for item in model_usage.values())
-    server_tools = usage.get("server_tool_use") or {}
-    tool_calls = sum(
-        value for value in server_tools.values() if isinstance(value, (int, float))
-    )
-    duration_ms = host.get("duration_api_ms", host.get("duration_ms", 0))
+def count(value: Any) -> float:
+    result = finite_number(value)
+    if not result.is_integer():
+        raise ValueError("expected an integral usage count")
+    return result
+
+
+def metrics(host: dict[str, Any], elapsed: float) -> dict[str, float]:
+    usage = host.get("usage")
+    models = host.get("modelUsage")
+    if usage is not None and not isinstance(usage, dict):
+        raise ValueError("invalid usage object")
+    if models is not None and not isinstance(models, dict):
+        raise ValueError("invalid model usage object")
+    # modelUsage covers the whole call, including the response that crosses a
+    # budget; usage can omit that response. Never add these overlapping records.
+    if usage:
+        for key in ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"):
+            if key in usage:
+                count(usage[key])
+    if models:
+        input_tokens = output_tokens = tool_calls = 0.0
+        for record in models.values():
+            if not isinstance(record, dict) or not {"inputTokens", "outputTokens"} <= record.keys():
+                raise ValueError("missing complete model usage")
+            input_tokens += sum(count(record.get(key, 0)) for key in (
+                "inputTokens", "cacheReadInputTokens", "cacheCreationInputTokens"))
+            output_tokens += count(record["outputTokens"])
+            tool_calls += count(record.get("webSearchRequests", 0))
+    elif usage and "input_tokens" in usage and "output_tokens" in usage:
+        input_tokens = sum(count(usage.get(key, 0)) for key in (
+            "input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+        output_tokens = count(usage["output_tokens"])
+        tool_calls = 0.0
+    else:
+        raise ValueError("missing complete host usage")
+    if usage:
+        server_tools = usage.get("server_tool_use", {})
+        if not isinstance(server_tools, dict):
+            raise ValueError("invalid server tool usage")
+        # The probe disables local tools. These are overlapping server-tool
+        # reports, not extra invocations to add to per-model web search counts.
+        tool_calls = max(tool_calls, sum(count(value) for value in server_tools.values()))
     return {
-        "input_tokens": float(input_tokens or 0),
-        "output_tokens": float(output_tokens or 0),
-        "tool_calls": float(tool_calls),
-        "wall_time_seconds": float(duration_ms or 0) / 1000.0,
+        "input_tokens": finite_number(input_tokens),
+        "output_tokens": finite_number(output_tokens),
+        "tool_calls": finite_number(tool_calls),
+        "wall_time_seconds": finite_number(elapsed),
         "interventions": 0.0,
     }
 
@@ -278,95 +350,72 @@ def canonicalize_behavior(
 
 def main() -> int:
     request: dict[str, Any] = {}
+    started = time.monotonic()
+    observed: dict[str, float] | None = None
+    exit_code: int | None = None
+    stage = "request"
     try:
-        request = json.load(sys.stdin)
+        request = parse_json(sys.stdin.read())
         repository_root = Path(request["repository_root"]).resolve(strict=True)
         routes = catalog_routes(repository_root)
-        candidate, skill_text = load_candidate(
-            request.get("skill_path"), repository_root
-        )
+        candidate, skill_text = load_candidate(request.get("skill_path"), repository_root)
         claude = os.environ.get("CLAUDE_BIN") or shutil.which("claude")
         if not claude:
-            raise FileNotFoundError(
-                "Claude Code executable not found; set CLAUDE_BIN or add claude to PATH"
-            )
+            raise FileNotFoundError("Claude Code executable not found")
+        stage = "host"
         completed = subprocess.run(
             [
-                claude,
-                "-p",
-                make_prompt(request, skill_text, candidate, routes),
-                "--output-format",
-                "json",
-                "--no-session-persistence",
-                "--disable-slash-commands",
-                "--tools",
-                "",
-                "--permission-mode",
-                "dontAsk",
-                "--setting-sources",
-                "user",
-                "--max-budget-usd",
-                MAX_BUDGET_USD,
+                claude, "-p", make_prompt(request, skill_text, candidate, routes),
+                "--output-format", "json", "--no-session-persistence",
+                "--disable-slash-commands", "--tools", "",
+                "--permission-mode", "dontAsk", "--setting-sources", "user",
+                "--max-budget-usd", MAX_BUDGET_USD,
             ],
-            cwd=str(repository_root),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=240,
-            check=False,
+            cwd=str(repository_root), stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8", errors="replace", timeout=240, check=False,
         )
+        exit_code = completed.returncode
         host = parse_json(completed.stdout)
-        if not isinstance(host, dict) or host.get("is_error"):
+        stage = "usage"
+        observed = metrics(host, 0.0)
+        stage = "host-status"
+        if exit_code != 0 or host.get("is_error"):
             raise ValueError("host returned an error")
+        stage = "decision"
         decision = parse_json(host.get("result", ""))
-        if not isinstance(decision, dict) or not isinstance(
-            decision.get("behavior"), dict
-        ):
+        if not isinstance(decision.get("behavior"), dict):
             raise ValueError("host result did not contain a behavior object")
         selected = decision.get("selected")
         if not isinstance(selected, bool):
             raise ValueError("host result did not contain a boolean selected value")
-        behavior = canonicalize_behavior(
-            request, decision["behavior"], candidate, selected, routes
-        )
-        emit(
-            {
-                "schema_version": 1,
-                "contract": CONTRACT,
-                "run_id": request["run_id"],
-                "mode": request["mode"],
-                "selected": selected,
-                "status": "completed",
-                "metrics": metrics(host),
-                "metadata": {"behavior": behavior, "host_model": host.get("model")},
-            }
-        )
+        behavior = canonicalize_behavior(request, decision["behavior"], candidate, selected, routes)
+        observed["wall_time_seconds"] = time.monotonic() - started
+        emit({
+            "schema_version": 1, "contract": CONTRACT,
+            "run_id": request["run_id"], "mode": request["mode"],
+            "selected": selected, "status": "completed", "metrics": observed,
+            "metadata": {"behavior": behavior, "host_model": host.get("model"),
+                         "usage_available": True},
+        })
         return 0
     except Exception as exc:
-        emit(
-            {
-                "schema_version": 1,
-                "contract": CONTRACT,
-                "run_id": request.get("run_id", "unknown"),
-                "mode": request.get("mode", "baseline"),
-                "selected": False,
-                "status": "failed",
-                "metrics": {
-                    "input_tokens": 0.0,
-                    "output_tokens": 0.0,
-                    "tool_calls": 0.0,
-                    "wall_time_seconds": 0.0,
-                    "interventions": 0.0,
-                },
-                "metadata": {
-                    "behavior": {"route": "none", "workflow": "adapter-failed"},
-                    "error_type": type(exc).__name__,
-                },
-            }
-        )
+        # The v1 envelope requires numeric metrics even for a failed run. Keep
+        # known usage; explicitly mark unobserved zero placeholders as unavailable.
+        measured = observed or {"input_tokens": 0.0, "output_tokens": 0.0,
+                                "tool_calls": 0.0, "interventions": 0.0}
+        measured["wall_time_seconds"] = time.monotonic() - started
+        emit({
+            "schema_version": 1, "contract": CONTRACT,
+            "run_id": request.get("run_id", "unknown"),
+            "mode": request.get("mode", "baseline"),
+            "selected": False, "status": "failed", "metrics": measured,
+            "metadata": {
+                "behavior": {"route": "none", "workflow": "adapter-failed"},
+                "error_type": type(exc).__name__, "error_stage": stage,
+                "host_exit_code": exit_code, "usage_available": observed is not None,
+            },
+        })
         return 0
 
 

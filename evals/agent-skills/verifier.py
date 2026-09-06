@@ -5,6 +5,21 @@ import json
 import sys
 
 
+def same_json_value(expected, actual):
+    """JSON numbers compare numerically, but booleans never equal 0 or 1."""
+    if isinstance(expected, bool) or isinstance(actual, bool):
+        return type(expected) is type(actual) and expected == actual
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        return expected.keys() == actual.keys() and all(
+            same_json_value(value, actual[key]) for key, value in expected.items()
+        )
+    if isinstance(expected, list) and isinstance(actual, list):
+        return len(expected) == len(actual) and all(
+            same_json_value(left, right) for left, right in zip(expected, actual)
+        )
+    return expected == actual
+
+
 def subset_mismatches(expected, actual, path="behavior"):
     mismatches = []
     if isinstance(expected, dict):
@@ -21,10 +36,10 @@ def subset_mismatches(expected, actual, path="behavior"):
         if not isinstance(actual, list):
             return [f"{path}: expected array, got {type(actual).__name__}"]
         for index, value in enumerate(expected):
-            if value not in actual:
+            if not any(same_json_value(value, member) for member in actual):
                 mismatches.append(f"{path}[{index}]: expected member is absent")
         return mismatches
-    if expected != actual:
+    if not same_json_value(expected, actual):
         mismatches.append(f"{path}: expected {expected!r}, got {actual!r}")
     return mismatches
 

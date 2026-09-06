@@ -8,6 +8,8 @@ Documentation is a product surface in this repository: users copy README command
 |---|---|---|
 | `README.md` | Catalog orientation, safe first install, skill discovery, and top-level navigation | Maintainer command matrices, generated ownership detail, and volatile host facts |
 | `AGENTS.md` / `CLAUDE.md` | Frequently needed repository rules that change Agent behavior | Long procedures, rationale, release recipes, and duplicated architecture |
+| `docs/skill-composition.md` | Consumer route selection and adjacent-skill boundaries | A second dispatcher, runtime, or duplicated operational procedure |
+| `docs/audits/*.md` | Dated review decisions, source provenance, and evidence limits | Always-loaded rules or unmeasured performance claims |
 | `docs/architecture.md` | Product surfaces, source/generated ownership, control planes, and validation boundaries | Volatile host versions and contributor command transcripts |
 | `docs/development.md` | Worktree flow, changed-surface checks, full local commands, generation, and release process | Product overview and host certification claims |
 | `docs/compatibility.md` | Dated host, installer, trust, version, and verification claims | General architecture and timeless contribution policy |

@@ -8,9 +8,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Require valid baseline execution, trigger, and scope before accepting an evaluation comparison; reject historical false-green pairs while allowing a functioning baseline to fail the task oracle.
+
+- Made live routing evaluations reject nonzero host exits, ambiguous/non-finite JSON, normalized-key collisions, escaped candidate files, incomplete usage, and boolean/number equality false positives; preserve observed failure usage and mark unknown measurements explicitly.
+- Count cached input and whole-call model usage without double counting, and measure adapter wall time rather than labeling API duration as elapsed time. Old and new token measurements require fresh paired runs.
+
 - Skip authority-document budget work unless a payload path is `AGENTS.md` or `CLAUDE.md`, and skip per-file Git identity probes for edits already inside a linked worktree.
 
 ### Changed
+
+- Strengthened native `autopilot` composition with approved-decision reuse, bounded evidence handoffs, capability/cost-aware delegation, integrated review, and verified remote delivery; no new skill or mandatory state/controller was added.
+- Extended `code-review` to evidence-first feedback triage and revision freshness while preserving reviewer-only authority; aligned `tdd` discovery with explicit user or project policy and bounded external research by decision value.
+- Replaced TDD sentence/keyword quotas with distribution and attribution invariants, retaining generic catalog validation and adding live routing cases rather than claiming prose matching proves behavior.
 
 - Made scaffold-owned Claude/Codex hooks invoke `python -X utf8 .agents/tools/hooks/hook-paths.py --guard|--budget` directly, dropping the Git-alias plus Bash launcher from the Edit/Write hot path. `hook-launcher.sh` remains installed for project-owned Bash hooks. Upgrade replaces the previous Git-alias commands as managed identities.
 - Reviewed the Lark command cache against official `lark-cli` v1.0.93 on 2026-09-04: `calendar +get` does not include attendees or rooms (`+list-attendees` is the attendee path), share-token joins use `calendar +join-event`, official meeting coverage includes `lark-meeting`, and the documented sheets surface stays on `+` shortcuts after the legacy command surface was removed. `apps +cache-clear` and cwd-relative file paths remain the agent-facing safety boundary.
@@ -34,6 +43,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 ### Added
+
+- Added consumer skill-selection guidance, a dated whole-catalog audit, on-demand composition/feedback references, and review/TDD plus delivery-boundary evaluation cases with explicit measurement limits.
 
 - Added deterministic live-adapter and verifier regressions plus positive, negative, and confusable routing suites for proportional documentation and command governance.
 - Added a README catalog-count parity gate to `validate_skills.py`: a declared `catalog of N reusable` count must match the `skills/` directory inventory, and a README that declares no count has nothing to drift.

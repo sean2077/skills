@@ -785,6 +785,11 @@ def compare_pair(baseline: Mapping[str, Any], treatment: Mapping[str, Any], budg
     for key in METRIC_KEYS:
         normalized_baseline[key] = _need_number(baseline_metrics.get(key), "baseline.metrics.%s" % key)
         normalized_treatment[key] = _need_number(treatment_metrics.get(key), "treatment.metrics.%s" % key)
+    baseline_status = _need_string(baseline_adapter.get("status"), "baseline.adapter.status")
+    baseline_trigger = _need_dict(baseline.get("trigger"), "baseline.trigger")
+    baseline_scope = _need_dict(baseline.get("scope"), "baseline.scope")
+    baseline_trigger_passed = _need_bool(baseline_trigger.get("passed"), "baseline.trigger.passed")
+    baseline_scope_passed = _need_bool(baseline_scope.get("passed"), "baseline.scope.passed")
     treatment_trigger = _need_dict(treatment.get("trigger"), "treatment.trigger")
     treatment_verifier = _need_dict(treatment.get("verifier"), "treatment.verifier")
     treatment_scope = _need_dict(treatment.get("scope"), "treatment.scope")
@@ -793,11 +798,14 @@ def compare_pair(baseline: Mapping[str, Any], treatment: Mapping[str, Any], budg
     scope_passed = _need_bool(treatment_scope.get("passed"), "treatment.scope.passed")
     status = _need_string(treatment_adapter.get("status"), "treatment.adapter.status")
     budget = _budget_gate(normalized_baseline, normalized_treatment, budget_contract)
+    # Both executions must be valid controls for a comparison. The baseline
+    # task oracle may fail legitimately; its execution/trigger/scope may not.
+    # Keep the stored comparison shape so valid historical pairs still verify.
     correctness_checks = {
-        "adapter_completed": status == "completed",
-        "trigger": trigger_passed,
+        "adapter_completed": baseline_status == "completed" and status == "completed",
+        "trigger": baseline_trigger_passed and trigger_passed,
         "deterministic_verifier": verifier_passed,
-        "scope": scope_passed,
+        "scope": baseline_scope_passed and scope_passed,
     }
     correctness_passed = all(correctness_checks.values())
     # Correctness is deliberately evaluated before cost and cannot be offset by cheaper execution.

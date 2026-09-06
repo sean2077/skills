@@ -110,6 +110,10 @@ The CI workflow additionally:
 
 Do not report those platform, installer-fidelity, or Python-floor results unless those exact environments/checks ran.
 
+## Evaluation evidence
+
+The [live routing guide](../evals/agent-skills/README.md) owns measurement semantics and probe limitations. `test_live_skill_eval_adapter.py` covers host exits, strict JSON, cache-inclusive usage, revision-contained candidate files, and typed verifier comparisons. `test_tdd_contract.py` protects distribution and attribution; it deliberately does not enforce English sentence fixtures as a substitute for behavior evaluation. Commit changed suite manifests before validating them because evaluation pins inputs to Git.
+
 ## Generated files
 
 ```bash
