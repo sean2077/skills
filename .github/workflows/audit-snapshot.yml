@@ -14,11 +14,11 @@ jobs:
         with:
           ref: b5aa790953e9626ce6a0540747b293921ac8cc8f
           persist-credentials: false
-      - name: Archive exact audit baseline without credentials or Git internals
-        run: git archive --format=tar -o "$RUNNER_TEMP/skills-baseline.tar" HEAD
+      - name: Build pinned validation dependencies for offline checks
+        run: python -m pip wheel -r requirements-validation.txt --wheel-dir "$RUNNER_TEMP/validation-wheels"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: skills-audit-baseline
-          path: ${{ runner.temp }}/skills-baseline.tar
+          name: skills-validation-wheels
+          path: ${{ runner.temp }}/validation-wheels
           retention-days: 1
           if-no-files-found: error
