@@ -1,0 +1,24 @@
+name: isolated-audit-snapshot
+on:
+  push:
+    branches: [improve/harness-composition-20260906]
+    paths: [.github/workflows/audit-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: b5aa790953e9626ce6a0540747b293921ac8cc8f
+          persist-credentials: false
+      - name: Archive exact audit baseline without credentials or Git internals
+        run: git archive --format=tar -o "$RUNNER_TEMP/skills-baseline.tar" HEAD
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: skills-audit-baseline
+          path: ${{ runner.temp }}/skills-baseline.tar
+          retention-days: 1
+          if-no-files-found: error
