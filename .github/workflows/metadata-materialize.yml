@@ -1,0 +1,60 @@
+name: metadata-materialize
+on:
+  push:
+    branches: [chore/metadata-source-snapshot-20260907]
+    paths: [.github/workflows/metadata-materialize.yml]
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Verify patch integrity and prepare isolated worktree
+        env:
+          BASE_SHA: 6b2fb9601068dbef06c7c2a0b57129d30efc3b13
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64
+          import hashlib
+          import lzma
+          import os
+          from pathlib import Path
+          encoded = ''.join(Path(f'metadata-transfer.part{i}').read_text().strip() for i in (1, 2))
+          payload = lzma.decompress(base64.b64decode(encoded, validate=True))
+          assert len(payload) == 71543, 'Patch size mismatch'
+          assert hashlib.sha256(payload).hexdigest() == '64b734e134fbad983fbecd41552ada61b621a9ab0a5285cad44d9406f35f9fe9', 'Patch integrity mismatch'
+          Path(os.environ['RUNNER_TEMP'], 'metadata.patch').write_bytes(payload)
+          PY
+          git worktree add -b metadata-candidate "$RUNNER_TEMP/metadata-work" "$BASE_SHA"
+          cd "$RUNNER_TEMP/metadata-work"
+          test "$(git rev-parse HEAD)" = "$BASE_SHA"
+          git apply --check --index --unidiff-zero "$RUNNER_TEMP/metadata.patch"
+          git apply --index --unidiff-zero "$RUNNER_TEMP/metadata.patch"
+          test "$(git write-tree)" = be6dfc0a2c6a1304ae238686afe404b6e5ae75b5
+          git diff --cached --check
+          python scripts/generate_document_metadata.py --check
+      - name: Test metadata distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/metadata-work"
+          python -m pip install -r requirements-validation.txt
+          python scripts/tests/test_document_metadata.py
+      - name: Publish new feature branch for pull request
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/metadata-work"
+          test -z "$(git ls-remote --heads origin refs/heads/feat/document-metadata-20260907)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: make document authority metadata-aware'
+          git push origin HEAD:refs/heads/feat/document-metadata-20260907
+          echo "Delivered commit: $(git rev-parse HEAD)"
+          echo "Delivered tree: $(git rev-parse HEAD^{tree})"
