@@ -71,6 +71,14 @@ The trunk guard blocks non-ignored project-file edits in the primary worktree, r
 
 The authority-document budget hook remains advisory; projects may override its default line and character limits.
 
+### Documentation metadata (hard rule)
+
+Before using a document or retrieved excerpt as a development basis, inspect its source header and scope. Follow the project-owned metadata policy declared in this contract; otherwise use [.agents/document-metadata.md](.agents/document-metadata.md) for the baseline fields and lifecycle meanings.
+
+- **Filter before relying.** Only applicable, verified `active` + `normative` documents are baseline candidates. Draft, in-review, needs-revision, deprecated, superseded, archived, and informative material is context, not implementation authority; a canonical path or recent date does not promote it.
+- **Preserve uncertainty.** Missing, malformed, conflicting, or unmapped metadata is unverified, not active. Check declared legacy mappings and current evidence, surface consequential conflicts, and pause only decisions that depend on them. Metadata never overrides applicable instructions or grants execution permission.
+- **Maintain the boundary.** Keep lifecycle and replacement links accurate when meaning changes; never invent approval. Carry source revision and trust limits through plans and handoffs, and recheck before using an older plan. Project field mappings and extensions stay outside scaffold-managed files.
+
 ### Project terminology (hard rule)
 
 Every Agent, project skill, and subagent uses the canonical terminology source declared in project-owned `AGENTS.md` prose. If none is declared, read root `CONTEXT-MAP.md` when present; otherwise use root `CONTEXT.md`. The map routes multi-context repositories to context-local `CONTEXT.md` files.
@@ -89,7 +97,7 @@ A multilingual glossary may list its `Canonical term languages` once. That list 
 - Edit project skills in `.agents/skills/<name>/`, then run `bash .agents/relink-skills.sh`; commit source and symlink.
 - Edit project subagents in `.agents/subagents/<name>/`, then run `python .agents/tools/generate-subagents.py`; commit source and projections.
 - Do not hand-edit harness projections: `CLAUDE.md`, `.claude/skills/<name>` entries owned by `.agents/skills/`, `.claude/agents/*.md`, or `.codex/agents/*.toml`.
-- Do not hand-edit scaffold runtime: `.agents/tools/**`, `.agents/relink-skills.sh`, or `.agents/symlink-manager.py`. Refresh it with `agent-scaffold upgrade`, then run `agent-scaffold verify`.
+- Do not hand-edit scaffold runtime: `.agents/tools/**`, `.agents/relink-skills.sh`, or `.agents/symlink-manager.py`, or `.agents/document-metadata.md`. Refresh it with `agent-scaffold upgrade`, then run `agent-scaffold verify`.
 - **Third-party skills** follow project-owned placement and installation policy. The relinker preserves unrelated names and rejects same-name conflicts.
 
 For Codex, trust the project, confirm generated agents are discoverable, and review each exact hook definition in `/hooks`; re-review changed definitions. Claude checkpoints do not rewind symlinked or hard-linked targets (`CLAUDE.md`, `.claude/skills/*`); inspect and restore the real target with Git.

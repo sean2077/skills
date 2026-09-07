@@ -109,14 +109,17 @@ OBSERVATION_GUIDANCE = {
     "project-docs-organizer": (
         "When selected, use workflow=documentation-organization. Report "
         "decision_depth=compact or full and decision_artifact=inline-delta or "
-        "documentation-ia-decision-record."
+        "documentation-ia-decision-record. For metadata tasks, report use_revision_as_baseline, "
+        "invent_approval, preserve_metadata_mapping, bulk_promote_history, inspect_source_header, "
+        "trust_draft_replacement, unknown_is_active, and block_independent_work as booleans when material."
     ),
     "spec-writing": (
         "When selected, use workflow=documentation. Use snake_case keys for material choices, "
         "including preserve_meaning, preserve_decisions, separate_decision_history, "
         "observable_acceptance, separate_current_target, label_open_questions, "
         "self_contained_human_document, route_detail_to_contract, compare_options, "
-        "recommendation, decision_status, include_exact_detail, and identify_intended_authority."
+        "recommendation, decision_status, include_exact_detail, identify_intended_authority, "
+        "invent_approval, and preserve_revision_status."
     ),
     "tooling-conventions": (
         "When selected, use workflow=tooling-governance. Report decision_depth=compact or full "

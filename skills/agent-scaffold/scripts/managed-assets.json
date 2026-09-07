@@ -112,6 +112,14 @@
       "strategy": "seed",
       "profiles": ["default", "light"],
       "executable": false
+    },
+    {
+      "id": "policy.document-metadata",
+      "source": "assets/scaffold/document-metadata.md",
+      "target": ".agents/document-metadata.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "executable": false
     }
   ],
   "line_invariants": [
@@ -137,7 +145,8 @@
         ".agents/tools/*.py text eol=lf",
         ".agents/tools/hooks/*.py text eol=lf",
         ".agents/relink-skills.sh text eol=lf",
-        ".agents/*.py text eol=lf"
+        ".agents/*.py text eol=lf",
+        ".agents/document-metadata.md text eol=lf"
       ]
     }
   ]

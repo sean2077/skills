@@ -1,6 +1,6 @@
 ---
 name: project-docs-organizer
-description: 'Use when readers cannot find or trust a software project''s README/docs and the documentation system needs design, reorganization, pruning, navigation, ownership, lifecycle, or archival. Not for source layout, command governance, or AGENTS.md/CLAUDE.md harness policy.'
+description: 'Use when readers cannot find or trust a software project''s README/docs and the documentation system needs design, reorganization, pruning, navigation, ownership, YAML metadata, lifecycle, or archival. Not for source layout, command governance, or AGENTS.md/CLAUDE.md harness policy.'
 ---
 
 # Project Docs Organizer
@@ -26,6 +26,8 @@ universal directory template.
   tradeoffs, and a recommendation, then wait for the user before mutation.
 - Create directories only for real content or committed near-term work. No empty category or
   placeholder may exist solely to complete a taxonomy or consume a number.
+- Read document headers before classifying authority: only applicable, verified `active` + `normative` sources are development-baseline candidates. Draft, in-review, needs-revision, retired, and informative sources remain context; missing or unknown metadata is unverified, not active. Never invent approval.
+- Preserve project metadata mappings and extension fields; maintain status, freshness, and replacement links with semantic changes. Metadata does not grant execution permission.
 - Delete only with evidence that content is stale, duplicated, superseded, or migrated.
   Archive only when retention has a named value or requirement.
 
@@ -36,7 +38,7 @@ universal directory template.
    package metadata, CI links, and topic-specific doc locations.
 2. Identify actual readers and tasks, domain language and ownership, product surfaces,
    document lifecycles, canonical sources, generator constraints, and retrieval failures.
-3. Read [`information-architecture.md`](references/information-architecture.md) and
+3. For metadata/lifecycle work, first read [`document-metadata.md`](references/document-metadata.md); select a project mapping or the five-field baseline and preserve existing generator formats. Read [`information-architecture.md`](references/information-architecture.md) and
    [`classification-methods.md`](references/classification-methods.md). Select the evidence depth,
    shortlist only relevant lenses, and identify any primary-axis or ownership change.
 4. Before mutation, record either the compact decision delta or the full Documentation IA
@@ -63,6 +65,7 @@ universal directory template.
 - Each intended reader has an obvious entry point and fastest safe next step.
 - Stable guidance, active planning/decisions, generated content, and retained history are
   visibly distinguishable where the project needs those classes.
+- Affected document metadata, visible status, and index labels agree; draft/revision/retired sources are not presented as current implementation guidance. Replacement and evidence links resolve, and unknown authority is reported rather than silently upgraded.
 - Overview pages route rather than duplicate detailed guidance.
 - No live link, config, or authority document points at a moved or deleted path.
 - No empty category or placeholder exists solely to complete a taxonomy or numbering sequence.
@@ -76,4 +79,5 @@ universal directory template.
 | Scale decision evidence; select a project-owned container, primary axis, secondary lenses, and tie behavior | [`information-architecture.md`](references/information-architecture.md) |
 | Compare reader, task, domain, product, content-purpose, and lifecycle lenses | [`classification-methods.md`](references/classification-methods.md) |
 | Apply or decline sibling-local numeric ordering after semantic design | [`numbering-patterns.md`](references/numbering-patterns.md) |
+| Establish metadata fields, lifecycle trust, Agent reading rules, and compatible extensions | [`document-metadata.md`](references/document-metadata.md) |
 | Plan moves/deletions and verify navigation, backlinks, and stale paths | [`migration-and-links.md`](references/migration-and-links.md) |

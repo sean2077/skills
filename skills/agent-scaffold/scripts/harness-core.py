@@ -44,6 +44,7 @@ CHECK_STATUSES = {
 REPORT_MODES = {"plan", "doctor", "verify"}
 REQUIRED_ASSETS = {
     "contract.agents": ("managed-block", "AGENTS.md"),
+    "policy.document-metadata": ("copy", ".agents/document-metadata.md"),
     "host.claude-hooks": ("merge-json", ".claude/settings.json"),
     "host.codex-hooks": ("merge-json", ".codex/hooks.json"),
     "runtime.symlink-manager": ("copy", ".agents/symlink-manager.py"),

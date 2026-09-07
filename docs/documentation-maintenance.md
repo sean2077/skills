@@ -1,3 +1,12 @@
+---
+doc:
+  schema: 1
+  type: guide
+  status: active
+  authority: normative
+  scope:
+    - repository documentation maintenance
+---
 # Documentation maintenance policy
 
 Documentation is a product surface in this repository: users copy README commands, hosts route from skill metadata, references define operational contracts, templates are installed elsewhere, and compatibility wording carries support expectations.
@@ -36,6 +45,26 @@ Documentation is a product surface in this repository: users copy README command
 4. **Historical facts** stay historical. Record a correction under Unreleased rather than rewriting old releases as though the corrected behavior always existed.
 
 Do not infer runtime compatibility from format conformance, installer discovery, a manifest, or successful parsing. Distinguish **validated**, **installer-tested**, **host-wired**, **behavior-tested**, and **not certified**.
+
+## Document metadata
+
+For ordinary project documents, use the [baseline metadata contract](../skills/project-docs-organizer/references/document-metadata.md).
+It defines the `doc` namespace, five core fields, lifecycle vetoes, optional freshness/evidence
+fields, extensions, and Agent reading behavior. This page adopts it for its own scoped guidance;
+existing unannotated documents retain their declared ownership but still require relevant
+evidence checks. Do not bulk-promote history, proposals, or templates to `active`.
+
+The canonical reusable contract lives in `project-docs-organizer`. Run
+`python scripts/generate_document_metadata.py` after changing it; the generated regular-file
+asset in `agent-scaffold` installs as `.agents/document-metadata.md`. Then run scaffold `upgrade`
+and `verify` to refresh this repository's dogfood copy and managed `AGENTS.md` reading rule.
+Project mappings and extensions belong in project-owned policy, not the generated baseline.
+`SKILL.md`, host configurations, and authority-document instruction priority keep their own contracts.
+
+During edits and review, inspect YAML headers before using extracted text. Preserve status and
+scope in decision-bearing handoffs; verify replacement/source links and any relevant review due
+dates. `needs-revision` remains context even when labeled normative. Parser success cannot prove
+adoption, freshness, or permission to execute a plan.
 
 ## Command examples
 

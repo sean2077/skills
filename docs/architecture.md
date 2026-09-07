@@ -79,3 +79,11 @@ Release-facing changes accumulate under `CHANGELOG.md` Unreleased. After the rel
 | Support, trust, installer, or host claim | `docs/compatibility.md` with dated first-party evidence |
 | Contributor command or release procedure | `docs/development.md` and the normative workflows |
 | Repository-level Agent rule | `AGENTS.md`, keeping the managed scaffold block intact |
+
+## Document metadata distribution
+
+`skills/project-docs-organizer/references/document-metadata.md` owns the reusable documentation
+metadata contract. `scripts/generate_document_metadata.py` produces the regular-file scaffold
+asset; `agent-scaffold upgrade` installs it as `.agents/document-metadata.md` and updates the
+managed reading rule. The generator's `--check` guards distribution parity, not document truth
+or Agent compliance. Project metadata mappings and extensions remain project-owned.

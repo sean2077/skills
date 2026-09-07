@@ -64,6 +64,8 @@ Treat these as reasoning lenses, not required categories or directory names.
 - **Fits when**: readers risk following active drafts, generated copies, or superseded guidance.
 - **Fails when**: status buckets become junk drawers or archives hide unresolved ownership.
 - **Axis role**: normally a secondary trust boundary; primary only for record-centric systems.
+- **Metadata rule**: inspect the header before trusting location or a search excerpt; apply
+  [`document-metadata.md`](document-metadata.md), including the `needs-revision` veto.
 - **Micro-example**: an active specification cannot compete with the released contract, and a
   generated page identifies the source that owns future updates.
 

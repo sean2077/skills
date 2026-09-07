@@ -25,6 +25,7 @@ and runs the subagent generator in every mutating mode.
 - Reconcile only exact scaffold-owned hook identities; preserve unrelated host config.
 - Keep formatter, hook-manager, package, CI, nested-contract, and example-agent
   choices project-owned.
+- Check document lifecycle, authority, and scope before relying on project docs; preserve project-owned metadata mappings and extensions.
 - Keep project terminology project-owned; route every Agent to its applicable
   glossary from the managed contract.
 
@@ -61,6 +62,7 @@ Read only the category needed for the current task:
 | Installed assets, profiles, SSOT, third-party coexistence | [`harness-layout.md`](references/harness-layout.md) |
 | Scaffold-owned host hooks, merge ownership, Codex project/hook trust | [`host-integration.md`](references/host-integration.md) |
 | Project-owned format-on-edit integration | [`format-hooks.md`](references/format-hooks.md) |
+| Document metadata fields, lifecycle vetoes, safe adoption, and project extensions | [`document-metadata.md`](assets/scaffold/document-metadata.md) |
 | Root and nested authority-document policy | [`authority-docs.md`](references/authority-docs.md) |
 | Project terminology SSOT, multilingual equivalents, progressive context topology, and active-modeling boundary | [`terminology.md`](references/terminology.md) |
 | Subagent authoring, projection, and drift integration | [`subagents.md`](references/subagents.md) |

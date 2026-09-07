@@ -10,7 +10,7 @@ Turn settled or authoritative facts and decisions into the smallest coherent doc
 ## Establish the document boundary
 
 - Identify the audience, review object, document status, authority model, and whether each statement describes current or target behavior.
-- Follow project-local templates, terminology, lifecycle metadata, and source-of-truth rules.
+- Follow project-local templates, terminology, lifecycle metadata, and source-of-truth rules. Inspect source headers before relying on excerpts: drafts, in-review/needs-revision documents, retired sources, and informative notes are not adopted implementation requirements. Missing or unknown metadata is unverified; resolve through the declared project mapping and evidence, never assume active status.
 - Preserve identifiers, exact values, compatibility constraints, and normative strength. Do not silently reconcile conflicting sources, invent decisions, or present an assumption as fact.
 - Keep material assumptions and unresolved questions visible with their impact and owner where known. Surface conflicting sources and their impact; continue a bounded draft unless a blocking authority decision is required. Omit debate transcripts and approval history.
 
@@ -41,6 +41,7 @@ Turn settled or authoritative facts and decisions into the smallest coherent doc
 
 Check that:
 
+- the output header and visible status agree; new unapproved work remains draft, semantic revisions recheck prior review validity, and no approval is invented;
 - current and target behavior are not conflated;
 - every material behavior, authority, compatibility, ownership, or acceptance claim is settled or verified, explicitly assumed, or visibly open;
 - responsibility, source authority, main flow, material failures, recovery, and acceptance are clear;

@@ -50,6 +50,82 @@
       }
     },
     {
+      "id": "positive-unknown-metadata",
+      "kind": "positive",
+      "prompt": "Improve our documentation trust policy. One unannotated design and one doc with an unknown lifecycle status are shown as authoritative in the index. No documented legacy mapping or confirming evidence exists. Explain how the index and developers should handle them while allowing unrelated work to continue.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "documentation-organization"
+          },
+          "treatment": {
+            "route": "project-docs-organizer",
+            "workflow": "documentation-organization",
+            "unknown_is_active": false,
+            "block_independent_work": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-excerpt-and-replacement-trust",
+      "kind": "positive",
+      "prompt": "Repair documentation discovery and trust. A search excerpt from an archived page recommends the old API, but its header is omitted. A superseded page points to a draft replacement. Set the policy for using these sources without silently treating the replacement or excerpt as current requirements.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "documentation-organization"
+          },
+          "treatment": {
+            "route": "project-docs-organizer",
+            "workflow": "documentation-organization",
+            "inspect_source_header": true,
+            "trust_draft_replacement": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-compatible-metadata-adoption",
+      "kind": "positive",
+      "prompt": "Establish YAML metadata reading and maintenance rules for our existing documentation. The project-owned contract maps legacy status accepted to adopted and pending-revision to revision-needed. Preserve frontmatter title and x-team fields, and project extension data; do not mass-rewrite every historical document.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "documentation-organization"
+          },
+          "treatment": {
+            "route": "project-docs-organizer",
+            "workflow": "documentation-organization",
+            "preserve_metadata_mapping": true,
+            "bulk_promote_history": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-revision-status-veto",
+      "kind": "positive",
+      "prompt": "Improve our documentation lifecycle policy. The root contract calls docs/startup.md canonical, but its YAML says doc: {schema: 1, type: plan, status: needs-revision, authority: normative, scope: [desktop]}. Its body proposes a still-disputed daemon change. Define how developers should use it, retaining its metadata rather than treating its location as approval.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "documentation-organization"
+          },
+          "treatment": {
+            "route": "project-docs-organizer",
+            "workflow": "documentation-organization",
+            "use_revision_as_baseline": false,
+            "invent_approval": false
+          }
+        }
+      }
+    },
+    {
       "id": "negative-approved-rfc-writing",
       "kind": "negative",
       "prompt": "Write an RFC from these settled requirements without changing the documentation tree, navigation, ownership, lifecycle, or archival policy.",

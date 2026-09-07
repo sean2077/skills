@@ -67,6 +67,8 @@ python scripts/tests/test_tdd_contract.py
 python scripts/tests/test_private_skill_eval_contract.py
 python scripts/tests/test_live_skill_eval_adapter.py
 
+python scripts/generate_document_metadata.py --check
+python scripts/tests/test_document_metadata.py
 python scripts/generate_workflow_runtimes.py --check
 python scripts/generate_p0_runtimes.py --check
 python scripts/tests/test_oma_migration_workflows.py
