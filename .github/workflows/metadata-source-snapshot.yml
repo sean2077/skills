@@ -1,0 +1,29 @@
+name: metadata-source-snapshot
+on:
+  push:
+    branches: [chore/metadata-source-snapshot-20260907]
+    paths: [.github/workflows/metadata-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 6b2fb9601068dbef06c7c2a0b57129d30efc3b13
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Package source and validation dependencies
+        run: |
+          mkdir -p "$RUNNER_TEMP/metadata-source/wheels"
+          git branch metadata-source HEAD
+          git bundle create "$RUNNER_TEMP/metadata-source/skills.bundle" metadata-source
+          python -m pip wheel -r requirements-validation.txt --wheel-dir "$RUNNER_TEMP/metadata-source/wheels"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: metadata-source
+          path: ${{ runner.temp }}/metadata-source
+          retention-days: 2
+          if-no-files-found: error
