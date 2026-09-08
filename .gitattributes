@@ -10,8 +10,3 @@ evals/agent-skills/**/suite.json text eol=lf
 .agents/tools/hooks/*.py text eol=lf
 .agents/relink-skills.sh text eol=lf
 .agents/*.py text eol=lf
-
-# Metadata contracts are byte-checked across all supported platforms.
-skills/project-docs-organizer/references/document-metadata.md text eol=lf
-skills/agent-scaffold/assets/scaffold/document-metadata.md text eol=lf
-.agents/document-metadata.md text eol=lf

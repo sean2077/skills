@@ -625,8 +625,6 @@ package_before="$(git hash-object "$S/package.json")"
 husky_before="$(git hash-object "$S/.husky/pre-commit")"
 ( cd "$S" && bash "$H" apply ) >/dev/null 2>&1 || bad "apply exited nonzero"
 check "no bogus '*' symlink in .claude/skills" test -z "$(ls -A "$S/.claude/skills" 2>/dev/null)"
-check "default profile installs exact metadata baseline" cmp -s \
-  "$repo/skills/agent-scaffold/assets/scaffold/document-metadata.md" "$S/.agents/document-metadata.md"
 check "worktree.sh installed"                test -f "$S/.agents/tools/worktree.sh"
 check "trunk_edit_guard.sh installed"        test -f "$S/.agents/tools/hooks/trunk_edit_guard.sh"
 check "cross-platform hook launcher installed" test -f "$S/.agents/tools/hooks/hook-launcher.sh"
@@ -1281,21 +1279,6 @@ mv "$work/generate-subagents.missing.py" "$S/.agents/tools/generate-subagents.py
 echo "== upgrade refreshes only current managed runtime =="
 printf '# Project-owned terminology\n' > "$S/CONTEXT.md"
 context_before="$(git hash-object "$S/CONTEXT.md")"
-mkdir -p "$S/docs"
-printf '%s\n' 'Legacy status mapping and project extensions stay project-owned.' > "$S/docs/metadata-policy.md"
-printf '%s\n' '---' 'status: pending-revision' 'x-team: runtime' '---' '# Existing plan' > "$S/docs/plan.md"
-printf '\nDocumentation metadata policy: docs/metadata-policy.md\n' >> "$S/AGENTS.md"
-metadata_policy_before="$(git hash-object "$S/docs/metadata-policy.md")"
-metadata_document_before="$(git hash-object "$S/docs/plan.md")"
-printf '\nold baseline fixture\n' >> "$S/.agents/document-metadata.md"
-(cd "$S" && bash "$H" verify --json) > "$work/metadata-drift.json" 2>&1; rc=$?
-check "verify rejects metadata baseline drift" test "$rc" != 0
-check "verify identifies metadata drift" python - "$work/metadata-drift.json" <<'PYMETA'
-import json, sys
-data = json.load(open(sys.argv[1], encoding="utf-8"))
-item = next(item for item in data["checks"] if item["id"] == "policy.document-metadata")
-raise SystemExit(item["status"] != "fail")
-PYMETA
 printf '\n# runtime drift fixture\n' >> "$S/.agents/tools/worktree.sh"
 ( cd "$S" && bash "$H" apply ) >"$work/apply-runtime-drift.out" 2>&1; rc=$?
 check "apply rejects managed runtime drift" test "$rc" = 2
@@ -1312,11 +1295,6 @@ check "upgrade refreshes the drifted runtime" cmp -s \
   "$repo/skills/agent-scaffold/assets/runtime/worktree.sh" "$S/.agents/tools/worktree.sh"
 check "upgrade preserves project-owned Husky hook" test "$(git hash-object "$S/.husky/pre-commit")" = "$husky_before"
 check "upgrade preserves project-owned package.json" test "$(git hash-object "$S/package.json")" = "$package_before"
-check "upgrade refreshes metadata baseline" cmp -s \
-  "$repo/skills/agent-scaffold/assets/scaffold/document-metadata.md" "$S/.agents/document-metadata.md"
-check "upgrade preserves project metadata policy" test "$(git hash-object "$S/docs/metadata-policy.md")" = "$metadata_policy_before"
-check "upgrade preserves document headers and extension fields" test "$(git hash-object "$S/docs/plan.md")" = "$metadata_document_before"
-check "upgrade preserves declared project policy route" grep -qxF 'Documentation metadata policy: docs/metadata-policy.md' "$S/AGENTS.md"
 check "upgrade preserves project-owned terminology" test "$(git hash-object "$S/CONTEXT.md")" = "$context_before"
 ( cd "$S" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
 check "refreshed current layout verifies" test "$rc" = 0
@@ -1329,8 +1307,6 @@ git -C "$L" config core.symlinks true
 git -C "$L" commit -q --allow-empty -m init
 ( cd "$L" && bash "$H" apply --profile light ) >/dev/null 2>&1; rc=$?
 check "light-profile apply exits 0"                test "$rc" = 0
-check "light profile installs exact metadata baseline" cmp -s \
-  "$repo/skills/agent-scaffold/assets/scaffold/document-metadata.md" "$L/.agents/document-metadata.md"
 check "light-profile omits worktree.sh"            test ! -e "$L/.agents/tools/worktree.sh"
 check "light-profile omits trunk guard script"     test ! -e "$L/.agents/tools/hooks/trunk_edit_guard.sh"
 check "Claude config omits trunk guard"          jcommand_count "$L/.claude/settings.json" "hook-paths.py --guard" 0

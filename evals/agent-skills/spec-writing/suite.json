@@ -169,25 +169,6 @@
           "treatment": {"route": "best-practice-research", "workflow": "research"}
         }
       }
-    },
-    {
-      "id": "positive-revision-metadata-not-approval",
-      "kind": "positive",
-      "prompt": "Revise this specification for reviewer clarity. Its project metadata says status needs-revision, authority normative; a reviewer has not accepted the proposed API. Preserve the settled requirements, keep the unresolved decision visible, and describe the resulting lifecycle status without pretending this wording edit approves the API.",
-      "metadata": {
-        "expected_behavior": {
-          "baseline": {
-            "route": "none",
-            "workflow": "documentation"
-          },
-          "treatment": {
-            "route": "spec-writing",
-            "workflow": "documentation",
-            "invent_approval": false,
-            "preserve_revision_status": true
-          }
-        }
-      }
     }
   ]
 }

@@ -84,22 +84,14 @@ The managed template uses semantic source lines: one paragraph, list item, table
 physical line. It does not hard-wrap prose to a fixed display width. The installer applies this
 convention only inside the managed markers and does not reflow project-owned prose outside them.
 
-### Document metadata and project extensions
+### Project documentation context
 
-The managed block routes every Agent to the project's declared metadata policy or the bundled
-baseline at `.agents/document-metadata.md`. Both profiles install that baseline; `plan` reports
-missing/drifted copies, and `upgrade` refreshes it. Do not edit the installed baseline directly.
-The catalog asset is generated from the documentation skill's canonical contract so each skill
-remains independently installable; consumers need neither that other skill nor a generator.
-
-Declare an existing or extended schema in project-owned `AGENTS.md` prose, for example:
-`Documentation metadata policy: docs/documentation-policy.md` (use the project's actual path).
-Read it during retrofit; preserve its fields, formats, and extension data. Do not automatically
-rewrite document headers or create a competing lifecycle source. See the bundled
-[metadata contract](../assets/scaffold/document-metadata.md) for mappings and gradual adoption.
-
-This is a reading and maintenance contract, not a mandatory parser, indexing service, hook, or
-approval engine. Missing metadata never makes this file's instruction chain optional.
+The managed block reminds Agents to consider document metadata when using project docs.
+For a project without a convention, flat `status` and `updated` fields are a useful starting
+point, not required fields. Project Agents choose names, values, placement, and any extensions
+according to actual needs. Draft or stale material deserves context-aware judgment, not an
+automatic approval or rejection based on a label. No separate metadata policy file, scanner,
+or approval workflow is installed; existing project conventions remain project-owned.
 
 ### Project-owned root prose
 

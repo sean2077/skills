@@ -16,14 +16,8 @@ Archive only when readers, audits, migrations, or incident review still need the
 Do not use an archive as a default destination for uncertain clutter; leave uncertain active
 content in place and report the unresolved ownership instead.
 
-## Preserve metadata through migration
-
-Read each affected header before choosing its destination or trust label; follow
-[`document-metadata.md`](document-metadata.md) or the project's declared mapping. Preserve
-unrelated frontmatter and extension fields. Repair `sources` and `superseded_by` links relative
-to the new location, including links in other headers, sidecars, and generated indexes.
-A move, tidy-up, or archive operation cannot approve a draft or refresh a substantive review.
-Check replacements for missing targets and cycles; inspect their own status independently.
+Preserve existing YAML metadata and project-specific fields during moves and merges; update
+any source or replacement links they contain. Reorganizing a document does not adopt its decisions.
 
 ## Update discovery surfaces
 
