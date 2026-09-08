@@ -37,6 +37,15 @@ Documentation is a product surface in this repository: users copy README command
 
 Do not infer runtime compatibility from format conformance, installer discovery, a manifest, or successful parsing. Distinguish **validated**, **installer-tested**, **host-wired**, **behavior-tested**, and **not certified**.
 
+## Document metadata
+
+Use metadata when it helps distinguish current guidance from drafts, revision-needed plans,
+and history. The [metadata principles](../skills/project-docs-organizer/references/document-metadata.md)
+suggest optional flat `status` and `updated` fields, not a required schema or fixed lifecycle.
+Project Agents choose useful conventions and extensions, and interpret metadata alongside the
+content, repository evidence, and user intent. Missing fields alone are not a development gate;
+keep meaningful uncertainty visible and preserve existing metadata during documentation edits.
+
 ## Command examples
 
 - Treat every copy-paste command as an interface. Verify its working directory, option scope, quoting, identity, confirmation, side effects, and expected result.

@@ -10,7 +10,8 @@ Turn settled or authoritative facts and decisions into the smallest coherent doc
 ## Establish the document boundary
 
 - Identify the audience, review object, document status, authority model, and whether each statement describes current or target behavior.
-- Follow project-local templates, terminology, lifecycle metadata, and source-of-truth rules.
+- Follow project-local templates, terminology, metadata conventions, and source-of-truth rules. Consider source status and freshness alongside its content and current evidence; a revision-needed source is not automatically a settled requirement.
+- Where useful and no convention exists, flat `status` and `updated` fields are enough to start. Let project Agents adapt them; missing metadata alone does not block a draft, and polishing one does not approve it.
 - Preserve identifiers, exact values, compatibility constraints, and normative strength. Do not silently reconcile conflicting sources, invent decisions, or present an assumption as fact.
 - Keep material assumptions and unresolved questions visible with their impact and owner where known. Surface conflicting sources and their impact; continue a bounded draft unless a blocking authority decision is required. Omit debate transcripts and approval history.
 

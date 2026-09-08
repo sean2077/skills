@@ -28,6 +28,8 @@ universal directory template.
   placeholder may exist solely to complete a taxonomy or consume a number.
 - Delete only with evidence that content is stale, duplicated, superseded, or migrated.
   Archive only when retention has a named value or requirement.
+- Use metadata to help readers judge document status and freshness, not to impose a universal
+  schema or approval workflow. Let project Agents adapt fields and interpretation to local needs.
 
 ## Workflow
 
@@ -35,7 +37,9 @@ universal directory template.
    root README, documentation roots, contribution and authority docs, site generators,
    package metadata, CI links, and topic-specific doc locations.
 2. Identify actual readers and tasks, domain language and ownership, product surfaces,
-   document lifecycles, canonical sources, generator constraints, and retrieval failures.
+   document lifecycles, existing metadata, canonical sources, generator constraints, and
+   retrieval failures. When metadata would help, use the small starting point and principles in
+   [`document-metadata.md`](references/document-metadata.md); no whole-tree migration is implied.
 3. Read [`information-architecture.md`](references/information-architecture.md) and
    [`classification-methods.md`](references/classification-methods.md). Select the evidence depth,
    shortlist only relevant lenses, and identify any primary-axis or ownership change.
@@ -75,5 +79,6 @@ universal directory template.
 |---|---|
 | Scale decision evidence; select a project-owned container, primary axis, secondary lenses, and tie behavior | [`information-architecture.md`](references/information-architecture.md) |
 | Compare reader, task, domain, product, content-purpose, and lifecycle lenses | [`classification-methods.md`](references/classification-methods.md) |
+| Choose minimal metadata and interpret status/freshness in context | [`document-metadata.md`](references/document-metadata.md) |
 | Apply or decline sibling-local numeric ordering after semantic design | [`numbering-patterns.md`](references/numbering-patterns.md) |
 | Plan moves/deletions and verify navigation, backlinks, and stale paths | [`migration-and-links.md`](references/migration-and-links.md) |

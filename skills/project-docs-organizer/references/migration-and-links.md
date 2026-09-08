@@ -16,6 +16,9 @@ Archive only when readers, audits, migrations, or incident review still need the
 Do not use an archive as a default destination for uncertain clutter; leave uncertain active
 content in place and report the unresolved ownership instead.
 
+Preserve existing YAML metadata and project-specific fields during moves and merges; update
+any source or replacement links they contain. Reorganizing a document does not adopt its decisions.
+
 ## Update discovery surfaces
 
 Search and update active references in:

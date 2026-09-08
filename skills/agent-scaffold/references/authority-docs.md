@@ -84,6 +84,15 @@ The managed template uses semantic source lines: one paragraph, list item, table
 physical line. It does not hard-wrap prose to a fixed display width. The installer applies this
 convention only inside the managed markers and does not reflow project-owned prose outside them.
 
+### Project documentation context
+
+The managed block reminds Agents to consider document metadata when using project docs.
+For a project without a convention, flat `status` and `updated` fields are a useful starting
+point, not required fields. Project Agents choose names, values, placement, and any extensions
+according to actual needs. Draft or stale material deserves context-aware judgment, not an
+automatic approval or rejection based on a label. No separate metadata policy file, scanner,
+or approval workflow is installed; existing project conventions remain project-owned.
+
 ### Project-owned root prose
 
 Add only the sections the project can keep accurate. A useful starting shape is a reference, not

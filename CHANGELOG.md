@@ -17,6 +17,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Added lightweight document-metadata guidance to `agent-scaffold`, `project-docs-organizer`, and `spec-writing`: optional flat `status`/`updated` fields and context-aware reading, with conventions and extensions left to project Agents rather than a universal schema or lifecycle gate.
+
 - Strengthened native `autopilot` composition with approved-decision reuse, bounded evidence handoffs, capability/cost-aware delegation, integrated review, and verified remote delivery; no new skill or mandatory state/controller was added.
 - Extended `code-review` to evidence-first feedback triage and revision freshness while preserving reviewer-only authority; aligned `tdd` discovery with explicit user or project policy and bounded external research by decision value.
 - Replaced TDD sentence/keyword quotas with distribution and attribution invariants, retaining generic catalog validation and adding live routing cases rather than claiming prose matching proves behavior.

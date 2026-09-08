@@ -27,6 +27,8 @@ and runs the subagent generator in every mutating mode.
   choices project-owned.
 - Keep project terminology project-owned; route every Agent to its applicable
   glossary from the managed contract.
+- Leave document metadata conventions to project Agents; the managed block adds
+  reading principles, not a schema or lifecycle gate.
 
 ## Modes
 

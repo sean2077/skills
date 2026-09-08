@@ -29,6 +29,10 @@ The trunk guard blocks non-ignored project-file edits in the primary worktree, r
 
 The authority-document budget hook remains advisory; projects may override its default line and character limits.
 
+### Reading project documentation
+
+Consider document metadata alongside its content, current repository evidence, and user intent. Drafts, revision-needed notes, and superseded material are usually context to assess rather than settled implementation guidance. Missing metadata alone is not a blocker. Where helpful, start with flat `status` and `updated` fields; project Agents choose conventions and interpret them for the task, keeping material uncertainty visible.
+
 ### Project terminology (hard rule)
 
 Every Agent, project skill, and subagent uses the canonical terminology source declared in project-owned `AGENTS.md` prose. If none is declared, read root `CONTEXT-MAP.md` when present; otherwise use root `CONTEXT.md`. The map routes multi-context repositories to context-local `CONTEXT.md` files.
