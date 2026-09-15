@@ -63,7 +63,7 @@ Choose one owner for creation, integration, and cleanup. Only when no task workt
 bash .agents/tools/worktree.sh new <name>  # creates .worktrees/<name>/; does not move the session
 ```
 
-The helper uses the primary worktree's checked-out branch as active trunk (`--trunk` overrides) and records it. Its `done --dir <absolute-wt>` merges to local trunk, pushes, and removes the worktree; it is NOT generic task completion or a PR/MR handoff. Use it only for an authorized scaffold-owned lifecycle, from outside the target worktree (especially on Windows). Leave externally managed worktrees to their owner and follow the project's PR/MR policy instead of implicitly merging or cleaning up.
+The helper uses the primary worktree's checked-out branch as active trunk (`--trunk` overrides) and records it. Its `done --dir <absolute-wt>` performs merge, clean up, and ff-only push; it is NOT generic task completion or a PR/MR handoff. Use it only for an authorized scaffold-owned lifecycle, from outside the target worktree (especially on Windows). Leave externally managed worktrees to their owner and follow the project's PR/MR policy instead of implicitly merging or cleaning up.
 
 The trunk guard blocks non-ignored project-file edits in the primary worktree, regardless of branch name. Bypass it only with explicit user approval: `WORKTREE_ALLOW_TRUNK_EDIT=1`, or `touch .claude/allow-trunk-edit` for a 2 h flag.
 
