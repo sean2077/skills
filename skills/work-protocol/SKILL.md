@@ -28,6 +28,11 @@ Use `python` when that is the host's Python 3 command, or `py -3` on Windows.
 
 ## Workspace boundary
 
+Session entry is not workspace ownership. Starting in a host-created worktree does not
+trigger this protocol or register that worktree with it. Keep the host as lifecycle
+owner unless control is explicitly handed off; this runtime's managed writer/reviewer
+workspaces below are a separate opt-in contract, not automatic adoption of external ones.
+
 Writable driver, worker, and integrator roles receive distinct new-branch worktrees pinned to a resolved base commit. Parallel writers claim conservative, non-overlapping path rules; committed, staged, unstaged, unmerged, and untracked changes are checked against those claims, and changed symlinks may not escape. One task has at most one integrator. Reviewers require an exact full commit SHA and receive a clean detached snapshot. Reviewer evidence is appended through the authoritative task, not written into the snapshot.
 
 ## Hard rules

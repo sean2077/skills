@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Corrected trunk-guard diagnostics that required `.worktrees/` creation even when a user or workbench had already supplied a linked task worktree; primary-checkout protection is unchanged.
+
 - Anchored the scaffold-owned Claude/Codex hook command's script path on `${CLAUDE_PROJECT_DIR:-.}` so `hook-paths.py` is found when the host's hook `cwd` drifts off the project root (a `cd`, a worktree, or a temp directory), which previously failed with `can't open file '.../.agents/tools/hooks/hook-paths.py': No such file or directory`. The `:-.` floor keeps the cwd-relative path on hosts that export no project-root variable (Codex/Grok run hooks from the project root), so they are unchanged; `upgrade` converges the prior relative-path commands as managed identities.
 
 - Require valid baseline execution, trigger, and scope before accepting an evaluation comparison; reject historical false-green pairs while allowing a functioning baseline to fail the task oracle.
@@ -18,6 +20,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Skip authority-document budget work unless a payload path is `AGENTS.md` or `CLAUDE.md`, and skip per-file Git identity probes for edits already inside a linked worktree.
 
 ### Changed
+
+- Separated session entry, task checkout, and lifecycle ownership in `agent-scaffold`: prefer task-local implementation/review sessions while retaining primary-checkout coordination and project-owned user preferences; reuse external worktrees without a new mode, controller, or automatic cleanup. Added branch-local harness and PR/MR handoff guidance, refreshed the vendored contract, and wired real-Git entry-path regressions into the platform matrix.
 
 - Added lightweight document-metadata guidance to `agent-scaffold`, `project-docs-organizer`, and `spec-writing`: optional flat `status`/`updated` fields and context-aware reading, with conventions and extensions left to project Agents rather than a universal schema or lifecycle gate.
 

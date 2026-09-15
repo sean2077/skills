@@ -115,6 +115,7 @@ jobs:
         if: always()
         run: |
           python scripts/tests/test_agent_scaffold_core.py
+          python scripts/tests/test_workspace_entry.py
           bash scripts/check-agent-scaffold.sh
 
       - name: Exercise tooling inventory reconciliation

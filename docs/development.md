@@ -19,23 +19,41 @@ export PYTHONDONTWRITEBYTECODE=1
 
 ## Worktree flow
 
-Never edit the primary worktree directly. Its checked-out branch is the active trunk unless `--trunk` overrides it; the scaffold-managed rule and escape-hatch boundary in [AGENTS.md](../AGENTS.md#worktree-per-change-hard-rule) are authoritative.
+Prefer starting a new implementation/review session in its task worktree. A session may
+remain in the primary checkout for planning or coordination, provided every task read,
+edit, test, and review targets the exact task checkout. Reuse a worktree already assigned
+by the user or an external workbench; never create another just to satisfy the scaffold.
+The [managed rule](../AGENTS.md#worktree-per-change-hard-rule) still prohibits primary
+worktree edits. See [workspace context](../skills/agent-scaffold/references/workspace-context.md)
+for persistent user preferences, branch-local harness files, and host permission limits.
+
+For an existing task checkout, inspect it without changing session ownership:
+
+```bash
+# Replace with the assigned absolute path, not the session's presumed repository root.
+task="/absolute/path/to/task-checkout"
+git -C "$task" rev-parse --show-toplevel
+git -C "$task" status --short --branch
+git -C "$task" rev-parse HEAD
+# Run each project check with cwd set to "$task" (or its documented subdirectory).
+```
+
+Only if no task checkout is assigned and the scaffold owns creation, run from the primary:
 
 ```bash
 bash .agents/tools/worktree.sh new docs-example
-cd .worktrees/docs-example
-# edit, validate, and commit here
-wt="$(git rev-parse --show-toplevel)"
-root="$(dirname "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)")"
-cd "$root"
-bash "$root/.agents/tools/worktree.sh" done --dir "$wt"
+# Use the printed path for a new session or explicit per-tool working directories.
 ```
 
-Leave the target worktree before invoking cleanup. This is required for reliable deletion on Windows, where the calling shell or Agent process may otherwise keep the directory open; `new` prints the exact outside-worktree command.
+Record the intended base and actual task revision. The helper records its resolved local
+trunk; a workbench may use a different base. Follow the project's delivery policy and
+compare with the intended remote base before publication. For a PR/MR, publish the task
+branch and open the change request; do not call `done` as an implicit merge or cleanup.
 
-`done` is not a local-only cleanup command: the scaffold-managed contract defines it as merge-to-local-trunk, cleanup, and an ff-only push. Run it only when that publication step is intended.
-
-Before editing, record the exact local active-trunk commit used to create the worktree. When publication is intended, also fetch and compare the corresponding remote trunk; replay the change if the target trunk advanced.
+`done --dir <absolute-wt>` is only for an authorized scaffold-owned local-trunk lifecycle:
+it merges, pushes, and removes the worktree. External owners keep control of their own
+integration/archive operations. Leave the target before removal; on Windows a live Agent,
+terminal, or server can keep it locked even after a command shell changes directory.
 
 ## Select checks by changed surface
 
@@ -92,6 +110,7 @@ done
 python -m skills_ref.cli validate .agents/skills/skill-eval
 
 python scripts/tests/test_agent_scaffold_core.py
+python scripts/tests/test_workspace_entry.py
 bash scripts/check-agent-scaffold.sh
 bash scripts/tests/test-tooling-inventory.sh
 AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS=1 bash scripts/e2e-agent-scaffold.sh
