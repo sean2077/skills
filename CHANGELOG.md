@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Corrected trunk-guard diagnostics that required `.worktrees/` creation even when a user or workbench had already supplied a linked task worktree; primary-checkout protection is unchanged.
+
 - Require valid baseline execution, trigger, and scope before accepting an evaluation comparison; reject historical false-green pairs while allowing a functioning baseline to fail the task oracle.
 
 - Made live routing evaluations reject nonzero host exits, ambiguous/non-finite JSON, normalized-key collisions, escaped candidate files, incomplete usage, and boolean/number equality false positives; preserve observed failure usage and mark unknown measurements explicitly.
@@ -16,6 +18,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Skip authority-document budget work unless a payload path is `AGENTS.md` or `CLAUDE.md`, and skip per-file Git identity probes for edits already inside a linked worktree.
 
 ### Changed
+
+- Separated session entry, task checkout, and lifecycle ownership in `agent-scaffold`: prefer task-local implementation/review sessions while retaining primary-checkout coordination and project-owned user preferences; reuse external worktrees without a new mode, controller, or automatic cleanup. Added branch-local harness and PR/MR handoff guidance, refreshed the vendored contract, and wired real-Git entry-path regressions into the platform matrix.
 
 - Added lightweight document-metadata guidance to `agent-scaffold`, `project-docs-organizer`, and `spec-writing`: optional flat `status`/`updated` fields and context-aware reading, with conventions and extensions left to project Agents rather than a universal schema or lifecycle gate.
 
@@ -189,7 +193,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The release workflow no longer deadlocks against its own reusable validation call. `v4.1.1`
   derived validate.yml's concurrency group from `github.workflow`, which resolves to the *caller*
   inside a `workflow_call` and therefore evaluated to release.yml's own `release-<ref>` group; the
-  called workflow queued behind a caller that never cancels, so no GitHub Release was published
+  called workflow queued behind its own caller, which never cancels, so no GitHub Release was published
   for that tag. The group is now a literal `validate-skills-<ref>`, and validation rejects both a
   `github.workflow`-derived group and any group shared with release.yml.
 
@@ -439,7 +443,7 @@ Agent-Skills hosts).
   subject whose summary language follows repository history, defaulting to English when
   history is absent or unclear.
 - **`semver-release`** — cut a semantic-version release from conventional commits: infer
-  the MAJOR/MINOR/PATCH bump since the last tag, update `CHANGELOG.md` and the version
+  the MAJOR/MINOR/PATCH bump since the tag, update `CHANGELOG.md` and the version
   file, create the release commit and annotated tag, optionally publish a GitHub/GitLab
   release, and push. Handles prerelease (beta/rc) and promotion to final.
 - **`project-docs-organizer`** — build, restructure, or clean up a project's documentation
