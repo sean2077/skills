@@ -12,7 +12,7 @@ Read this only when changing scaffold-owned hook behavior, Claude Code or Codex 
 
 ## Hook semantics
 
-Both scaffold-owned hooks read the tool-call JSON on **stdin**. Host configs invoke **one** Python 3.8+ process: `python -X utf8 .agents/tools/hooks/hook-paths.py --guard` or `--budget`. That avoids a Git-alias plus Bash launcher on every Edit/Write. `hook-paths.py` parses the payload, converts `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths in-process, and classifies the checkout from `.git` (a directory is the primary worktree; a `gitdir:` file is a linked worktree). The budget hook returns immediately unless a payload path is `AGENTS.md` or `CLAUDE.md`. The trunk guard skips per-file Git identity probes for edits already inside a linked worktree; `git check-ignore` runs only when a same-repository primary-worktree edit might be blocked. The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. `hook-launcher.sh` and `hook-common.sh` remain installed for project-owned Bash hooks. `hook-common.sh` still exposes `hook_extract_paths` and `cygpath` conversion for format-on-edit. Missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 for `--guard` because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0. The budget hook emits PostToolUse `additionalContext` JSON itself and does not call `jq`.
+Both scaffold-owned hooks read the tool-call JSON on **stdin**. Host configs invoke **one** Python 3.8+ process: `python -X utf8 "${CLAUDE_PROJECT_DIR:-.}"/.agents/tools/hooks/hook-paths.py --guard` or `--budget`. The path is anchored on `"${CLAUDE_PROJECT_DIR:-.}"` because the host's hook `cwd` follows the agent (a `cd`, a worktree, or a temp directory), and a bare relative `.agents/...` path then fails to resolve and the script never runs; `${CLAUDE_PROJECT_DIR}` stays pinned to the session-start project root, and the `:-.` default keeps the path working on hosts that do not export it. Only the placeholder is quoted, so the fixed `/.agents/tools/hooks/hook-paths.py` suffix stays contiguous with `--guard`/`--budget` for the reconciler and light-profile matchers. That avoids a Git-alias plus Bash launcher on every Edit/Write. `hook-paths.py` parses the payload, converts `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths in-process, and classifies the checkout from `.git` (a directory is the primary worktree; a `gitdir:` file is a linked worktree). The budget hook returns immediately unless a payload path is `AGENTS.md` or `CLAUDE.md`. The trunk guard skips per-file Git identity probes for edits already inside a linked worktree; `git check-ignore` runs only when a same-repository primary-worktree edit might be blocked. The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. `hook-launcher.sh` and `hook-common.sh` remain installed for project-owned Bash hooks. `hook-common.sh` still exposes `hook_extract_paths` and `cygpath` conversion for format-on-edit. Missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 for `--guard` because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0. The budget hook emits PostToolUse `additionalContext` JSON itself and does not call `jq`.
 
 ### trunk_edit_guard.sh — PreToolUse, blocking
 
@@ -32,7 +32,7 @@ Both scaffold-owned hooks read the tool-call JSON on **stdin**. Host configs inv
 
 ## Dual-host wiring
 
-Both hosts invoke the **same** enabled `hook-paths.py` entry under `.agents/tools/hooks/`. The command is `python -X utf8` plus `--guard` or `--budget`, so the hot path does not look up `bash` and cannot land on the Windows WSL launcher. Python 3.8+ on `PATH` is a harness prerequisite. `hook-launcher.sh` remains available for project-owned Bash hooks that still need Git for Windows `/usr/bin/bash`; `AGENT_SCAFFOLD_BASH` overrides that Bash only. The PreToolUse examples below describe the default worktree profile; the lightweight profile omits `--guard` while retaining `--budget`.
+Both hosts invoke the **same** enabled `hook-paths.py` entry under `.agents/tools/hooks/`. The command is `python -X utf8 "${CLAUDE_PROJECT_DIR:-.}"/.agents/tools/hooks/hook-paths.py` plus `--guard` or `--budget`, so the hot path does not look up `bash` and cannot land on the Windows WSL launcher. The `"${CLAUDE_PROJECT_DIR:-.}"` anchor keeps the script path correct when the host's hook `cwd` is not the project root; the `:-.` floor preserves the cwd-relative path on hosts that do not export the variable. Python 3.8+ on `PATH` is a harness prerequisite. `hook-launcher.sh` remains available for project-owned Bash hooks that still need Git for Windows `/usr/bin/bash`; `AGENT_SCAFFOLD_BASH` overrides that Bash only. The PreToolUse examples below describe the default worktree profile; the lightweight profile omits `--guard` while retaining `--budget`.
 
 **Claude Code — `.claude/settings.json` shape** (the canonical full command strings live in `assets/host/claude.settings.json`):
 
@@ -41,23 +41,23 @@ Both hosts invoke the **same** enabled `hook-paths.py` entry under `.agents/tool
   "hooks": {
     "PreToolUse": [
       { "matcher": "Edit|MultiEdit|Write|NotebookEdit",
-        "hooks": [ { "type": "command", "command": "python -X utf8 .agents/tools/hooks/hook-paths.py --guard" } ] }
+        "hooks": [ { "type": "command", "command": "python -X utf8 \"${CLAUDE_PROJECT_DIR:-.}\"/.agents/tools/hooks/hook-paths.py --guard" } ] }
     ],
     "PostToolUse": [
       { "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "python -X utf8 .agents/tools/hooks/hook-paths.py --budget" }
+          { "type": "command", "command": "python -X utf8 \"${CLAUDE_PROJECT_DIR:-.}\"/.agents/tools/hooks/hook-paths.py --budget" }
         ] }
     ]
   }
 }
 ```
 
-**Codex — `.codex/hooks.json`:** matcher `Edit|Write|apply_patch`; `hook-paths.py` resolves the repository root without relying on `$CLAUDE_PROJECT_DIR`:
+**Codex — `.codex/hooks.json`:** matcher `Edit|Write|apply_patch`; Codex does not export `$CLAUDE_PROJECT_DIR`, so the anchor's `:-.` floor leaves the cwd-relative path (Codex runs hooks from the project root), and `hook-paths.py` resolves the repository root internally from Git/install depth:
 
 ```json
 { "type": "command",
-  "command": "python -X utf8 .agents/tools/hooks/hook-paths.py --guard",
+  "command": "python -X utf8 \"${CLAUDE_PROJECT_DIR:-.}\"/.agents/tools/hooks/hook-paths.py --guard",
   "statusMessage": "Checking worktree policy" }
 ```
 
@@ -98,10 +98,11 @@ Codex applies two independent gates to this scaffold:
 
 ## Integration troubleshooting
 
-- **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then confirm `python -X utf8 .agents/tools/hooks/hook-paths.py --guard` is on `PATH`. Project-owned Bash hooks still use `hook-launcher.sh` and Git for Windows `/usr/bin/bash`. Hook commands do not depend on checkout executable bits.
+- **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then confirm `python` and the `${CLAUDE_PROJECT_DIR:-.}`-anchored `hook-paths.py --guard` path resolve. Project-owned Bash hooks still use `hook-launcher.sh` and Git for Windows `/usr/bin/bash`. Hook commands do not depend on checkout executable bits.
 - **Grok `pre_tool_use`/`post_tool_use` timeouts on Windows**: Grok observe hooks default to 5 seconds. Scaffold host JSON sets `timeout` to 30. Host JSON invokes Python directly. The guard skips per-file Git probes inside a linked worktree, and the budget hook returns immediately unless the path is `AGENTS.md` or `CLAUDE.md`. `hook-paths.py` accepts both `tool_input` and Grok `toolInput`. Restart the host session after upgrade so it reloads project hooks.
 - **Hooks don't fire in Claude Code**: validate `.claude/settings.json`, confirm the command path,
   and restart the host session after changing settings.
+- **`can't open file '.../.agents/tools/hooks/hook-paths.py': No such file or directory`**: the host's hook `cwd` drifted off the project root (a `cd`, a worktree, or a temp directory) and the script path resolved against it. The managed command anchors the path on `${CLAUDE_PROJECT_DIR:-.}`; if an older relative-path command is still installed, run `upgrade` to converge it. On a host that exports neither variable, the `.` floor relies on the hook running from the project root.
 - **The installer rejects an existing hook config**: repair the named JSON file. Mutating modes
   require a regular file, strict UTF-8 JSON, an object at the top level, and well-typed hook arrays.
 - **Scaffold-owned hook entries are duplicate or stale**: run `upgrade` with the installed profile flags.
