@@ -193,7 +193,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The release workflow no longer deadlocks against its own reusable validation call. `v4.1.1`
   derived validate.yml's concurrency group from `github.workflow`, which resolves to the *caller*
   inside a `workflow_call` and therefore evaluated to release.yml's own `release-<ref>` group; the
-  called workflow queued behind its own caller, which never cancels, so no GitHub Release was published
+  called workflow queued behind a caller that never cancels, so no GitHub Release was published
   for that tag. The group is now a literal `validate-skills-<ref>`, and validation rejects both a
   `github.workflow`-derived group and any group shared with release.yml.
 
@@ -443,7 +443,7 @@ Agent-Skills hosts).
   subject whose summary language follows repository history, defaulting to English when
   history is absent or unclear.
 - **`semver-release`** — cut a semantic-version release from conventional commits: infer
-  the MAJOR/MINOR/PATCH bump since the tag, update `CHANGELOG.md` and the version
+  the MAJOR/MINOR/PATCH bump since the last tag, update `CHANGELOG.md` and the version
   file, create the release commit and annotated tag, optionally publish a GitHub/GitLab
   release, and push. Handles prerelease (beta/rc) and promotion to final.
 - **`project-docs-organizer`** — build, restructure, or clean up a project's documentation
