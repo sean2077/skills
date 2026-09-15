@@ -38,6 +38,14 @@ class WorkspaceEntryTests(unittest.TestCase):
         self.git(self.primary, "config", "commit.gpgsign", "false")
         self.git(self.primary, "config", "core.autocrlf", "false")
         self.git(self.primary, "config", "core.symlinks", "true")
+        # Pin the ignore source to an empty file. Without this the fixture
+        # inherits the developer's global/XDG excludes, where `.worktrees/` is a
+        # common entry; the guard exempts ignored paths, so the deliberately
+        # unregistered .worktrees/ directory below would be allowed instead of
+        # blocked and the isolation test would fail for environmental reasons.
+        excludes = self.base / "empty-excludes"
+        excludes.write_bytes(b"")
+        self.git(self.primary, "config", "core.excludesFile", str(excludes))
         self.write(self.primary / INSTALLED, SOURCE.read_text(encoding="utf-8"))
         self.write(self.primary / "AGENTS.md", "# Primary contract\n")
         self.write(self.primary / ".agents/skills/local/SKILL.md", "primary skill\n")
@@ -130,10 +138,13 @@ class WorkspaceEntryTests(unittest.TestCase):
 
     def test_tracked_relative_projections_follow_task_revision(self):
         # Real links are required, matching the scaffold's existing platform gate.
-        (self.primary / "CLAUDE.md").symlink_to("AGENTS.md")
         projection = self.primary / ".claude/skills/local"
         projection.parent.mkdir(parents=True)
-        projection.symlink_to("../../.agents/skills/local", target_is_directory=True)
+        try:
+            (self.primary / "CLAUDE.md").symlink_to("AGENTS.md")
+            projection.symlink_to("../../.agents/skills/local", target_is_directory=True)
+        except OSError as exc:
+            self.skipTest(f"real symlink creation unavailable: {exc}")
         self.git(self.primary, "add", "CLAUDE.md", ".claude")
         self.git(self.primary, "commit", "-qm", "tracked projections")
         revision = self.git(self.primary, "rev-parse", "HEAD").strip()
