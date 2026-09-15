@@ -27,6 +27,8 @@ and runs the subagent generator in every mutating mode.
   choices project-owned.
 - Keep project terminology project-owned; route every Agent to its applicable
   glossary from the managed contract.
+- Separate session entry, task checkout, and worktree lifecycle ownership. Honor
+  user/host placement, reuse assigned worktrees, and keep preferences in project prose.
 - Leave document metadata conventions to project Agents; the managed block adds
   reading principles, not a schema or lifecycle gate.
 
@@ -46,7 +48,9 @@ needs stable check IDs and statuses.
 
 ## Workflow
 
-1. Confirm the target with `git rev-parse --show-toplevel`.
+1. Confirm the target checkout with `git rev-parse --show-toplevel`; this is not
+   necessarily the primary worktree. Honor an explicit task path and inspect its
+   local authority chain before planning changes; do not install into another checkout.
 2. Run `plan`; use its `apply_mode` (`apply` or `upgrade`) and selected profile.
 3. Resolve any `attention` item before mutation. Mutating modes preflight marker,
    hook-config, runtime-shape, subagent-import, and symlink conflicts before the
@@ -60,6 +64,7 @@ Read only the category needed for the current task:
 
 | Task | Reference |
 |---|---|
+| Session entry choice, task paths, external worktrees, and lifecycle handoff | [`workspace-context.md`](references/workspace-context.md) |
 | Installed assets, profiles, SSOT, third-party coexistence | [`harness-layout.md`](references/harness-layout.md) |
 | Scaffold-owned host hooks, merge ownership, Codex project/hook trust | [`host-integration.md`](references/host-integration.md) |
 | Project-owned format-on-edit integration | [`format-hooks.md`](references/format-hooks.md) |

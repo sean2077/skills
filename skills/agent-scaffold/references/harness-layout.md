@@ -52,6 +52,10 @@ it is not an installed asset.
 
 ### Light profile
 
+The default profile supports both primary-checkout sessions and task-worktree sessions,
+including externally created linked worktrees. Session entry does not select a profile;
+see [workspace context](workspace-context.md) for user choice and lifecycle boundaries.
+
 `--profile light` omits worktree governance while retaining the rest of the harness. A clean apply
 omits `worktree.sh`, `trunk_edit_guard.sh`, their dual-host hook entries, the managed worktree
 section in `AGENTS.md`, and new worktree-specific ignore lines. A default-to-light apply
