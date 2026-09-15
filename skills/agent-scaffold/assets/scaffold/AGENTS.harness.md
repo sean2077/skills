@@ -1,5 +1,5 @@
 <!-- agent-scaffold:start — managed; keep project prose outside; upgrade refreshes this block. -->
-## Agent Harness (Claude Code + Codex)
+## Agent Harness
 
 `.agents/` is the SSOT for harness-owned skills, subagents, and runtime; `.claude/` and `.codex/` contain host projections.
 
