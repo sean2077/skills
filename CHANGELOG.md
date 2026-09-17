@@ -21,6 +21,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Further reduced the `agent-scaffold` managed `AGENTS.md` block to essential task, worktree, authority, terminology, and source-ownership rules; retained on-demand detail in existing references and refreshed the repository's managed copy without changing project prose or runtime behavior.
+
 - Made the `agent-scaffold` managed contract heading host-neutral (`## Agent Harness` instead of naming Claude Code + Codex): the block governs every Agent working in the repository regardless of host, while the body still identifies `.claude/` and `.codex/` as generated host projections. `upgrade` refreshes the installed heading; product support claims elsewhere remain dual-host specific.
 
 - Separated session entry, task checkout, and lifecycle ownership in `agent-scaffold`: prefer task-local implementation/review sessions while retaining primary-checkout coordination and project-owned user preferences; reuse external worktrees without a new mode, controller, or automatic cleanup. Added branch-local harness and PR/MR handoff guidance, refreshed the vendored contract, and wired real-Git entry-path regressions into the platform matrix.
