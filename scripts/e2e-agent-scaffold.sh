@@ -54,18 +54,27 @@ no_exact_line() { ! grep -qxF "$2" "$1"; }
 # shellcheck disable=SC2317,SC2329
 both_absent() { [ ! -e "$1" ] && [ ! -e "$2" ]; }
 # shellcheck disable=SC2317,SC2329
-authority_laws_present() {
-  local file="$1"
-  grep -qF 'canonical repository-level contract for Agent work' "$file" \
-    && grep -qF '**Keep it current.**' "$file" \
-    && grep -qF '**Keep it lean.**' "$file" \
-    && grep -qF '**Keep scopes honest.**' "$file" \
-    && grep -qF 'directory structure alone never justifies one.' "$file" \
-    && grep -qF '**Resolve conflicts explicitly.**' "$file" \
-    && grep -qF 'budget hook remains advisory; projects may override its default line and character limits' "$file" \
-    && grep -qF '### Project terminology (hard rule)' "$file" \
-    && grep -qF 'Every Agent, project skill, and subagent' "$file" \
-    && grep -qF 'Never seed an empty glossary.' "$file"
+# Structural contract for a rendered managed block: the section anchors that hosts
+# and nested contracts navigate by, exactly one marker pair, and a resident size
+# ceiling. Resident wording is review-owned and reconciled against the template by
+# check-agent-scaffold.sh, so this gate deliberately does not pin prose phrasing —
+# docs/harness-constraint-policy.md rejects substring fixtures that only restate
+# prose, because they prove no invariant and break every legitimate rewording.
+authority_structure_present() {
+  local file="$1" heading lines
+  for heading in \
+    '## Agent Harness' \
+    '### Session and task context' \
+    '### Authority documents (hard rules)' \
+    '### Project terminology (hard rule)' \
+    '### Sources and projections'; do
+    grep -qF "$heading" "$file" || return 1
+  done
+  [ "$(grep -cF '<!-- agent-scaffold:start' "$file")" = 1 ] || return 1
+  [ "$(grep -cF '<!-- agent-scaffold:end' "$file")" = 1 ] || return 1
+  lines="$(sed -n '/<!-- agent-scaffold:start/,/<!-- agent-scaffold:end/p' "$file" \
+    | wc -l | tr -d ' ')"
+  [ -n "$lines" ] && [ "$lines" -le 48 ]
 }
 # shellcheck disable=SC2317,SC2329
 no_partial_harness() {
@@ -648,13 +657,12 @@ check "greenfield creates no example projection" both_absent "$S/.claude/agents/
 check "greenfield creates no empty terminology source" test ! -e "$S/CONTEXT.md"
 check "AGENTS.md contains no project overview" no_fixed_text "$S/AGENTS.md" "## Project Overview"
 check "AGENTS.md starts at the managed boundary" grep -qF '<!-- agent-scaffold:start' "$S/AGENTS.md"
-check "AGENTS.md carries the common authority laws" authority_laws_present "$S/AGENTS.md"
-check "AGENTS.md keeps third-party policy project-owned" grep -qF "Third-party skills** follow project-owned placement and installation policy" "$S/AGENTS.md"
+check "AGENTS.md carries the managed contract structure" authority_structure_present "$S/AGENTS.md"
 # shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
 check "AGENTS.md omits unconditional third-party placement" no_fixed_text "$S/AGENTS.md" 'they land as real dirs in `.claude/skills/`'
 check "managed contract names relinker ownership" grep -qF '.agents/relink-skills.sh' "$S/AGENTS.md"
 check "managed contract names symlink-manager ownership" grep -qF '.agents/symlink-manager.py' "$S/AGENTS.md"
-check "managed contract keeps done push side effect" grep -qF 'merge, clean up, and ff-only push' "$S/AGENTS.md"
+check "managed contract names the done command interface" grep -qF 'done --dir <absolute-wt>' "$S/AGENTS.md"
 check "managed contract strips worktree profile markers" no_fixed_text "$S/AGENTS.md" 'agent-scaffold:worktree:'
 check "resident skill README stays thin" test "$(wc -l < "$S/.agents/skills/README.md" | tr -d ' ')" -le 24
 check "resident skill README routes to depth" grep -qF 'references/harness-layout.md' "$S/.agents/skills/README.md"
@@ -1205,13 +1213,23 @@ raise SystemExit(
 PY
 
 cp "$S/AGENTS.md" "$work/agents.clean.md"
+agents_clean_hash="$(git hash-object "$S/AGENTS.md")"
+# Corrupt the managed block positionally instead of by matching resident wording.
+# A prose-anchored replace silently degrades into a no-op after any legitimate
+# rewording, which would leave this drift gate passing vacuously.
 python - "$S/AGENTS.md" <<'PY'
 from pathlib import Path
 import sys
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
-path.write_text(text.replace("canonical repository-level contract for Agent work", "BROKEN MANAGED AUTHORITY CONTRACT", 1), encoding="utf-8")
+index = text.index("<!-- agent-scaffold:end")
+path.write_text(
+    text[:index] + "BROKEN MANAGED AUTHORITY CONTRACT\n" + text[index:],
+    encoding="utf-8",
+)
 PY
+check "drift fixture actually mutates the managed block" \
+  test "$(git hash-object "$S/AGENTS.md")" != "$agents_clean_hash"
 ( cd "$S" && bash "$H" verify --json ) >"$work/verify-agents-drift.json" 2>&1; rc=$?
 check "verify rejects managed AGENTS block drift" test "$rc" != 0
 check "managed block drift has a stable check" python - "$work/verify-agents-drift.json" <<'PY'
@@ -1313,7 +1331,7 @@ check "Claude config omits trunk guard"          jcommand_count "$L/.claude/sett
 check "Codex config omits trunk guard"           jcommand_count "$L/.codex/hooks.json" "hook-paths.py --guard" 0
 check "authority hook remains wired"             jcommand_count "$L/.claude/settings.json" "hook-paths.py --budget" 1
 check "managed AGENTS block omits hard rule"     no_fixed_text "$L/AGENTS.md" "Worktree-per-change (hard rule)"
-check "light-profile keeps common authority laws" authority_laws_present "$L/AGENTS.md"
+check "light-profile keeps managed contract structure" authority_structure_present "$L/AGENTS.md"
 check "light-profile omits .worktrees ignore"      no_exact_line "$L/.gitignore" ".worktrees/"
 check "light-profile omits escape-hatch ignore"    no_exact_line "$L/.gitignore" ".claude/allow-trunk-edit"
 check "light-profile keeps the real-link contract" test "$(readlink "$L/CLAUDE.md")" = AGENTS.md
@@ -1348,7 +1366,7 @@ check "plan flags CLAUDE.md prose adoption"  grep -qF "adopt prose from CLAUDE.m
 check "apply exits 0"                      test "$rc" = 0
 check "AGENTS.md keeps the original prose"    grep -q "Hand-written agent rules to keep" "$M/AGENTS.md"
 check "AGENTS.md gains the harness block"     grep -qF "<!-- agent-scaffold:start" "$M/AGENTS.md"
-check "adopted AGENTS.md gains common authority laws" authority_laws_present "$M/AGENTS.md"
+check "adopted AGENTS.md gains managed contract structure" authority_structure_present "$M/AGENTS.md"
 check "CLAUDE.md is now a symlink to AGENTS.md" test "$(readlink "$M/CLAUDE.md")" = AGENTS.md
 
 echo "== apply adopts hand-authored subagents into the SSOT (python, no package.json) =="
