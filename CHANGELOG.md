@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fixed an `agent-scaffold` E2E fixture that had silently degraded into a no-op: it corrupted the managed `AGENTS.md` block by replacing one specific resident sentence, so any legitimate rewording made the injection match nothing and left "verify rejects managed AGENTS block drift" passing vacuously. The fixture now corrupts the block positionally and asserts that the mutation really changed the file.
+
 - Corrected trunk-guard diagnostics that required `.worktrees/` creation even when a user or workbench had already supplied a linked task worktree; primary-checkout protection is unchanged.
 
 - Anchored the scaffold-owned Claude/Codex hook command's script path on `${CLAUDE_PROJECT_DIR:-.}` so `hook-paths.py` is found when the host's hook `cwd` drifts off the project root (a `cd`, a worktree, or a temp directory), which previously failed with `can't open file '.../.agents/tools/hooks/hook-paths.py': No such file or directory`. The `:-.` floor keeps the cwd-relative path on hosts that export no project-root variable (Codex/Grok run hooks from the project root), so they are unchanged; `upgrade` converges the prior relative-path commands as managed identities.
@@ -21,7 +23,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Further reduced the `agent-scaffold` managed `AGENTS.md` block to essential task, worktree, authority, terminology, and source-ownership rules; retained on-demand detail in existing references and refreshed the repository's managed copy without changing project prose or runtime behavior.
+- Reduced the `agent-scaffold` managed `AGENTS.md` block from 6,808 to 3,059 rendered characters (63 → 32 default-profile lines, 49 → 26 light-profile lines) while keeping every costly-to-miss rule resident: `done`'s ff-only push, the prohibition on merging or cleaning up externally managed worktrees, the canonical-contract statement that a greenfield install cannot get from project prose, and equal cross-language terminology names with no forced language. Explanatory prose, glossary field formats, budget parameters, topology authoring, and projection inventories remain in the existing conditionally loaded references.
+
+- Replaced `agent-scaffold` substring fixtures that only restated managed-block prose with structural and generated-drift checks, as the harness constraint policy requires. The gates now assert required section anchors, exactly one marker pair, a resident size ceiling, and terminology load targets, and a new check reconciles this repository's `AGENTS.md` managed block against the installer's own rendered template. Resident wording is review-owned, so legitimate rewording no longer breaks CI, while a hand-edited managed copy fails closed.
 
 - Made the `agent-scaffold` managed contract heading host-neutral (`## Agent Harness` instead of naming Claude Code + Codex): the block governs every Agent working in the repository regardless of host, while the body still identifies `.claude/` and `.codex/` as generated host projections. `upgrade` refreshes the installed heading; product support claims elsewhere remain dual-host specific.
 

@@ -50,7 +50,14 @@ def validate_agent_scaffold_contract() -> None:
 
 
 def validate_terminology_contract() -> None:
-    """Keep multilingual names equal without adding a primary-language rule."""
+    """Keep multilingual names equal without adding a primary-language rule.
+
+    Resident template wording is protected by rendered-copy drift reconciliation
+    in `scripts/check-agent-scaffold.sh`, so this module asserts only structure
+    and load targets rather than prose phrasing. `docs/harness-constraint-policy.md`
+    rejects substring fixtures that merely restate prose: they pin wording without
+    proving an executable invariant, and they break every legitimate rewording.
+    """
     root = SKILLS_DIR / "agent-scaffold"
     template = root / "assets" / "scaffold" / "AGENTS.harness.md"
     reference = root / "references" / "terminology.md"
@@ -60,15 +67,14 @@ def validate_terminology_contract() -> None:
     template_text = template.read_text(encoding="utf-8")
     reference_text = reference.read_text(encoding="utf-8")
     required = {
-        "managed equal-equivalent rule": (
-            "_Equivalent (<language-tag>)_", template_text
+        # Structural load contract: the always-resident section heading, plus the
+        # two terminology sources an Agent is instructed to open. These are
+        # navigation and load targets, so a miss is a real behavior regression.
+        "managed terminology section": (
+            "### Project terminology (hard rule)", template_text
         ),
-        "managed no-forced-language rule": (
-            "do not force one language", template_text
-        ),
-        "managed avoided-name rule": (
-            "_Avoid (<language-tag>)_", template_text
-        ),
+        "managed map-first fallback source": ("CONTEXT-MAP.md", template_text),
+        "managed default glossary source": ("CONTEXT.md", template_text),
         "maintained-language coverage": (
             "## Canonical term languages", reference_text
         ),
@@ -81,15 +87,6 @@ def validate_terminology_contract() -> None:
         "no preferred-or-alias middle state": (
             "Do not add `_Preferred_` or `_Aliases_` fields by default.",
             reference_text,
-        ),
-        "managed map-first fallback": (
-            "read root `CONTEXT-MAP.md` when present", template_text
-        ),
-        "managed proportional topology rule": (
-            "subject headings are sufficient", template_text
-        ),
-        "managed user-selected evolution mode": (
-            "explicit up-front or incremental modeling choice", template_text
         ),
         "progressive topology guidance": (
             "## Progressive context topology", reference_text

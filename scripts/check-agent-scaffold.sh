@@ -106,20 +106,44 @@ for config in claude.settings.json codex.hooks.json; do
     fail "$config still performs a bare bash PATH lookup"
   fi
 done
-grep -qF '<!-- agent-scaffold:worktree:start -->' "$skill/assets/scaffold/AGENTS.harness.md" \
+harness_template="$skill/assets/scaffold/AGENTS.harness.md"
+# Structure only: the profile boundary plus the resident section anchors that hosts
+# and nested contracts navigate by. Resident wording stays review-owned, so it is
+# guarded by the rendered-copy drift gate below rather than by substring fixtures.
+# docs/harness-constraint-policy.md rejects fixtures that merely restate prose: they
+# prove no executable invariant and break every legitimate rewording.
+grep -qF '<!-- agent-scaffold:worktree:start -->' "$harness_template" \
   || fail "AGENTS.harness.md lost the profile boundary"
-grep -qF 'Third-party skills** follow project-owned placement and installation policy' \
-  "$skill/assets/scaffold/AGENTS.harness.md" \
-  || fail "AGENTS.harness.md lost project-owned third-party policy wording"
-grep -qF '### Project terminology (hard rule)' \
-  "$skill/assets/scaffold/AGENTS.harness.md" \
-  || fail "AGENTS.harness.md lost the project terminology contract"
-grep -qF 'Every Agent, project skill, and subagent' \
-  "$skill/assets/scaffold/AGENTS.harness.md" \
-  || fail "AGENTS.harness.md no longer applies terminology to every Agent surface"
-grep -qF 'Never seed an empty glossary.' \
-  "$skill/assets/scaffold/AGENTS.harness.md" \
-  || fail "AGENTS.harness.md lost lazy glossary creation"
+for heading in \
+  '## Agent Harness' \
+  '### Session and task context' \
+  '### Authority documents (hard rules)' \
+  '### Project terminology (hard rule)' \
+  '### Sources and projections'; do
+  grep -qF "$heading" "$harness_template" \
+    || fail "AGENTS.harness.md lost required section: $heading"
+done
+# Generated-artifact drift: this repository's dogfood copy must equal the rendered
+# template, not a hand-edited paraphrase of it. Uses the installer's own renderer so
+# the gate cannot drift from what apply/upgrade/verify actually produce.
+if [ -f "$repo/AGENTS.md" ]; then
+  harness_parity="$(python - "$repo" "$harness_template" <<'PY'
+import importlib.util
+import sys
+from pathlib import Path
+
+repo, template = Path(sys.argv[1]), Path(sys.argv[2])
+spec = importlib.util.spec_from_file_location(
+    "harness_core", repo / "skills/agent-scaffold/scripts/harness-core.py"
+)
+core = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(core)
+print("ok" if core.managed_block_matches(repo / "AGENTS.md", template, "default") else "drift")
+PY
+)"
+  [ "$harness_parity" = ok ] \
+    || fail "dogfood drift: AGENTS.md managed block differs from the rendered AGENTS.harness.md template (regenerate it; do not hand-edit)"
+fi
 [ -f "$skill/references/terminology.md" ] \
   || fail "missing terminology reference"
 [ -f "$repo/CONTEXT.md" ] \
@@ -129,7 +153,7 @@ grep -qF '| Canonical project terminology, context grouping, language equivalent
   || fail "dogfood AGENTS.md no longer declares CONTEXT.md as the terminology source"
 # shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording
 if grep -qF 'they land as real dirs in `.claude/skills/`' \
-  "$skill/assets/scaffold/AGENTS.harness.md" >/dev/null 2>&1; then
+  "$harness_template" >/dev/null 2>&1; then
   fail "AGENTS.harness.md publishes an unconditional third-party placement policy"
 fi
 
