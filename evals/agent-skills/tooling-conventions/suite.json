@@ -63,8 +63,7 @@
           },
           "treatment": {
             "route": "tooling-conventions",
-            "workflow": "tooling-governance",
-            "decision_depth": "full"
+            "workflow": "tooling-governance"
           }
         }
       }
@@ -81,8 +80,7 @@
           },
           "treatment": {
             "route": "tooling-conventions",
-            "workflow": "tooling-governance",
-            "decision_depth": "compact"
+            "workflow": "tooling-governance"
           }
         }
       }

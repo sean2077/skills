@@ -66,7 +66,6 @@
             "workflow": "interview",
             "mode": "adaptive",
             "question_batch_policy": "adaptive",
-            "fixed_question_cap": false,
             "approval_required": true,
             "external_research": "conditional"
           }
@@ -89,7 +88,6 @@
             "mode": "adaptive",
             "question_batch_policy": "adaptive",
             "first_turn_question_count": 5,
-            "structured_answer_template": true,
             "approval_required": true,
             "external_research": "conditional"
           }

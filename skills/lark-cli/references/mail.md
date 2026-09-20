@@ -5,9 +5,12 @@ replying, forwarding, folders, labels, rules, scheduled mail, contacts, or attac
 
 ## Fast-path contract
 
+Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+
 Known mail shortcuts may be executed directly. Do not pre-run `mail --help`, shortcut help, schema,
-profile lookup, auth status, or HTML lint for an ordinary matching recipe. Mail shortcuts already
-resolve the current mailbox/profile where needed.
+profile lookup, auth status, or HTML lint for an ordinary matching recipe when the recipe and
+effective identity are already clear. Mail shortcuts already resolve the current mailbox/profile
+where needed.
 
 Use `--as user` for mailbox writes and ordinary personal reads. Start
 `lark-cli auth login --domain mail` only after an auth/scope error asks for it. Use targeted help only

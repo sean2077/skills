@@ -66,7 +66,6 @@
             "workflow": "delivery",
             "control_plane": "native",
             "persistent_state": false,
-            "test_first": "conditional",
             "external_side_effects": "not-authorized"
           }
         }

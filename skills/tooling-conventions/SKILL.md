@@ -1,6 +1,6 @@
 ---
 name: tooling-conventions
-description: "Use to design or audit committed command boundaries, placement, safety, or path migrations. Not for routine internal edits, application layout, or disposable scripts."
+description: "Use when committed project commands need to be added, moved, renamed, split, removed, audited, or have their placement and safety designed. Not for routine internal edits, application layout, or disposable scripts."
 ---
 
 # Tooling Conventions
@@ -32,5 +32,5 @@ For a move, rename, or deletion, reconcile all active consumers and report exter
 When inventory reconciliation is selected, run the installed tool against the explicit project-owned inventory:
 
 ```bash
-bash <skill-dir>/scripts/inventory-check.sh <path/to/tools-inventory.tsv>
+bash <skill-dir>/scripts/inventory-check.sh [--] <path/to/tools-inventory.tsv>
 ```

@@ -6,8 +6,11 @@ lark-cli skill, or cross-domain automation not covered by a more specific refere
 
 ## Fast-path contract
 
+Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+
 - Treat the commands below as the maintained command cache. Do not run `apps --help`, `event --help`,
-  global help, auth status, or schema before a matching common operation.
+  global help, auth status, or schema before a matching common operation when the recipe and
+  effective identity are already clear.
 - A known `app_...` ID or known EventKey goes directly to the business command. An application name
   may add one `apps +list --keyword` resolver; do not enumerate all applications first.
 - Use exact shortcut help only when a requested option is not documented here or the installed CLI

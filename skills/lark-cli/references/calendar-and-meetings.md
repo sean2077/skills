@@ -6,7 +6,10 @@ transcripts, or meeting-summary workflows.
 
 ## Fast-path contract and call budget
 
-Use the documented shortcuts directly; do not preflight calendar/VC/Note/Minutes service help.
+Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+
+Use the documented shortcuts directly; do not preflight calendar/VC/Note/Minutes service help when
+the recipe and effective identity are already clear.
 
 - Today's or a bounded agenda: one `calendar +agenda` call.
 - Known `calendar_id + event_id` for event metadata: one `calendar +get` call. `+get` does not

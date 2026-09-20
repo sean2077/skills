@@ -58,20 +58,30 @@ ROUTE_ALIASES = {
 }
 WORKFLOW_ALIASES = {
     "agent-harness": "harness-management",
+    "ai-slop-cleaner": "implementation",
+    "analyze": "analysis",
+    "autopilot": "delivery",
+    "best-practice-research": "research",
     "bounded-iteration": "iteration",
     "causal-investigation": "analysis",
+    "conventional-commit": "commit",
+    "deep-interview": "interview",
     "docs-organization": "documentation-organization",
     "experiment": "prototype",
     "explanation": "analysis",
     "git-commit": "commit",
+    "lark-cli": "lark",
+    "project-docs-organizer": "documentation-organization",
     "requirements": "interview",
     "requirements-writing": "documentation",
     "review": "code-review",
     "semver-release": "release",
+    "spec-writing": "documentation",
     "specification": "documentation",
     "test-driven-development": "tdd",
     "test-first": "tdd",
     "tooling": "tooling-governance",
+    "tooling-conventions": "tooling-governance",
     "work-coordination": "coordination",
 }
 # Observation names only; never inject desired values or case oracle metadata.
@@ -101,53 +111,49 @@ BOUNDARY_OBSERVATIONS = {
 }
 OBSERVATION_GUIDANCE = {
     "analyze": (
-        "When selected, use workflow=analysis, mode=explanation or causal, mutation=none, "
-        "and result=discriminating-probe only when that outcome is requested."
+        "When selected, report workflow, mode, and mutation. Include result only when a "
+        "next probe is actually requested."
     ),
     "autopilot": (
-        "When selected, use workflow=delivery. Report control_plane=native or persistent, "
-        "persistent_state as a boolean, test_first=conditional or required, and "
-        "external_side_effects=authorized or not-authorized when material. "
-        "Report preserve_decisions, nested_controller, remote_readback, "
-        "recheck_revision, and claim_independent_approval as booleans when material."
+        "When selected, report workflow, control_plane, persistent_state, test_first, and "
+        "external_side_effects when material. Report preserve_decisions, nested_controller, "
+        "remote_readback, recheck_revision, and claim_independent_approval as booleans when material."
     ),
     "code-review": (
-        "When selected, use workflow=code-review. Report mutation=none or authorized-scope; "
-        "report verify_feedback, recheck_revision, invent_requirements, and "
-        "claim_independent_approval as booleans when material."
+        "When selected, report workflow and mutation. Report verify_feedback, recheck_revision, "
+        "invent_requirements, and claim_independent_approval as booleans when material."
     ),
     "tdd": (
-        "When selected, use workflow=tdd and test_first=required. "
-        "Report preserve_parent_contract as a boolean when a delivery owner is active."
+        "When selected, report workflow, test_first, and preserve_parent_contract when a "
+        "delivery owner is active."
     ),
     "deep-interview": (
-        "When selected, use workflow=interview. Report mode=adaptive or persistent, "
-        "question_batch_policy=adaptive, question counts when explicit, "
-        "structured_answer_template as a boolean, approval_required as a boolean, "
-        "persistent_state as a boolean, and external_research=conditional when material."
+        "When selected, report workflow, mode, question_batch_policy, first_turn_question_count "
+        "when the request states a first-turn count, approval_required, persistent_state, and "
+        "external_research when material."
     ),
     "domain-modeling": (
-        "When selected, use workflow=domain-modeling. Report mutation=none or "
-        "authorized-scope, modeling_mode=incremental or up-front, "
-        "topology_decision=evidence-based, and preserve_single_owner as a boolean when material."
+        "When selected, report workflow, mutation, modeling_mode, topology_decision, and "
+        "preserve_single_owner when material."
     ),
     "project-docs-organizer": (
-        "When selected, use workflow=documentation-organization. Report "
-        "decision_depth=compact or full; decision_artifact may be none, existing-context, "
-        "inline-delta, or documentation-ia-decision-record according to the actual task. "
-        "Report preserve_decisions and additional_approval_required as booleans when material."
+        "When selected, report workflow. Report decision_artifact only when the task requires a "
+        "particular record. Report preserve_decisions and additional_approval_required as "
+        "booleans when material."
     ),
     "spec-writing": (
-        "When selected, use workflow=documentation. Use snake_case keys for material choices, "
-        "including preserve_meaning, preserve_decisions, separate_decision_history, "
-        "observable_acceptance, separate_current_target, label_open_questions, "
-        "self_contained_human_document, route_detail_to_contract, compare_options, "
-        "recommendation, decision_status, include_exact_detail, and identify_intended_authority."
+        "When selected, report workflow. Use snake_case keys for material choices, including "
+        "preserve_meaning, preserve_decisions, separate_decision_history, observable_acceptance, "
+        "separate_current_target, label_open_questions, self_contained_human_document, "
+        "route_detail_to_contract, compare_options, recommendation, decision_status, "
+        "include_exact_detail, and identify_intended_authority."
     ),
     "tooling-conventions": (
-        "When selected, use workflow=tooling-governance. Report decision_depth=compact or full "
-        "and decision_artifact=none, existing-context, inline-delta, or "
-        "tool-governance-decision-record according to the actual task."
+        "When selected, report workflow. Report decision_artifact only when the task requires a "
+        "particular record."
+    ),
+    "conventional-commit": (
+        "When selected, report workflow and mutation."
     ),
 }
 

@@ -6,6 +6,8 @@ labels, subscriptions, or permissions.
 
 ## Fast-path routing and call budget
 
+Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+
 Route by the user's object, not by a discovery ritual:
 
 - `/docx/` or known document token -> `docs`; `/wiki/` -> `wiki` for node/space operations and
@@ -16,7 +18,7 @@ Route by the user's object, not by a discovery ritual:
   unwrapped to its underlying object.
 - A known URL/token plus a common read/upload/download/import should usually take one command.
 - A title/keyword-only discovery should take one `drive +search`, then one owning-service command.
-- Do not run service help, auth status, schema, or type resolvers before a matching recipe below.
+- Do not run service help, auth status, schema, or type resolvers before a matching recipe below when the recipe and effective identity are already clear.
 
 Feishu/Lark and compatible `doubao.com` URLs are opaque identifiers, not ordinary webpages. Preserve
 the complete value and do not WebFetch a protected resource merely because its hostname differs.
