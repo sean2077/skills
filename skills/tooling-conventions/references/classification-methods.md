@@ -3,37 +3,28 @@
 Read this when deciding whether commands aggregate, remain a toolkit, or move within a
 project-owned root. These are reasoning lenses, not required categories or directory names.
 
-## Composition rules
+## Use the lenses proportionally
 
-Use the Governance Decision Pipeline in order:
+Understand the independently invokable job and its owned state, failure/rollback, and
+verification before deciding placement. Invocation, distribution, risk, lifecycle, and
+provenance constrain that decision; they need not become a separate Contract Profile or a
+fixed three-stage ceremony.
 
-1. **Job Boundary** — identify one independently invokable job with coherent owned state or
-   artifact, failure/rollback behavior, and verification.
-2. **Contract Profile** — record invocation, distribution, risk, lifecycle, and provenance
-   constraints without collapsing them into one label.
-3. **Placement Decision** — only after the first two are stable, choose a root, grouping, path,
-   and name from the target project's evidence.
-
-Boundary lenses may propose a Job Boundary or local grouping. Constraint lenses may veto an
-aggregation or constrain placement, but normally do not create peer directory axes. Select only
-cards supported by evidence, state why the others do not govern, and never build a Cartesian
-product of every lens.
+Boundary lenses can suggest a job or local grouping; constraint lenses may rule out a merge
+or constrain placement. Use only lenses relevant to the actual decision. Do not report why
+every unselected lens is irrelevant or build a Cartesian product of them.
 
 ## Scale the decision evidence
 
-Choose the decision artifact from the changed contract, not file count:
+For routine maintenance, reuse the established boundary and explain the actual path/caller
+or behavior delta in the task. No separate inline decision record is required. A private
+helper rename still needs all callers reconciled, not a taxonomy comparison.
 
-- **Compact inline decision delta** — use when a bounded add, move, rename, delete, or audit keeps
-  the existing Job Boundary, invokers, owned state/artifact, failure and rollback model,
-  verification, distribution contracts, placement convention, and semantic inventory policy.
-  Record the unchanged boundaries, exact path/caller delta, and verification.
-- **Full Tool Governance Decision Record** — use when the work creates, merges, or splits a Job
-  Boundary; changes a Contract Profile, authoritative entry, external consumer, placement model,
-  inventory policy, hazard/recovery behavior, leaves multiple viable placements to compare, or
-  is explicitly required by project policy or the user.
-
-A private helper rename can be compact only after every caller is known and can move atomically.
-A one-file change still needs the full record when it establishes a new public or hazardous entry.
+For a changed public, installed, or hazardous contract, identify consumers, failure/recovery
+consequences, migration, and verification before acting. Compare viable alternatives only
+when the choice is unresolved. Use a full Tool Governance Decision Record only when the
+project/user requires it or a durable cross-cutting decision benefits from one; a new file or
+changed path is not itself a reason to create a form.
 
 ## Boundary lenses
 
@@ -128,17 +119,9 @@ A one-file change still needs the full record when it establishes a new public o
 - **Micro-example:** a vendored executable follows the project's vendor/checksum policy while the
   wrapper that exposes a project-owned job follows the wrapper's own command contract.
 
-## Full decision record
+## Preserve the decision where it belongs
 
-When the full record is required, report before recommending or applying the material change:
-
-1. observed roots, callers, ownership, vocabulary, drift, and existing gates;
-2. selected and rejected method cards with evidence;
-3. Job Boundaries and aggregate, toolkit, or split decisions;
-4. Contract Profiles, including active path consumers and verification;
-5. project-owned placement and naming decisions;
-6. migration/coordination impacts and the complete verification plan.
-
-Persist this Tool Governance Decision Record only when the target project already requires a
-manifest, ADR, or design page, or when the user explicitly requests one. Otherwise keep either
-artifact inline with the work or handoff.
+Keep consequential boundary, placement, migration, and verification rationale in the existing
+task, plan, PR, or project-owned design. Do not require selected/rejected method cards, a
+fixed field set, or a separate artifact before every recommendation. Preserve an existing
+project-required record rather than creating competing authority.

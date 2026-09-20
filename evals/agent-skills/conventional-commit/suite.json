@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "suite_id": "conventional-commit-native-boundaries",
+  "skill_path": "skills/conventional-commit",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/host_adapter.py"
+    ],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/verifier.py"
+    ],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [
+      ".agents/**",
+      ".agent-workflows/**",
+      ".git/**"
+    ]
+  },
+  "budgets": {
+    "absolute": {
+      "interventions": 0
+    },
+    "relative": {
+      "input_tokens": {
+        "max_ratio": 4.0,
+        "max_additive": 2000
+      },
+      "output_tokens": {
+        "max_ratio": 2.5,
+        "max_additive": 500
+      },
+      "tool_calls": {
+        "max_ratio": 2.0,
+        "max_additive": 3
+      },
+      "wall_time_seconds": {
+        "max_ratio": 3.0,
+        "max_additive": 10
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-message-only-context",
+      "kind": "positive",
+      "prompt": "Suggest one Conventional Commit subject from this complete supplied context: fix prevents duplicate notification sends; use English, no body or scope. Do not commit.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "commit"
+          },
+          "treatment": {
+            "route": "conventional-commit",
+            "workflow": "commit",
+            "mutation": "none",
+            "git_preflight": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-mixed-index",
+      "kind": "positive",
+      "prompt": "Create the requested scoped local commit. A named file contains both task-owned and unrelated staged hunks; preserve the unrelated index and working-tree state.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "commit"
+          },
+          "treatment": {
+            "route": "conventional-commit",
+            "workflow": "commit",
+            "preserve_unrelated_index": true
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-publish-release",
+      "kind": "negative",
+      "prompt": "Publish the authorized new SemVer release using the project release pipeline. This is not one ordinary local commit.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "release"
+          },
+          "treatment": {
+            "route": "semver-release",
+            "workflow": "release"
+          }
+        }
+      }
+    }
+  ]
+}

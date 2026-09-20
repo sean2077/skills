@@ -56,7 +56,7 @@ The weakest target is the lowest component × dimension pair. Exact ties rotate 
 
 Inspect safe code, configuration, documentation, and bounded research before asking the user for discoverable facts. Ask a `[from-user]` question only when its answer can change a CRITICAL axis: scope boundary, acceptance criterion, rollback contract, lane assignment, or handoff target. Otherwise record a conservative default plus its revisit trigger in the answer.
 
-For each user-owned question, offer 2–4 concrete choices plus free text. Mark exactly one `Recommended` only when inspected evidence favors it and cite that evidence briefly; otherwise state `No reliable default`. A casual “yes”, “ok”, or “proceed” answers only the current question and does not approve the final specification.
+For each user-owned question, offer 2–4 concrete choices plus free text. Mark exactly one `Recommended` only when inspected evidence favors it and cite that evidence briefly; otherwise state `No reliable default`. A “yes”, “ok”, or “proceed” answering an individual interview question does not approve the final specification. The same words can explicitly approve the presented crystallized specification when that is the clear subject of the approval request; preserve the evidence and exact digest.
 
 After two consecutive rounds whose answers do not contain `[from-user]`, the runtime sets `metrics.cadence_user_required` and refuses another non-user round. Ask the decision nearest the current weakest target rather than inventing a low-value question.
 

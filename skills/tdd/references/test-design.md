@@ -2,9 +2,9 @@
 
 Read this when selecting the observation seam, test level, examples, assertions, expected values, snapshots, or coverage boundary for a TDD slice.
 
-## Start with a behavior card
+## Define the behavior
 
-Write a compact card before the first test:
+Identify the following before the first test. Use the test and existing task context; a separate behavior card or fixed field template is optional:
 
 - **Behavior:** the capability or invariant being added, in domain language.
 - **Observation seam:** where an external observer can distinguish success from failure.

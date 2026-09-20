@@ -10,7 +10,7 @@ Install only the routes you expect an agent to discover. Each installed skill co
 # One skill for the Claude Code and Codex targets
 npx skills add sean2077/skills --skill analyze -a claude-code -a codex
 
-# Complete catalog for only these two targets
+# Optional complete catalog; check native overlaps before choosing this
 npx skills add sean2077/skills --skill '*' -a claude-code -a codex
 
 # One skill from a local catalog checkout; keep the catalog root as the source
@@ -18,6 +18,11 @@ npx skills add . --skill agent-scaffold -a codex
 ```
 
 Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix when installing a skill directory directly, for example `./skills/agent-scaffold`. The [installer section of the compatibility matrix](docs/compatibility.md#installer-semantics) owns option scope, catalog-root behavior, and the audited CLI pin.
+
+No skill is required for work the native host already handles adequately. In current Claude Code,
+a local `code-review` replaces the bundled `/code-review`, but `/review` still runs the bundled
+implementation. Review [native overlap and visibility](docs/compatibility.md#native-overlap-and-visibility-2026-09-20)
+before installing everything; installing fewer routes is preferable to adding another router.
 
 ## Catalog
 
@@ -27,19 +32,19 @@ Use the [selection and composition guide](docs/skill-composition.md) to distingu
 |-------|-------------|-------|
 | [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, lean authority and terminology contracts, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
 | [ai-slop-cleaner](skills/ai-slop-cleaner/) | Perform behavior-preserving, bounded cleanup of duplication, dead code, needless abstraction, boundary leaks, and weak coverage with explicit verification. | Engineering, Refactoring |
-| [analyze](skills/analyze/) | Explain repository behavior or investigate failures through one read-only evidence workflow with ranked synthesis, competing hypotheses, falsification, and discriminating probes. | Engineering, Analysis |
-| [autopilot](skills/autopilot/) | Deliver authorized work end to end with a proportional native loop, selective bounded delegation, and persistent state only when explicit resume, handoff, revision, or audit semantics add value. | Python, Delivery |
+| [analyze](skills/analyze/) | Explain repository behavior or investigate failures through read-only evidence, with hypotheses and discriminating probes only while uncertainty warrants them. | Engineering, Analysis |
+| [autopilot](skills/autopilot/) | Deliver authorized work end to end with a proportional native loop, selective bounded delegation, and persistent state only for repository-owned semantics not already met by native continuation or resume. | Python, Delivery |
 | [best-practice-research](skills/best-practice-research/) | Compare current primary sources and viable trade-offs to produce a repository-specific technical recommendation. | Research, Engineering |
 | [code-review](skills/code-review/) | Review concrete changes and received findings against current code, with revision-bound evidence, actionable defects, and explicit authoring boundaries. | Engineering, Review |
 | [conventional-commit](skills/conventional-commit/) | Create one scoped local Conventional Commit or return one history-aware message-only subject while preserving unrelated index state. | Git |
 | [deep-interview](skills/deep-interview/) | Turn vague ideas into an explicitly approved specification through an adaptive interview, with opt-in deterministic topology/scoring state for persistent or auditable sessions. | Python, Requirements |
 | [domain-modeling](skills/domain-modeling/) | Actively define, challenge, group, split, and migrate project terminology with user-selectable up-front or incremental modeling, evidence-backed context boundaries, multilingual canonical equivalents, and atomic `CONTEXT.md`/`CONTEXT-MAP.md` evolution. | Domain Modeling, Documentation |
-| [lark-cli](skills/lark-cli/) | Route all 飞书/Feishu/Lark operations through one lean `lark-cli` entry point with on-demand domain references, explicit identity continuity, command discovery, and side-effect safety. | Lark, CLI, Productivity |
+| [lark-cli](skills/lark-cli/) | Handle selected 飞书/Feishu/Lark CLI operations through one lean `lark-cli` entry point with on-demand domain references, explicit identity continuity, command discovery, and side-effect safety. | Lark, CLI, Productivity |
 | [project-docs-organizer](skills/project-docs-organizer/) | Derive project-owned documentation structure from reader, task, domain, ownership, lifecycle, and retrieval evidence; use optional sibling-local numbering only when stable order materially improves reader navigation. | Documentation |
 | [prototype](skills/prototype/) | Reduce one uncertainty through a disposable, bounded experiment with explicit oracle, safety, conclusion, and cleanup boundaries. | Engineering, Experimentation |
 | [ralph](skills/ralph/) | Use a deterministic bounded verifier loop only when fixed attempts and mechanical pass, stall, plateau, exhaustion, or resume state are part of the task boundary. | Python, Iteration |
 | [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, a preferred changelog-backed tag workflow, project-owned version synchronization, and policy-derived publication verification. | Git, Python, Release |
-| [spec-writing](skills/spec-writing/) | Write or revise human-facing requirements and design documents, compare material implementation options, preserve settled meaning, clarify authority and acceptance, and separate working history from the reader narrative. | Documentation, Requirements |
+| [spec-writing](skills/spec-writing/) | Write or revise human-facing requirements and design documents, compare unresolved material options, preserve settled meaning, clarify authority and acceptance, and separate working history from the reader narrative. | Documentation, Requirements |
 | [tdd](skills/tdd/) | Apply user- or project-required test-first implementation across stacks by deriving seams, oracles, test levels, and commands from the target project, with validated RED-GREEN-REFACTOR evidence and guidance for effects, legacy code, and hard cases. | Engineering, Testing |
 | [tooling-conventions](skills/tooling-conventions/) | Derive project-owned command boundaries, placement, and evidence-gated safety contracts, with optional structural inventory reconciliation. | Shell, Governance |
 | [work-protocol](skills/work-protocol/) | Externalize coordination only when durable ownership, CAS state, evidence integrity, isolated writers, or commit-fixed review materially matter. | Python, Git, Coordination |
@@ -70,6 +75,7 @@ The catalog is read directly from `skills/`; there are no generated `.claude/ski
 | Decide when mechanical controls justify their cost | [Harness constraint policy](docs/harness-constraint-policy.md) |
 | Use the repository's canonical terminology, context grouping, language equivalents, and avoided names | [Project language](CONTEXT.md) |
 | Follow repository-level Agent rules | [Agent contract](AGENTS.md) |
+| Review the current native-first audit and all 18 keep/change decisions | [2026-09-20 audit](docs/audits/2026-09-20-native-first.md) |
 | Review release history and pending changes | [Changelog](CHANGELOG.md) |
 
 ## License

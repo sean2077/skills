@@ -2,6 +2,20 @@
 
 This guide is for catalog consumers choosing the smallest useful installation and workflow. It is not another always-loaded router. Each catalog skill remains independently installable; the linked skill owns its operational rules.
 
+## Start with the native host
+
+An ordinary explanation, fix, plan, review, or continuation can need **no catalog skill**.
+Select a skill only for a missing capability or a project boundary worth reinforcing; do not
+perform the native workflow and then repeat it through an identically named custom route.
+Reuse valid acceptance, decisions, and verification, and rerun only invalidated evidence or
+project-required gates. Host support and exact invocation behavior vary: see the dated
+[native overlap notes](compatibility.md#native-overlap-and-visibility-2026-09-20).
+
+Keep routine installations small. Native planning, subagents, resume, and compaction are not
+reasons to install `ralph` or `work-protocol`; those routes own distinct bounded-attempt and
+writer-integrity contracts. A native initializer does not by itself prove the cross-host
+source/projection reconciliation provided by `agent-scaffold`.
+
 ## Start with the requested outcome
 
 | Outcome | Choose | Boundary worth keeping |
@@ -23,7 +37,7 @@ This guide is for catalog consumers choosing the smallest useful installation an
 | Define or evolve project language | [domain-modeling](../skills/domain-modeling/SKILL.md) | Active terminology changes, not a mandatory pass before ordinary work |
 | Organize project documentation | [project-docs-organizer](../skills/project-docs-organizer/SKILL.md) | Information placement/ownership, not rewriting settled specifications |
 | Design project-owned command boundaries | [tooling-conventions](../skills/tooling-conventions/SKILL.md) | Tool governance, not installing a complete Agent harness |
-| Operate Feishu/Lark | [lark-cli](../skills/lark-cli/SKILL.md) | Service-specific identity, permissions, and side-effect checks |
+| Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Service-specific identity, permissions, and side-effect checks |
 
 ## Compose only at a real boundary
 
@@ -39,4 +53,4 @@ Do not add `ralph` merely because a task takes several attempts, or `work-protoc
 
 Install the routes you actually use with the commands in the [README](../README.md#install). Full instructions and references are on-demand, but every installed description still participates in discovery. No new bundle, universal dispatcher, or mandatory dependency is needed for this guide.
 
-Format validation, routing probes, and real delivery success are different evidence. See the [live evaluation guide](../evals/agent-skills/README.md) before interpreting a passed manifest or a model's stated intention as improved engineering performance. The [2026-09-06 audit](audits/2026-09-06-harness.md) records the keep/change decisions and research behind this revision.
+Format validation, routing probes, and real delivery success are different evidence. See the [live evaluation guide](../evals/agent-skills/README.md) before interpreting a passed manifest or a model's stated intention as improved engineering performance. The [2026-09-20 audit](audits/2026-09-20-native-first.md) records the current keep/change decisions, research, and measurement limits; the [2026-09-06 audit](audits/2026-09-06-harness.md) remains historical evidence.

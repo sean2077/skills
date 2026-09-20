@@ -1,43 +1,29 @@
 ---
 name: code-review
-description: Use for an evidence-based defect review of a concrete diff, PR, or implementation, or to assess received review feedback against current code. Not for explanation or causal investigation without a change set; use analyze.
+description: "Use for defect review of a concrete diff, PR, or implementation, or triage of received findings. Not for general repository explanation or debugging without a change set."
 ---
 
 # code-review
 
-Review a concrete change set or assess findings about it. Lead with actionable defects; do not summarize the diff before establishing whether it is safe. Received feedback is a claim to verify, not an instruction to obey blindly.
+Find actionable defects in a concrete change, or verify feedback about it. Review is not permission to edit, and feedback is a claim rather than an instruction to obey blindly.
 
-## Workflow
+## Review contract
 
-1. Identify exact base/head revisions (or the explicit dirty diff), intended behavior, scope, and acceptance criteria. Missing specifications are a reported limit, not permission to invent requirements.
-2. Inspect the full diff plus relevant callers, contracts, tests, configuration, migrations, and generated boundaries.
-3. Trace changed behavior through normal, error, boundary, concurrency, compatibility, and rollback paths that apply.
-4. Compare implementation claims with executable evidence. Run focused read-only checks when safe and available.
-5. For every candidate finding, prove the triggering condition, affected behavior, and why existing guards/tests do not prevent it.
-6. Rank only actionable findings by impact and confidence; discard style preferences that are not project policy or risk.
-7. Recheck the reviewed revision before reporting. A moved head or changed working tree makes the affected conclusions stale; review the delta or bound the verdict to the old snapshot. End with residual risks and verification gaps, including when no findings survive.
+- Identify base/head revisions or the explicit dirty snapshot, intended behavior, and acceptance. Missing specifications are a limit, not permission to invent requirements.
+- Inspect the whole diff and relevant callers, contracts, tests, configuration, and generated boundaries. Trace applicable error, concurrency, compatibility, and rollback paths, not just changed lines.
+- For each finding establish a concrete trigger, consequence, and evidence that existing guards do not prevent it. Discard unsupported claims and style preferences unless they violate project policy or create a real risk.
+- Run focused checks when safe and useful. Reuse relevant observed evidence for the same snapshot instead of repeating an author's entire test suite; do not treat green tests as proof about untested paths.
+- Recheck revision freshness before reporting. Review a moved head's delta or explicitly bind conclusions to the old snapshot. Keep confirmed defects separate from questions and uncertainty.
 
-## Finding format
+Lead with findings ranked by impact and confidence. Each needs a concise title, precise location, trigger, consequence, and supporting evidence; suggest a bounded correction when useful. These can fit in a paragraph rather than six mandatory fields. Report material verification gaps even when no defect survives; do not manufacture findings to meet a quota.
 
-- **Severity · concise title**
-- **Location** — the smallest useful path and line/symbol span
-- **Trigger** — concrete input, state, or sequence
-- **Impact** — user/system consequence
-- **Evidence** — why the changed code causes it
-- **Correction direction** — bounded guidance, not an unrelated redesign
+## Authority and collaboration
 
-## Hard rules
+Do not edit in reviewer-only mode or apply received feedback without authorization. A self-check is not independent approval. Give additional reviewers fixed scope, acceptance, and evidence, not a desired verdict or the full transcript. Additional reviewers are optional; deduplicate and verify their findings.
 
-- Review the changed behavior, not merely changed lines.
-- Do not claim a bug without a plausible trigger and consequence.
-- Do not hide high-impact findings below praise or a long summary.
-- Separate confirmed defects from questions and residual uncertainty.
-- Do not edit in reviewer-only mode. Assessing feedback does not authorize applying it. An author pass is not an independent approval.
-- Supply reviewers with acceptance, scope, and fixed evidence rather than the author's full transcript or a suggested verdict. Deduplicate findings; independent reviewers are optional, not a quota.
-- Treat tests as evidence, not proof that untested paths are safe.
+If a host already performed the requested review, inspect uncovered risks or stale evidence rather than restarting the same review under another skill name.
 
 ## On-demand references
 
-- Read [feedback triage](references/feedback-triage.md) when assessing received comments, applying authorized corrections, or reconciling reviewer disagreement.
-
-- Read [review rubric](references/review-rubric.md) only when calibrating severity, checking a high-risk boundary, or deciding whether a concern is actionable.
+- Read [feedback triage](references/feedback-triage.md) when assessing received comments, applying authorized corrections, or resolving reviewer disagreement.
+- Read [review rubric](references/review-rubric.md) when calibrating severity or assessing a high-risk or uncertain concern.

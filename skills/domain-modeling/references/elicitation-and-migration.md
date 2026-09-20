@@ -43,9 +43,10 @@ Challenge candidate terms and boundaries with concrete cases:
 
 Cross-check answers against code and tests. Surface contradictions rather than silently choosing the user's wording or the implementation.
 
-## Topology decision record
+## Consequential topology decisions
 
-Before a material split, state:
+Before a material split, make the following clear in the existing task or project-owned design,
+without duplicating an approved decision or requiring a new record:
 
 - selected mode: up-front or incremental;
 - current problem with the existing glossary;
@@ -54,7 +55,7 @@ Before a material split, state:
 - unresolved terms or low-confidence boundaries;
 - why headings are insufficient, or why they remain sufficient.
 
-When evidence supports multiple materially different topologies, present the smallest credible options and a recommendation, then obtain owner direction before moving files.
+When authority or costly-to-reverse consequences remain unresolved, present viable options and obtain owner direction before moving files. Honor an already-delegated choice rather than reopening approval merely because alternatives exist.
 
 ## Atomic migration
 

@@ -347,35 +347,38 @@ class SemverAutomationContractTests(unittest.TestCase):
     def test_preferred_automation_contract_is_accepted(self) -> None:
         self.assertEqual([], self.validate())
 
-    def test_adoption_gate_cannot_be_dropped(self) -> None:
-        skill = self.files()["skill"].replace(
-            "ask once whether to\n   retain or migrate",
-            "migrate the repository automatically",
+    def test_migration_discussion_prose_is_not_a_mechanical_gate(self) -> None:
+        original = self.files()["skill"]
+        changed = original.replace(
+            "use it without a migration interview", "retain the established release path"
         )
-        errors = self.validate(skill=skill)
-        self.assertTrue(any("preferred automation contract" in error for error in errors))
+        self.assertNotEqual(original, changed)
+        self.assertEqual([], self.validate(skill=changed))
 
     def test_generated_notes_fallback_is_rejected(self) -> None:
         automation = self.files()["automation"] + "\nFallback: --generate-notes\n"
         errors = self.validate(automation=automation)
         self.assertTrue(any("generated-notes fallback" in error for error in errors))
 
-    def test_mature_alternative_still_requires_an_adoption_offer(self) -> None:
-        automation = self.files()["automation"].replace(
-            "including a mature alternative", "unless the alternative is mature"
+    def test_existing_flow_can_be_kept_without_an_adoption_offer(self) -> None:
+        original = self.files()["automation"]
+        changed = original.replace(
+            "use it without asking the owner to defend it against",
+            "retain it instead of comparing it again with",
         )
-        errors = self.validate(automation=automation)
-        self.assertTrue(any("preferred automation contract" in error for error in errors))
+        self.assertNotEqual(original, changed)
+        self.assertEqual([], self.validate(automation=changed))
 
     def test_notes_validation_must_precede_publication(self) -> None:
         automation = "gh release create too-early\n" + self.files()["automation"]
         errors = self.validate(automation=automation)
         self.assertTrue(any("notes validation must precede publication" in error for error in errors))
 
-    def test_format_neutral_tag_examples_are_required(self) -> None:
-        automation = self.files()["automation"].replace("`release-1.2.3`", "`v1.2.3`")
-        errors = self.validate(automation=automation)
-        self.assertTrue(any("preferred automation contract" in error for error in errors))
+    def test_tag_examples_are_not_a_substitute_for_extractor_tests(self) -> None:
+        original = self.files()["automation"]
+        changed = original.replace("`release-1.2.3`", "`package-1.2.3`")
+        self.assertNotEqual(original, changed)
+        self.assertEqual([], self.validate(automation=changed))
 
     def test_extractor_cannot_assume_a_v_prefix(self) -> None:
         extractor = self.files()["extractor"] + '\nvalue.startswith("v")\n'
@@ -754,22 +757,9 @@ class ProjectDocsOrganizerContractTests(unittest.TestCase):
             f"## {heading}\n" + "\n".join(self.METHOD_FIELDS) for heading in self.METHOD_HEADINGS
         )
         return {
-            "SKILL.md": (
-                "The target project owns its information architecture. Prefer the smallest structure and the "
-                "smallest decision artifact and preserve a coherent established convention. Select one "
-                "primary axis per tree level. Use a compact inline decision delta for bounded maintenance "
-                "and a full Documentation IA Decision Record for material changes. Present two or three "
-                "candidates and wait for "
-                "the user before mutation. No empty category is allowed. Resolve the target project root."
-            ),
+            "SKILL.md": "Use project-owned structure and preserve useful content.\n",
             "references/information-architecture.md": (
-                "Scale the decision evidence. Compact inline decision delta. Full Documentation IA Decision "
-                "Record. Reader-route separation. Vocabulary and ownership cohesion. Lifecycle consistency. "
-                "Stability under change. Duplication pressure. Choose one primary axis and retain "
-                "secondary lenses. Run a proportionate placement check. Present two or three candidates "
-                "and wait for the user before mutation. Treat the absence of a convention as permission "
-                "to choose, not evidence for numbering. Require stable sibling order and weigh "
-                "path/link churn."
+                "Reuse an established structure; compare only unresolved boundaries.\n"
             ),
             "references/classification-methods.md": cards,
             "references/numbering-patterns.md": (

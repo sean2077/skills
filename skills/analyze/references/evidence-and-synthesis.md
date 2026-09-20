@@ -10,7 +10,8 @@ A lower-ranked source may still win when it is the only source addressing the ex
 
 ## Claim ledger
 
-For every load-bearing claim record:
+For disputed or hard-to-track load-bearing claims, keep the relevant evidence together in
+the existing notes or answer; no separate ledger or fixed field set is required. Useful details are:
 
 - the claim;
 - path plus symbol, section, or focused line range;

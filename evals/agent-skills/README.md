@@ -20,6 +20,22 @@ On Windows, use a temporary output path and the same commands from PowerShell. T
 
 Review treatment selection, verifier results, scope, and cost together. Both executions must complete with valid selection/trigger and scope boundaries; an invalid baseline cannot yield a passing comparison. A completed, correctly isolated baseline may still fail the task oracle. Do not accept a routing change merely because the manifest validates or an offline adapter can reproduce the expected JSON.
 
+## Native-first revision probes
+
+The 2026-09-20 revision expands coverage from 9 suites / 56 cases to 15 suites / 102 cases.
+New scenarios distinguish clear approval from an answer to one question, semantic adaptive
+approval from exact persistent digests, native resume from repository-owned state, current
+verification from redundant reruns, bounded maintenance from required design records, and
+selected Lark CLI use from an unrelated URL or another chosen interface. Release cases retain
+existing pipelines and publication boundaries; cleanup/prototype cases distinguish sufficient
+verification from unsupported success.
+
+Observation names are candidate-local and neutral: the adapter offers vocabulary, not the
+expected decision or field value. It does not synthesize omitted observations. The old forced
+`inline-delta`/full-record alternatives now also allow `none` and `existing-context`; manifests
+still exercise explicit project-required records. These are intentional semantic expectation
+changes, not relaxed cost budgets or evidence of a live performance win.
+
 ## Measurement and failure boundaries
 
 The adapter requires exactly one finite JSON object from both the CLI and its decision response. Duplicate JSON keys, colliding normalized behavior keys, nonzero host exit, host-reported failure, missing usage, and malformed/non-integral usage cannot become a completed run. A candidate directory's final `SKILL.md` target must remain inside the pinned repository even through a symlink.

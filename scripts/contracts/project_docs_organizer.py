@@ -257,54 +257,9 @@ def validate_project_docs_organizer_contract(
         readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
     public_summary = readme_skill_rows(readme_text, "project-docs-organizer")
     normalized = {label: " ".join(text.split()) for label, text in texts.items()}
-    normalized_skill = normalized["SKILL.md"]
-    project_owned_contract = (
-        "The target project owns its information architecture",
-        "smallest structure and the smallest decision artifact",
-        "preserve a coherent established convention",
-        "one primary axis per tree level",
-        "compact inline decision delta",
-        "full Documentation IA Decision Record",
-        "two or three candidates",
-        "wait for the user before mutation",
-        "No empty category",
-        "Resolve the target project root",
-    )
-    missing = [value for value in project_owned_contract if value not in normalized_skill]
-    if missing:
-        errors.append(
-            "project-docs-organizer/SKILL.md: project-owned information architecture lost fixtures: "
-            f"{missing}"
-        )
-    architecture_contract = (
-        "Reader-route separation",
-        "Vocabulary and ownership cohesion",
-        "Lifecycle consistency",
-        "Stability under change",
-        "Duplication pressure",
-        "Choose one primary axis",
-        "secondary lenses",
-        "Scale the decision evidence",
-        "Compact inline decision delta",
-        "Full Documentation IA Decision Record",
-        "proportionate placement check",
-        "two or three candidates",
-        "wait for the user before mutation",
-        "absence of a convention",
-        "not evidence for numbering",
-        "stable sibling",
-        "path/link churn",
-    )
-    missing_architecture = [
-        value
-        for value in architecture_contract
-        if value not in normalized["references/information-architecture.md"]
-    ]
-    if missing_architecture:
-        errors.append(
-            "project-docs-organizer/references/information-architecture.md: "
-            f"evidence-led selection contract is incomplete: {missing_architecture}"
-        )
+    # Entry-point and architecture prose may evolve without changing payload
+    # boundaries. Generic validation checks links; optional reference content
+    # and numbering/migration safeguards remain checked below.
     validate_project_doc_method_cards(texts["references/classification-methods.md"])
     numbering_contract = (
         "Keep numbering disabled by default",

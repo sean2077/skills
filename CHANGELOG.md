@@ -8,6 +8,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Recognize clear specification approval by context rather than rejecting short acknowledgements; adaptive wording-only edits no longer invalidate approval, while persistent runtime digests remain exact. Stop forcing migration interviews for already coherent release pipelines.
+- Let selected Lark CLI tasks check unclear identity/contracts before consequential actions instead of enforcing a call quota or failed-write-first discovery. Do not treat contradictory exit/envelope signals as success or override an explicitly selected connected interface.
+
 - Fixed an `agent-scaffold` E2E fixture that had silently degraded into a no-op: it corrupted the managed `AGENTS.md` block by replacing one specific resident sentence, so any legitimate rewording made the injection match nothing and left "verify rejects managed AGENTS block drift" passing vacuously. The fixture now corrupts the block positionally and asserts that the mutation really changed the file.
 
 - Corrected trunk-guard diagnostics that required `.worktrees/` creation even when a user or workbench had already supplied a linked task worktree; primary-checkout protection is unchanged.
@@ -22,6 +25,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Skip authority-document budget work unless a payload path is `AGENTS.md` or `CLAUDE.md`, and skip per-file Git identity probes for edits already inside a linked worktree.
 
 ### Changed
+
+- Audited all 18 catalog skills against current native-host capabilities and revised 15 entrypoints. Remove duplicated process/reporting templates, routine decision-record requirements, redundant reference reads and hypothesis/smell-pass quotas; retain project-required evidence, explicit test-first discipline, authorization, and durable runtime contracts.
+- Make existing decisions and still-valid verification reusable across skill boundaries. Clarify selective installation, Claude's bundled/custom review name collision, and native skill visibility controls without adding a router, dependency, or global host setting.
+- Replace changed resident prose-pinning assertions with payload/interface checks and scenario coverage. Expand live-host intention probes from 9 suites / 56 cases to 15 / 102, without claiming that manifest validation proves model efficacy or token savings.
 
 - Reduced the `agent-scaffold` managed `AGENTS.md` block from 6,808 to 3,059 rendered characters (63 → 32 default-profile lines, 49 → 26 light-profile lines) while keeping every costly-to-miss rule resident: `done`'s ff-only push, the prohibition on merging or cleaning up externally managed worktrees, the canonical-contract statement that a greenfield install cannot get from project prose, and equal cross-language terminology names with no forced language. Explanatory prose, glossary field formats, budget parameters, topology authoring, and projection inventories remain in the existing conditionally loaded references.
 

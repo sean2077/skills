@@ -46,4 +46,4 @@ Version small representative datasets and schemas, control seeds where meaningfu
 
 ## Embedded and target-specific systems
 
-Split pure logic from target effects, but retain target-level evidence for compiler, linker, ABI, interrupt, timing, memory, power, radio, sensor, or peripheral risks. Use simulator, emulator, loopback, hardware-in-the-loop, or device tests according to the behavior card. Report the exact board, toolchain, firmware, and unavailable target checks; host-only GREEN is not target GREEN.
+Split pure logic from target effects, but retain target-level evidence for compiler, linker, ABI, interrupt, timing, memory, power, radio, sensor, or peripheral risks. Use simulator, emulator, loopback, hardware-in-the-loop, or device tests according to the behavior and its material risks. Report the exact board, toolchain, firmware, and unavailable target checks; host-only GREEN is not target GREEN.
