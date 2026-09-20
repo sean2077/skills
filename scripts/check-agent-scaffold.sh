@@ -91,21 +91,39 @@ grep -qF '/../../..' "$common" || fail "hook-common.sh lost the 3-level install 
 grep -qF 'rev-parse --show-toplevel' "$common" || fail "hook-common.sh lost the git-root fallback"
 grep -qF 'cygpath -u' "$common" || fail "hook-common.sh lost Windows/MSYS path conversion"
 
+# Hook commands are host-specific because each host expands the command string
+# differently. Claude Code and Grok both inject CLAUDE_PROJECT_DIR (Grok's
+# GROK_WORKSPACE_ROOT is an alias) and expand ${VAR} in the command themselves
+# before the shell sees it, so that host anchors the script path on the variable
+# and never needs bash's ${VAR:-default} modifier, which Windows PowerShell
+# empties into /.agents/... (Python then opens C:\.agents\...). Codex injects no
+# project-root variable and expands nothing, so it keeps a cwd-relative path and
+# relies on running hooks from the project root.
+claude_config="$skill/assets/host/claude.settings.json"
+codex_config="$skill/assets/host/codex.hooks.json"
+
+# shellcheck disable=SC2016  # the ${CLAUDE_PROJECT_DIR} anchor is literal source text, not an expansion
+grep -qF 'python -X utf8 \"${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py\" --guard' "$claude_config" \
+  || fail "claude.settings.json does not anchor the guard hook on \${CLAUDE_PROJECT_DIR}"
+# shellcheck disable=SC2016  # the ${CLAUDE_PROJECT_DIR} anchor is literal source text, not an expansion
+grep -qF 'python -X utf8 \"${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py\" --budget' "$claude_config" \
+  || fail "claude.settings.json does not anchor the budget hook on \${CLAUDE_PROJECT_DIR}"
+if grep -qE '\$\{[A-Za-z_][A-Za-z0-9_]*:-' "$claude_config"; then
+  fail "claude.settings.json uses bash \${VAR:-default}; Grok on Windows PowerShell empties it and Python opens C:\\.agents\\..."
+fi
+
+grep -qF 'python -X utf8 .agents/tools/hooks/hook-paths.py --guard' "$codex_config" \
+  || fail "codex.hooks.json does not invoke hook-paths.py via the cwd-relative --guard command"
+grep -qF 'python -X utf8 .agents/tools/hooks/hook-paths.py --budget' "$codex_config" \
+  || fail "codex.hooks.json does not invoke hook-paths.py via the cwd-relative --budget command"
+if grep -qF '$' "$codex_config"; then
+  fail "codex.hooks.json contains a \$ expansion; Codex injects no project-root variable and PowerShell empties \$VAR"
+fi
+
 for config in claude.settings.json codex.hooks.json; do
   file="$skill/assets/host/$config"
-  grep -qF 'python -X utf8 -c \"import os,runpy,sys;' "$file" \
-    || fail "$config does not invoke hook-paths.py via a python -c launcher"
-  grep -qF "os.environ.get('CLAUDE_PROJECT_DIR')" "$file" \
-    || fail "$config python -c launcher lost the CLAUDE_PROJECT_DIR lookup"
-  grep -qF "os.environ.get('GROK_WORKSPACE_ROOT')" "$file" \
-    || fail "$config python -c launcher lost the GROK_WORKSPACE_ROOT lookup"
-  grep -qF '\" .agents/tools/hooks/hook-paths.py --' "$file" \
-    || fail "$config python -c launcher lost the trailing hook-paths.py --guard/--budget identity"
-  if grep -qF '${' "$file" || grep -qE '\$[A-Za-z_]' "$file"; then
-    fail "$config hook command still uses shell \$ expansion; PowerShell empties bash \${VAR:-default} to C:\\.agents\\..."
-  fi
-  if grep -qF 'python -X utf8 .agents/tools/hooks/hook-paths.py' "$file"; then
-    fail "$config invokes hook-paths.py via a cwd-relative path without the python -c root lookup"
+  if grep -qF 'python -X utf8 -c ' "$file"; then
+    fail "$config still boots hook-paths.py through a python -c launcher; anchor the path on the host it targets"
   fi
   if grep -qF 'alias.agent-scaffold-hook' "$file"; then
     fail "$config still uses the Git-alias dispatcher on the hot path"

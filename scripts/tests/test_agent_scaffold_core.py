@@ -366,13 +366,54 @@ class HookReconciliationTests(unittest.TestCase):
         self.assertNotIn(stale, commands)
         self.assertTrue(
             any(
-                "python -X utf8 -c" in command
-                and ".agents/tools/hooks/hook-paths.py" in command
+                '"${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py"' in command
                 and "--budget" in command
                 for command in commands
             )
         )
         self.assertIn(self.user["command"], commands)
+
+    def test_merge_replaces_python_c_launcher_command(self):
+        manifest = CORE.load_manifest()
+        python_c = (
+            "python -X utf8 -c \"import os,runpy,sys; "
+            "r=os.environ.get('CLAUDE_PROJECT_DIR') or '.'; p=os.path.normpath("
+            "os.path.join(r, sys.argv[1])); sys.argv[:2]=[p]; "
+            "runpy.run_path(p, run_name='__main__')\" "
+            ".agents/tools/hooks/hook-paths.py --budget"
+        )
+        for asset_id in ("host.claude-hooks", "host.codex-hooks"):
+            source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, asset_id)["source"]
+            expected = CORE.prepare_hooks(source, "default")
+            existing = {
+                "hooks": {
+                    "PostToolUse": [
+                        {
+                            "matcher": "Edit|MultiEdit|Write",
+                            "hooks": [
+                                {"type": "command", "command": python_c, "timeout": 30},
+                                self.user,
+                            ],
+                        }
+                    ]
+                }
+            }
+
+            merged = CORE.merge_hooks(existing, expected, self.root)
+            commands = [
+                hook["command"]
+                for group in merged["hooks"]["PostToolUse"]
+                for hook in group["hooks"]
+            ]
+
+            self.assertNotIn(python_c, commands)
+            self.assertTrue(
+                any(
+                    "--budget" in command and "python -X utf8 -c" not in command
+                    for command in commands
+                )
+            )
+            self.assertIn(self.user["command"], commands)
 
     def test_merge_replaces_bash_default_hook_paths_command(self):
         manifest = CORE.load_manifest()
@@ -404,20 +445,33 @@ class HookReconciliationTests(unittest.TestCase):
         ]
 
         self.assertNotIn(stale, commands)
-        self.assertTrue(any("python -X utf8 -c" in command for command in commands))
+        self.assertTrue(
+            any(
+                '"${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py"'
+                in command
+                for command in commands
+            )
+        )
         self.assertIn(self.user["command"], commands)
 
     def test_light_profile_matches_guard_when_script_path_is_quoted(self):
         self.assertTrue(
             CORE.hook_command_has_script_flag(
-                'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py" --guard',
+                'python -X utf8 "${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py" --guard',
                 "hook-paths.py",
                 "--guard",
             )
         )
         self.assertTrue(
             CORE.hook_command_has_script_flag(
-                'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}"/.agents/tools/hooks/hook-paths.py --guard',
+                "python -X utf8 .agents/tools/hooks/hook-paths.py --guard",
+                "hook-paths.py",
+                "--guard",
+            )
+        )
+        self.assertTrue(
+            CORE.hook_command_has_script_flag(
+                'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py" --guard',
                 "hook-paths.py",
                 "--guard",
             )
@@ -432,7 +486,7 @@ class HookReconciliationTests(unittest.TestCase):
         )
         self.assertFalse(
             CORE.hook_command_has_script_flag(
-                'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py" --budget',
+                'python -X utf8 "${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py" --budget',
                 "hook-paths.py",
                 "--guard",
             )
@@ -471,16 +525,9 @@ class HookReconciliationTests(unittest.TestCase):
                 for hook in group["hooks"]
             ]
             self.assertTrue(commands)
-            split_quoted = (
-                '"${CLAUDE_PROJECT_DIR:-.}"/.agents/tools/hooks/hook-paths.py'
-            )
             for command in commands:
-                self.assertTrue(command.startswith("python -X utf8 -c "))
-                self.assertIn("os.environ.get('CLAUDE_PROJECT_DIR')", command)
-                self.assertIn("os.environ.get('GROK_WORKSPACE_ROOT')", command)
+                self.assertTrue(command.startswith("python -X utf8 "))
                 self.assertIn(".agents/tools/hooks/hook-paths.py", command)
-                self.assertNotIn("$", command)
-                self.assertNotIn(split_quoted, command)
                 self.assertNotIn("hook-launcher.sh", command)
                 self.assertNotIn("bash -lc", command)
             timeouts = [
@@ -492,9 +539,46 @@ class HookReconciliationTests(unittest.TestCase):
             self.assertTrue(timeouts)
             self.assertTrue(all(timeout == 30 for timeout in timeouts))
 
+        claude_commands = self._asset_commands(manifest, "host.claude-hooks")
+        for command in claude_commands:
+            # Claude Code and Grok inject CLAUDE_PROJECT_DIR and expand ${VAR}
+            # themselves, so the anchored path survives a drifted hook cwd.
+            self.assertIn(
+                '"${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py"', command
+            )
+            # bash ${VAR:-default} is not a PowerShell or Grok expansion; it
+            # emptied to /.agents/... and opened C:\.agents\... on Windows.
+            self.assertNotIn(":-", command)
+            self.assertNotIn("python -X utf8 -c", command)
+
+        codex_commands = self._asset_commands(manifest, "host.codex-hooks")
+        for command in codex_commands:
+            # Codex injects no project-root variable and expands nothing, so the
+            # command must carry no '$' for its PowerShell to empty.
+            self.assertNotIn("$", command)
+            self.assertIn(".agents/tools/hooks/hook-paths.py --", command)
+
+    @staticmethod
+    def _asset_commands(manifest, asset_id):
+        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, asset_id)["source"]
+        prepared = CORE.prepare_hooks(source, "default")
+        return [
+            hook["command"]
+            for groups in prepared["hooks"].values()
+            for group in groups
+            for hook in group["hooks"]
+        ]
+
 
 class HookCommandShellTests(unittest.TestCase):
-    """The launcher must find hook-paths.py without bash ${VAR:-default} expansion."""
+    """Each host's managed command must dispatch hook-paths.py in a real shell.
+
+    The two hosts differ in who expands the command string, and that difference
+    is the whole reason the commands differ. These tests model the host
+    explicitly instead of assuming a shell expands `${VAR}`: Claude Code and Grok
+    inject CLAUDE_PROJECT_DIR and expand `${VAR}` before the shell runs the
+    command, while Codex injects nothing and PowerShell empties every `$VAR`.
+    """
 
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -510,16 +594,23 @@ class HookCommandShellTests(unittest.TestCase):
         self.drift = Path(temporary.name) / "elsewhere"
         self.drift.mkdir()
         manifest = CORE.load_manifest()
-        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "host.claude-hooks")["source"]
+        self.claude_command = self._budget_command(manifest, "host.claude-hooks")
+        self.codex_command = self._budget_command(manifest, "host.codex-hooks")
+
+    @staticmethod
+    def _budget_command(manifest, asset_id):
+        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, asset_id)["source"]
         prepared = CORE.prepare_hooks(source, "default")
         commands = [
             hook["command"]
             for group in prepared["hooks"]["PostToolUse"]
             for hook in group["hooks"]
         ]
-        self.managed = next(
-            command for command in commands if command.endswith("--budget")
-        )
+        return next(command for command in commands if command.endswith("--budget"))
+
+    def _host_expand(self, command):
+        """Model the Claude/Grok expansion of ${CLAUDE_PROJECT_DIR}."""
+        return command.replace("${CLAUDE_PROJECT_DIR}", str(self.root))
 
     @staticmethod
     def _bash_single_quote(value):
@@ -566,7 +657,17 @@ class HookCommandShellTests(unittest.TestCase):
             return ["bash"]
         return []
 
-    def test_python_c_launcher_finds_script_when_cwd_drifts(self):
+    def _assert_script_ran(self, result, expected_argv0):
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = [line for line in result.stdout.splitlines() if line]
+        self.assertGreaterEqual(len(lines), 2, result.stdout)
+        self.assertEqual(
+            os.path.normcase(os.path.normpath(lines[0])),
+            os.path.normcase(os.path.normpath(expected_argv0)),
+        )
+        self.assertEqual(lines[-1], "--budget")
+
+    def test_claude_command_finds_script_when_cwd_drifts(self):
         shells = self._shells()
         self.assertTrue(
             shells, "need bash or PowerShell to exercise hook argv quoting"
@@ -575,16 +676,40 @@ class HookCommandShellTests(unittest.TestCase):
         env["CLAUDE_PROJECT_DIR"] = str(self.root)
         env.pop("GROK_WORKSPACE_ROOT", None)
         for shell in shells:
-            command = self._bind_python(self.managed, shell)
+            command = self._bind_python(self._host_expand(self.claude_command), shell)
             result = self._run_shell(command, shell, cwd=self.drift, env=env)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            lines = [line for line in result.stdout.splitlines() if line]
-            self.assertGreaterEqual(len(lines), 2, result.stdout)
-            self.assertEqual(
-                os.path.normcase(os.path.abspath(lines[0])),
-                os.path.normcase(os.path.abspath(str(self.script))),
-            )
-            self.assertEqual(lines[-1], "--budget")
+            self._assert_script_ran(result, str(self.script))
+
+    def test_claude_command_never_reaches_the_shell_unexpanded(self):
+        """An unexpanded ${VAR} is what broke Windows: it must not be the shape.
+
+        The Claude/Grok command is only correct because the host expands it.
+        Running it raw in a shell that does not expand `${VAR}` must fail, so a
+        future edit cannot quietly reintroduce a shell-expanded anchor.
+        """
+        shells = self._shells()
+        self.assertTrue(shells, "need bash or PowerShell to exercise shell expansion")
+        env = os.environ.copy()
+        env["CLAUDE_PROJECT_DIR"] = str(self.root)
+        for shell in shells:
+            if shell == "bash":
+                continue  # bash expands ${VAR} itself, unlike the Windows hosts
+            command = self._bind_python(self.claude_command, shell)
+            result = self._run_shell(command, shell, cwd=self.drift, env=env)
+            self.assertNotEqual(result.returncode, 0)
+
+    def test_codex_command_finds_script_from_the_project_root(self):
+        shells = self._shells()
+        self.assertTrue(
+            shells, "need bash or PowerShell to exercise hook argv quoting"
+        )
+        env = os.environ.copy()
+        env.pop("CLAUDE_PROJECT_DIR", None)
+        env.pop("GROK_WORKSPACE_ROOT", None)
+        for shell in shells:
+            command = self._bind_python(self.codex_command, shell)
+            result = self._run_shell(command, shell, cwd=self.root, env=env)
+            self._assert_script_ran(result, ".agents/tools/hooks/hook-paths.py")
 
     @unittest.skipUnless(
         sys.platform == "win32",

@@ -642,9 +642,12 @@ check "greenfield install adds no tools root" test ! -e "$S/tools"
 check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" = AGENTS.md
 check "CC PreToolUse matcher"                jmatch "$S/.claude/settings.json" PreToolUse "Edit|MultiEdit|Write|NotebookEdit"
 check "Codex PreToolUse matcher"             jmatch "$S/.codex/hooks.json"     PreToolUse "Edit|Write|apply_patch"
-check "Claude hook command uses python -c"   grep -qF 'python -X utf8 -c' "$S/.claude/settings.json"
-check "Claude hook command has no shell dollar" no_fixed_text "$S/.claude/settings.json" '${CLAUDE_PROJECT_DIR'
-check "Codex hook command has no shell dollar" no_fixed_text "$S/.codex/hooks.json" '${CLAUDE_PROJECT_DIR'
+# shellcheck disable=SC2016  # the anchored host command is literal source text, not an expansion
+check "Claude hook command anchors on CLAUDE_PROJECT_DIR" grep -qF 'python -X utf8 \"${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py\"' "$S/.claude/settings.json"
+check "Claude hook command avoids bash \${VAR:-default}" no_fixed_text "$S/.claude/settings.json" ':-'
+check "Claude hook command avoids a python -c launcher" no_fixed_text "$S/.claude/settings.json" 'python -X utf8 -c'
+check "Codex hook command stays cwd-relative" grep -qF 'python -X utf8 .agents/tools/hooks/hook-paths.py --guard' "$S/.codex/hooks.json"
+check "Codex hook command has no shell dollar" no_fixed_text "$S/.codex/hooks.json" '$'
 check "original gitignore line stays separate" grep -qxF "dist" "$S/.gitignore"
 check "first gitignore append is separate"     grep -qxF ".claude/settings.local.json" "$S/.gitignore"
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
@@ -1074,6 +1077,17 @@ guard_host_command="$(python -c 'import json,sys; d=json.load(open(sys.argv[1], 
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" \
   | ( cd "$S" && bash -c "$guard_host_command" ) >"$work/trunk-guard-dispatch.out" 2>&1; rc=$?
 check "host config dispatches the Python guard" test "$rc" = 2
+# Claude Code and Grok expand ${CLAUDE_PROJECT_DIR} in the command before the
+# shell sees it, so the anchored path must still dispatch from a cwd that is not
+# the project root. Model that host expansion explicitly instead of assuming the
+# shell performs it; PowerShell does not.
+# shellcheck disable=SC2016  # the ${CLAUDE_PROJECT_DIR} anchor is literal host-config text
+claude_host_command="$(python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); c=[h.get("command","") for g in d["hooks"]["PreToolUse"] for h in g.get("hooks",[])]; m=[x for x in c if "hook-paths.py" in x and "--guard" in x and "${CLAUDE_PROJECT_DIR}" in x]; sys.exit("expected one anchored guard command, got %d" % len(m)) if len(m) != 1 else print(m[0])' "$S/.claude/settings.json")"
+# shellcheck disable=SC2016  # the ${CLAUDE_PROJECT_DIR} anchor is literal host-config text
+claude_expanded_command="$(python -c 'import sys; print(sys.argv[1].replace("${CLAUDE_PROJECT_DIR}", sys.argv[2]))' "$claude_host_command" "$S")"
+printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" \
+  | ( cd "$work" && bash -c "$claude_expanded_command" ) >"$work/trunk-guard-claude-dispatch.out" 2>&1; rc=$?
+check "host-expanded Claude guard dispatches from a drifted cwd" test "$rc" = 2
 check "host config avoids bare bash lookup" no_fixed_text "$S/.codex/hooks.json" '"command": "bash '
 printf '{"tool_input":{"file_path":"%s/AGENTS.md"}}' "$S" | WORKTREE_ALLOW_TRUNK_EDIT=1 CLAUDE_PROJECT_DIR="$S" bash "$g" >/dev/null 2>&1; rc=$?
 check "escape hatch allows (exit 0)"         test "$rc" = 0
