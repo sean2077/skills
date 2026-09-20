@@ -64,8 +64,7 @@
           "treatment": {
             "route": "project-docs-organizer",
             "workflow": "documentation-organization",
-            "decision_depth": "full",
-            "decision_artifact": "existing-context"
+            "decision_depth": "full"
           }
         }
       }
@@ -83,8 +82,7 @@
           "treatment": {
             "route": "project-docs-organizer",
             "workflow": "documentation-organization",
-            "decision_depth": "compact",
-            "decision_artifact": "existing-context"
+            "decision_depth": "compact"
           }
         }
       }
@@ -137,8 +135,7 @@
             "route": "project-docs-organizer",
             "workflow": "documentation-organization",
             "preserve_decisions": true,
-            "additional_approval_required": false,
-            "decision_artifact": "existing-context"
+            "additional_approval_required": false
           }
         }
       }
