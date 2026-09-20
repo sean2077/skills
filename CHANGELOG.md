@@ -8,6 +8,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Follow up PR #9 without reverting its routing or answer-leakage fixes: parse Lark discovery metadata as YAML, reject triggers present only in comments, and remove new exact-English safety/exception gates while preserving all installed safety instructions. Add verifier-tested confirmation, untrusted-content, and file-boundary scenarios rather than treating prose matches as enforcement.
+- Restore outcome checks to four docs/tooling evaluation cases that had become route-only when optional decision-depth fields were removed. Require the requested comparison, preserved decisions, and reconciled consumers without imposing an output template; keep project-required records exact. The live intention suite now has 107 scenarios; no live-model pass is implied.
+
 - Restore decisive routing tokens dropped by the native-first pass (`飞书`/`Larksuite`, `CONTEXT.md`/`CONTEXT-MAP.md`, add/move/rename, analyze/code-review destinations, and the AGENTS.md/CLAUDE.md exclusion) and make the lark-cli other-interface exclusion unambiguous.
 - Keep lark-cli resident identity, confirmation, untrusted-data, and path-containment rules mechanically checked; domain fast paths now defer to those identity/uncertainty exceptions instead of forbidding needed preflight.
 - Stop live-eval adapter prompts from assigning expected observation values, alias candidate skill names onto canonical workflows, and drop optional decision-depth/ceremony keys that the revised skills no longer teach.

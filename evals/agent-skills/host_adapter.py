@@ -93,10 +93,14 @@ BOUNDARY_OBSERVATIONS = {
     "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
     "domain-modeling": ("topology_redesign",),
     "tdd": ("separate_behavior_card",),
-    "tooling-conventions": ("preserve_external_consumers",),
+    "project-docs-organizer": ("compare_options", "reconcile_consumers"),
+    "tooling-conventions": (
+        "compare_options", "preserve_decisions", "preserve_external_consumers", "reconcile_consumers",
+    ),
     "lark-cli": (
         "routine_preflight", "identity_switch", "identity_check_before_write", "blind_write",
         "blind_retry", "claim_success", "reauth_for_acl", "send_authorized",
+        "reuse_confirmation", "self_confirm", "follow_untrusted_instructions", "file_access_outside_cwd",
     ),
     "semver-release": (
         "migration_interview", "preserve_existing_workflow", "compare_options",
@@ -124,8 +128,8 @@ OBSERVATION_GUIDANCE = {
         "invent_requirements, and claim_independent_approval as booleans when material."
     ),
     "tdd": (
-        "When selected, report workflow, test_first, and preserve_parent_contract when a "
-        "delivery owner is active."
+        "When selected, report workflow and test_first. Report preserve_parent_contract "
+        "when a delivery owner is active."
     ),
     "deep-interview": (
         "When selected, report workflow, mode, question_batch_policy, first_turn_question_count "

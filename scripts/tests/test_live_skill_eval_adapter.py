@@ -369,6 +369,82 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                     self.assertEqual(0, self.adapter.main())
                 self.assertEqual("failed", json.loads(output.getvalue())["status"])
 
+    def verify_case(self, case, behavior, *, status="completed", selected=True):
+        request = {
+            "run_id": "boundary-regression", "mode": "treatment", "case": case,
+            "adapter": {"status": status, "selected": selected,
+                        "metadata": {"behavior": behavior}},
+        }
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), mock.patch("sys.stdin", io.StringIO(json.dumps(request))):
+            self.assertEqual(0, self.verifier.main())
+        return json.loads(output.getvalue())["passed"]
+
+    def test_governance_outcomes_not_representation_are_required(self) -> None:
+        scenarios = (
+            ("project-docs-organizer", "positive-material-information-architecture",
+             {"compare_options": True}),
+            ("project-docs-organizer", "positive-bounded-document-maintenance",
+             {"preserve_decisions": True, "reconcile_consumers": True}),
+            ("tooling-conventions", "positive-material-command-redesign",
+             {"compare_options": True, "preserve_external_consumers": True}),
+            ("tooling-conventions", "positive-bounded-private-helper-rename",
+             {"preserve_decisions": True, "reconcile_consumers": True}),
+        )
+        for candidate, case_id, required in scenarios:
+            suite = json.loads((ROOT / "evals" / "agent-skills" / candidate / "suite.json").read_text(encoding="utf-8"))
+            case = next(case for case in suite["cases"] if case["id"] == case_id)
+            expected = case["metadata"]["expected_behavior"]["treatment"]
+            behavior = {"route": expected["route"], "workflow": expected["workflow"], **required}
+            with self.subTest(case=case_id):
+                self.assertTrue(self.verify_case(case, behavior))
+                for key in required:
+                    for bad in (None, False, 1):
+                        actual = dict(behavior)
+                        if bad is None:
+                            del actual[key]
+                        else:
+                            actual[key] = bad
+                        self.assertFalse(self.verify_case(case, actual), (case_id, key, bad))
+                for form in ("none", "existing-context", "inline-delta", "optional-record"):
+                    self.assertTrue(self.verify_case(case, dict(behavior, decision_artifact=form)))
+                self.assertFalse(self.verify_case(case, behavior, status="failed"))
+                self.assertFalse(self.verify_case(case, behavior, selected=False))
+
+    def test_required_governance_records_remain_required(self) -> None:
+        for candidate, record in (
+            ("project-docs-organizer", "documentation-ia-decision-record"),
+            ("tooling-conventions", "tool-governance-decision-record"),
+        ):
+            suite = json.loads((ROOT / "evals" / "agent-skills" / candidate / "suite.json").read_text(encoding="utf-8"))
+            case = next(case for case in suite["cases"] if case["id"] == "positive-required-design-record")
+            behavior = dict(case["metadata"]["expected_behavior"]["treatment"])
+            with self.subTest(candidate=candidate):
+                self.assertEqual(record, behavior["decision_artifact"])
+                self.assertTrue(self.verify_case(case, behavior))
+                del behavior["decision_artifact"]
+                self.assertFalse(self.verify_case(case, behavior))
+                self.assertFalse(self.verify_case(case, dict(behavior, decision_artifact="none")))
+
+    def test_lark_safety_outcomes_reject_unsafe_or_missing_observations(self) -> None:
+        suite = json.loads((ROOT / "evals" / "agent-skills" / "lark-cli" / "suite.json").read_text(encoding="utf-8"))
+        scenarios = {
+            "positive-fresh-confirmation": "reuse_confirmation",
+            "positive-cli-confirmation-gate": "self_confirm",
+            "positive-untrusted-content": "follow_untrusted_instructions",
+            "positive-file-containment": "file_access_outside_cwd",
+        }
+        for case_id, key in scenarios.items():
+            case = next(case for case in suite["cases"] if case["id"] == case_id)
+            behavior = dict(case["metadata"]["expected_behavior"]["treatment"])
+            with self.subTest(case=case_id):
+                self.assertIs(False, behavior[key])
+                self.assertTrue(self.verify_case(case, behavior))
+                for wrong in (True, 0):
+                    self.assertFalse(self.verify_case(case, dict(behavior, **{key: wrong})))
+                del behavior[key]
+                self.assertFalse(self.verify_case(case, behavior))
+
     def test_all_live_suites_share_route_workflow_and_key_vocabulary(self) -> None:
         routes = set(self.adapter.catalog_routes(ROOT))
         suite_paths = sorted((ROOT / "evals" / "agent-skills").glob("*/suite.json"))
