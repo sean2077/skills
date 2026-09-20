@@ -1,0 +1,6 @@
+# agent-scaffold:line-endings:start
+# Repository defaults; project rules below and nested attributes take precedence.
+* text=auto eol=lf
+*.[bB][aA][tT] text eol=crlf
+*.[cC][mM][dD] text eol=crlf
+# agent-scaffold:line-endings:end

@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `agent-scaffold` now installs repository-level LF text defaults and CRLF batch-file exceptions in both profiles, seeds `.editorconfig` only when absent, and verifies effective runtime attributes and tracked EOL bytes. Existing project attributes/editor settings, binary and exact-byte exceptions, Git configuration, and staged work are preserved; normalization remains an explicitly authorized separate migration.
+
 ### Fixed
 
 - Quote the entire `hook-paths.py` script path in scaffold-owned Claude/Codex/Grok hook commands (`"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py"`). POSIX shells already expanded inside one quoted word; Windows PowerShell/CreateProcess split the previous `"${CLAUDE_PROJECT_DIR:-.}"/.agents/...` form so Python received the repository directory and failed with `can't find '__main__' module`. Light-profile filtering and `upgrade` identity matching ignore those quotes, and `upgrade` converges the split-quoted commands as managed identities.

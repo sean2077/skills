@@ -714,6 +714,8 @@ git -C "$S" add -A
 check "tracked CLAUDE.md mode is 120000"     sh -c '[ "$(git -C "$1" ls-files -s -- CLAUDE.md | awk '\''{print $1}'\'')" = 120000 ]' _ "$S"
 
 echo "== idempotent re-run =="
+cp "$S/.gitattributes" "$work/attributes-before-crlf"
+cp "$S/.gitignore" "$work/ignore-before-crlf"
 python - "$S/.gitignore" "$S/.gitattributes" <<'PY'
 from pathlib import Path
 import sys
@@ -733,6 +735,8 @@ check "apply re-run exits 0"              test "$rc" = 0
 check "PostToolUse stays 1 hook (no dup)"    jcount "$S/.claude/settings.json" PostToolUse 1
 check "CRLF gitignore target stays singular" logical_line_count "$S/.gitignore" ".claude/settings.local.json" 1
 check "CRLF attributes target stays singular" logical_line_count "$S/.gitattributes" ".agents/tools/*.sh text eol=lf" 1
+cp "$work/attributes-before-crlf" "$S/.gitattributes"
+cp "$work/ignore-before-crlf" "$S/.gitignore"
 check "rerun preserves project-owned Husky hook" test "$(git hash-object "$S/.husky/pre-commit")" = "$husky_before"
 check "rerun preserves project-owned package.json" test "$(git hash-object "$S/package.json")" = "$package_before"
 
@@ -1270,7 +1274,7 @@ for path in sys.argv[1:]:
         "type": "command",
         "command": "bash .agents/hooks/format-on-edit.sh",
     })
-    with open(path, "w", encoding="utf-8") as target:
+    with open(path, "w", encoding="utf-8", newline="\n") as target:
         json.dump(data, target, indent=2, ensure_ascii=False)
         target.write("\n")
 PY

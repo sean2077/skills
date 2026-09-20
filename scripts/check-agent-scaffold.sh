@@ -96,6 +96,7 @@ for config in claude.settings.json codex.hooks.json; do
   # shellcheck disable=SC2016  # the ${CLAUDE_PROJECT_DIR:-.} anchor is literal source text, not an expansion
   grep -qF 'python -X utf8 \"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py\" --' "$file" \
     || fail "$config does not invoke hook-paths.py via a cwd-independent whole-path-quoted command"
+  # shellcheck disable=SC2016  # reject a literal split-quoted host placeholder
   if grep -qF '\"${CLAUDE_PROJECT_DIR:-.}\"/.agents/tools/hooks/hook-paths.py' "$file"; then
     fail "$config splits the quoted project-root placeholder from hook-paths.py; quote the entire script path"
   fi
@@ -146,6 +147,27 @@ PY
 )"
   [ "$harness_parity" = ok ] \
     || fail "dogfood drift: AGENTS.md managed block differs from the rendered AGENTS.harness.md template (regenerate it; do not hand-edit)"
+fi
+# Verify the dogfooded managed EOL block against its canonical asset, preserving
+# project rules outside it. This is generated-content parity, not prose matching.
+if ! python - "$repo" <<'PY_EOL'
+import importlib.util
+import sys
+from pathlib import Path
+repo = Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location("harness_core", repo / "skills/agent-scaffold/scripts/harness-core.py")
+core = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(core)
+path = repo / ".gitattributes"
+source = repo / "skills/agent-scaffold/assets/scaffold/gitattributes"
+try:
+    valid = path.is_file() and path.read_bytes() == core.line_endings_candidate(path, source)
+except (OSError, core.CoreError):
+    valid = False
+raise SystemExit(0 if valid else 1)
+PY_EOL
+then
+  fail "dogfood drift: .gitattributes defaults differ from the scaffold asset (run upgrade)"
 fi
 [ -f "$skill/references/terminology.md" ] \
   || fail "missing terminology reference"

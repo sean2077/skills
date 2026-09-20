@@ -30,7 +30,7 @@ Use the [selection and composition guide](docs/skill-composition.md) to distingu
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
-| [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, lean authority and terminology contracts, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
+| [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, lean authority and terminology contracts, repository LF/CRLF defaults, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
 | [ai-slop-cleaner](skills/ai-slop-cleaner/) | Perform behavior-preserving, bounded cleanup of duplication, dead code, needless abstraction, boundary leaks, and weak coverage with explicit verification. | Engineering, Refactoring |
 | [analyze](skills/analyze/) | Explain repository behavior or investigate failures through read-only evidence, with hypotheses and discriminating probes only while uncertainty warrants them. | Engineering, Analysis |
 | [autopilot](skills/autopilot/) | Deliver authorized work end to end with a proportional native loop, selective bounded delegation, and persistent state only for repository-owned semantics not already met by native continuation or resume. | Python, Delivery |

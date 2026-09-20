@@ -793,5 +793,271 @@ class StructuredReportTests(unittest.TestCase):
             self.assertEqual("fail", attributes["status"])
 
 
+class LineEndingPolicyTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="scaffold-eol-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.target = self.root / "repo space-雪"
+        self.target.mkdir()
+        self.git("init", "-q")
+        self.git("config", "user.name", "EOL Test")
+        self.git("config", "user.email", "eol@example.invalid")
+        self.git("config", "core.autocrlf", "false")
+        self.git("config", "core.safecrlf", "false")
+        self.git("config", "core.eol", "crlf")
+        self.git("config", "core.symlinks", "true")
+        self.manifest = CORE.load_manifest()
+        self.source = CORE.SKILL_DIR / CORE.asset_by_id(self.manifest, "contract.line-endings")["source"]
+
+    def git(self, *args):
+        return subprocess.run(
+            ["git", "-C", str(self.target), *args],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        ).stdout
+
+    def policy(self, content=b""):
+        path = self.target / ".gitattributes"
+        path.write_bytes(content)
+        path.write_bytes(CORE.line_endings_candidate(path, self.source))
+        # The existing append-only runtime lines remain independently owned.
+        for item in CORE.active_line_invariants(self.manifest, "default"):
+            if item["target"] == ".gitattributes":
+                data = path.read_bytes()
+                path.write_bytes(data + (b"\n" if data and not data.endswith(b"\n") else b"")
+                                 + ("\n".join(item["lines"]) + "\n").encode())
+
+    def check(self, check_id):
+        return next(item for item in CORE.line_endings_checks(self.target, "default", self.manifest)
+                    if item["id"] == check_id)
+
+    def test_prefix_preserves_project_bytes_bom_exceptions_and_idempotence(self):
+        original = b'\xef\xbb\xbf# custom\r\n*.dat -text\r\n*.txt text eol=crlf'
+        path = self.target / ".gitattributes"
+        path.write_bytes(original)
+        candidate = CORE.line_endings_candidate(path, self.source)
+        self.assertEqual(original[:3] + self.source.read_bytes() + original[3:], candidate)
+        path.write_bytes(candidate)
+        self.assertEqual(candidate, CORE.line_endings_candidate(path, self.source))
+        fields = self.git("check-attr", "-z", "eol", "--", "note.txt").split(b"\0")
+        self.assertEqual(b"crlf", fields[2])
+
+    def test_marker_refresh_is_lf_without_rewriting_project_crlf(self):
+        path = self.target / ".gitattributes"
+        authored = b"# keep\r\n*.bin -text\r\n"
+        path.write_bytes(authored + self.source.read_bytes().replace(b"\n", b"\r\n"))
+        candidate = CORE.line_endings_candidate(path, self.source)
+        self.assertEqual(self.source.read_bytes() + authored, candidate)
+        path.write_bytes(candidate)
+        self.assertEqual(candidate, CORE.line_endings_candidate(path, self.source))
+
+    def test_malformed_markers_raise_before_writes(self):
+        path = self.target / ".gitattributes"
+        fixtures = (
+            CORE.EOL_START + b"\n",
+            CORE.EOL_END + b"\n" + CORE.EOL_START + b"\n",
+            self.source.read_bytes() * 2,
+            CORE.EOL_START + b" extra\n" + CORE.EOL_END + b"\n",
+        )
+        for data in fixtures:
+            with self.subTest(data=data):
+                path.write_bytes(data)
+                with self.assertRaises(CORE.CoreError):
+                    CORE.line_endings_candidate(path, self.source)
+                self.assertEqual(data, path.read_bytes())
+
+    def test_default_checkout_is_lf_for_all_autocrlf_modes(self):
+        self.policy()
+        (self.target / "nested").mkdir()
+        fixtures = {
+            "nested/note-雪.md": b"alpha\nbeta\n",
+            "program.py": b"print(1)\nprint(2)\n",
+            "config.json": b'{\n  "value": 1\n}\n',
+            "configure": b"#!/bin/sh\necho hello\n",
+            "payload.bin": b"\x00binary\r\n\xff\x00",
+            "run.bat": b"@echo off\r\necho test\r\n",
+            "run.CmD": b"@echo off\r\necho test\r\n",
+        }
+        for name, data in fixtures.items():
+            (self.target / name).write_bytes(data)
+        self.git("add", "--all")
+        for mode in ("true", "input", "false"):
+            with self.subTest(autocrlf=mode):
+                self.git("config", "core.autocrlf", mode)
+                for name, data in fixtures.items():
+                    path = self.target / name
+                    path.unlink()
+                    self.git("checkout-index", "--", name)
+                    self.assertEqual(data, path.read_bytes(), name)
+                self.assertEqual("pass", self.check("line-endings.tracked")["status"])
+        self.assertEqual(b"@echo off\necho test\n", self.git("show", ":run.bat"))
+
+    def test_root_nested_and_binary_exceptions_are_honored(self):
+        self.policy(b"*.txt text eol=crlf\n*.fixture -text\n*.lfs filter=lfs -text\n")
+        nested = self.target / "nested"; nested.mkdir()
+        (nested / ".gitattributes").write_bytes(b"*.md text eol=crlf\n")
+        fixtures = {"a.txt": b"a\r\nb\r\n", "nested/b.md": b"a\r\nb\r\n",
+                    "raw.fixture": b"exact\r\nbytes\n", "raw.lfs": b"version\r\n"}
+        for name, data in fixtures.items():
+            (self.target / name).write_bytes(data)
+        self.git("add", "--all")
+        for name, data in fixtures.items():
+            (self.target / name).unlink()
+            self.git("checkout-index", "--", name)
+            self.assertEqual(data, (self.target / name).read_bytes())
+        self.assertEqual("pass", self.check("line-endings.tracked")["status"])
+
+    def test_existing_crlf_is_diagnosed_without_converting_or_staging(self):
+        file = self.target / "legacy.txt"
+        file.write_bytes(b"old\r\nlines\r\n")
+        self.git("add", "legacy.txt")
+        self.policy()
+        index = self.git("rev-parse", "--git-path", "index").decode().strip()
+        index_path = Path(index) if Path(index).is_absolute() else self.target / index
+        before = index_path.read_bytes()
+        result = self.check("line-endings.tracked")
+        self.assertEqual("fail", result["status"])
+        self.assertIn("legacy.txt", result["detail"])
+        self.assertIn("i/crlf", result["detail"])
+        self.assertEqual(before, index_path.read_bytes())
+        self.assertEqual(b"old\r\nlines\r\n", file.read_bytes())
+        # Only an explicit caller action normalizes the index; it does not rewrite the worktree.
+        self.git("add", "--renormalize", "--", "legacy.txt")
+        self.assertEqual("fail", self.check("line-endings.tracked")["status"])
+        file.write_bytes(b"old\nlines\n")
+        self.assertEqual("pass", self.check("line-endings.tracked")["status"])
+
+    def test_mixed_tracked_text_is_not_hidden_by_git_clean_diff(self):
+        self.policy()
+        file = self.target / "note.md"; file.write_bytes(b"one\ntwo\n")
+        self.git("add", "--all")
+        file.write_bytes(b"one\r\ntwo\n")
+        self.assertEqual(b"", self.git("diff", "--", "note.md"))
+        result = self.check("line-endings.tracked")
+        self.assertEqual("fail", result["status"])
+        self.assertIn("w/mixed", result["detail"])
+
+    def test_effective_runtime_attributes_catch_later_nested_and_info_overrides(self):
+        self.policy()
+        self.assertEqual("pass", self.check("line-endings.runtime-attributes")["status"])
+        for name, rule in ((".gitattributes", b".agents/tools/*.sh text eol=crlf\n"),
+                           (".agents/tools/.gitattributes", b"*.sh -text\n"),
+                           (".git/info/attributes", b".agents/tools/*.py text eol=crlf\n")):
+            with self.subTest(name=name):
+                path = self.target / name; path.parent.mkdir(parents=True, exist_ok=True)
+                before = path.read_bytes() if path.exists() else None
+                path.write_bytes((before or b"") + rule)
+                self.assertEqual("fail", self.check("line-endings.runtime-attributes")["status"])
+                if before is None:
+                    path.unlink()
+                else:
+                    path.write_bytes(before)
+
+    def test_plan_reports_eol_conflicts_without_mutation(self):
+        for name in (".gitattributes", ".editorconfig"):
+            with self.subTest(name=name):
+                path = self.target / name; path.mkdir()
+                before = sorted(str(p.relative_to(self.target)) for p in self.target.rglob("*"))
+                data = CORE.build_plan(self.target, "light", self.manifest)
+                item = next(c for c in data["checks"] if c["path"] == name)
+                self.assertEqual("attention", item["status"])
+                self.assertEqual(before, sorted(str(p.relative_to(self.target)) for p in self.target.rglob("*")))
+                path.rmdir()
+
+    def test_symlinked_policy_is_never_followed(self):
+        outside = self.root / "outside"; outside.write_bytes(b"untouched\n")
+        link = self.target / ".gitattributes"
+        try:
+            link.symlink_to(outside)
+        except OSError as exc:
+            self.skipTest("symlink capability unavailable: {0}".format(exc))
+        with self.assertRaises(CORE.CoreError):
+            CORE.line_endings_candidate(link, self.source)
+        self.assertEqual(b"untouched\n", outside.read_bytes())
+
+    def run_installer(self, *args):
+        # Resolve PATH explicitly: native Windows CreateProcess may otherwise
+        # select System32's WSL bash before Git Bash. MSYS accepts D:/ paths.
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Git Bash/POSIX bash is required for installer tests")
+        return subprocess.run(
+            [bash, (CORE.SKILL_DIR / "agent-scaffold.sh").as_posix(), *args],
+            cwd=self.target, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+
+    def test_installer_preserves_existing_editor_settings_and_staged_user_work(self):
+        editor = self.target / ".editorconfig"
+        original = b"root=true\r\n[*]\r\nindent_size=8\r\nend_of_line=crlf\r\n"
+        editor.write_bytes(original)
+        (self.target / "staged.txt").write_bytes(b"user work\n")
+        self.git("add", "staged.txt")
+        before = self.git("ls-files", "--stage", "-z")
+        config = (self.target / ".git/config").read_bytes()
+        for mode in ("apply", "upgrade", "apply"):
+            result = self.run_installer(mode, "--profile", "light")
+            self.assertEqual(0, result.returncode, result.stderr.decode("utf-8", errors="replace"))
+            self.assertEqual(original, editor.read_bytes())
+            self.assertEqual(before, self.git("ls-files", "--stage", "-z"))
+            self.assertEqual(config, (self.target / ".git/config").read_bytes())
+            self.assertEqual(1, (self.target / ".gitattributes").read_bytes().count(CORE.EOL_START))
+        self.assertEqual("pass", self.check("line-endings.tracked")["status"])
+
+    def test_installer_blocks_malformed_policy_before_any_harness_write(self):
+        path = self.target / ".gitattributes"; original = CORE.EOL_START + b"\n"
+        path.write_bytes(original)
+        for mode in ("apply", "upgrade"):
+            result = self.run_installer(mode)
+            self.assertEqual(2, result.returncode, result.stderr.decode("utf-8", errors="replace"))
+            self.assertEqual(original, path.read_bytes())
+            self.assertFalse((self.target / "AGENTS.md").exists())
+            self.assertFalse((self.target / ".agents").exists())
+            self.assertFalse((self.target / ".editorconfig").exists())
+
+    def test_diagnostics_handle_tabs_and_newlines(self):
+        if os.name == "nt":
+            self.skipTest("these filename bytes are POSIX-only")
+        self.policy()
+        raw_path = os.fsencode(self.target) + b"/unusual\tname\n.md"
+        with open(raw_path, "wb") as stream:
+            stream.write(b"one\ntwo\n")
+        self.git("add", "--all")
+        with open(raw_path, "wb") as stream:
+            stream.write(b"one\r\ntwo\n")
+        result = self.check("line-endings.tracked")
+        self.assertEqual("fail", result["status"])
+        json.dumps(result, ensure_ascii=False).encode("utf-8")
+
+    def test_non_utf8_git_output_names_have_portable_diagnostics(self):
+        self.policy()
+        file = self.target / "ordinary.md"
+        file.write_bytes(b"one\ntwo\n")
+        self.git("add", "--all")
+        file.write_bytes(b"one\r\ntwo\n")
+        run = CORE.subprocess.run
+
+        def non_utf8_output(*args, **kwargs):
+            completed = run(*args, **kwargs)
+            if "--eol" in args[0]:
+                # Keep real Git byte-state evidence; only replace the filename
+                # in its output. APFS/Windows cannot create this raw name.
+                marker = b"\tordinary.md\0"
+                self.assertIn(marker, completed.stdout)
+                completed.stdout = completed.stdout.replace(marker, b"\tnon-utf8-\xff.md\0")
+            return completed
+
+        with mock.patch.object(CORE.subprocess, "run", side_effect=non_utf8_output):
+            result = self.check("line-endings.tracked")
+        self.assertEqual("fail", result["status"])
+        self.assertIn(r"non-utf8-\xff.md", result["detail"])
+        self.assertIn("w/mixed", result["detail"])
+        json.dumps(result, ensure_ascii=False).encode("utf-8")
+
+    def test_git_errors_are_failures_not_empty_success(self):
+        with mock.patch.object(CORE.subprocess, "run", side_effect=OSError("no git")):
+            result = CORE.line_endings_checks(self.target, "light", self.manifest)
+        self.assertEqual("line-endings.git", result[-1]["id"])
+        self.assertEqual("fail", result[-1]["status"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -134,6 +134,9 @@ class SkillEvalTest(unittest.TestCase):
         self.repo = Path(self.temp.name) / "repo"
         init_repo(self.repo)
         shutil.copytree(ROOT / "evals", self.repo / "evals")
+        # This control file is compared byte-for-byte with a fresh worktree.
+        # Do not inherit the machine's checkout EOL for copied LF inputs.
+        (self.repo / ".gitattributes").write_bytes(b"evals/**/suite.json text eol=lf\n")
         skill = self.repo / "skills" / "tdd"
         skill.mkdir(parents=True)
         (skill / "SKILL.md").write_text("---\nname: tdd\n---\n", encoding="utf-8")
@@ -148,7 +151,7 @@ class SkillEvalTest(unittest.TestCase):
         return json.loads(self.manifest.read_text(encoding="utf-8"))
 
     def save_manifest(self, data: dict) -> None:
-        self.manifest.write_text(json.dumps(data, sort_keys=True) + "\n", encoding="utf-8")
+        self.manifest.write_bytes((json.dumps(data, sort_keys=True) + "\n").encode("utf-8"))
         git(self.repo, "add", "-A")
         git(self.repo, "commit", "-m", "update eval contract")
 
@@ -156,6 +159,23 @@ class SkillEvalTest(unittest.TestCase):
         path = self.repo / "evals" / name
         path.write_text(body, encoding="utf-8")
         return path
+
+    def test_manifest_bytes_survive_native_checkout_policies(self) -> None:
+        data = self.load_manifest()
+        data["suite_id"] = "eol-control"
+        self.save_manifest(data)
+        before = self.manifest.read_bytes()
+        self.assertNotIn(b"\r\n", before)
+        for mode in ("true", "input", "false"):
+            with self.subTest(autocrlf=mode):
+                git(self.repo, "config", "core.autocrlf", mode)
+                result = run_suite(
+                    self.manifest,
+                    Path(self.temp.name) / (mode + ".json"),
+                    case_filter=["positive-red-green"],
+                )
+                self.assertTrue(result["passed"])
+                self.assertEqual(before, self.manifest.read_bytes())
 
     def test_python_placeholder_accepts_symlinked_interpreter(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
