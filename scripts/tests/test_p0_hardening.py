@@ -62,6 +62,9 @@ class SkillEvalHardeningTest(unittest.TestCase):
         self.repo = Path(self.temp.name) / "repo"
         init_repo(self.repo)
         shutil.copytree(ROOT / "evals", self.repo / "evals")
+        # This control file is compared byte-for-byte with a fresh worktree.
+        # Do not inherit the machine's checkout EOL for copied LF inputs.
+        (self.repo / ".gitattributes").write_bytes(b"evals/**/suite.json text eol=lf\n")
         skill = self.repo / "skills" / "tdd"
         skill.mkdir(parents=True)
         (skill / "SKILL.md").write_text("---\nname: tdd\n---\n", encoding="utf-8")
@@ -76,7 +79,7 @@ class SkillEvalHardeningTest(unittest.TestCase):
         return json.loads(self.manifest.read_text(encoding="utf-8"))
 
     def save_manifest(self, data: dict) -> None:
-        self.manifest.write_text(json.dumps(data, sort_keys=True) + "\n", encoding="utf-8")
+        self.manifest.write_bytes((json.dumps(data, sort_keys=True) + "\n").encode("utf-8"))
         git(self.repo, "add", "-A")
         git(self.repo, "commit", "-m", "update eval contract")
 

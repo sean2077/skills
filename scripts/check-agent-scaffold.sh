@@ -96,6 +96,7 @@ for config in claude.settings.json codex.hooks.json; do
   # shellcheck disable=SC2016  # the ${CLAUDE_PROJECT_DIR:-.} anchor is literal source text, not an expansion
   grep -qF 'python -X utf8 \"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py\" --' "$file" \
     || fail "$config does not invoke hook-paths.py via a cwd-independent whole-path-quoted command"
+  # shellcheck disable=SC2016  # reject a literal split-quoted host placeholder
   if grep -qF '\"${CLAUDE_PROJECT_DIR:-.}\"/.agents/tools/hooks/hook-paths.py' "$file"; then
     fail "$config splits the quoted project-root placeholder from hook-paths.py; quote the entire script path"
   fi

@@ -975,6 +975,16 @@ class LineEndingPolicyTests(unittest.TestCase):
             CORE.line_endings_candidate(link, self.source)
         self.assertEqual(b"untouched\n", outside.read_bytes())
 
+    def run_installer(self, *args):
+        # Resolve PATH explicitly: native Windows CreateProcess may otherwise
+        # select System32's WSL bash before Git Bash. MSYS accepts D:/ paths.
+        bash = shutil.which("bash")
+        self.assertIsNotNone(bash, "Git Bash/POSIX bash is required for installer tests")
+        return subprocess.run(
+            [bash, (CORE.SKILL_DIR / "agent-scaffold.sh").as_posix(), *args],
+            cwd=self.target, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+
     def test_installer_preserves_existing_editor_settings_and_staged_user_work(self):
         editor = self.target / ".editorconfig"
         original = b"root=true\r\n[*]\r\nindent_size=8\r\nend_of_line=crlf\r\n"
@@ -983,10 +993,9 @@ class LineEndingPolicyTests(unittest.TestCase):
         self.git("add", "staged.txt")
         before = self.git("ls-files", "--stage", "-z")
         config = (self.target / ".git/config").read_bytes()
-        installer = CORE.SKILL_DIR / "agent-scaffold.sh"
         for mode in ("apply", "upgrade", "apply"):
-            subprocess.run(["bash", str(installer), mode, "--profile", "light"],
-                           cwd=self.target, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            result = self.run_installer(mode, "--profile", "light")
+            self.assertEqual(0, result.returncode, result.stderr.decode("utf-8", errors="replace"))
             self.assertEqual(original, editor.read_bytes())
             self.assertEqual(before, self.git("ls-files", "--stage", "-z"))
             self.assertEqual(config, (self.target / ".git/config").read_bytes())
@@ -997,19 +1006,18 @@ class LineEndingPolicyTests(unittest.TestCase):
         path = self.target / ".gitattributes"; original = CORE.EOL_START + b"\n"
         path.write_bytes(original)
         for mode in ("apply", "upgrade"):
-            result = subprocess.run(["bash", str(CORE.SKILL_DIR / "agent-scaffold.sh"), mode],
-                                    cwd=self.target, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            self.assertEqual(2, result.returncode)
+            result = self.run_installer(mode)
+            self.assertEqual(2, result.returncode, result.stderr.decode("utf-8", errors="replace"))
             self.assertEqual(original, path.read_bytes())
             self.assertFalse((self.target / "AGENTS.md").exists())
             self.assertFalse((self.target / ".agents").exists())
             self.assertFalse((self.target / ".editorconfig").exists())
 
-    def test_diagnostics_handle_tabs_newlines_and_non_utf8_names(self):
+    def test_diagnostics_handle_tabs_and_newlines(self):
         if os.name == "nt":
             self.skipTest("these filename bytes are POSIX-only")
         self.policy()
-        raw_path = os.fsencode(self.target) + b"/unusual\tname\n\xff.md"
+        raw_path = os.fsencode(self.target) + b"/unusual\tname\n.md"
         with open(raw_path, "wb") as stream:
             stream.write(b"one\ntwo\n")
         self.git("add", "--all")
@@ -1017,6 +1025,31 @@ class LineEndingPolicyTests(unittest.TestCase):
             stream.write(b"one\r\ntwo\n")
         result = self.check("line-endings.tracked")
         self.assertEqual("fail", result["status"])
+        json.dumps(result, ensure_ascii=False).encode("utf-8")
+
+    def test_non_utf8_git_output_names_have_portable_diagnostics(self):
+        self.policy()
+        file = self.target / "ordinary.md"
+        file.write_bytes(b"one\ntwo\n")
+        self.git("add", "--all")
+        file.write_bytes(b"one\r\ntwo\n")
+        run = CORE.subprocess.run
+
+        def non_utf8_output(*args, **kwargs):
+            completed = run(*args, **kwargs)
+            if "--eol" in args[0]:
+                # Keep real Git byte-state evidence; only replace the filename
+                # in its output. APFS/Windows cannot create this raw name.
+                marker = b"\tordinary.md\0"
+                self.assertIn(marker, completed.stdout)
+                completed.stdout = completed.stdout.replace(marker, b"\tnon-utf8-\xff.md\0")
+            return completed
+
+        with mock.patch.object(CORE.subprocess, "run", side_effect=non_utf8_output):
+            result = self.check("line-endings.tracked")
+        self.assertEqual("fail", result["status"])
+        self.assertIn(r"non-utf8-\xff.md", result["detail"])
+        self.assertIn("w/mixed", result["detail"])
         json.dumps(result, ensure_ascii=False).encode("utf-8")
 
     def test_git_errors_are_failures_not_empty_success(self):

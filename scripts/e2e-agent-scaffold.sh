@@ -1274,7 +1274,7 @@ for path in sys.argv[1:]:
         "type": "command",
         "command": "bash .agents/hooks/format-on-edit.sh",
     })
-    with open(path, "w", encoding="utf-8") as target:
+    with open(path, "w", encoding="utf-8", newline="\n") as target:
         json.dump(data, target, indent=2, ensure_ascii=False)
         target.write("\n")
 PY
