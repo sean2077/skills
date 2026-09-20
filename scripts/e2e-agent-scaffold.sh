@@ -38,7 +38,7 @@ jmatch() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(
 # shellcheck disable=SC2317,SC2329
 jcount() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if len(d["hooks"][sys.argv[2]][0]["hooks"])==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
-jcommand_count() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); needle=sys.argv[2]; n=sum(needle in str(h.get("command", "")).replace("\\", "/") for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
+jcommand_count() { python -c 'import json,sys; d=json.load(open(sys.argv[1])); needle=sys.argv[2]; n=sum(needle in str(h.get("command", "")).replace("\\", "/").replace(chr(34), "").replace(chr(39), "") for groups in d.get("hooks", {}).values() for g in groups for h in g.get("hooks", [])); sys.exit(0 if n==int(sys.argv[3]) else 1)' "$@"; }
 # shellcheck disable=SC2317,SC2329
 fixed_text_in_both() { grep -qF "$1" "$2" && grep -qF "$1" "$3"; }
 # shellcheck disable=SC2317,SC2329
@@ -767,7 +767,7 @@ json.dump(d, open(p, "w"))
 PY
 ( cd "$S" && bash "$H" apply ) >/dev/null 2>&1; rc=$?
 check "apply-merge exits 0"               test "$rc" = 0
-check "trunk_edit_guard still wired"         grep -qF "hook-paths.py --guard" "$S/.claude/settings.json"
+check "trunk_edit_guard still wired"         jcommand_count "$S/.claude/settings.json" "hook-paths.py --guard" 1
 check "pre-existing user hook preserved"     grep -q user-custom "$S/.claude/settings.json"
 
 echo "== worktree helper rejects foreign repository targets =="
@@ -1400,7 +1400,7 @@ printf '{"hooks": null, "model": "opus"}' > "$HN/.claude/settings.json"
 ( cd "$HN" && HARNESS_NO_JQ=1 bash "$H" apply ) >/dev/null 2>&1; rc=$?
 check "apply over hooks:null (python path) exits 0"   test "$rc" = 0
 check "hooks:null apply preserves user's other keys"  grep -q '"model"' "$HN/.claude/settings.json"
-check "hooks:null apply wires the trunk guard"        grep -qF "hook-paths.py --guard" "$HN/.claude/settings.json"
+check "hooks:null apply wires the trunk guard"        jcommand_count "$HN/.claude/settings.json" "hook-paths.py --guard" 1
 
 # M3: a hand-authored agent whose PROSE contains the phrase "do not edit by hand"
 # must still be adopted by --import (the banner test keys on "Generated from

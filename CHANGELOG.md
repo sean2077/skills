@@ -8,6 +8,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Quote the entire `hook-paths.py` script path in scaffold-owned Claude/Codex/Grok hook commands (`"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py"`). POSIX shells already expanded inside one quoted word; Windows PowerShell/CreateProcess split the previous `"${CLAUDE_PROJECT_DIR:-.}"/.agents/...` form so Python received the repository directory and failed with `can't find '__main__' module`. Light-profile filtering and `upgrade` identity matching ignore those quotes, and `upgrade` converges the split-quoted commands as managed identities.
+
 - Follow up PR #9 without reverting its routing or answer-leakage fixes: parse Lark discovery metadata as YAML, reject triggers present only in comments, and remove new exact-English safety/exception gates while preserving all installed safety instructions. Add verifier-tested confirmation, untrusted-content, and file-boundary scenarios rather than treating prose matches as enforcement.
 - Restore outcome checks to four docs/tooling evaluation cases that had become route-only when optional decision-depth fields were removed. Require the requested comparison, preserved decisions, and reconciled consumers without imposing an output template; keep project-required records exact. The live intention suite now has 107 scenarios; no live-model pass is implied.
 
