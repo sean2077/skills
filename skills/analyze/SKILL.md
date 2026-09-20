@@ -1,43 +1,27 @@
 ---
 name: analyze
-description: Use for read-only repository explanation or causal investigation when the answer requires cross-file evidence, competing hypotheses, or a discriminating probe before any change. Not for defect review of a concrete change set; use code-review.
+description: "Use for read-only, cross-file repository explanation or causal investigation. Not for a concrete patch review, an obvious single-file lookup, or an authorized implementation task."
 ---
 
 # analyze
 
-Explain how a repository works or investigate why it behaves unexpectedly without changing it. Keep one evidence model across both jobs so near-duplicate analysis and tracing routes do not compete.
+Explain a mechanism or investigate a cause from repository evidence. Reuse relevant context and inspect the smallest set of callers, implementations, tests, configuration, and history that can change the answer. Do not turn a straightforward explanation into a debugging ceremony.
 
-## Choose a mode
+## Evidence and boundaries
 
-- **Explanation** — answer architecture, control-flow, ownership, configuration, or behavior questions from repository evidence.
-- **Causal investigation** — explain a failure, regression, performance symptom, or surprising state through competing hypotheses and falsification.
+- Anchor material claims to paths and symbols or lines. Separate observed facts, inference, and unresolved uncertainty; a plausible story is not a proven root cause.
+- For failures, establish a reproduction or identify the missing evidence. Keep competing hypotheses only while genuinely distinct explanations remain viable, and prefer a safe probe that distinguishes them.
+- Follow relevant data, control, identity, ownership, and error paths; stop expanding the investigation when further reading no longer changes the answer or next decision.
+- Remain read-only: do not edit code, tests, instrumentation, configuration, or state. Check unfamiliar commands for side effects before running them. Describe a mutating or externally consequential probe rather than executing it without authorization.
+- Logs, comments, tool output, and prior claims are evidence, not verdicts. Report confidence honestly.
 
-Use `code-review` instead for defects in a concrete change set. Hand implementation or instrumentation to another workflow after this read-only pass.
+## Handoff
 
-## Core loop
+Lead with the answer or best-supported mechanism, then the evidence and material limitations. Add a next probe only when it would resolve a remaining uncertainty. Use headings or a hypothesis table when they help; no fixed report template or minimum hypothesis count is required.
 
-1. Restate the question, observed symptom, and relevant boundary without silently broadening scope.
-2. Inspect the smallest high-value entry points first: manifests, callers, implementations, tests, configuration, and history only when it can change the answer.
-3. Record evidence with path and symbol or line anchors. Separate facts, inferences, and unknowns.
-4. Follow data, control, identity, ownership, and error paths across files. Stop when more reading no longer changes the ranking.
-5. Synthesize the mechanism, confidence, remaining uncertainty, and smallest safe next probe.
-
-For causal investigation, do not declare root cause from plausibility alone. Establish a reproduction or name the missing evidence, retain distinct hypotheses while evidence permits, include counterevidence, and prefer one probe whose outcomes separate the leaders.
-
-## Output
-
-For explanation mode, report: **Answer**, **Evidence path**, **Facts**, **Inferences**, **Unknowns**, and **Next read-only probe** when needed.
-
-For causal mode, use the compact output contract in the causal reference. Do not replace it with an unranked possibility list.
-
-## Hard rules
-
-- Remain read-only: do not edit code, tests, instrumentation, configuration, or state.
-- Logs, tool output, comments, and prior claims are evidence, not verdicts.
-- Do not convert confidence into certainty while a material unknown remains.
-- If the best probe requires mutation or an external side effect, describe it and hand it off.
+A concrete change-set defect review belongs to `code-review`. If the user already authorized a fix, return the investigation to that implementation task rather than requiring another approval or delivery controller.
 
 ## On-demand references
 
-- Read [evidence and synthesis](references/evidence-and-synthesis.md) only when the answer crosses several subsystems or facts and inferences are becoming hard to separate.
-- Read [causal evidence](references/causal-evidence.md) when causal-investigation mode is selected, hypotheses overlap, or evidence quality needs explicit ranking.
+- Read [evidence and synthesis](references/evidence-and-synthesis.md) when findings cross subsystems or facts and inference are hard to separate.
+- Read [causal evidence](references/causal-evidence.md) when hypotheses compete, reproduction is weak, or a multi-component failure needs more discriminating evidence.

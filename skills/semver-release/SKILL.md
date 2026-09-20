@@ -33,10 +33,10 @@ and artifact publication under the target repository's policy.
 1. Read repository release policy and inspect the branch, worktree, remotes, version sources,
    complete tag format, changelog or fragments, notes producer, signing requirements, publisher,
    outputs, and release workflows. Fetch tags before selecting a base. When the observed flow is
-   missing, partial, or different from the preferred automation, follow
-   [`automated-release-flow.md`](references/automated-release-flow.md) and ask once whether to
-   retain or migrate; this gate also applies to a mature alternative, and maturity alone is not
-   a retention decision. Make no infrastructure change without an answer.
+   complete and unambiguous, use it without a migration interview. Read
+   [`automated-release-flow.md`](references/automated-release-flow.md) only for a real workflow
+   gap or an explicitly requested comparison/adoption. Make no infrastructure change without
+   authorization; an ordinary release request does not authorize redesigning its pipeline.
 2. Run the bundled read-only analyzer (Python 3.8+):
 
    ```bash

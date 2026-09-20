@@ -111,19 +111,6 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
     if found_stale:
         errors.append(f"tooling-conventions: generic compatibility-cycle guidance remains: {found_stale}")
     project_owned_contract = {
-        "SKILL.md": (
-            "target repository owns names and roots",
-            "compact inline decision delta",
-            "full Tool Governance Decision Record",
-        ),
-        "references/classification-methods.md": (
-            "## Boundary lenses",
-            "## Constraint lenses",
-            "not required categories or directory names",
-            "## Scale the decision evidence",
-            "Compact inline decision delta",
-            "Full Tool Governance Decision Record",
-        ),
         "references/inventory-contract.md": (
             "Only `path` is required",
             "project-owned columns are opaque",
@@ -172,20 +159,8 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
             "remain in the structural checker"
         )
 
-    required_boundary_phrases = (
-        "There is no required `tools/`, `scripts/`, or `bin/` root",
-        "no mandatory semantic inventory",
-        "only the structural `path` contract is universal",
-    )
-    missing_boundary_phrases = [
-        value for value in required_boundary_phrases if value not in texts["SKILL.md"]
-    ]
-    if missing_boundary_phrases:
-        errors.append(
-            "tooling-conventions/SKILL.md: project-owned placement/schema boundary is incomplete: "
-            f"{missing_boundary_phrases}"
-        )
-
+    # Placement and decision-artifact policy is semantic, not a fixed sentence.
+    # Keep the executable inventory and migration boundaries below.
     retired_paths = (
         skill_dir / "references" / "surface-taxonomy.md",
         skill_dir / "references" / "manifest-schema.md",

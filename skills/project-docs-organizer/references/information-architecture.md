@@ -1,7 +1,6 @@
 # Documentation Information Architecture
 
-Read this when selecting the documentation container, primary axis, secondary lenses, decision
-depth, and numbering behavior before proposing or applying a reorganization.
+Read this when existing conventions do not settle a material documentation structure or ownership choice. Routine maintenance can use the entry-point contract without this design exercise.
 
 ## Start with the smallest container
 
@@ -18,7 +17,7 @@ because another project uses a different convention.
 
 ## Gather boundary evidence
 
-Record evidence before naming categories:
+Use the evidence relevant to the changed boundary before naming categories; this is a menu, not a required questionnaire:
 
 - reader roles, prerequisites, permissions, and fastest safe tasks;
 - recurring goals, workflows, search terms, and support or incident routes;
@@ -27,25 +26,21 @@ Record evidence before naming categories:
 - stable guidance, active proposals, decisions, generated material, and retained history;
 - canonical sources, generator or publishing constraints, and observed retrieval failures.
 
-Do not turn this list into six peer directory axes. Read
-[`classification-methods.md`](classification-methods.md), shortlist only lenses supported by
-the evidence, and keep the project's own terminology.
+Do not turn this list into six peer directory axes. Consult
+[`classification-methods.md`](classification-methods.md) only when candidate groupings need
+comparison; use supported lenses and the project's own terminology.
 
 ## Scale the decision evidence
 
-Use the smallest artifact that preserves the decision boundary:
+Reuse decisions already established in the task or project. A bounded move, merge, deletion,
+or relink needs a clear reason, preserved useful content, and verified consumers, not a new
+inline record or form. Explain any consequential choice where it naturally belongs in the
+existing plan, PR, or design.
 
-- **Compact inline decision delta** — use for a bounded move, merge, deletion, relink, or entry-point
-  repair when the documentation container, primary axis, ownership, lifecycle, and numbering remain
-  unchanged. Record the observed retrieval or duplication issue, the governing boundaries that stay
-  fixed, the affected paths/actions, deletion evidence when applicable, and the verification plan.
-- **Full Documentation IA Decision Record** — use when the change selects or changes a container,
-  primary axis, ownership or lifecycle topology, numbering policy, multi-area navigation model, or
-  when several viable structures need comparison, or when project policy or the user explicitly
-  requires the full record.
-
-A small patch is not automatically compact: use the full record when it establishes a durable new
-boundary. A large mechanical link repair is not automatically full when no IA decision changes.
+For material changes to the container, primary axis, ownership, lifecycle, or numbering,
+compare viable options and their actual migration costs. Use a full Documentation IA Decision
+Record only when the project/user requires it or an unresolved cross-cutting choice warrants
+one. Neither file count nor a new directory automatically requires a separate artifact.
 
 ## Choose one primary axis per level
 
@@ -64,8 +59,7 @@ canonical content to simulate multiple views.
 
 ## Run a proportionate placement check
 
-For a full record, place representative current documents and plausible new documents into the
-candidate design. It passes only when:
+For a new or materially changed structure, try representative affected documents and plausible additions. Check that:
 
 - each sample has one obvious canonical home;
 - common reader routes avoid unrelated branches;
@@ -73,25 +67,19 @@ candidate design. It passes only when:
 - no category exists only to complete the method; and
 - secondary lenses remain usable without duplicating content.
 
-For a compact delta, verify that the destination is already governed by the existing axis and
-owner, the change leaves one canonical home, and no new category or lifecycle rule is introduced.
+For bounded maintenance, verify the affected destination, canonical ownership, and live routes. Do not invent hypothetical future documents for a straightforward link repair.
 
-If the check fails, refine the primary axis or choose a smaller container. If a high-impact
-choice remains tied, present two or three candidates with their evidence, migration cost,
-tradeoffs, and a recommendation, then wait for the user before mutation. For a minor,
-reversible tie that preserves semantic ownership, use and report the smallest coherent change.
+If the check fails, refine the primary axis or choose a smaller container. Ask for a decision
+when authority or a costly-to-reverse consequence remains unresolved. When the user delegated
+the choice, choose and explain the best-supported option within that authority rather than
+requiring a second approval merely because alternatives exist.
 
-## Record a full decision
+## Preserve consequential rationale
 
-When the full record is required, report before presenting the proposed tree:
-
-1. project evidence and retrieval failures;
-2. candidate lenses and why each was considered;
-3. the primary axis at every relevant level;
-4. secondary lenses and how readers access them;
-5. rejected alternatives and their failure modes;
-6. whether numbering is enabled and the evidence for that decision; and
-7. the proposed tree plus move, merge, delete, and retention actions.
+When a durable decision record is needed, capture the retrieval problem, selected structure,
+important rejected alternatives, and migration/retention/verification consequences. Omit
+irrelevant fields and avoid duplicating an existing approved record. No universal seven-field
+record or presentation order is required.
 
 ## Keep entry points as routers
 

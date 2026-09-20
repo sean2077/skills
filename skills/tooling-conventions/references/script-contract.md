@@ -1,8 +1,9 @@
 # Contextual Command Contract
 
 Read this when implementing or auditing a committed command after its Job Boundary and Contract
-Profile are known. The Contract Profile decides which cards apply; this is not one mandatory CLI
-or implementation template.
+Profile are known. A profile means the relevant contract facts, not a mandatory artifact.
+The Contract Profile decides which cards apply; this is not one mandatory CLI or implementation
+template.
 
 ## Always-on safety boundaries
 
@@ -61,5 +62,5 @@ reference.
 
 ## Review outcome
 
-Record the cards selected and rejected with evidence, the existing contracts preserved, failure and
-recovery behavior, and the smallest verification set that proves the chosen outcomes.
+Summarize affected contracts, failure/recovery consequences, and observed verification. Do not
+report every irrelevant card or create a separate decision record unless the project needs one.

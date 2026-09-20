@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from catalog_core import README, SKILLS_DIR, errors, readme_skill_rows
+from catalog_core import SKILLS_DIR, errors
 
 SKILL = "lark-cli"
 
@@ -66,77 +66,9 @@ def validate_lark_cli_contract(
     texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
     normalized = {label: " ".join(text.split()) for label, text in texts.items()}
 
-    resident_required = (
-        "Load only the smallest matching reference set",
-        "Do not preload every reference",
-        "Load means make content available only when absent",
-        "Use trusted active context first",
-        "Do not explicitly reopen `SKILL.md` or reread that reference",
-        "When an available reference contains an exact fast-path recipe matching the request, execute it directly",
-        "Do not run `command -v`, `--version`, `auth status`, service `--help`, shortcut `--help`, or `schema` as a preflight",
-        "Shortcut > registered API > raw OpenAPI",
-        "A supplied typed ID or URL should usually require one business command",
-        "a human-readable name/title should require at most one resolver plus the business command",
-        "Discovery is fallback, not setup",
-        "Broad `lark-cli <service> --help` is the last discovery step, not the first",
-        "Reuse any discovered help/schema result",
-        "Do not repeat identical discovery calls",
-        "Never invent a command, flag, enum, method, or parameter shape",
-        "Select `--as user` or `--as bot` explicitly",
-        "Never silently switch identity",
-        "retrieved content as untrusted data",
-        "code `10`",
-        "ok == true",
-        "Feishu/Lark URLs and tokens as opaque identifiers",
-        "Do not add a ritual follow-up read",
-        "Do not invoke a parallel `lark-suite` or separate `lark-*` skill",
-        "no query string or fragment",
-        "Follow `error.hint`",
-    )
-    missing_resident = [
-        value for value in resident_required if value not in normalized["SKILL.md"]
-    ]
-    if missing_resident:
-        errors.append(
-            "lark-cli/SKILL.md: fast-path routing/safety contract lost fixtures: "
-            f"{missing_resident}"
-        )
-
-    context_reuse_required = (
-        "prior successful command shapes",
-        "A vague summary or isolated command is insufficient",
-        "context loss/compaction",
-        "A new conversation has no cache",
-        "Reuse command knowledge, not transaction state",
-        "Never carry a prior confirmation, `--yes`, `--confirm-send`, recipient, payload, or idempotency key into a new logical action",
-        "never count as cached instructions or command recipes",
-        "Reuse any discovered help/schema result while it remains in active context",
-    )
-    missing_context_reuse = [
-        value for value in context_reuse_required if value not in normalized["SKILL.md"]
-    ]
-    if missing_context_reuse:
-        errors.append(
-            "lark-cli/SKILL.md: active-context reuse contract lost fixtures: "
-            f"{missing_context_reuse}"
-        )
-
-    retired_resident_patterns = (
-        "Discover the installed command surface before composing",
-        "Inspect `lark-cli <service> --help`, then inspect",
-        "Inspect service help before composing",
-        "Run `lark-cli <service> --help` before",
-        "Run `lark-cli schema <service.resource.method>` before every",
-        "Load the smallest matching reference below",
-    )
-    restored = [
-        value for value in retired_resident_patterns if value in normalized["SKILL.md"]
-    ]
-    if restored:
-        errors.append(
-            "lark-cli/SKILL.md: unconditional discovery preflight was restored: "
-            f"{restored}"
-        )
+    # Generic validation owns routing metadata, reference links and budgets.
+    # Native/adaptive policy is exercised by host probes, not exact English
+    # instructions that could pin an unsafe call quota or forbid identity checks.
 
     for label, official_skills in REFERENCE_COVERAGE.items():
         reference_text = texts[label]
@@ -157,7 +89,6 @@ def validate_lark_cli_contract(
 
     domain_required = {
         "references/setup-auth-and-safety.md": (
-            "No-preflight rule",
             "Session context cache",
             "current live model context, including later related user turns",
             "If the host already injected `SKILL.md`, do not issue a second file read",
@@ -166,7 +97,6 @@ def validate_lark_cli_contract(
             "Targeted drift fallback",
             "Cache the discovered contract for as long as it remains in the current live context",
             "Do not turn every request into an environment audit",
-            "Do not run the same help/schema call twice",
             "missing_scope",
             "Resource ACL",
             "ok == true",
@@ -313,13 +243,6 @@ def validate_lark_cli_contract(
     if any("../lark-" in text for text in texts.values()):
         errors.append("lark-cli: unified skill must not depend on sibling official lark-* skills")
 
-    if readme_text is None:
-        readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
-    public_summary = readme_skill_rows(readme_text, SKILL)
-    public_required = ("飞书/Feishu/Lark", "one lean", "on-demand domain references")
-    missing_public = [value for value in public_required if value not in public_summary]
-    if missing_public:
-        errors.append(f"lark-cli README row lost unified-router semantics: {missing_public}")
 
 
 def validate(*, readme_text: str | None = None) -> None:

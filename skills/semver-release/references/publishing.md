@@ -37,7 +37,7 @@ sequence.
 
 #### Workflow-owned generated notes
 
-After the owner explicitly retains an established workflow that owns note generation
+When the repository already owns an established workflow that owns note generation
 independently, preserve that contract rather than forcing a committed changelog or the preferred
 extractor. Generated notes remain valid only because repository policy selected them, not as a
 fallback after changelog validation fails.

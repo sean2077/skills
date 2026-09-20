@@ -107,6 +107,28 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         self.assertIn("decision_depth=compact or full", prompt)
         self.assertNotIn("DO_NOT_LEAK_THIS_SENTINEL", prompt)
 
+    def test_boundary_observations_are_candidate_local_and_not_answers(self) -> None:
+        request = {"mode": "treatment", "case": {
+            "prompt": "Assess the active specification approval.",
+            "metadata": {"expected_behavior": {"approval_accepted": "SECRET_ORACLE"}},
+        }}
+        prompt = self.adapter.make_prompt(
+            request, "candidate instructions", "deep-interview", ("deep-interview",)
+        )
+        self.assertIn("approval_accepted", prompt)
+        self.assertNotIn("identity_check_before_write", prompt)
+        self.assertNotIn("SECRET_ORACLE", prompt)
+        self.assertNotIn("approval_accepted=true", prompt)
+        self.assertNotIn("approval_accepted=false", prompt)
+
+    def test_missing_boundary_observations_are_not_synthesized(self) -> None:
+        actual = self.adapter.canonicalize_behavior(
+            {"mode": "treatment"}, {"route": "deep-interview", "workflow": "interview"},
+            "deep-interview", True, ("deep-interview",),
+        )
+        self.assertNotIn("approval_accepted", actual)
+        self.assertNotIn("reapproval_required", actual)
+
     def test_baseline_host_selection_is_not_silently_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

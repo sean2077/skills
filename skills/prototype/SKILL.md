@@ -1,40 +1,22 @@
 ---
 name: prototype
-description: Use when uncertainty should be reduced with a disposable, time-bounded experiment rather than production-ready implementation.
+description: "Use for a disposable experiment with a falsifiable question and bounded scope. Not for production delivery, an already settled implementation, or unbounded exploration."
 ---
 
 # prototype
 
-Build the smallest disposable experiment that resolves a named uncertainty. Optimize for learning, not production completeness, while keeping safety, observability, and cleanup explicit.
+Resolve one material uncertainty with the smallest disposable experiment. Define the question, decision it informs, and success/failure/inconclusive signals before choosing the implementation. Avoid production completeness that does not improve the observation.
 
-## Workflow
+## Experiment boundaries
 
-1. State the uncertainty as a falsifiable question and the decision the result will inform.
-2. Define success, failure, and inconclusive signals before building.
-3. Identify what may be faked and what must be real for the experiment to answer the question.
-4. Set scope, time/effort bound, data/environment safety, and disposal plan.
-5. Build the thinnest end-to-end path that exercises the uncertain seam.
-6. Run the experiment and capture inputs, environment, commands, observations, and anomalies.
-7. Conclude `supported`, `refuted`, or `inconclusive`; explain what the prototype does not prove.
-8. Dispose of or clearly quarantine prototype artifacts unless the user authorizes hardening.
+- Bound time or attempts, cost, data, and permitted effects. Reuse project tools and an isolated temporary workspace; inspect unfamiliar commands before execution.
+- Distinguish simulated, mocked, and real integrations. Choose an independent oracle: a passing mock of your own assumption is not evidence that the real boundary works.
+- Capture enough inputs, environment, and observations to reproduce the result. Adapt only when evidence justifies the next probe; stop once the decision is resolved or the agreed budget is exhausted.
+- Keep exploratory work out of production code unless separately authorized. Do not access production, publish, deploy, or mutate shared state merely to make an experiment realistic.
+- Remove disposable artifacts you own or identify anything retained with its reason. Do not delete others' work or hide evidence needed for the conclusion.
 
-## Output contract
-
-- hypothesis and decision;
-- experiment boundary and shortcuts;
-- observed evidence;
-- conclusion and confidence;
-- production gaps and next decision;
-- cleanup/quarantine status.
-
-## Hard rules
-
-- Do not silently ship prototype code as production implementation.
-- Never use production secrets, destructive data, or unbounded load to gain evidence.
-- A demo is not evidence unless its observation discriminates between plausible outcomes.
-- Keep one primary uncertainty per prototype; split unrelated questions.
-- Do not polish architecture, broad compatibility, or exhaustive tests beyond what the experiment needs.
+Report **supported**, **refuted**, or **inconclusive** with the observations, limits, and any next decision. A successful prototype proves only what was actually tested, not production readiness. No separate experiment document or fixed report sections are needed unless the task requires them.
 
 ## On-demand references
 
-- Read [experiment design](references/experiment-design.md) only when choosing a seam, a fake/real boundary, or interpreting an inconclusive result.
+- Read [experiment design](references/experiment-design.md) when selecting an oracle, isolation boundary, or a probe that separates competing explanations.

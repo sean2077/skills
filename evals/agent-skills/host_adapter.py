@@ -74,6 +74,31 @@ WORKFLOW_ALIASES = {
     "tooling": "tooling-governance",
     "work-coordination": "coordination",
 }
+# Observation names only; never inject desired values or case oracle metadata.
+# Keep the vocabulary candidate-local rather than taxing every probe with every key.
+BOUNDARY_OBSERVATIONS = {
+    "analyze": ("invent_hypotheses",),
+    "autopilot": ("repeat_valid_checks",),
+    "code-review": ("repeat_valid_checks",),
+    "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
+    "domain-modeling": ("topology_redesign",),
+    "tdd": ("separate_behavior_card",),
+    "tooling-conventions": ("preserve_external_consumers",),
+    "lark-cli": (
+        "routine_preflight", "identity_switch", "identity_check_before_write", "blind_write",
+        "blind_retry", "claim_success", "reauth_for_acl", "send_authorized",
+    ),
+    "semver-release": (
+        "migration_interview", "preserve_existing_workflow", "compare_options",
+        "infrastructure_mutation", "create_unrequested_publisher", "claim_complete",
+    ),
+    "ai-slop-cleaner": (
+        "behavior_change", "fixed_smell_passes", "ritual_no_test_approval", "claim_verified",
+    ),
+    "prototype": ("production_promotion", "claim_real_integration"),
+    "best-practice-research": ("primary_sources", "local_fit", "repeat_source_sweep"),
+    "conventional-commit": ("git_preflight", "preserve_unrelated_index"),
+}
 OBSERVATION_GUIDANCE = {
     "analyze": (
         "When selected, use workflow=analysis, mode=explanation or causal, mutation=none, "
@@ -108,8 +133,9 @@ OBSERVATION_GUIDANCE = {
     ),
     "project-docs-organizer": (
         "When selected, use workflow=documentation-organization. Report "
-        "decision_depth=compact or full and decision_artifact=inline-delta or "
-        "documentation-ia-decision-record."
+        "decision_depth=compact or full; decision_artifact may be none, existing-context, "
+        "inline-delta, or documentation-ia-decision-record according to the actual task. "
+        "Report preserve_decisions and additional_approval_required as booleans when material."
     ),
     "spec-writing": (
         "When selected, use workflow=documentation. Use snake_case keys for material choices, "
@@ -120,7 +146,8 @@ OBSERVATION_GUIDANCE = {
     ),
     "tooling-conventions": (
         "When selected, use workflow=tooling-governance. Report decision_depth=compact or full "
-        "and decision_artifact=inline-delta or tool-governance-decision-record."
+        "and decision_artifact=none, existing-context, inline-delta, or "
+        "tool-governance-decision-record according to the actual task."
     ),
 }
 
@@ -250,6 +277,12 @@ def make_prompt(
         "Report only request-visible behavior needed to explain the routing decision; "
         "do not invent state.",
     )
+    observations = BOUNDARY_OBSERVATIONS.get(candidate, ())
+    if observations:
+        observation_guide += (
+            " When material, report these as booleans, deriving values from the task and "
+            "instructions rather than this vocabulary: " + ", ".join(observations) + "."
+        )
     return f"""You are a read-only routing evaluator for the agent-skill-eval/v1 protocol.
 Do not edit files, run commands, call tools, browse, or perform the user's requested work.
 Return exactly one JSON object, with no Markdown:

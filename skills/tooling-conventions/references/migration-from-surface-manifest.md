@@ -23,8 +23,9 @@ there is no compatibility wrapper, legacy mode, or silent weakening of semantic 
 1. Inventory every active caller of the old checker, manifest path, environment variables, CI
    job, docs route, and derived human view. An unresolved external consumer blocks the breaking
    release.
-2. Write the Tool Governance Decision Record. Re-evaluate legacy rows with the method cards;
-   do not mechanically translate one flat label into another mandatory enum.
+2. Preserve the consequential migration rationale in the existing task or project-required
+   decision record. Re-evaluate actual consumers and semantics; do not mechanically translate
+   one flat label into another mandatory enum.
 3. Create a structural TSV with required `path`, optional `audit_level`, and only the project
    semantic columns that still have a named owner or automated consumer.
 4. Move semantic validation into a Project Tool Policy wrapper/test, then invoke:

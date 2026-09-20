@@ -1,32 +1,27 @@
 # Preferred Automated Release Flow
 
-Read this when a repository has no complete release path, only part of one, or an established
-alternative that must be compared with changelog-backed tag-triggered publication.
+Read this when the existing release path has a material gap, or the user requests a comparison
+or adoption of changelog-backed tag-triggered publication. It is not a mandatory checkpoint
+for releasing through a coherent project-owned alternative.
 
 ## Decide whether to adopt it
 
-Inspect the repository's release policy, historical tags, version authorities, changelog or
-fragments, tag workflow, notes producer, publisher, permissions, declared outputs, and prior
-completion evidence. Treat the complete repository tag as the release identity; it may be
-`v1.2.3`, `1.2.3`, `release-1.2.3`, or another project-owned form. Never add or remove a prefix
-just to match an example.
+Inspect the project's release policy and actual completion evidence. When the established
+flow safely satisfies this release, use it without asking the owner to defend it against
+this preferred example. A release request is not a pipeline-migration request.
 
-- If the observed flow already satisfies this reference, use it without reopening the design.
-- **Adoption offer:** if it is missing, partial, or different—including a mature alternative—
-  present one concrete current-versus-preferred comparison and ask once whether to retain the
-  existing flow or migrate. Maturity alone is not a retention decision.
-- If the owner retains an established alternative, follow it for this release. Do not ask again
-  in the same task.
-- If the owner does not answer, make no changelog-authority, workflow, permission, publisher, or
-  release-surface change. Continue only when the retained flow has an unambiguous safe boundary.
-- If the owner chooses migration, land and validate that repository-owned setup on the release
-  line before selecting or pushing the release tag, then rerun release planning.
+When a gap or explicit redesign request makes comparison useful, explain the relevant trade-offs.
+Obtain authorization before changing changelog authority, workflow, permissions, publisher, or
+release surface. Reuse an already-approved migration decision; do not ask again. With unresolved
+authority, make no infrastructure changes and proceed only within a known safe existing boundary.
+Land and validate an authorized setup change before choosing or pushing its release tag, then
+rerun release planning.
 
-The bundled planner currently models `v`-prefixed SemVer tags. An unprefixed or custom tag model
-is an explicit analyzer boundary, not permission to rename the repository's tags. Follow the
-repository's documented version mapping and the manual path in `version-selection.md`; ask the
-owner when that mapping is absent or ambiguous. This limitation does not apply to the extractor,
-which treats `--tag` as an opaque exact string.
+Treat the complete repository tag as the release identity: it may be `v1.2.3`, `1.2.3`,
+`release-1.2.3`, or another project-owned form. Do not change a prefix to fit an example.
+The planner currently models `v`-prefixed SemVer tags. Preserve custom models and use
+`version-selection.md` manually; resolve a missing or ambiguous mapping with the owner.
+The extractor treats `--tag` as an opaque exact string, independently of the planner.
 
 ## Repository-owned contract
 

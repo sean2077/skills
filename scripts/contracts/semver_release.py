@@ -73,7 +73,11 @@ def validate_semver_automation_contract(
     extractor_text: str,
     public_summary: str,
 ) -> None:
-    """Keep preferred automation opt-in, format-neutral, and fail-closed."""
+    """Check publication ordering, format-neutral extraction and payload contracts.
+
+    Whether to discuss migration is adaptive policy, covered by scenario probes,
+    not a required adoption-offer phrase in every release instruction.
+    """
 
     normalized = {
         "skill": " ".join(skill_text.split()),
@@ -86,20 +90,11 @@ def validate_semver_automation_contract(
     required = {
         "skill": (
             "Prefer changelog-backed tag-triggered automation",
-            "ask once whether to retain or migrate",
-            "this gate also applies to a mature alternative",
-            "Make no infrastructure change without an answer",
             "The analyzer models `v`-prefixed SemVer tags",
             "create `release: <exact-tag>`",
         ),
         "automation": (
             "Preferred Automated Release Flow",
-            "Adoption offer",
-            "including a mature alternative",
-            "present one concrete current-versus-preferred comparison and ask once whether to retain",
-            "Maturity alone is not a retention decision",
-            "make no changelog-authority, workflow, permission, publisher, or release-surface change",
-            "`v1.2.3`, `1.2.3`, `release-1.2.3`",
             "opaque exact string",
             "before any forge Release creation",
             "Do not generate fallback notes",
@@ -121,7 +116,6 @@ def validate_semver_automation_contract(
         "publishing": (
             "Preferred changelog-backed workflow",
             "Workflow-owned generated notes",
-            "After the owner explicitly retains an established workflow",
             "before any forge Release creation",
             "do not fall back to generated notes",
         ),

@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "suite_id": "prototype-native-boundaries",
+  "skill_path": "skills/prototype",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/host_adapter.py"
+    ],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/verifier.py"
+    ],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [
+      ".agents/**",
+      ".agent-workflows/**",
+      ".git/**"
+    ]
+  },
+  "budgets": {
+    "absolute": {
+      "interventions": 0
+    },
+    "relative": {
+      "input_tokens": {
+        "max_ratio": 4.0,
+        "max_additive": 2000
+      },
+      "output_tokens": {
+        "max_ratio": 2.5,
+        "max_additive": 500
+      },
+      "tool_calls": {
+        "max_ratio": 2.0,
+        "max_additive": 3
+      },
+      "wall_time_seconds": {
+        "max_ratio": 3.0,
+        "max_additive": 10
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-bounded-spike",
+      "kind": "positive",
+      "prompt": "Run a disposable isolated experiment with a strict attempt budget to determine whether the sandbox API accepts the proposed protocol. Keep mock and real evidence distinct.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "prototype"
+          },
+          "treatment": {
+            "route": "prototype",
+            "workflow": "prototype",
+            "production_promotion": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-inconclusive-mock",
+      "kind": "positive",
+      "prompt": "The experiment only passed against a mock that copied your assumptions. Classify whether the real external integration has been demonstrated.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "prototype"
+          },
+          "treatment": {
+            "route": "prototype",
+            "workflow": "prototype",
+            "claim_real_integration": false
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-production-feature",
+      "kind": "negative",
+      "prompt": "Implement the settled production feature according to its approved design. There is no feasibility uncertainty to explore.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "implementation"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "implementation"
+          }
+        }
+      }
+    }
+  ]
+}

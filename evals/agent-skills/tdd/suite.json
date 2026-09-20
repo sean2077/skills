@@ -139,6 +139,25 @@
           }
         }
       }
+    },
+    {
+      "id": "positive-no-behavior-form",
+      "kind": "positive",
+      "prompt": "Implement one explicit TDD slice. The behavior, public seam, independent oracle and expected RED reason are already clear from the approved task. The project requires RED and GREEN evidence but no behavior-card document.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "tdd"
+          },
+          "treatment": {
+            "route": "tdd",
+            "workflow": "tdd",
+            "test_first": "required",
+            "separate_behavior_card": false
+          }
+        }
+      }
     }
   ]
 }

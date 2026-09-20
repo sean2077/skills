@@ -3,22 +3,14 @@
 Read this only when `lark-cli` is missing or unconfigured, login/authorization fails, identity is
 unclear, a documented fast path drifts, the CLI requests confirmation, or file/JSON mechanics matter.
 
-## No-preflight rule
+## Targeted preflight, not routine setup
 
-Start with the business command from the matching domain reference. Do **not** pre-run any of these
-when a known command can be attempted safely:
-
-```bash
-command -v lark-cli
-lark-cli --version
-lark-cli --help
-lark-cli auth status
-lark-cli '<service>' --help
-```
-
-A shell-level “command not found” justifies `command -v lark-cli`; an actual CLI parse error justifies
-targeted help. Do not turn every request into an environment audit. Reuse a working login and do not
-restart device authorization as a precaution.
+Use a known safe command directly when its contract and effective identity are clear. Do not
+turn every request into an environment audit or restart a working login as a precaution.
+When identity, target semantics, flags, or safety are genuinely unclear, check the missing
+fact before a consequential action; an avoidable failed write is not a discovery requirement.
+Use exact help/schema where possible, and broader service help only to locate an unknown
+operation. A missing executable warrants environment diagnosis, not repeated business calls.
 
 ## Session context cache
 
@@ -39,9 +31,9 @@ again, and obtain every confirmation required for the new action. In particular,
 
 ## Targeted drift fallback
 
-Reference recipes are the fast path. Use discovery only for an undocumented operation/flag or a CLI
-error that indicates command-surface drift, such as unknown command/option, missing required flag, or
-request-shape validation failure.
+Reference recipes are the fast path. Use discovery when a required operation/flag or safety
+contract is missing or uncertain, or when the CLI reports drift. Do not knowingly attempt a
+consequential command merely to trigger a help-worthy error.
 
 1. If the shortcut name is known, inspect only its help:
    `lark-cli <service> +<shortcut> --help`.
@@ -52,8 +44,7 @@ request-shape validation failure.
 4. Escalate to raw OpenAPI only when shortcuts and registered methods cannot cover the request.
 
 Cache the discovered contract for as long as it remains in the current live context, including later
-related turns. Do not run the same help/schema call twice, and do not probe sibling commands “just in
-case.” A permission, ACL, rate-limit, availability, or business-rule error is not evidence that flags
+related turns. Do not repeat a help/schema call whose result is still visible and applicable, or probe sibling commands “just in case.” A permission, ACL, rate-limit, availability, or business-rule error is not evidence that flags
 drifted.
 
 For a failed read or a write rejected during local argument validation, correct the argv and retry.
@@ -109,13 +100,13 @@ lark-cli auth login --device-code '<device-code>'
 Do not run `--device-code` in the same turn before the user can see the URL. Do not cache expired
 device material; if it expires, restart with the same domain/scope range and exclusions rather than
 broadening it.
-Inspect `auth login --help` only after an actual parse/option drift error.
+Inspect `auth login --help` when required syntax is unknown or drifted; do not guess authorization flags.
 
 A bot missing a scope is not a user-login problem: never run `auth login` for that error. Preserve the
 reported `console_url`, show it unchanged with a QR code, and direct the user to enable the exact bot
 scope in the developer console. Use `lark-cli auth status --json --verify` only when the user asks to
 inspect login/token state or diagnosis truly requires it; use `lark-cli whoami` only when the actually
-effective identity itself is needed. Neither is a business-command preflight.
+effective identity itself is needed. Neither is a routine preflight when the effective identity is already clear; an unresolved account or identity boundary justifies a targeted check.
 
 ## Identity model
 
@@ -149,14 +140,16 @@ Typical envelopes are:
 {"ok":false,"identity":"user","error":{"type":"authorization","subtype":"missing_scope"}}
 ```
 
-Use exit status 0 and/or `ok == true` for success. Do not check a legacy top-level `code == 0`, which
-can misclassify a completed write and cause duplicate retries. When a shortcut returns the created or
+A success envelope uses `ok == true`, but inspect it together with exit status when both are available. Nonzero exit, `ok == false`,
+contradictory signals, or missing required fields must not become a success because another
+signal looks successful. Do not check legacy top-level `code == 0` as the success criterion;
+incorrectly classifying an unknown write outcome can cause duplicate retries. When a shortcut returns the created or
 updated ID, target, status, and warnings, use that as the authoritative result. Read back only when
 those fields are absent/ambiguous, the domain explicitly requires state validation, or the user asks.
 
 ## Version boundary and update notices
 
-The command and safety facts changed in this documentation pass were reviewed on 2026-09-04 against the [`larksuite/cli` v1.0.93 release](https://github.com/larksuite/cli/releases/tag/v1.0.93) and relevant upstream skill references. The installed CLI remains the runtime source of truth: do not add version preflight to normal operations, and use the targeted drift fallback only after actual parser/schema evidence.
+The command and safety facts changed in this documentation pass were reviewed on 2026-09-04 against the [`larksuite/cli` v1.0.93 release](https://github.com/larksuite/cli/releases/tag/v1.0.93) and relevant upstream skill references. The installed CLI remains the runtime source of truth: do not add version preflight to normal operations, and use targeted discovery for missing or uncertain contracts and actual parser/schema drift. The native-first policy revision on 2026-09-20 did not re-certify every CLI command against a new release.
 
 Treat `_notice` as advisory metadata, not as the main result. Finish the requested task first.
 `_notice.update` reports a newer CLI, `_notice.skills` reports CLI/skill mismatch, and

@@ -1,48 +1,36 @@
 ---
 name: deep-interview
-description: Use when a vague or consequential idea needs an adaptive interview and an explicitly approved specification before implementation; use deterministic scoring state only when persistence or auditability adds value.
+description: "Use for a requested requirements interview or consequential unresolved decisions that need an approved specification. Not for one clarification, a draft with open questions, or implementation of an already approved plan."
 ---
 
 # deep-interview
 
-Turn uncertainty into a specification the user explicitly approves. Default to an adaptive interview driven by model judgment and inspected evidence; persistent formal scoring is optional rather than the default tax on every vague request.
-
-## Choose the interview mode
-
-Use the adaptive interview by default for one-session product, engineering, or workflow clarification.
-
-Use the persistent runtime only when at least one condition is material:
-
-- the interview must survive context resets, sessions, worktrees, or handoffs;
-- a regulated, high-risk, or disputed decision needs auditable revisions and approval digests;
-- several independently successful components make formal topology and gap scoring useful;
-- the user explicitly asks for deterministic scoring, resumability, or durable receipts.
+Resolve user-owned decisions into a specification the user approves. Prefer an adaptive conversation; do not impose scoring, a questionnaire, or durable state on ordinary clarification.
 
 ## Adaptive interview
 
-1. Inspect safe repository facts and supplied material before asking the user to repeat discoverable information. Consult current primary sources only when external or time-sensitive facts can materially change a decision.
-2. Keep a compact ledger of decisions, assumptions, constraints, acceptance examples, risks, owners, and open questions. Do not narrate a heavyweight state machine.
-3. Choose question granularity by dependency and user effort. Default to one to three related decision-bearing questions, but treat that range as a usability heuristic, not a ceiling. Ask one focused question when its answer may change the next question or the decision needs depth. Batch more than three only when the questions are independent, low-effort, and one structured reply is clearly easier—especially for explicit intake/checklist requests or a stated preference to minimize turns. Never dump a long or unrelated questionnaire merely to reduce round trips.
-4. Offer concrete options and a recommendation when evidence supports one while preserving free text. For multi-question batches, add a compact answer template when it reduces effort.
-5. Adapt depth to consequence and uncertainty. Skip low-value dimensions, but label material assumptions instead of silently deciding them.
-6. Continue until the goal and users, scope and non-goals, key constraints, decision ownership, acceptance evidence, and material risks are resolved enough for this task.
+Inspect safe repository facts and supplied material first. Ask about judgments, preferences, authority, and missing evidence that could materially change the work; do not ask the user to repeat discoverable facts. Research external facts only when freshness or uncertainty matters.
 
-## Specification and approval gate
+Choose question granularity by dependency and user effort. Ask one focused question when its answer changes the next decision; batch related independent questions when one reply is easier. Offer concrete options and a recommendation when evidence supports one, preserving free text. There is no question-count quota.
 
-Write a coherent specification marked `pending approval`, including the resolved goal, scope/non-goals, behavior or topology where relevant, constraints, decision boundaries, acceptance criteria, assumptions, risks, rollout/rollback when material, and remaining gaps.
+Reuse settled decisions and keep only a useful record of assumptions, constraints, acceptance, risks, and open questions. Stop interviewing when these are sufficient for this task, not when every possible dimension has been discussed. An isolated clarification does not require this workflow.
 
-Ask the user to review the whole specification. Only explicit approval of that specification clears the gate; a casual “ok”, an answer to the latest question, or a score does not. Changed specification content invalidates prior approval. Completion of the interview does not authorize implementation.
+## Specification and approval
 
-When persistent runtime mode is selected, read its control-plane reference before starting state. Formal scores never override an explicit blocker, risk, owner decision, or approval boundary.
+Present the coherent specification as `pending approval`, making scope, observable acceptance, material assumptions, and unresolved blockers clear. Use the project's format; include architecture, rollout, or ownership detail only where decision-bearing.
 
-## Hard rules
+Approval must clearly refer to the presented specification. A direct “yes”, “ok”, or “proceed” in answer to that approval request can be explicit approval; the same words answering one interview question are not approval of an unseen whole. Ask only if the referent or intent is ambiguous. A score or silence never substitutes for approval.
 
-- Discover safe facts yourself; reserve user turns for judgments, authority, preferences, and unresolved evidence.
-- Stop on user exit, terminal state, binding or revision conflict, unsafe path, invalid evidence, or unresolved authority.
-- Do not begin implementation before explicit specification approval.
+In adaptive mode, material changes to approved meaning, scope, risk, or acceptance require renewed approval; spelling, formatting, and equivalent wording do not. Do not silently reinterpret an approved decision. Specification approval does not itself authorize implementation or external side effects; honor any separately granted implementation authority.
+
+## Optional persistent mode
+
+Prefer host continuation or resume when sufficient. Select the bundled runtime only for required deterministic scoring/topology, repository-owned revisions, cross-host handoff, or auditable approval digests. Once selected, its exact revision and digest rules apply: even a formatting edit changes the crystallized artifact and requires re-crystallization and fresh approval. Never waive that machine contract using adaptive-mode rules.
+
+Stop on user exit, unsafe paths, unresolved authority, or active-runtime terminal state, revision/binding conflict, or invalid evidence. Do not implement before specification approval.
 
 ## On-demand references
 
-- Read [persistent runtime](references/persistent-runtime.md) only when deterministic topology/scoring, resumability, revisions, or approval digests are materially useful.
-- Read [scoring and payloads](references/scoring-and-payloads.md) only after runtime mode is selected, before the first topology/score submission, or when challenge, ontology, or payload rejection matters.
-- Read [resume and recovery](references/resume-and-recovery.md) only after runtime mode is active and discovery, interruption, mismatch, conflict, lock, corruption, or non-Git root handling is needed.
+- Read [persistent runtime](references/persistent-runtime.md) before starting formal state when its topology/scoring or approval semantics are needed.
+- Read [scoring and payloads](references/scoring-and-payloads.md) only in persistent mode before topology/score submission or when challenge, ontology, or payload rejection matters.
+- Read [resume and recovery](references/resume-and-recovery.md) only for discovery, interruption, conflicts, locks, corruption, or non-Git handling of an active runtime.

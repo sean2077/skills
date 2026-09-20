@@ -178,6 +178,25 @@
           }
         }
       }
+    },
+    {
+      "id": "positive-prior-native-review",
+      "kind": "positive",
+      "prompt": "Review remaining security risks in this fixed diff. A native review and focused checks already cover its ordinary paths on the same revision; no code or environment changed.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "code-review"
+          },
+          "treatment": {
+            "route": "code-review",
+            "workflow": "code-review",
+            "repeat_valid_checks": false,
+            "mutation": "none"
+          }
+        }
+      }
     }
   ]
 }

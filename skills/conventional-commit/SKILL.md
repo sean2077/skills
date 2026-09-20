@@ -32,7 +32,8 @@ message-selection decisions unless the user asks.
 ## Workflow
 
 1. Select the mode and derive the intended change, file scope, verification evidence,
-   and language signals from the current context. Before any Git operation, resolve the
+   and language signals from the current context. A message-only request with sufficient
+   supplied context needs no Git preflight. Before any necessary Git operation, resolve the
    top level with `git rev-parse --show-toplevel`; preserve the invocation directory long
    enough to normalize user-named relative paths to repository-relative paths.
 2. Inspect Git only when those facts are missing, stale, or ambiguous. Read

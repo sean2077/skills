@@ -1,6 +1,6 @@
 # Causal evidence
 
-Read this when causal-investigation mode is selected, hypotheses overlap, a failure crosses several components, or evidence quality needs explicit ranking.
+Read this when hypotheses overlap, reproduction is weak, a failure crosses components, or evidence quality needs explicit ranking; an obvious, directly evidenced cause needs no extra hypothesis exercise.
 
 ## Entry gate
 
@@ -12,7 +12,7 @@ Do not name a root cause merely because one explanation is plausible.
 
 ## Distinct hypotheses
 
-Keep two to four genuinely distinct hypotheses while evidence permits. Two labels are distinct only when they imply different observations or probes; merge explanations that reduce to the same state transition or ownership defect.
+Keep only genuinely distinct hypotheses while evidence permits; there is no minimum or target count. Two labels are distinct only when they imply different observations or probes; merge explanations that reduce to the same state transition or ownership defect.
 
 For each leading hypothesis record:
 
@@ -31,14 +31,12 @@ Correlation can locate a boundary without proving mechanism. A test may prove on
 
 ## Discriminating probe
 
-Choose the safe probe with the highest expected information gain: at least two leading hypotheses should predict different outcomes. State those predictions before running or recommending it.
+When hypotheses compete, choose a safe probe whose outcomes distinguish them and state the predictions. When only one supported mechanism remains, verify its critical prediction instead of inventing alternatives.
 
 For multi-component failures, probe one boundary at a time and capture request/input, identity, relevant state, response/output, timing, and retry/cancellation context. Avoid broad logging that creates noise or leaks secrets.
 
 If the best probe requires mutation, instrumentation, or an external side effect, describe it and hand it off after the read-only investigation.
 
-## Output contract
+## Present the conclusion
 
-Without a reproduction, report: **Observed symptom**, **Critical missing evidence**, **Minimal reproduction plan**, and **Recommended discriminating probe**.
-
-With useful evidence, report: **Observed result**, **Ranked hypotheses**, **Evidence for/against**, **Most likely mechanism**, **Critical unknown**, and **Recommended discriminating probe**.
+Report the observed symptom, best-supported mechanism, evidence, and material unknowns. Without a useful reproduction, identify the missing evidence and a feasible reproduction or discriminating probe. Use a ranked table only when alternatives remain; omit empty headings and a next-probe ritual after the question is resolved.
