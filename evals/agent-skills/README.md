@@ -22,7 +22,7 @@ Review treatment selection, verifier results, scope, and cost together. Both exe
 
 ## Native-first revision probes
 
-The 2026-09-20 revision expands coverage from 9 suites / 56 cases to 15 suites / 103 cases.
+The 2026-09-20 revision expands coverage from 9 suites / 56 cases to 15 suites / 107 cases (103 after PR #9; four safety cases added in its follow-up).
 New scenarios distinguish clear approval from an answer to one question, semantic adaptive
 approval from exact persistent digests, native resume from repository-owned state, current
 verification from redundant reruns, bounded maintenance from required design records, and
@@ -37,10 +37,24 @@ observations. The old forced `inline-delta`/full-record vocabulary now also allo
 `existing-context`. Cases leave `decision_artifact` and `decision_depth` out of the expected
 subset when the task does not require a particular representation; replacing one compulsory form
 with another would reject valid adaptive choices.
-Decision depth, retained decisions, authorization, and external-consumer safeguards remain
-asserted where material, and explicit project-required records retain exact expectations.
+Required outcomes such as comparing requested alternatives, preserving settled decisions, and
+reconciling affected links/callers remain asserted. Four docs/tooling scenarios had become
+route-only after removal of `decision_depth`; their semantic expectations now reject an answer
+that selects the right route but skips the requested work. Explicit project-required records
+retain exact expectations; optional representations remain unconstrained.
 These are intentional semantic expectation changes, not relaxed cost budgets or evidence of
 a live performance win.
+
+Lark safety cases cover identity, ambiguous/contradictory results, fresh confirmation,
+CLI confirmation gates, untrusted instructions, and file containment. The installed safety
+instructions and domain exceptions are unchanged. Their exact English spelling is not a
+mechanical safety check: equivalent prose can fail a substring check while a negated rule
+passes it. Catalog checks retain parsed discovery metadata and payload/reference integrity;
+actual behavior needs model evaluation and, where available, host/CLI enforcement.
+
+Deterministic regression tests exercise the real verifier with omitted, unsafe, or wrong-typed
+observations, optional record representations, and explicit record requirements. They validate
+the oracle and protocol, **not** that a live model followed the skill or operated Lark safely.
 
 ## Measurement and failure boundaries
 

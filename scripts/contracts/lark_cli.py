@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from catalog_core import SKILLS_DIR, errors
+from catalog_core import SKILLS_DIR, errors, parse_frontmatter
 
 SKILL = "lark-cli"
 
@@ -66,36 +66,30 @@ def validate_lark_cli_contract(
     texts = {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
     normalized = {label: " ".join(text.split()) for label, text in texts.items()}
 
-    # Generic validation owns routing metadata, reference links and budgets.
-    # Do not pin call-quota ceremony, but keep fail-closed resident safety:
-    # identity continuity, confirmation, untrusted payloads, and path containment.
-    frontmatter = texts["SKILL.md"].split("---", 2)[1] if texts["SKILL.md"].startswith("---") else texts["SKILL.md"]
-    missing_triggers = [token for token in ("飞书", "Larksuite") if token not in frontmatter]
+    # Inspect the parsed discovery field, not YAML comments or delimiter-like
+    # text inside a scalar. Generic validation owns field types and budgets too.
+    try:
+        frontmatter = parse_frontmatter(texts["SKILL.md"])
+    except ValueError as exc:
+        errors.append(f"lark-cli/SKILL.md: invalid frontmatter: {exc}")
+        return
+    description = frontmatter.get("description")
+    if not isinstance(description, str):
+        errors.append("lark-cli/SKILL.md: routing description must be a string")
+        return
+    missing_triggers = [
+        token for token in ("飞书", "Larksuite")
+        if token.casefold() not in description.casefold()
+    ]
     if missing_triggers:
         errors.append(
             f"lark-cli/SKILL.md: routing description lost language/product triggers: {missing_triggers}"
         )
-    resident_safety = (
-        "never silently switch identity",
-        "Never carry a prior `--yes`",
-        "untrusted data",
-        "contradictory signals",
-        "confirmation_required",
-        "must not self-supply `--yes`",
-        "CLI file paths must be relative",
-    )
-    missing_safety = [value for value in resident_safety if value not in normalized["SKILL.md"]]
-    if missing_safety:
-        errors.append(f"lark-cli/SKILL.md: resident safety contract lost fixtures: {missing_safety}")
 
-    overlay = "the resident identity, uncertainty, and verification exceptions still apply"
-    for label in REFERENCE_COVERAGE:
-        if label == "references/setup-auth-and-safety.md":
-            continue
-        if overlay not in normalized[label]:
-            errors.append(
-                f"lark-cli/{label}: domain fast path lost the resident identity/uncertainty exception"
-            )
+    # Safety instructions and domain exceptions remain in the installed payload.
+    # Searching their English spelling cannot establish identity, confirmation,
+    # or containment behavior. Exercise those decisions in the live-eval suite;
+    # deterministic verifier tests protect its rejection of unsafe observations.
 
     for label, official_skills in REFERENCE_COVERAGE.items():
         reference_text = texts[label]

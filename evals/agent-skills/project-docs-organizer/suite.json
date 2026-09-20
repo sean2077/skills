@@ -63,7 +63,8 @@
           },
           "treatment": {
             "route": "project-docs-organizer",
-            "workflow": "documentation-organization"
+            "workflow": "documentation-organization",
+            "compare_options": true
           }
         }
       }
@@ -80,7 +81,9 @@
           },
           "treatment": {
             "route": "project-docs-organizer",
-            "workflow": "documentation-organization"
+            "workflow": "documentation-organization",
+            "preserve_decisions": true,
+            "reconcile_consumers": true
           }
         }
       }
