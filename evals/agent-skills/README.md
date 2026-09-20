@@ -32,9 +32,13 @@ verification from unsupported success.
 
 Observation names are candidate-local and neutral: the adapter offers vocabulary, not the
 expected decision or field value. It does not synthesize omitted observations. The old forced
-`inline-delta`/full-record alternatives now also allow `none` and `existing-context`; manifests
-still exercise explicit project-required records. These are intentional semantic expectation
-changes, not relaxed cost budgets or evidence of a live performance win.
+`inline-delta`/full-record vocabulary now also allows `none` and `existing-context`. Cases leave
+`decision_artifact` out of the expected subset when the task does not require a particular
+representation; replacing one compulsory form with another would reject valid adaptive choices.
+Decision depth, retained decisions, authorization, and external-consumer safeguards remain
+asserted where material, and explicit project-required records retain exact expectations.
+These are intentional semantic expectation changes, not relaxed cost budgets or evidence of
+a live performance win.
 
 ## Measurement and failure boundaries
 
