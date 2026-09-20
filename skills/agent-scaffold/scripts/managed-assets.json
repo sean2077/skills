@@ -2,6 +2,22 @@
   "schema_version": 1,
   "assets": [
     {
+      "id": "contract.line-endings",
+      "source": "assets/scaffold/gitattributes",
+      "target": ".gitattributes",
+      "strategy": "prepend-block",
+      "profiles": ["default", "light"],
+      "executable": false
+    },
+    {
+      "id": "seed.editorconfig",
+      "source": "assets/scaffold/editorconfig",
+      "target": ".editorconfig",
+      "strategy": "seed",
+      "profiles": ["default", "light"],
+      "executable": false
+    },
+    {
       "id": "contract.agents",
       "source": "assets/scaffold/AGENTS.harness.md",
       "target": "AGENTS.md",

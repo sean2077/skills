@@ -31,6 +31,8 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/host/claude.settings.json` | merged into `.claude/settings.json` | Claude Code scaffold-owned hook source |
 | `assets/host/codex.hooks.json` | merged into `.codex/hooks.json` | Codex scaffold-owned hook source |
 | `assets/scaffold/AGENTS.harness.md` | managed block in `AGENTS.md` | only the marker-bounded block is scaffold-owned |
+| `assets/scaffold/gitattributes` | prepended managed defaults in `.gitattributes` | LF text / CRLF batch checkout; project exceptions remain later |
+| `assets/scaffold/editorconfig` | `.editorconfig` if missing | project-owned after seeding; no settings overwrite |
 | `assets/scaffold/agents-skills.README.md` | `.agents/skills/README.md` if missing | lean ownership boundary |
 | `assets/scaffold/agents-subagents.README.md` | `.agents/subagents/README.md` if missing | lean ownership boundary |
 

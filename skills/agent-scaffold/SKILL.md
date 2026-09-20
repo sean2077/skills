@@ -1,6 +1,6 @@
 ---
 name: agent-scaffold
-description: 'Use when a repository needs planning, installation, retrofit, diagnosis, verification, or upgrade of a vendored Claude Code + Codex harness with .agents/ SSOT, real-symlink host projections, hooks, authority docs, or subagents. Not for one commit, a standalone authority file, or third-party skill installation.'
+description: 'Use to plan, install, diagnose, verify, or upgrade a Claude Code + Codex harness with .agents/ SSOT, real-symlink projections, hooks, subagents, or repository LF/CRLF policy. Not for one commit, a standalone authority file, or third-party skill installation.'
 ---
 
 # Agent Scaffold
@@ -29,6 +29,8 @@ and runs the subagent generator in every mutating mode.
   glossary from the managed contract.
 - Separate session entry, task checkout, and worktree lifecycle ownership. Honor
   user/host placement, reuse assigned worktrees, and keep preferences in project prose.
+- Keep repository EOL defaults in `.gitattributes`; preserve project exceptions and existing
+  `.editorconfig`. Never renormalize, stage, or rewrite user files as an installation side effect.
 - Leave document metadata conventions to project Agents; the managed block adds
   reading principles, not a schema or lifecycle gate.
 
@@ -65,6 +67,7 @@ Read only the category needed for the current task:
 | Task | Reference |
 |---|---|
 | Session entry choice, task paths, external worktrees, and lifecycle handoff | [`workspace-context.md`](references/workspace-context.md) |
+| LF/CRLF defaults, editor alignment, exceptions, and safe existing-file migration | [`line-endings.md`](references/line-endings.md) |
 | Installed assets, profiles, SSOT, third-party coexistence | [`harness-layout.md`](references/harness-layout.md) |
 | Scaffold-owned host hooks, merge ownership, Codex project/hook trust | [`host-integration.md`](references/host-integration.md) |
 | Project-owned format-on-edit integration | [`format-hooks.md`](references/format-hooks.md) |

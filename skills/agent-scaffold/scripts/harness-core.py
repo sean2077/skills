@@ -24,7 +24,7 @@ SCHEMA_VERSION = 1
 SKILL_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = Path(__file__).with_name("managed-assets.json")
 PROFILES = {"default", "light"}
-STRATEGIES = {"copy", "seed", "merge-json", "managed-block"}
+STRATEGIES = {"copy", "seed", "merge-json", "managed-block", "prepend-block"}
 MANAGED_HOOK_FILES = (
     "trunk_edit_guard.sh",
     "authority_doc_budget.sh",
@@ -43,12 +43,16 @@ CHECK_STATUSES = {
 }
 REPORT_MODES = {"plan", "doctor", "verify"}
 REQUIRED_ASSETS = {
+    "contract.line-endings": ("prepend-block", ".gitattributes"),
+    "seed.editorconfig": ("seed", ".editorconfig"),
     "contract.agents": ("managed-block", "AGENTS.md"),
     "host.claude-hooks": ("merge-json", ".claude/settings.json"),
     "host.codex-hooks": ("merge-json", ".codex/hooks.json"),
     "runtime.symlink-manager": ("copy", ".agents/symlink-manager.py"),
     "runtime.subagent-generator": ("copy", ".agents/tools/generate-subagents.py"),
 }
+EOL_START = b"# agent-scaffold:line-endings:start"
+EOL_END = b"# agent-scaffold:line-endings:end"
 WORKTREE_START = "<!-- agent-scaffold:worktree:start -->"
 WORKTREE_END = "<!-- agent-scaffold:worktree:end -->"
 WORKTREE_ONLY = "<!-- agent-scaffold:worktree-only -->"
@@ -609,6 +613,89 @@ def missing_required_lines(path: Path, lines: Sequence[str]) -> List[str]:
     return [line for line in lines if line.encode("utf-8") not in present]
 
 
+def line_endings_candidate(path: Path, source: Path) -> bytes:
+    """Prepend repository defaults, preserving project bytes and their precedence."""
+    if os.path.lexists(str(path)) and (path.is_symlink() or not path.is_file()):
+        raise CoreError("{0}: expected a regular attributes file".format(path))
+    original = path.read_bytes() if path.exists() else b""
+    # A Git-recognized BOM must remain at byte zero, not before a project rule.
+    bom = b"\xef\xbb\xbf" if original.startswith(b"\xef\xbb\xbf") else b""
+    body = original[len(bom):]
+    lines = body.splitlines(keepends=True)
+    starts = [i for i, line in enumerate(lines) if EOL_START in line]
+    ends = [i for i, line in enumerate(lines) if EOL_END in line]
+    if starts or ends:
+        if (len(starts) != 1 or len(ends) != 1 or starts[0] >= ends[0]
+                or lines[starts[0]].rstrip(b"\r\n") != EOL_START
+                or lines[ends[0]].rstrip(b"\r\n") != EOL_END):
+            raise CoreError("{0}: malformed line-ending markers; expected one ordered pair".format(path))
+        body = b"".join(lines[:starts[0]] + lines[ends[0] + 1:])
+    block = source.read_bytes().replace(b"\r\n", b"\n")
+    return bom + block + body
+
+
+def line_endings_checks(target: Path, profile: str, manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Read Git's effective attributes and actual tracked bytes, never stage/convert."""
+    checks: List[Dict[str, Any]] = []
+    paths = [item["target"] for item in active_assets(manifest, profile)
+             if item["strategy"] == "copy"]
+    try:
+        attrs = subprocess.run(
+            ["git", "--no-optional-locks", "-C", str(target), "check-attr", "-z",
+             "--stdin", "text", "eol"],
+            input=b"".join(path.encode("utf-8") + b"\0" for path in paths),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        ).stdout.split(b"\0")
+        if attrs[-1:] != [b""] or (len(attrs) - 1) % 3:
+            raise CoreError("invalid git check-attr response")
+        values: Dict[str, Dict[str, str]] = {}
+        for i in range(0, len(attrs) - 1, 3):
+            path, name, value = (part.decode("utf-8") for part in attrs[i:i + 3])
+            values.setdefault(path, {})[name] = value
+        bad = [path for path in paths if values.get(path) != {"text": "set", "eol": "lf"}]
+        checks.append(check_record(
+            "line-endings.runtime-attributes", "fail" if bad else "pass", ".gitattributes",
+            "inspect git check-attr text eol -- <path>; resolve overriding root/nested/info attributes" if bad else None,
+            "runtime must use text eol=lf: " + ", ".join(bad) if bad else None,
+        ))
+        output = subprocess.run(
+            ["git", "--no-optional-locks", "-C", str(target), "ls-files", "--eol", "-z"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        ).stdout
+        violations = []
+        for record in output.split(b"\0"):
+            if not record:
+                continue
+            header, separator, path = record.partition(b"\t")
+            fields = header.split(None, 2)
+            if not separator or len(fields) != 3:
+                raise CoreError("invalid git ls-files --eol response")
+            index, working, attributes = (field.decode("ascii").strip() for field in fields)
+            # Honor binary/-text, exact-byte fixtures, and explicit CRLF exceptions.
+            # Only explicitly normalized text is governed; symlinks/submodules have no EOL info.
+            if attributes.startswith("attr/-text") or not re.search(r"(?:^| )eol=(?:lf|crlf)$", attributes):
+                continue
+            if index == "i/-text" or working == "w/-text":
+                continue
+            expected = "crlf" if "eol=crlf" in attributes else "lf"
+            if (index in {"i/crlf", "i/mixed"}
+                    or working in {"w/mixed", "w/" + ("lf" if expected == "crlf" else "crlf")}):
+                violations.append("{0} ({1}, {2}, {3})".format(
+                    path.decode("utf-8", errors="backslashreplace"), index, working, attributes))
+        checks.append(check_record(
+            "line-endings.tracked", "fail" if violations else "pass", ".gitattributes",
+            "review listed paths and project exceptions; normalize only with explicit approval (see line-endings.md)" if violations else None,
+            "{0} tracked path(s) need migration: {1}".format(len(violations), "; ".join(violations[:10]))
+            if violations else "tracked text follows effective Git EOL rules; untracked files and editor settings are not audited",
+        ))
+    except (OSError, UnicodeError, subprocess.CalledProcessError, CoreError) as exc:
+        checks.append(check_record(
+            "line-endings.git", "fail", ".gitattributes",
+            "run Git attribute/EOL diagnostics in the target checkout", str(exc),
+        ))
+    return checks
+
+
 def check_record(
     check_id: str,
     status: str,
@@ -847,6 +934,26 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any]) -> Dict[str
             fix = None
             apply_mode = "upgrade"
         checks.append(check_record(item["id"], status, item["target"], fix))
+
+    for item in active_assets(manifest, profile):
+        if item["strategy"] != "prepend-block" and item["id"] != "seed.editorconfig":
+            continue
+        installed = target / item["target"]
+        try:
+            if os.path.lexists(str(installed)) and (installed.is_symlink() or not installed.is_file()):
+                raise CoreError("expected a regular file, not a symlink or directory")
+            if item["strategy"] == "prepend-block":
+                candidate = line_endings_candidate(installed, SKILL_DIR / item["source"])
+                status = ("create" if not installed.exists() else
+                          "present" if installed.read_bytes() == candidate else "merge")
+                detail = "prepend LF defaults; preserve later project exceptions; no file conversion or staging"
+            else:
+                status = "present" if installed.exists() else "create"
+                detail = "seed only when absent; existing file remains project-owned"
+            checks.append(check_record(item["id"], status, item["target"], None, detail))
+        except (CoreError, OSError) as exc:
+            checks.append(check_record(item["id"], "attention", item["target"],
+                                       "resolve the file/marker conflict before installation", str(exc)))
 
     for item in active_assets(manifest, profile):
         if item["strategy"] != "merge-json":
@@ -1131,6 +1238,26 @@ def build_verify(
             )
         )
 
+    policy = asset_by_id(manifest, "contract.line-endings")
+    installed = target / policy["target"]
+    try:
+        matches = (installed.is_file() and not installed.is_symlink()
+                   and installed.read_bytes() == line_endings_candidate(installed, SKILL_DIR / policy["source"]))
+    except (CoreError, OSError):
+        matches = False
+    checks.append(check_record(
+        policy["id"], "pass" if matches else "fail", policy["target"],
+        None if matches else "run agent-scaffold apply after resolving attributes marker conflicts",
+    ))
+    editor = target / asset_by_id(manifest, "seed.editorconfig")["target"]
+    editor_ok = editor.is_file() and not editor.is_symlink()
+    checks.append(check_record(
+        "seed.editorconfig", "pass" if editor_ok else "fail", ".editorconfig",
+        None if editor_ok else "run agent-scaffold apply after resolving the file conflict",
+        "project-owned editor settings are preserved, not interpreted; align them with effective Git exceptions",
+    ))
+    checks.extend(line_endings_checks(target, profile, manifest))
+
     generator_item = asset_by_id(manifest, "runtime.subagent-generator")
     generator = target / generator_item["target"]
     if generator.is_file() and not generator.is_symlink():
@@ -1225,6 +1352,9 @@ def command_agents(args: argparse.Namespace) -> int:
 
 
 def command_files(args: argparse.Namespace) -> int:
+    if args.files_command == "line-endings":
+        sys.stdout.buffer.write(line_endings_candidate(Path(args.target), Path(args.source)))
+        return 0
     if args.files_command == "atomic-replace":
         atomic_replace_file(Path(args.source), Path(args.target))
         return 0
@@ -1311,6 +1441,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     files = subparsers.add_parser("files")
     files_sub = files.add_subparsers(dest="files_command", required=True)
+    files_eol = files_sub.add_parser("line-endings")
+    files_eol.add_argument("--source", required=True)
+    files_eol.add_argument("--target", required=True)
     files_replace = files_sub.add_parser("atomic-replace")
     files_replace.add_argument("--source", required=True)
     files_replace.add_argument("--target", required=True)

@@ -55,6 +55,20 @@ Schema-version 1 uses these status values:
 - A rendered `plan` exits 0 even when `ok` is false, so automation must inspect `ok`. `doctor` and
   `verify` exit 1 when `ok` is false. CLI/manifest errors and mutation preflight failures exit 2.
 
+## Line-ending checks
+
+- `contract.line-endings`: the prepended managed `.gitattributes` defaults match the asset.
+- `seed.editorconfig`: a regular project-owned editor file exists; its settings are not interpreted.
+- `line-endings.runtime-attributes`: Git resolves scaffold runtime paths to `text eol=lf`.
+- `line-endings.tracked`: tracked text/index/worktree bytes follow effective Git EOL rules.
+- `line-endings.git`: emitted as a failure if Git EOL diagnostics cannot be obtained.
+
+The existing `contract.gitattributes` line-presence check remains, but is no longer the only
+EOL evidence. `plan` previews defaults and editor seeding, and reports malformed markers or
+non-regular file conflicts before writes. `doctor` remains a prerequisite/capability check.
+`verify` may report old files needing migration even after a successful install: neither mode
+stages or converts files. Use the [line-ending guide](line-endings.md), not a reset/clean command.
+
 ## Troubleshooting order
 
 1. Run `doctor` when installation stops before mutation or real links cannot be

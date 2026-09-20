@@ -66,7 +66,9 @@ Windows is supported through **Git Bash only**. Install Python 3.8+ and Git for 
    ```
 
    Link creation uses Python `os.symlink`, not MSYS `ln -s`. The installer pins vendored
-   shell/Python files to LF; project-owned hook-manager files keep their existing line endings.
+   shell/Python files to LF and adds repository EOL defaults; existing project-owned files
+   keep their bytes. See [line endings](line-endings.md) for editor alignment, exceptions,
+   and separately authorized normalization of existing files.
    Capability failure exits 2 before target writes and leaves no copy or partial harness.
 
 ## Windows / Git Bash: finish a worktree without leaving a locked directory

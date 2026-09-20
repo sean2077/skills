@@ -1,3 +1,9 @@
+# agent-scaffold:line-endings:start
+# Repository defaults; project rules below and nested attributes take precedence.
+* text=auto eol=lf
+*.[bB][aA][tT] text eol=crlf
+*.[cC][mM][dD] text eol=crlf
+# agent-scaffold:line-endings:end
 # Shell + Python tooling must stay LF: these run under bash (incl. Windows/Git Bash,
 # where CRLF makes bash fail with `$'\r': command not found`) and the skill templates
 # are copied verbatim into consumer projects, so a CRLF commit would ship CRLF scripts.

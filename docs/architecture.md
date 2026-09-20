@@ -34,6 +34,7 @@ Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata
 | `scripts/p0_runtime/{common,skill_eval,workctl}.py` | Private `skill-eval` and public `work-protocol` runtime packages | Run `python scripts/generate_p0_runtimes.py`; keep the public/private publication boundary intact. |
 | `.agents/skills/<name>/` | `.claude/skills/<name>` real-directory symlink projections | Run `.agents/relink-skills.sh`; preserve unrelated entries and fail on ownership conflicts. |
 | `.agents/subagents/<name>/` | `.claude/agents/*.md` and `.codex/agents/*.toml` | Run `.agents/tools/generate-subagents.py`; generated projections are not edit targets. |
+| `agent-scaffold` EOL assets | Prepended `.gitattributes` defaults and a missing-only `.editorconfig` seed | Project exceptions and existing editor settings remain owned by the target; no automatic normalization. |
 | The `agent-scaffold` catalog skill assets | Scaffold runtime under `.agents/tools/` and related harness files | Change the catalog skill source and run `agent-scaffold upgrade`; direct edits are drift. |
 
 `CLAUDE.md` is a tracked symlink to `AGENTS.md`. On Windows, CI enables native symlink checkout, rematerializes `CLAUDE.md`, and verifies the link before testing.

@@ -237,6 +237,16 @@ preflight_install() {
   run_python "$manager" doctor --repo "$TARGET" >/dev/null
 }
 
+ensure_line_endings() {
+  local source candidate="$TMPDIR_H/gitattributes"
+  source="$SKILL_DIR/$(asset_source contract.line-endings)"
+  run_core files line-endings --source "$source" --target "$TARGET/.gitattributes" > "$candidate"
+  if [[ ! -f "$TARGET/.gitattributes" ]] || ! cmp -s "$candidate" "$TARGET/.gitattributes"; then
+    atomic_replace_file "$candidate" "$TARGET/.gitattributes"
+    ok "repository EOL defaults reconciled; project rules preserved (no renormalization)"
+  fi
+}
+
 install_assets() {
   local _id source target strategy executable
   while IFS=$'\t' read -r _id source target strategy executable; do
@@ -270,6 +280,7 @@ do_install() {
   ensure_agents_md
   [[ "$contract_linked" == 1 ]] || ensure_claude_md_symlink
 
+  ensure_line_endings
   install_assets
   log "active-profile managed assets are in place"
 
@@ -299,6 +310,8 @@ do_install() {
 
   echo
   ok "harness $MODE complete."
+  log "EOL: run verify for tracked-file migration and effective runtime attributes; no files were renormalized."
+  log "Existing .editorconfig remains project-owned; align its EOL exceptions with .gitattributes."
   log "Codex trust: project-level .codex/ loads only for a trusted project."
   if [[ "$WORKTREE_FLOW" == 1 ]]; then
     log "next: start changes with bash .agents/tools/worktree.sh new <name>."
