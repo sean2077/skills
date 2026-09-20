@@ -93,15 +93,19 @@ grep -qF 'cygpath -u' "$common" || fail "hook-common.sh lost Windows/MSYS path c
 
 for config in claude.settings.json codex.hooks.json; do
   file="$skill/assets/host/$config"
-  # shellcheck disable=SC2016  # the ${CLAUDE_PROJECT_DIR:-.} anchor is literal source text, not an expansion
-  grep -qF 'python -X utf8 \"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py\" --' "$file" \
-    || fail "$config does not invoke hook-paths.py via a cwd-independent whole-path-quoted command"
-  # shellcheck disable=SC2016  # reject a literal split-quoted host placeholder
-  if grep -qF '\"${CLAUDE_PROJECT_DIR:-.}\"/.agents/tools/hooks/hook-paths.py' "$file"; then
-    fail "$config splits the quoted project-root placeholder from hook-paths.py; quote the entire script path"
+  grep -qF 'python -X utf8 -c \"import os,runpy,sys;' "$file" \
+    || fail "$config does not invoke hook-paths.py via a python -c launcher"
+  grep -qF "os.environ.get('CLAUDE_PROJECT_DIR')" "$file" \
+    || fail "$config python -c launcher lost the CLAUDE_PROJECT_DIR lookup"
+  grep -qF "os.environ.get('GROK_WORKSPACE_ROOT')" "$file" \
+    || fail "$config python -c launcher lost the GROK_WORKSPACE_ROOT lookup"
+  grep -qF '\" .agents/tools/hooks/hook-paths.py --' "$file" \
+    || fail "$config python -c launcher lost the trailing hook-paths.py --guard/--budget identity"
+  if grep -qF '${' "$file" || grep -qE '\$[A-Za-z_]' "$file"; then
+    fail "$config hook command still uses shell \$ expansion; PowerShell empties bash \${VAR:-default} to C:\\.agents\\..."
   fi
   if grep -qF 'python -X utf8 .agents/tools/hooks/hook-paths.py' "$file"; then
-    fail "$config invokes hook-paths.py via a cwd-relative path; anchor it with \${CLAUDE_PROJECT_DIR:-.}"
+    fail "$config invokes hook-paths.py via a cwd-relative path without the python -c root lookup"
   fi
   if grep -qF 'alias.agent-scaffold-hook' "$file"; then
     fail "$config still uses the Git-alias dispatcher on the hot path"
