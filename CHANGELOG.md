@@ -12,6 +12,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Invoke scaffold-owned Claude/Codex/Grok hooks through a `python -c` launcher that reads `CLAUDE_PROJECT_DIR` or `GROK_WORKSPACE_ROOT` in-process and has no `$` for the shell to expand. Grok on Windows PowerShell does not apply bash `${VAR:-default}`; the previous `"${CLAUDE_PROJECT_DIR:-.}/.agents/..."` command expanded to empty and Python opened `C:\.agents\tools\hooks\hook-paths.py`. The trailing `.agents/tools/hooks/hook-paths.py --guard|--budget` keeps reconciler and light-profile identity, and `upgrade` converges the quoted-placeholder commands as managed identities.
+
 - Quote the entire `hook-paths.py` script path in scaffold-owned Claude/Codex/Grok hook commands (`"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py"`). POSIX shells already expanded inside one quoted word; Windows PowerShell/CreateProcess split the previous `"${CLAUDE_PROJECT_DIR:-.}"/.agents/...` form so Python received the repository directory and failed with `can't find '__main__' module`. Light-profile filtering and `upgrade` identity matching ignore those quotes, and `upgrade` converges the split-quoted commands as managed identities.
 
 - Follow up PR #9 without reverting its routing or answer-leakage fixes: parse Lark discovery metadata as YAML, reject triggers present only in comments, and remove new exact-English safety/exception gates while preserving all installed safety instructions. Add verifier-tested confirmation, untrusted-content, and file-boundary scenarios rather than treating prose matches as enforcement.

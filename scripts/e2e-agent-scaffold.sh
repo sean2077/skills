@@ -642,6 +642,9 @@ check "greenfield install adds no tools root" test ! -e "$S/tools"
 check "CLAUDE.md -> AGENTS.md symlink"        test "$(readlink "$S/CLAUDE.md")" = AGENTS.md
 check "CC PreToolUse matcher"                jmatch "$S/.claude/settings.json" PreToolUse "Edit|MultiEdit|Write|NotebookEdit"
 check "Codex PreToolUse matcher"             jmatch "$S/.codex/hooks.json"     PreToolUse "Edit|Write|apply_patch"
+check "Claude hook command uses python -c"   grep -qF 'python -X utf8 -c' "$S/.claude/settings.json"
+check "Claude hook command has no shell dollar" no_fixed_text "$S/.claude/settings.json" '${CLAUDE_PROJECT_DIR'
+check "Codex hook command has no shell dollar" no_fixed_text "$S/.codex/hooks.json" '${CLAUDE_PROJECT_DIR'
 check "original gitignore line stays separate" grep -qxF "dist" "$S/.gitignore"
 check "first gitignore append is separate"     grep -qxF ".claude/settings.local.json" "$S/.gitignore"
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
