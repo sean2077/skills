@@ -399,9 +399,19 @@ def hook_tuples(data: Dict[str, Any]) -> Set[Tuple[str, str, str]]:
     return found
 
 
+def normalized_hook_command(command: Any) -> str:
+    """Strip path/quote noise so script+flag identity survives host quoting."""
+    return str(command or "").replace("\\", "/").replace('"', "").replace("'", "")
+
+
+def hook_command_has_script_flag(command: Any, script: str, flag: str) -> bool:
+    normalized = normalized_hook_command(command)
+    token = "{0} {1}".format(script, flag)
+    return token in normalized
+
+
 def prepare_hooks(source: Path, profile: str) -> Dict[str, Any]:
     data = validate_hook_config(source, str(source), strict_commands=True)
-    disabled = [] if profile == "default" else ["hook-paths.py --guard"]
     for event, groups in list((data.get("hooks") or {}).items()):
         kept = []
         for original in groups or []:
@@ -409,7 +419,13 @@ def prepare_hooks(source: Path, profile: str) -> Dict[str, Any]:
             group["hooks"] = [
                 hook
                 for hook in group.get("hooks", [])
-                if not any(name in str(hook.get("command", "")) for name in disabled)
+                if profile == "default"
+                or not (
+                    isinstance(hook, dict)
+                    and hook_command_has_script_flag(
+                        hook.get("command", ""), "hook-paths.py", "--guard"
+                    )
+                )
             ]
             if group["hooks"] or any(key not in {"matcher", "hooks"} for key in group):
                 kept.append(group)

@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -333,6 +334,68 @@ class HookReconciliationTests(unittest.TestCase):
         self.assertNotIn("Stop", merged["hooks"])
         self.assertTrue(CORE.verify_hooks(merged, expected, self.root))
 
+    def test_merge_replaces_split_quoted_hook_paths_command(self):
+        manifest = CORE.load_manifest()
+        source = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "host.claude-hooks")["source"]
+        expected = CORE.prepare_hooks(source, "default")
+        stale = (
+            'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}"'
+            "/.agents/tools/hooks/hook-paths.py --budget"
+        )
+        existing = {
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "matcher": "Edit|MultiEdit|Write",
+                        "hooks": [
+                            {"type": "command", "command": stale, "timeout": 30},
+                            self.user,
+                        ],
+                    }
+                ]
+            }
+        }
+
+        merged = CORE.merge_hooks(existing, expected, self.root)
+        commands = [
+            hook["command"]
+            for group in merged["hooks"]["PostToolUse"]
+            for hook in group["hooks"]
+        ]
+
+        self.assertNotIn(stale, commands)
+        self.assertTrue(
+            any(
+                '"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py"' in command
+                and "--budget" in command
+                for command in commands
+            )
+        )
+        self.assertIn(self.user["command"], commands)
+
+    def test_light_profile_matches_guard_when_script_path_is_quoted(self):
+        self.assertTrue(
+            CORE.hook_command_has_script_flag(
+                'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py" --guard',
+                "hook-paths.py",
+                "--guard",
+            )
+        )
+        self.assertTrue(
+            CORE.hook_command_has_script_flag(
+                'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}"/.agents/tools/hooks/hook-paths.py --guard',
+                "hook-paths.py",
+                "--guard",
+            )
+        )
+        self.assertFalse(
+            CORE.hook_command_has_script_flag(
+                'python -X utf8 "${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py" --budget',
+                "hook-paths.py",
+                "--guard",
+            )
+        )
+
     def test_hook_type_must_be_a_string(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "hooks.json"
@@ -366,9 +429,16 @@ class HookReconciliationTests(unittest.TestCase):
                 for hook in group["hooks"]
             ]
             self.assertTrue(commands)
+            quoted_script = (
+                '"${CLAUDE_PROJECT_DIR:-.}/.agents/tools/hooks/hook-paths.py"'
+            )
+            split_quoted = (
+                '"${CLAUDE_PROJECT_DIR:-.}"/.agents/tools/hooks/hook-paths.py'
+            )
             for command in commands:
                 self.assertTrue(command.startswith("python -X utf8 "))
-                self.assertIn(".agents/tools/hooks/hook-paths.py", command)
+                self.assertIn(quoted_script, command)
+                self.assertNotIn(split_quoted, command)
                 self.assertNotIn("hook-launcher.sh", command)
                 self.assertNotIn("bash -lc", command)
             timeouts = [
@@ -379,6 +449,100 @@ class HookReconciliationTests(unittest.TestCase):
             ]
             self.assertTrue(timeouts)
             self.assertTrue(all(timeout == 30 for timeout in timeouts))
+
+
+class HookCommandShellTests(unittest.TestCase):
+    """The script path must stay one argv on POSIX bash and Windows PowerShell."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name) / "my project"
+        script_dir = self.root / ".agents" / "tools" / "hooks"
+        script_dir.mkdir(parents=True)
+        self.script = script_dir / "hook-paths.py"
+        self.script.write_text(
+            "import sys\nprint(sys.argv[0])\nprint(sys.argv[-1])\n",
+            encoding="utf-8",
+        )
+        self.root_posix = str(self.root).replace("\\", "/")
+        self.script_posix = "{0}/.agents/tools/hooks/hook-paths.py".format(
+            self.root_posix
+        )
+
+    @staticmethod
+    def _bash_single_quote(value):
+        return "'" + value.replace("'", "'\"'\"'") + "'"
+
+    @staticmethod
+    def _powershell_single_quote(value):
+        return "'" + value.replace("'", "''") + "'"
+
+    def _run_shell(self, command, shell):
+        if shell == "powershell":
+            return subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    command,
+                ],
+                capture_output=True,
+                text=True,
+            )
+        return subprocess.run(
+            ["bash", "-lc", command],
+            capture_output=True,
+            text=True,
+        )
+
+    def _shells(self):
+        if sys.platform == "win32":
+            return ["powershell"]
+        if shutil.which("bash"):
+            return ["bash"]
+        return []
+
+    def test_host_expanded_whole_path_quote_invokes_script(self):
+        shells = self._shells()
+        self.assertTrue(
+            shells, "need bash or PowerShell to exercise hook argv quoting"
+        )
+        for shell in shells:
+            if shell == "powershell":
+                python = self._powershell_single_quote(sys.executable)
+                command = '& {0} -X utf8 "{1}" --budget'.format(
+                    python, self.script_posix
+                )
+            else:
+                python = self._bash_single_quote(sys.executable)
+                command = '{0} -X utf8 "{1}" --budget'.format(
+                    python, self.script_posix
+                )
+            result = self._run_shell(command, shell)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            lines = [line for line in result.stdout.splitlines() if line]
+            self.assertGreaterEqual(len(lines), 2, result.stdout)
+            self.assertEqual(
+                os.path.normcase(os.path.abspath(lines[0])),
+                os.path.normcase(os.path.abspath(str(self.script))),
+            )
+            self.assertEqual(lines[-1], "--budget")
+
+    @unittest.skipUnless(
+        sys.platform == "win32",
+        "split quoting is valid bash concatenation and only splits on Windows",
+    )
+    def test_split_placeholder_quote_fails_on_powershell(self):
+        python = self._powershell_single_quote(sys.executable)
+        root = self._powershell_single_quote(self.root_posix)
+        command = "& {0} -X utf8 {1}/.agents/tools/hooks/hook-paths.py --budget".format(
+            python, root
+        )
+        result = self._run_shell(command, "powershell")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("__main__", result.stderr)
 
 
 HOOK_PATHS_PATH = (
