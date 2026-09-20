@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v6.2.0] — 2026-09-20
+
 ### Added
 
 - `agent-scaffold` now installs repository-level LF text defaults and CRLF batch-file exceptions in both profiles, seeds `.editorconfig` only when absent, and verifies effective runtime attributes and tracked EOL bytes. Existing project attributes/editor settings, binary and exact-byte exceptions, Git configuration, and staged work are preserved; normalization remains an explicitly authorized separate migration.
@@ -503,7 +505,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v6.1.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v6.2.0...HEAD
+[v6.2.0]: https://github.com/sean2077/skills/compare/v6.1.0...v6.2.0
 [v6.1.0]: https://github.com/sean2077/skills/compare/v6.0.0...v6.1.0
 [v6.0.0]: https://github.com/sean2077/skills/compare/v5.0.0...v6.0.0
 [v5.0.0]: https://github.com/sean2077/skills/compare/v4.1.2...v5.0.0
