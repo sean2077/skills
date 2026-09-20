@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import tempfile
 import types
 import unittest
@@ -104,8 +105,32 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             ("project-docs-organizer", "spec-writing"),
         )
         self.assertIn("project-docs-organizer, spec-writing", prompt)
-        self.assertIn("decision_depth=compact or full", prompt)
+        self.assertIn("decision_artifact", prompt)
+        self.assertNotIn("decision_depth=compact or full", prompt)
+        self.assertNotIn("decision_artifact=none", prompt)
         self.assertNotIn("DO_NOT_LEAK_THIS_SENTINEL", prompt)
+
+    def test_observation_guidance_does_not_assign_expected_values(self) -> None:
+        banned = re.compile(
+            r"\w+=(?:true|false|required|conditional|none|adaptive|compact|full|"
+            r"discriminating-probe|authorized|not-authorized|explanation|causal|"
+            r"native|persistent|human-readers)",
+            re.I,
+        )
+        for candidate, guide in self.adapter.OBSERVATION_GUIDANCE.items():
+            text = "".join(guide)
+            with self.subTest(candidate=candidate):
+                self.assertIsNone(banned.search(text), text)
+
+    def test_candidate_name_workflows_alias_to_canonical(self) -> None:
+        actual = self.adapter.canonicalize_behavior(
+            {"mode": "treatment"},
+            {"route": "lark-cli", "workflow": "lark-cli"},
+            "lark-cli",
+            True,
+            ("lark-cli",),
+        )
+        self.assertEqual("lark", actual["workflow"])
 
     def test_boundary_observations_are_candidate_local_and_not_answers(self) -> None:
         request = {"mode": "treatment", "case": {
@@ -368,6 +393,28 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                     self.assertEqual("none", expected["baseline"]["route"])
                     if kind == "positive":
                         self.assertEqual(candidate, expected["treatment"]["route"])
+                        prompt = self.adapter.make_prompt(
+                            {
+                                "mode": "treatment",
+                                "case": {"prompt": case["prompt"], "metadata": {}},
+                            },
+                            "candidate instructions",
+                            candidate,
+                            (candidate,),
+                        )
+                        for key, value in expected["treatment"].items():
+                            if key in ("route", "workflow"):
+                                continue
+                            self.assertIn(
+                                key,
+                                prompt,
+                                msg=f"{suite_path}:{case['id']} expected {key} is unnamed in the adapter prompt",
+                            )
+                            if isinstance(value, bool):
+                                self.assertNotIn(f"{key}=true", prompt)
+                                self.assertNotIn(f"{key}=false", prompt)
+                            else:
+                                self.assertNotIn(f"{key}={value}", prompt)
                     else:
                         self.assertNotEqual(candidate, expected["treatment"]["route"])
 

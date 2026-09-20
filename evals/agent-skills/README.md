@@ -22,7 +22,7 @@ Review treatment selection, verifier results, scope, and cost together. Both exe
 
 ## Native-first revision probes
 
-The 2026-09-20 revision expands coverage from 9 suites / 56 cases to 15 suites / 102 cases.
+The 2026-09-20 revision expands coverage from 9 suites / 56 cases to 15 suites / 103 cases.
 New scenarios distinguish clear approval from an answer to one question, semantic adaptive
 approval from exact persistent digests, native resume from repository-owned state, current
 verification from redundant reruns, bounded maintenance from required design records, and
@@ -31,10 +31,12 @@ existing pipelines and publication boundaries; cleanup/prototype cases distingui
 verification from unsupported success.
 
 Observation names are candidate-local and neutral: the adapter offers vocabulary, not the
-expected decision or field value. It does not synthesize omitted observations. The old forced
-`inline-delta`/full-record vocabulary now also allows `none` and `existing-context`. Cases leave
-`decision_artifact` out of the expected subset when the task does not require a particular
-representation; replacing one compulsory form with another would reject valid adaptive choices.
+expected decision or field value. Guidance names keys without assigning `key=value` answers, and
+candidate skill names alias onto the canonical workflow list. It does not synthesize omitted
+observations. The old forced `inline-delta`/full-record vocabulary now also allows `none` and
+`existing-context`. Cases leave `decision_artifact` and `decision_depth` out of the expected
+subset when the task does not require a particular representation; replacing one compulsory form
+with another would reject valid adaptive choices.
 Decision depth, retained decisions, authorization, and external-consumer safeguards remain
 asserted where material, and explicit project-required records retain exact expectations.
 These are intentional semantic expectation changes, not relaxed cost budgets or evidence of

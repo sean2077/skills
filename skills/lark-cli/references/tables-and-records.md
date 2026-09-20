@@ -6,9 +6,11 @@ BaseApp/AppMode.
 
 ## Fast-path contract
 
+Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+
 For the documented shortcuts below, execute directly. Do not preflight `sheets --help`,
 `base --help`, shortcut help, schema, workbook inspection, or URL resolution when the needed URL,
-token, sheet/table ID, and range are already supplied.
+token, sheet/table ID, range, and effective identity are already supplied.
 
 - Known Sheet URL + sheet name/range: normally one read or one write command.
 - Known Base token + table ID: normally one query/write command; do not resolve the Base again.

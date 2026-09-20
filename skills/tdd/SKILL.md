@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: "Use when the user or project explicitly requires test-first/TDD or a failing regression before a fix. Not for coverage-only work, ordinary testing, or exploratory prototypes with an unstable oracle."
+description: "Use when the user or project explicitly requires test-first/TDD, RED-GREEN-REFACTOR, or a failing regression before a fix. Not for coverage-only work, ordinary testing, or exploratory prototypes with an unstable oracle."
 ---
 
 # Test-Driven Development

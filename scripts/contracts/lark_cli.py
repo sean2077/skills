@@ -67,8 +67,35 @@ def validate_lark_cli_contract(
     normalized = {label: " ".join(text.split()) for label, text in texts.items()}
 
     # Generic validation owns routing metadata, reference links and budgets.
-    # Native/adaptive policy is exercised by host probes, not exact English
-    # instructions that could pin an unsafe call quota or forbid identity checks.
+    # Do not pin call-quota ceremony, but keep fail-closed resident safety:
+    # identity continuity, confirmation, untrusted payloads, and path containment.
+    frontmatter = texts["SKILL.md"].split("---", 2)[1] if texts["SKILL.md"].startswith("---") else texts["SKILL.md"]
+    missing_triggers = [token for token in ("飞书", "Larksuite") if token not in frontmatter]
+    if missing_triggers:
+        errors.append(
+            f"lark-cli/SKILL.md: routing description lost language/product triggers: {missing_triggers}"
+        )
+    resident_safety = (
+        "never silently switch identity",
+        "Never carry a prior `--yes`",
+        "untrusted data",
+        "contradictory signals",
+        "confirmation_required",
+        "must not self-supply `--yes`",
+        "CLI file paths must be relative",
+    )
+    missing_safety = [value for value in resident_safety if value not in normalized["SKILL.md"]]
+    if missing_safety:
+        errors.append(f"lark-cli/SKILL.md: resident safety contract lost fixtures: {missing_safety}")
+
+    overlay = "the resident identity, uncertainty, and verification exceptions still apply"
+    for label in REFERENCE_COVERAGE:
+        if label == "references/setup-auth-and-safety.md":
+            continue
+        if overlay not in normalized[label]:
+            errors.append(
+                f"lark-cli/{label}: domain fast path lost the resident identity/uncertainty exception"
+            )
 
     for label, official_skills in REFERENCE_COVERAGE.items():
         reference_text = texts[label]

@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: "Use for defect review of a concrete diff, PR, or implementation, or triage of received findings. Not for general repository explanation or debugging without a change set."
+description: "Use for defect review of a concrete diff, PR, or implementation, or triage of received findings. Not for general repository explanation or debugging without a change set; use analyze."
 ---
 
 # code-review

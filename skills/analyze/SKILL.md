@@ -1,6 +1,6 @@
 ---
 name: analyze
-description: "Use for read-only, cross-file repository explanation or causal investigation. Not for a concrete patch review, an obvious single-file lookup, or an authorized implementation task."
+description: "Use for read-only, cross-file repository explanation or causal investigation. Not for a concrete patch review; use code-review. Not for an obvious single-file lookup or an authorized implementation task."
 ---
 
 # analyze

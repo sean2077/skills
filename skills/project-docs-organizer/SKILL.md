@@ -1,6 +1,6 @@
 ---
 name: project-docs-organizer
-description: "Use to reorganize, consolidate, prune, or repair navigation and ownership of project documentation. Not for an isolated wording fix, source layout, command governance, or harness installation."
+description: "Use to reorganize, consolidate, prune, or repair navigation and ownership of project documentation. Not for an isolated wording fix, source layout, command governance, or AGENTS.md/CLAUDE.md harness policy."
 ---
 
 # Project Docs Organizer

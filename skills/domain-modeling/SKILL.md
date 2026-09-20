@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: "Use to define, challenge, group, split, or migrate project terminology and glossary ownership. Not for consuming established terms, routine coding, or general documentation layout."
+description: "Use to define, challenge, group, split, or migrate project terminology in CONTEXT.md or CONTEXT-MAP.md. Not for consuming established terms, routine coding, or general documentation layout."
 ---
 
 # Domain Modeling

@@ -64,7 +64,6 @@
           "treatment": {
             "route": "spec-writing",
             "workflow": "documentation",
-            "audience": "human-readers",
             "preserve_meaning": true,
             "separate_decision_history": true
           }

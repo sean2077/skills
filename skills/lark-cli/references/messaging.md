@@ -5,8 +5,10 @@ interactive cards, chat media, feeds, pins, flags, or chat membership.
 
 ## Fast-path contract and call budget
 
+Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+
 Use `im` shortcuts below directly. Do not run `im --help`, shortcut help, schema, auth status, or a
-dry-run before a matching ordinary operation.
+dry-run before a matching ordinary operation when the recipe and effective identity are already clear.
 
 - Known `chat_id` (`oc_...`) -> one IM command. Do not search the chat again.
 - Known user/bot `open_id` (`ou_...`) -> one IM command with `--user-id`; the shortcut resolves the

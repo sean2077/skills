@@ -1044,5 +1044,38 @@ class ToolingScriptContractTests(unittest.TestCase):
         self.assertEqual(validator.errors, [])
 
 
+class LarkCliResidentSafetyTests(unittest.TestCase):
+    def test_routing_description_keeps_language_triggers(self) -> None:
+        skill = Path(__file__).resolve().parents[1] / "skills" / "lark-cli" / "SKILL.md"
+        frontmatter = skill.read_text(encoding="utf-8").split("---", 2)[1]
+        self.assertIn("飞书", frontmatter)
+        self.assertIn("Larksuite", frontmatter)
+        self.assertNotIn(
+            "or when the user selected another available interface",
+            " ".join(frontmatter.split()),
+        )
+
+    def test_resident_safety_fixtures_fail_closed(self) -> None:
+        import shutil
+
+        from catalog_core import errors
+        from contracts.lark_cli import validate_lark_cli_contract
+
+        live = Path(__file__).resolve().parents[1] / "skills" / "lark-cli"
+        with tempfile.TemporaryDirectory() as temporary:
+            skill_dir = Path(temporary) / "lark-cli"
+            shutil.copytree(live, skill_dir)
+            skill = skill_dir / "SKILL.md"
+            skill.write_text(
+                skill.read_text(encoding="utf-8").replace(
+                    "never silently switch identity", "switch identity if needed"
+                ),
+                encoding="utf-8",
+            )
+            errors.clear()
+            validate_lark_cli_contract(skill_dir)
+            self.assertTrue(any("resident safety" in error for error in errors))
+
+
 if __name__ == "__main__":
     unittest.main()

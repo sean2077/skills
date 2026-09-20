@@ -6,8 +6,10 @@ assignments and stand-up summaries.
 
 ## Fast-path contract and call budget
 
+Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+
 Do not preflight `contact`, `task`, `approval`, `attendance`, or `okr` service help for the documented
-paths below.
+paths below when the recipe and effective identity are already clear.
 
 - Known `ou_`/bot ID: use it directly; zero resolver calls.
 - Person name/email: one `contact +search-user`; bot name: one `contact +search-bot`.

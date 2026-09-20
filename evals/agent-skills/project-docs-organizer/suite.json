@@ -63,8 +63,7 @@
           },
           "treatment": {
             "route": "project-docs-organizer",
-            "workflow": "documentation-organization",
-            "decision_depth": "full"
+            "workflow": "documentation-organization"
           }
         }
       }
@@ -81,8 +80,7 @@
           },
           "treatment": {
             "route": "project-docs-organizer",
-            "workflow": "documentation-organization",
-            "decision_depth": "compact"
+            "workflow": "documentation-organization"
           }
         }
       }
