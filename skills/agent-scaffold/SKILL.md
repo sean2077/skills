@@ -1,6 +1,6 @@
 ---
 name: agent-scaffold
-description: 'Use to plan, install, diagnose, verify, or upgrade a Claude Code + Codex harness with .agents/ SSOT, real-symlink projections, hooks, subagents, or repository LF/CRLF policy. Not for one commit, a standalone authority file, or third-party skill installation.'
+description: 'Use to plan, install, retrofit, diagnose, verify, or upgrade a Claude Code + Codex harness with .agents/ SSOT, real-symlink projections, hooks, authority docs, subagents, or repository LF/CRLF policy. Not for one commit, a standalone authority file, or third-party skill installation.'
 ---
 
 # Agent Scaffold
@@ -54,9 +54,9 @@ needs stable check IDs and statuses.
    necessarily the primary worktree. Honor an explicit task path and inspect its
    local authority chain before planning changes; do not install into another checkout.
 2. Run `plan`; use its `apply_mode` (`apply` or `upgrade`) and selected profile.
-3. Resolve any `attention` item before mutation. Mutating modes preflight marker,
-   hook-config, runtime-shape, subagent-import, and symlink conflicts before the
-   first target write.
+3. Resolve any `attention` item before mutation. Mutating modes preflight AGENTS
+   and line-ending markers, hook-config, runtime-shape, subagent-import, and
+   symlink conflicts before the first target write.
 4. Run the selected mutating mode, then `verify` with the same profile.
 5. Report created or refreshed assets, preserved project-owned state, Codex project/hook trust steps, and any symlink-checkpoint caveat relevant to the changed files.
 

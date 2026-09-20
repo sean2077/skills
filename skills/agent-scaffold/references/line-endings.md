@@ -47,7 +47,7 @@ can also preserve CRLF content already stored in Git until explicitly renormaliz
 The scaffold never runs `git add --renormalize`, checkout, restore, reset, or a whole-tree
 converter. Preserve staged work and unrelated changes.
 
-From the actual target checkout, inspect:
+From the repository root of the target checkout, inspect:
 
 ```bash
 git status --short
@@ -55,6 +55,9 @@ git ls-files --eol
 git check-attr text eol -- path/to/file
 bash <skill-dir>/agent-scaffold.sh verify --profile default --json
 ```
+
+Use the same `--profile` that installed the harness (`default` or `light`). A
+mismatched profile can fail unrelated worktree-policy checks.
 
 `line-endings.tracked` reports mismatching **tracked** text using Git's effective rules:
 CRLF/mixed normalized index content or mismatching worktree endings. Empty/no-newline files,
@@ -67,8 +70,8 @@ with no unrelated staged/unstaged work. Prefer reviewed explicit paths. A whole-
 is justified only when the entire migration is authorized:
 
 ```bash
-# Only after the clean-checkout, scope, binary/fixture, and authorization checks above.
-git add --renormalize .
+# From that same repository root, only after the checks above.
+git add --renormalize -- .
 git diff --cached --stat
 git diff --cached --check
 ```

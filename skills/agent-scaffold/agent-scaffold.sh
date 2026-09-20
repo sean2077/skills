@@ -238,11 +238,12 @@ preflight_install() {
 }
 
 ensure_line_endings() {
-  local source candidate="$TMPDIR_H/gitattributes"
+  local source target_rel candidate="$TMPDIR_H/gitattributes"
   source="$SKILL_DIR/$(asset_source contract.line-endings)"
-  run_core files line-endings --source "$source" --target "$TARGET/.gitattributes" > "$candidate"
-  if [[ ! -f "$TARGET/.gitattributes" ]] || ! cmp -s "$candidate" "$TARGET/.gitattributes"; then
-    atomic_replace_file "$candidate" "$TARGET/.gitattributes"
+  target_rel="$(asset_field contract.line-endings target)"
+  run_core files line-endings --source "$source" --target "$TARGET/$target_rel" > "$candidate"
+  if [[ ! -f "$TARGET/$target_rel" ]] || ! cmp -s "$candidate" "$TARGET/$target_rel"; then
+    atomic_replace_file "$candidate" "$TARGET/$target_rel"
     ok "repository EOL defaults reconciled; project rules preserved (no renormalization)"
   fi
 }
