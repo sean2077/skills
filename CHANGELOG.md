@@ -6,6 +6,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking
+
+- Remove the duplicate `autopilot_state.py` controller while retaining the `autopilot` delivery skill. Finish active runs with the prior installed runtime; new delivery uses host continuation or the existing project coordination record.
+- Replace deep-interview's scoring/topology engine with `agent-workflow/deep-interview/3` exact-file specification approval. Questions and document format remain caller-owned. Legacy `/2` runs are preserved and rejected rather than silently converted; use the old runtime to finish them or a new ID with fresh approval.
+- Change work-protocol to `agent-work/v2`: caller-chosen owner IDs and nonterminal phases, generic `writer`/`reviewer` workspaces, and no mandatory brief, plan, integrator, risk heuristic, or retry count. Existing v1 tasks stay untouched and require their original runtime; new tasks use new IDs.
+- Evidence input now accepts `--payload-file`; ordinary output is a compact sequence/kind/hash receipt. Use `--full` when the complete event is needed.
+
+### Security and correctness
+
+- Require consistent, correctly typed verification signals at task completion, rejecting contradictory results and boolean/string exit codes. Recheck current workspace scope and review snapshots before entering `done`; terminal tasks permit ownership housekeeping and cleanup but not additional work.
+- Hash original UTF-8 specification bytes, including LF/CRLF, and bind recorded approval to that digest. Bound artifact reads even if the file grows after its initial size check.
+- Reserve internal coordination event kinds and avoid force-removing workspaces during failed registration, preserving concurrent work.
+
+
 ### Changed
 
 - Remove historical workflow disclaimers, fixed question/report/method-card requirements, and repeated process rules throughout skill guidance, references, repository docs, and scaffold templates.

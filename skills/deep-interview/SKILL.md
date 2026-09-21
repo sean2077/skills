@@ -23,10 +23,9 @@ For conversational specifications, reconfirm material changes to approved scope,
 
 ## Persistent sessions
 
-Use host continuation or the bundled runtime according to the required handoff and audit semantics. The runtime provides repository-owned revisions, scoring/topology, and approval digests. Stored artifacts follow its exact revision and approval rules.
+Use host continuation or the bundled runtime according to the required handoff and audit semantics. The optional runtime records specification revisions, exact-file digests, and explicit approval; the conversation owns questions and readiness. Stored artifacts follow its exact revision and approval rules.
 
 ## References
 
 - [Persistent runtime](references/persistent-runtime.md): setup, transitions, crystallization, and artifact approval. Read before creating runtime state.
-- [Scoring and payloads](references/scoring-and-payloads.md): topology, scoring, challenges, and payload validation in persistent sessions.
 - [Resume and recovery](references/resume-and-recovery.md): discovery, interruption, revision conflicts, locks, corruption, and non-Git roots.

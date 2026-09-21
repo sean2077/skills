@@ -1,55 +1,58 @@
 # Task state and evidence
 
-## Portable and local state
+`agent-work/v2` stores the title, caller-owned phase, and version in `.agents/work/<task-id>/state.json`, with events in `evidence.jsonl`. Only those two files are initialized. Put plans or specifications in the project's chosen location.
 
-Committed artifacts live at `.agents/work/<task-id>/`:
+The local registry, leases, locks, transaction journal, and workspace paths live under the Git common directory's `agent-work/`. Worktrees discover the same task, whose authoritative checkout must remain available. `show` redacts the token hash; `verify` checks state/evidence consistency and registered workspaces.
 
-- `brief.md`: goal, non-goals, acceptance evidence, and authority boundaries.
-- `plan.md`: ordered slices, dependencies, risks, and ownership.
-- `state.json`: `agent-work/v1`, current phase, state version, loop owner, and bounded verify retry count.
-- `evidence.jsonl`: append-only sequence with previous-hash and SHA-256 event hash.
+## Ownership and revisions
 
-The Git common directory stores `agent-work-v1/tasks`, `locks`, and `transactions`. This lets linked worktrees share one lease and registry while keeping absolute paths and token hashes out of Git.
+An owner is a stable identifier chosen by the caller, such as `delivery` or `pairroom`. Acquire returns a token once. Use a protected token file or environment variable and retain the returned version. A current, unexpired lease is required for mutations; explicit `owner recover` replaces an expired lease and revokes its old token.
 
-## Owner lifecycle
+Example, starting just after `init`:
 
 ```bash
-WORKCTL="python3 <installed-skill-dir>/scripts/workctl.py"
-$WORKCTL owner acquire <task-id> autopilot --expect-version 1 --ttl 1800
-export WORKCTL_LEASE_TOKEN='<shown-once token>'
-$WORKCTL owner check <task-id>
-$WORKCTL owner heartbeat <task-id> --expect-version 2 --ttl 1800
-$WORKCTL transition <task-id> planned --expect-version 3 --reason 'brief approved'
-$WORKCTL owner handoff <task-id> pairroom --expect-version 4
-$WORKCTL owner release <task-id> --expect-version 5
+workctl() { python3 "<installed-skill-dir>/scripts/workctl.py" "$@"; }
+workctl owner acquire task delivery --expect-version 1
+# Store the returned token securely in WORKCTL_LEASE_TOKEN, without committing it.
+workctl owner check task
+workctl owner heartbeat task --expect-version 2 --ttl 1800
+workctl transition task implementation --expect-version 3 --reason 'requirements settled'
+workctl owner handoff task peer --expect-version 4
+# Replace WORKCTL_LEASE_TOKEN with the NEW returned token before continuing.
+workctl owner release task --expect-version 5
 ```
 
-Use `--token-file` instead of an environment variable where process-environment inspection is a concern. `show` redacts token hashes. An expired lease is not silently stolen: use `owner recover` with the current version, then record why recovery was safe.
+Actual versions come from command responses. Heartbeats and handoffs also advance them. A stale version fails rather than overwriting another owner's changes. Another valid owner is not silently displaced.
 
-## State graph
+## Caller-owned phases and completion
 
-The main path is `clarifying → planned → executing → verifying → done`. Active phases may enter `blocked` or `cancelled`. `blocked` may resume to an explicitly selected active phase. `verifying → executing` increments `verify_retry_count` and is rejected after `max_verify_retries`. A transition to `done` accepts only the latest deterministic verification event recorded after the most recent transition into `verifying`; an older pass cannot mask a later failure.
+A nonterminal phase is an identifier chosen by the caller; changing it records an event. The protocol supplies no mandatory sequence, planning artifact, or retry budget. `done` and `cancelled` are reserved terminal labels. Terminal tasks permit lease housekeeping and workspace cleanup, not new work, evidence, or reopening.
 
-Every mutation performs compare-and-swap against `--expect-version`. Exit `10` signals a stale version or ownership conflict; reread state rather than retrying blindly.
+To enter `done`, the latest `test`, `verify`, `verification`, `ci`, or `quality-gate` event after the most recent nonterminal phase change must contain a successful result. At least one of the following is required, and **every present result field must agree**:
 
-## Evidence
+- `passed`: boolean `true`;
+- `exit_code`: integer `0`, not a boolean or string;
+- `status`: `"passed"` or `"success"`.
+
+A newer failure or malformed result supersedes an earlier pass. A phase change invalidates earlier verification. The caller must also refresh verification whenever code, inputs, environment, or acceptance changes within a phase; the protocol cannot infer those external changes. Completion checks current workspace scope and snapshot integrity, but it does not run a verifier itself.
+
+## Evidence input and receipts
 
 ```bash
-$WORKCTL evidence <task-id> --expect-version 5 --kind test \
-  --payload '{"command":"python -m unittest","exit_code":0,"commit":"<sha>"}'
-$WORKCTL verify <task-id>
+workctl evidence task --kind test --payload '{"exit_code":0,"command":"pytest tests/unit"}' --expect-version <n>
+workctl evidence task --kind review --payload-file review-evidence.json --expect-version <n>
+workctl transition task done --expect-version <n> --reason 'verified delivery'
+workctl verify task
 ```
 
-Payloads must be JSON objects. Keys that look like passwords, credentials, secrets, or tokens are rejected recursively. Store durable evidence, not full hidden reasoning or private transcripts. Only events with kind `test`, `verify`, `verification`, `ci`, or `quality-gate` count as deterministic verification for the `done` gate; other kinds remain audit context.
+Inline/file payloads are alternative JSON-object inputs, bounded to 1 MiB. Include only actually observed results. The ordinary response contains the new `version` and a `receipt` with event `seq`, `kind`, and `hash`; `--full` additionally returns the event. The log remains complete, so large input need not be echoed into the Agent's context.
 
-## Exit classes
+Internal `task-init`, `state-transition`, `owner-*`, and `workspace-*` event kinds are reserved. User evidence cannot impersonate protocol transitions. The hash chain detects broken or inconsistent records, not a malicious rewrite by an actor who controls the repository and can recompute hashes. It is not signed attestation of command execution.
 
-- `0`: success.
-- `2–3`: usage or invalid data/schema.
-- `5`: a required Git command failed to start, timed out, or exited nonzero.
-- `6`: coordination lock timeout.
-- `10`: compare-and-swap or ownership conflict.
-- `11`: missing, invalid, active, or expired lease.
-- `12`: invalid state transition or retry exhaustion.
-- `13`: workspace isolation or cleanup failure.
-- `14`: task, evidence, lease, or workspace integrity failure.
+## Recovery and earlier versions
+
+Interrupted mutations use the transaction journal for recovery. Resolve corruption or unavailable authority paths from preserved evidence; do not rewrite hashes, registries, or task state by hand. Use `doctor --task-id <id>` and `verify <id>` for diagnosis. Cleanup follows [workspace isolation](workspace-isolation.md).
+
+`agent-work/v1` tasks are not automatically adopted. A matching legacy registry is rejected before v2 state is created, and existing task directories are preserved. Finish or inspect old tasks using the previous runtime. For v2, use a new task ID, caller-chosen owner/phase labels, and `writer` in place of `driver`, `worker`, or `integrator`. The old `risk` selector and `--max-verify-retries` are removed; retain those policies in the calling workflow where needed.
+
+Process success means the requested operation succeeded, not that the task is complete. Inspect the returned phase and verification result. Error classes distinguish usage/data, Git, lock, version conflict, lease, terminal/completion, workspace, and integrity failures.

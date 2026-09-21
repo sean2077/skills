@@ -10,11 +10,11 @@ python3 "<installed-skill-dir>/scripts/interview_state.py" status --session <ses
 python3 "<installed-skill-dir>/scripts/interview_state.py" history --id <slug> --tail 5
 ```
 
-On revision conflict, reload and reconcile the winning topology/round. On binding mismatch, confirm the prior owner is inactive and use explicit `rebind --expected-revision <n>`.
+On revision conflict, reload and reconcile the current specification and approval. On binding mismatch, confirm the prior owner is inactive and use explicit `rebind --expected-revision <n>`.
 
-Run `doctor` before recovery. Use `recover` only when the primary is corrupt and the reported single-generation backup is valid; `--force` is an intentional rollback. Recovery refuses a different worktree/branch unless `--rebind` explicitly transfers the restored owner after you confirm the prior owner is inactive. Use `unlock --stale-after <seconds>` only after confirming the recorded process is dead. Never hand-edit topology, scores, ontology, phase, revision, lock, or approval fields.
+Run `doctor` before recovery. Use `recover` only when the primary is corrupt and the reported single-generation backup is valid; `--force` is an intentional rollback. Recovery refuses a different worktree/branch unless `--rebind` explicitly transfers the restored owner after you confirm the prior owner is inactive. Use `unlock --stale-after <seconds>` only after confirming the recorded process is dead. Never hand-edit phase, revision, lock, or approval fields.
 
-A pending scoring phase resumes from the runtime's current weakest target and next contiguous round. A crystallized run awaits approval; an approved run awaits unchanged-digest completion. `completed` and `aborted` are terminal.
+A drafting run resumes the requirements conversation. A crystallized run awaits approval; an approved run awaits unchanged-digest completion. `completed` and `aborted` are terminal.
 
 ## Response and exit contract
 

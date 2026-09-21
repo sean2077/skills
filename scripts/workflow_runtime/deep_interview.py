@@ -1,288 +1,57 @@
 WORKFLOW = "deep-interview"
-SCHEMA = "agent-workflow/deep-interview/2"
+SCHEMA = "agent-workflow/deep-interview/3"
 TERMINAL_STATUSES = {"completed", "aborted"}
-PHASES = {
-    "topology_pending",
-    "interviewing",
-    "gate_passed",
-    "gate_waived",
-    "crystallized",
-    "approved",
-    "completed",
-    "aborted",
-}
 STATUS_BY_PHASE = {
-    "topology_pending": "active",
-    "interviewing": "active",
-    "gate_passed": "active",
-    "gate_waived": "active",
-    "crystallized": "crystallized",
+    "drafting": "active",
+    "crystallized": "awaiting_approval",
     "approved": "approved",
     "completed": "completed",
     "aborted": "aborted",
 }
-CHALLENGE_MODES = {"contrarian", "simplifier", "ontologist"}
-DEPTH_THRESHOLDS = {"quick": 0.30, "standard": 0.20, "deep": 0.10}
-DIMENSIONS = {
-    "greenfield": ["goal", "constraints", "criteria"],
-    "brownfield": ["goal", "constraints", "criteria", "context"],
-}
-WEIGHTS = {
-    "greenfield": {"goal": 0.40, "constraints": 0.30, "criteria": 0.30},
-    "brownfield": {"goal": 0.35, "constraints": 0.25, "criteria": 0.25, "context": 0.15},
-}
-PROVENANCE_TAGS = ("[from-user]", "[from-code]", "[from-research]", "[from-prototype]")
-
-
-def validate_entity(value: Any, field: str, *, corrupt: bool) -> Dict[str, Any]:
-    fail_code = 6 if corrupt else 2
-    fail_kind = "corrupt_state" if corrupt else "invalid_ontology"
-    if not isinstance(value, dict):
-        raise WorkflowError(fail_code, fail_kind, "%s must be an object" % field)
-    try:
-        name = bounded_text(value.get("name"), field + ".name", 100)
-        entity_type = bounded_text(value.get("type"), field + ".type", 100)
-        fields = validate_string_list(value.get("fields", []), field + ".fields", max_items=20, item_limit=100)
-        relationships = validate_string_list(
-            value.get("relationships", []), field + ".relationships", max_items=20, item_limit=200
-        )
-    except WorkflowError as exc:
-        if corrupt:
-            exc.code = 6
-            exc.kind = "corrupt_state"
-        raise
-    return {"name": name, "type": entity_type, "fields": fields, "relationships": relationships}
 
 
 def validate_workflow_state(state: Dict[str, Any]) -> None:
     phase = require_str(state.get("phase"), "phase")
-    status = require_str(state.get("status"), "status")
-    if phase not in PHASES or STATUS_BY_PHASE[phase] != status:
-        raise WorkflowError(6, "corrupt_state", "interview phase and status are inconsistent")
-    kind = require_str(state.get("type"), "type")
-    depth = require_str(state.get("depth"), "depth")
-    if kind not in DIMENSIONS or depth not in DEPTH_THRESHOLDS:
-        raise WorkflowError(6, "corrupt_state", "interview type or depth is invalid")
-    threshold = require_number(state.get("threshold"), "threshold")
-    if threshold is None or not 0.0 <= threshold <= 1.0:
-        raise WorkflowError(6, "corrupt_state", "threshold must be between 0 and 1")
-    require_str(state.get("threshold_source"), "threshold_source")
+    if phase not in STATUS_BY_PHASE or state.get("status") != STATUS_BY_PHASE[phase]:
+        raise WorkflowError(6, "corrupt_state", "interview phase/status is invalid")
     idea = require_str(state.get("initial_idea"), "initial_idea")
-    if len(idea) > 2000:
-        raise WorkflowError(6, "corrupt_state", "initial idea exceeds its limit")
-
-    dimensions = DIMENSIONS[kind]
-    topology = require_dict(state.get("topology"), "topology")
-    topology_status = require_str(topology.get("status"), "topology.status")
-    if topology_status not in {"pending", "locked"}:
-        raise WorkflowError(6, "corrupt_state", "topology status is invalid")
-    components = require_list(topology.get("components"), "topology.components")
-    if len(components) > 6 or (topology_status == "locked" and not components):
-        raise WorkflowError(6, "corrupt_state", "topology component count is invalid")
-    component_ids: List[str] = []
-    active_ids: List[str] = []
-    deferred_ids: List[str] = []
-    for index, raw in enumerate(components):
-        component = require_dict(raw, "topology.components[%d]" % index)
-        component_id = require_str(component.get("id"), "topology.components[%d].id" % index)
-        if not ID_RE.fullmatch(component_id):
-            raise WorkflowError(6, "corrupt_state", "component id is invalid")
-        component_ids.append(component_id)
-        component_name = require_str(component.get("name"), "topology.components[%d].name" % index)
-        component_description = require_str(component.get("description"), "topology.components[%d].description" % index)
-        if len(component_name) > 120 or len(component_description) > 500:
-            raise WorkflowError(6, "corrupt_state", "component text exceeds its bounds")
-        component_status = require_str(component.get("status"), "topology.components[%d].status" % index)
-        if component_status not in {"active", "deferred"}:
-            raise WorkflowError(6, "corrupt_state", "component status is invalid")
-        if component_status == "active":
-            active_ids.append(component_id)
-        else:
-            deferred_ids.append(component_id)
-        evidence = require_list(component.get("evidence"), "topology.components[%d].evidence" % index)
-        if len(evidence) > 8 or any(not isinstance(item, str) or len(item) > 500 for item in evidence):
-            raise WorkflowError(6, "corrupt_state", "component evidence exceeds its bounds")
-        clarity = require_dict(component.get("clarity_scores"), "topology.components[%d].clarity_scores" % index)
-        expected = set(dimensions) if component_status == "active" else set()
-        if set(clarity) != expected:
-            raise WorkflowError(6, "corrupt_state", "component clarity dimensions are invalid")
-        for dimension, score in clarity.items():
-            number = require_number(score, "clarity_scores.%s" % dimension)
-            if number is None or not 0.0 <= number <= 1.0:
-                raise WorkflowError(6, "corrupt_state", "clarity score is outside 0..1")
-    if len(component_ids) != len(set(component_ids)) or (topology_status == "locked" and not active_ids):
-        raise WorkflowError(6, "corrupt_state", "topology has duplicate ids or no active component")
-    deferrals = require_list(topology.get("deferrals"), "topology.deferrals")
-    targets: List[str] = []
-    for index, raw in enumerate(deferrals):
-        row = require_dict(raw, "topology.deferrals[%d]" % index)
-        target = require_str(row.get("component_id"), "topology.deferrals[%d].component_id" % index)
-        reason = require_str(row.get("reason"), "topology.deferrals[%d].reason" % index)
-        if len(reason) > 500:
-            raise WorkflowError(6, "corrupt_state", "deferral reason exceeds its bound")
-        targets.append(target)
-    if sorted(targets) != sorted(deferred_ids):
-        raise WorkflowError(6, "corrupt_state", "deferrals must cover exactly the deferred components")
-    last_component = topology.get("last_targeted_component_id")
-    last_dimension = topology.get("last_targeted_dimension")
-    if last_component is not None and last_component not in active_ids:
-        raise WorkflowError(6, "corrupt_state", "last targeted component is invalid")
-    if last_dimension is not None and last_dimension not in dimensions:
-        raise WorkflowError(6, "corrupt_state", "last targeted dimension is invalid")
-
-    rounds = require_list(state.get("rounds"), "rounds")
-    if len(rounds) > 20:
-        raise WorkflowError(6, "corrupt_state", "interview exceeds the 20-round hard cap")
-    for index, raw in enumerate(rounds):
-        row = require_dict(raw, "rounds[%d]" % index)
-        if require_int(row.get("round"), "rounds[%d].round" % index, minimum=1) != index + 1:
-            raise WorkflowError(6, "corrupt_state", "interview rounds must be consecutive")
-        target = require_dict(row.get("target"), "rounds[%d].target" % index)
-        if target.get("component_id") not in active_ids or target.get("dimension") not in dimensions:
-            raise WorkflowError(6, "corrupt_state", "round target is invalid")
-        question = require_str(row.get("question"), "rounds[%d].question" % index)
-        answer = require_str(row.get("answer"), "rounds[%d].answer" % index)
-        if len(question) > 1000 or len(answer) > 6000:
-            raise WorkflowError(6, "corrupt_state", "round question or answer exceeds its limit")
-        scores = require_dict(row.get("component_scores"), "rounds[%d].component_scores" % index)
-        if set(scores) != set(active_ids):
-            raise WorkflowError(6, "corrupt_state", "round scores do not cover active components")
-        for component_id, raw_scores in scores.items():
-            score_map = require_dict(raw_scores, "component_scores.%s" % component_id)
-            if set(score_map) != set(dimensions):
-                raise WorkflowError(6, "corrupt_state", "round score dimensions are incomplete")
-            for score in score_map.values():
-                number = require_number(score, "component score")
-                if number is None or not 0.0 <= number <= 1.0:
-                    raise WorkflowError(6, "corrupt_state", "component score is outside 0..1")
-        totals = require_dict(row.get("dimension_totals"), "rounds[%d].dimension_totals" % index)
-        if set(totals) != set(dimensions):
-            raise WorkflowError(6, "corrupt_state", "dimension totals are incomplete")
-        for dimension in dimensions:
-            expected_total = round(min(float(scores[component_id][dimension]) for component_id in active_ids), 6)
-            actual_total = require_number(totals.get(dimension), "rounds[%d].dimension_totals.%s" % (index, dimension))
-            if actual_total is None or abs(actual_total - expected_total) > 1e-9:
-                raise WorkflowError(6, "corrupt_state", "dimension totals do not match component minima")
-        ambiguity = require_number(row.get("ambiguity"), "rounds[%d].ambiguity" % index)
-        expected_ambiguity = round(
-            max(0.0, min(1.0, 1.0 - sum(float(totals[dimension]) * WEIGHTS[kind][dimension] for dimension in dimensions))),
-            6,
-        )
-        if ambiguity is None or not 0.0 <= ambiguity <= 1.0 or abs(ambiguity - expected_ambiguity) > 1e-9:
-            raise WorkflowError(6, "corrupt_state", "ambiguity does not match the established weighted formula")
-        challenge = row.get("challenge_mode_used")
-        if challenge is not None and challenge not in CHALLENGE_MODES:
-            raise WorkflowError(6, "corrupt_state", "challenge mode is invalid")
-        if not isinstance(row.get("pressure_pass"), bool):
-            raise WorkflowError(6, "corrupt_state", "pressure_pass must be boolean")
-        require_timestamp(row.get("recorded_at"), "rounds[%d].recorded_at" % index)
-
-    snapshots = require_list(state.get("ontology_snapshots"), "ontology_snapshots")
-    if len(snapshots) != len(rounds):
-        raise WorkflowError(6, "corrupt_state", "ontology snapshot count must match rounds")
-    for index, raw in enumerate(snapshots):
-        snapshot = require_dict(raw, "ontology_snapshots[%d]" % index)
-        if require_int(snapshot.get("round"), "ontology_snapshots[%d].round" % index, minimum=1) != index + 1:
-            raise WorkflowError(6, "corrupt_state", "ontology snapshot round is invalid")
-        entities = require_list(snapshot.get("entities"), "ontology_snapshots[%d].entities" % index)
-        if len(entities) > 50:
-            raise WorkflowError(6, "corrupt_state", "ontology entity count exceeds 50")
-        for entity_index, entity in enumerate(entities):
-            validate_entity(entity, "ontology_snapshots[%d].entities[%d]" % (index, entity_index), corrupt=True)
-        stability = require_number(snapshot.get("stability_ratio"), "stability_ratio", nullable=True)
-        if stability is not None and not 0.0 <= stability <= 1.0:
-            raise WorkflowError(6, "corrupt_state", "ontology stability is outside 0..1")
-        reasoning = require_list(snapshot.get("matching_reasoning"), "matching_reasoning")
-        if len(reasoning) > 100 or any(not isinstance(item, str) or len(item) > 300 for item in reasoning):
-            raise WorkflowError(6, "corrupt_state", "ontology matching reasoning exceeds its bounds")
-
-    used = require_list(state.get("challenge_modes_used"), "challenge_modes_used")
-    if len(used) != len(set(used)) or any(item not in CHALLENGE_MODES for item in used):
-        raise WorkflowError(6, "corrupt_state", "challenge mode history is invalid")
-    current = require_number(state.get("current_ambiguity"), "current_ambiguity", nullable=True)
-    if current is not None and not 0.0 <= current <= 1.0:
-        raise WorkflowError(6, "corrupt_state", "current ambiguity is outside 0..1")
-    weakest = state.get("weakest")
-    if weakest is not None:
-        weakest_map = require_dict(weakest, "weakest")
-        if weakest_map.get("component_id") not in active_ids or weakest_map.get("dimension") not in dimensions:
-            raise WorkflowError(6, "corrupt_state", "weakest target is invalid")
-        score = require_number(weakest_map.get("score"), "weakest.score")
-        if score is None or not 0.0 <= score <= 1.0:
-            raise WorkflowError(6, "corrupt_state", "weakest score is outside 0..1")
-    if not isinstance(state.get("stall_escalation"), bool):
-        raise WorkflowError(6, "corrupt_state", "stall_escalation must be boolean")
-    suggestion = state.get("challenge_suggestion")
-    if suggestion is not None and suggestion not in CHALLENGE_MODES:
-        raise WorkflowError(6, "corrupt_state", "challenge suggestion is invalid")
-    warnings = require_list(state.get("warnings"), "warnings")
-    if len(warnings) > 3 or any(not isinstance(item, str) or len(item) > 300 for item in warnings):
-        raise WorkflowError(6, "corrupt_state", "warnings exceed their bounds")
-    waiver = state.get("gate_waiver")
-    if waiver is not None:
-        waiver_map = require_dict(waiver, "gate_waiver")
-        waiver_reason = require_str(waiver_map.get("reason"), "gate_waiver.reason")
-        if len(waiver_reason) > 1000:
-            raise WorkflowError(6, "corrupt_state", "gate waiver reason exceeds its limit")
-        require_timestamp(waiver_map.get("recorded_at"), "gate_waiver.recorded_at")
-    spec_path = state.get("spec_path")
-    spec_hash = state.get("spec_sha256")
-    if spec_path is not None and (not isinstance(spec_path, str) or not spec_path or len(spec_path) > 512):
-        raise WorkflowError(6, "corrupt_state", "spec_path must be null or bounded text")
-    if spec_hash is not None and (not isinstance(spec_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", spec_hash)):
-        raise WorkflowError(6, "corrupt_state", "spec_sha256 is invalid")
+    if not idea.strip() or len(idea) > 2000:
+        raise WorkflowError(6, "corrupt_state", "interview idea is invalid")
+    path, digest = state.get("spec_path"), state.get("spec_sha256")
+    if path is not None:
+        require_str(path, "spec_path")
+        if len(path) > 512 or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise WorkflowError(6, "corrupt_state", "spec path/digest is invalid")
+    elif digest is not None or phase in {"crystallized", "approved", "completed"}:
+        raise WorkflowError(6, "corrupt_state", "spec path/digest is missing")
     approval = state.get("approval")
     if approval is not None:
-        approval_map = require_dict(approval, "approval")
-        approval_evidence = require_str(approval_map.get("evidence"), "approval.evidence")
-        if len(approval_evidence) > 1000:
-            raise WorkflowError(6, "corrupt_state", "approval evidence exceeds its limit")
-        require_timestamp(approval_map.get("approved_at"), "approval.approved_at")
-    pressure_count = require_int(state.get("pressure_pass_count"), "pressure_pass_count", minimum=0)
-    if pressure_count != sum(1 for row in rounds if row["pressure_pass"]):
-        raise WorkflowError(6, "corrupt_state", "pressure pass count does not match round history")
-    if topology_status == "pending":
-        if phase != "topology_pending" or components or rounds or current is not None or weakest is not None:
-            raise WorkflowError(6, "corrupt_state", "pending topology state contains interview progress")
-    elif phase == "topology_pending":
-        raise WorkflowError(6, "corrupt_state", "locked topology cannot remain topology_pending")
-    if rounds:
-        if current != rounds[-1]["ambiguity"]:
-            raise WorkflowError(6, "corrupt_state", "current ambiguity does not match the latest round")
-        latest_scores = rounds[-1]["component_scores"]
-        for component in components:
-            if component["status"] == "active" and component["clarity_scores"] != latest_scores[component["id"]]:
-                raise WorkflowError(6, "corrupt_state", "component clarity does not match the latest score round")
-    elif current is not None:
-        raise WorkflowError(6, "corrupt_state", "current ambiguity requires at least one round")
-    numeric_gate = current is not None and current <= threshold
-    progressed_gate_phases = {"gate_passed", "crystallized", "approved", "completed"}
-    if phase in progressed_gate_phases and not numeric_gate and waiver is None:
-        raise WorkflowError(6, "corrupt_state", "post-gate phase lacks a numeric pass or explicit waiver")
-    if phase == "gate_passed" and not numeric_gate:
-        raise WorkflowError(6, "corrupt_state", "gate_passed requires ambiguity at or below threshold")
-    if phase == "gate_waived" and waiver is None:
-        raise WorkflowError(6, "corrupt_state", "gate_waived requires waiver evidence")
-    has_spec = spec_path is not None and spec_hash is not None
-    if (spec_path is None) != (spec_hash is None):
-        raise WorkflowError(6, "corrupt_state", "spec path and digest must be recorded together")
-    if phase in {"crystallized", "approved", "completed"} and not has_spec:
-        raise WorkflowError(6, "corrupt_state", "this phase requires a crystallized spec")
-    if phase not in {"crystallized", "approved", "completed", "aborted"} and has_spec:
-        raise WorkflowError(6, "corrupt_state", "spec metadata appears before crystallization")
+        approval = require_dict(approval, "approval")
+        evidence = require_str(approval.get("evidence"), "approval.evidence")
+        if not evidence.strip() or len(evidence) > 1000:
+            raise WorkflowError(6, "corrupt_state", "approval evidence is invalid")
+        require_timestamp(approval.get("approved_at"), "approval.approved_at")
+        if digest is None or approval.get("spec_sha256") != digest:
+            raise WorkflowError(6, "corrupt_state", "approval does not bind the crystallized digest")
     if phase in {"approved", "completed"} and approval is None:
-        raise WorkflowError(6, "corrupt_state", "this phase requires explicit approval")
-    if phase not in {"approved", "completed", "aborted"} and approval is not None:
-        raise WorkflowError(6, "corrupt_state", "approval appears outside the approved phases")
-    if approval is not None and not has_spec:
-        raise WorkflowError(6, "corrupt_state", "approval requires a crystallized spec")
-    terminal_reason = state.get("terminal_reason")
-    if terminal_reason is not None and (not isinstance(terminal_reason, str) or not terminal_reason or len(terminal_reason) > 1000):
-        raise WorkflowError(6, "corrupt_state", "terminal_reason must be null or bounded text")
-    if phase not in TERMINAL_STATUSES and terminal_reason is not None:
-        raise WorkflowError(6, "corrupt_state", "non-terminal interview cannot have a terminal reason")
-    if phase in TERMINAL_STATUSES and terminal_reason is None:
-        raise WorkflowError(6, "corrupt_state", "terminal interview requires a reason")
+        raise WorkflowError(6, "corrupt_state", "approved state lacks approval evidence")
+    if phase in {"drafting", "crystallized"} and approval is not None:
+        raise WorkflowError(6, "corrupt_state", "unapproved state contains approval evidence")
+    if phase == "drafting" and path is not None:
+        raise WorkflowError(6, "corrupt_state", "drafting state contains a crystallized spec")
+    reason = state.get("terminal_reason")
+    if phase in TERMINAL_STATUSES:
+        require_str(reason, "terminal_reason")
+    elif reason is not None:
+        raise WorkflowError(6, "corrupt_state", "active interview has a terminal reason")
+    previous = 1
+    for raw in require_list(state.get("history"), "history"):
+        row = require_dict(raw, "history entry")
+        revision = require_int(row.get("revision"), "history.revision", minimum=2)
+        if not previous < revision <= state["revision"] or row.get("phase") not in STATUS_BY_PHASE:
+            raise WorkflowError(6, "corrupt_state", "history revision/phase is invalid")
+        require_timestamp(row.get("at"), "history.at")
+        previous = revision
 
 
 def state_status(state: Dict[str, Any]) -> str:
@@ -297,330 +66,29 @@ def is_terminal(state: Dict[str, Any]) -> bool:
     return state["status"] in TERMINAL_STATUSES
 
 
-def cadence_user_required(state: Dict[str, Any]) -> bool:
-    recent = state.get("rounds", [])[-2:]
-    return len(recent) == 2 and all("[from-user]" not in row.get("answer", "") for row in recent)
-
-
 def next_action(state: Dict[str, Any]) -> str:
-    phase = state["phase"]
-    if phase == "topology_pending":
-        return "confirm and lock the 1-6 component topology"
-    if phase == "interviewing":
-        if len(state["rounds"]) >= 20:
-            return "hard round cap reached; obtain an explicit waiver or abort"
-        target = state.get("weakest") or {}
-        if cadence_user_required(state):
-            return "ask one [from-user] decision question for %s × %s, then submit all active-component scores" % (
-                target.get("component_id", "unknown"),
-                target.get("dimension", "unknown"),
-            )
-        return "ask one question for %s × %s, then submit all active-component scores" % (
-            target.get("component_id", "unknown"),
-            target.get("dimension", "unknown"),
-        )
-    if phase in {"gate_passed", "gate_waived"}:
-        return "write and validate the pending-approval spec, then crystallize"
-    if phase == "crystallized":
-        return "request explicit user approval, then record it with approve"
-    if phase == "approved":
-        return "complete the interview; implementation remains a separate authorization"
-    if phase == "completed":
-        return "stop; the approved specification is complete"
-    return "stop; the interview was aborted"
-
-
-def latest_ontology_stability(state: Dict[str, Any]) -> Optional[float]:
-    if not state["ontology_snapshots"]:
-        return None
-    return state["ontology_snapshots"][-1]["stability_ratio"]
+    return {
+        "drafting": "resolve requirements and crystallize the specification when ready",
+        "crystallized": "present the exact specification and record explicit approval",
+        "approved": "complete with the unchanged approved specification",
+        "completed": "stop; the approved specification is complete",
+        "aborted": "stop; the interview was aborted",
+    }[state["phase"]]
 
 
 def compact_metrics(state: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "round": len(state["rounds"]),
-        "threshold": state["threshold"],
-        "threshold_source": state["threshold_source"],
-        "ambiguity": state["current_ambiguity"],
-        "gate_passed": state["phase"] in {"gate_passed", "crystallized", "approved", "completed"},
-        "gate_waived": state["gate_waiver"] is not None,
-        "weakest": state["weakest"],
-        "ontology_stability": latest_ontology_stability(state),
-        "challenge_suggestion": state["challenge_suggestion"],
-        "stall_escalation": state["stall_escalation"],
-        "cadence_user_required": cadence_user_required(state),
-        "warnings": state["warnings"],
-        "pressure_passes": state["pressure_pass_count"],
-        "spec_path": state["spec_path"],
-        "approved": state["approval"] is not None,
-    }
+    return {"spec_path": state["spec_path"], "spec_sha256": state["spec_sha256"],
+            "approved": state["approval"] is not None}
 
 
 def history_rows(state: Dict[str, Any], *, full: bool) -> List[Dict[str, Any]]:
-    if full:
-        return list(state["rounds"])
-    snapshots = {row["round"]: row for row in state["ontology_snapshots"]}
-    return [
-        {
-            "round": row["round"],
-            "target": row["target"],
-            "ambiguity": row["ambiguity"],
-            "ontology_stability": snapshots[row["round"]]["stability_ratio"],
-            "challenge_mode_used": row["challenge_mode_used"],
-            "pressure_pass": row["pressure_pass"],
-            "recorded_at": row["recorded_at"],
-        }
-        for row in state["rounds"]
-    ]
+    return list(state["history"])
 
 
-def active_components(state: Dict[str, Any]) -> List[Dict[str, Any]]:
-    return [component for component in state["topology"]["components"] if component["status"] == "active"]
-
-
-def choose_weakest(
-    components: List[Dict[str, Any]],
-    dimensions: List[str],
-    last_component: Optional[str],
-) -> Dict[str, Any]:
-    order = {dimension: index for index, dimension in enumerate(dimensions)}
-    candidates: List[Tuple[float, str, str]] = []
-    for component in components:
-        for dimension in dimensions:
-            candidates.append((float(component["clarity_scores"][dimension]), component["id"], dimension))
-    candidates.sort(key=lambda item: (item[0], item[1], order[item[2]]))
-    minimum = candidates[0][0]
-    tied = [item for item in candidates if abs(item[0] - minimum) <= 1e-12]
-    rotated = [item for item in tied if item[1] != last_component]
-    chosen = rotated[0] if rotated else tied[0]
-    return {"component_id": chosen[1], "dimension": chosen[2], "score": round(chosen[0], 6)}
-
-
-def validate_topology_payload(payload: Dict[str, Any], dimensions: List[str]) -> Dict[str, Any]:
-    if payload.get("schema") == "oma-interview-scores/1" and payload.get("round") == 0:
-        raw_topology = payload.get("topology")
-    elif payload.get("schema") == "agent-interview-topology/2":
-        raw_topology = payload
-    else:
-        raise WorkflowError(2, "invalid_topology", "unsupported topology schema")
-    if not isinstance(raw_topology, dict):
-        raise WorkflowError(2, "invalid_topology", "topology must be an object")
-    raw_components = raw_topology.get("components")
-    raw_deferrals = raw_topology.get("deferrals", [])
-    if not isinstance(raw_components, list) or not 1 <= len(raw_components) <= 6:
-        raise WorkflowError(2, "invalid_topology", "topology needs 1-6 components")
-    if not isinstance(raw_deferrals, list):
-        raise WorkflowError(2, "invalid_topology", "deferrals must be a list")
-    components: List[Dict[str, Any]] = []
-    ids: List[str] = []
-    deferred_ids: List[str] = []
-    for index, raw in enumerate(raw_components):
-        if not isinstance(raw, dict):
-            raise WorkflowError(2, "invalid_topology", "component %d must be an object" % index)
-        component_id = validate_id(bounded_text(raw.get("id"), "component id", 64))
-        name = bounded_text(raw.get("name"), "component name", 120)
-        description = bounded_text(raw.get("description"), "component description", 500)
-        status = raw.get("status", "active")
-        if status not in {"active", "deferred"}:
-            raise WorkflowError(2, "invalid_topology", "component status must be active or deferred")
-        evidence = validate_string_list(raw.get("evidence", []), "component evidence", max_items=8, item_limit=500)
-        ids.append(component_id)
-        if status == "deferred":
-            deferred_ids.append(component_id)
-        components.append(
-            {
-                "id": component_id,
-                "name": name,
-                "description": description,
-                "status": status,
-                "evidence": evidence,
-                "clarity_scores": {dimension: 0.0 for dimension in dimensions} if status == "active" else {},
-            }
-        )
-    if len(ids) != len(set(ids)):
-        raise WorkflowError(2, "invalid_topology", "component ids must be unique")
-    if not any(component["status"] == "active" for component in components):
-        raise WorkflowError(2, "invalid_topology", "topology needs at least one active component")
-    deferrals: List[Dict[str, str]] = []
-    targets: List[str] = []
-    for index, raw in enumerate(raw_deferrals):
-        if not isinstance(raw, dict):
-            raise WorkflowError(2, "invalid_topology", "deferral %d must be an object" % index)
-        target = bounded_text(raw.get("component_id"), "deferral component_id", 64)
-        reason = bounded_text(raw.get("reason"), "deferral reason", 500)
-        targets.append(target)
-        deferrals.append({"component_id": target, "reason": reason})
-    if sorted(targets) != sorted(deferred_ids):
-        raise WorkflowError(2, "invalid_topology", "deferrals must cover exactly the deferred components")
-    return {
-        "status": "locked",
-        "components": components,
-        "deferrals": deferrals,
-        "last_targeted_component_id": None,
-        "last_targeted_dimension": None,
-    }
-
-
-def validate_entities(value: Any) -> List[Dict[str, Any]]:
-    if not isinstance(value, dict) or not isinstance(value.get("entities", []), list):
-        raise WorkflowError(2, "invalid_ontology", "ontology must contain an entities list")
-    raw_entities = value.get("entities", [])
-    if len(raw_entities) > 50:
-        raise WorkflowError(2, "invalid_ontology", "ontology accepts at most 50 entities")
-    entities = [validate_entity(raw, "ontology.entities[%d]" % index, corrupt=False) for index, raw in enumerate(raw_entities)]
-    keys = [(entity["name"], entity["type"]) for entity in entities]
-    if len(keys) != len(set(keys)):
-        raise WorkflowError(2, "invalid_ontology", "ontology entity name/type pairs must be unique")
-    return entities
-
-
-def ontology_stability(
-    previous: Optional[List[Dict[str, Any]]],
-    current: List[Dict[str, Any]],
-) -> Tuple[Optional[float], List[str]]:
-    if previous is None:
-        return None, ["first ontology snapshot; stability is not yet applicable"]
-    used: set = set()
-    stable = 0
-    changed = 0
-    reasoning: List[str] = []
-    for entity in current:
-        exact = next(
-            (
-                index
-                for index, old in enumerate(previous)
-                if index not in used and old["name"] == entity["name"] and old["type"] == entity["type"]
-            ),
-            None,
-        )
-        if exact is not None:
-            used.add(exact)
-            stable += 1
-            reasoning.append("stable: %s (%s)" % (entity["name"], entity["type"]))
-            continue
-        best_index: Optional[int] = None
-        best_overlap = 0.0
-        current_fields = set(entity["fields"])
-        for index, old in enumerate(previous):
-            if index in used or old["type"] != entity["type"]:
-                continue
-            old_fields = set(old["fields"])
-            denominator = max(len(old_fields), len(current_fields), 1)
-            overlap = len(old_fields & current_fields) / float(denominator)
-            if overlap > best_overlap:
-                best_overlap = overlap
-                best_index = index
-        if best_index is not None and best_overlap > 0.5:
-            used.add(best_index)
-            changed += 1
-            reasoning.append(
-                "changed: %s -> %s (%s, field overlap %.2f)"
-                % (previous[best_index]["name"], entity["name"], entity["type"], best_overlap)
-            )
-        else:
-            reasoning.append("new: %s (%s)" % (entity["name"], entity["type"]))
-    for index, old in enumerate(previous):
-        if index not in used:
-            reasoning.append("removed: %s (%s)" % (old["name"], old["type"]))
-    total = max(len(previous), len(current), 1)
-    return round((stable + changed) / float(total), 6), reasoning
-
-
-def score_payload(state: Dict[str, Any], payload: Dict[str, Any]) -> Dict[str, Any]:
-    if payload.get("schema") not in {"oma-interview-scores/1", "agent-interview-round/2"}:
-        raise WorkflowError(2, "invalid_score", "unsupported interview round schema")
-    expected_round = len(state["rounds"]) + 1
-    if payload.get("round") != expected_round:
-        raise WorkflowError(5, "round_mismatch", "round must be exactly previous round + 1", expected=expected_round)
-    question = bounded_text(payload.get("question"), "question", 1000)
-    answer = bounded_text(payload.get("answer"), "answer", 6000)
-    if not any(tag in answer for tag in PROVENANCE_TAGS):
-        raise WorkflowError(2, "invalid_evidence", "answer must retain a supported provenance label")
-    if cadence_user_required(state) and "[from-user]" not in answer:
-        raise WorkflowError(
-            2,
-            "cadence_user_required",
-            "after two consecutive non-user rounds, the next round must include a [from-user] decision",
-        )
-    pressure_pass = payload.get("pressure_pass", False)
-    if not isinstance(pressure_pass, bool):
-        raise WorkflowError(2, "invalid_score", "pressure_pass must be boolean")
-    challenge = payload.get("challenge_mode_used")
-    if challenge is not None and challenge not in CHALLENGE_MODES:
-        raise WorkflowError(2, "invalid_challenge", "unknown challenge mode")
-    repeated_stall_ontologist = (
-        challenge == "ontologist"
-        and state["stall_escalation"]
-        and challenge in state["challenge_modes_used"]
-    )
-    if challenge is not None and challenge in state["challenge_modes_used"] and not repeated_stall_ontologist:
-        raise WorkflowError(2, "invalid_challenge", "challenge mode was already used", mode=challenge)
-    if state["stall_escalation"] and challenge != "ontologist":
-        raise WorkflowError(2, "challenge_required", "stall escalation requires the ontologist stance")
-    suggestion = state.get("challenge_suggestion")
-    if challenge is not None and not state["stall_escalation"] and challenge != suggestion:
-        raise WorkflowError(2, "invalid_challenge", "use only the currently suggested challenge mode", suggested=suggestion)
-
-    raw_scores = payload.get("component_scores")
-    if not isinstance(raw_scores, dict):
-        raise WorkflowError(2, "invalid_score", "component_scores must be an object")
-    components = active_components(state)
-    active_ids = [component["id"] for component in components]
-    dimensions = DIMENSIONS[state["type"]]
-    if set(raw_scores) != set(active_ids):
-        raise WorkflowError(2, "invalid_score", "scores must cover every active component exactly", active=active_ids)
-    normalized_scores: Dict[str, Dict[str, float]] = {}
-    for component_id in active_ids:
-        values = raw_scores[component_id]
-        if not isinstance(values, dict) or set(values) != set(dimensions):
-            raise WorkflowError(
-                2,
-                "invalid_score",
-                "each active component must include every required dimension exactly",
-                component=component_id,
-                dimensions=dimensions,
-            )
-        normalized_scores[component_id] = {}
-        for dimension in dimensions:
-            raw = values[dimension]
-            if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(float(raw)):
-                raise WorkflowError(2, "invalid_score", "scores must be finite numbers", component=component_id, dimension=dimension)
-            score = float(raw)
-            if not 0.0 <= score <= 1.0:
-                raise WorkflowError(2, "invalid_score", "scores must be between 0 and 1", component=component_id, dimension=dimension)
-            normalized_scores[component_id][dimension] = round(score, 6)
-    entities = validate_entities(payload.get("ontology", {"entities": []}))
-    return {
-        "round": expected_round,
-        "question": question,
-        "answer": answer,
-        "component_scores": normalized_scores,
-        "ontology": entities,
-        "challenge_mode_used": challenge,
-        "pressure_pass": pressure_pass,
-    }
-
-
-def compute_challenge_suggestion(state: Dict[str, Any], round_value: int, ambiguity: float) -> Optional[str]:
-    if state["stall_escalation"]:
-        return "ontologist"
-    used = set(state["challenge_modes_used"])
-    if round_value >= 4 and "contrarian" not in used:
-        return "contrarian"
-    if round_value >= 6 and "simplifier" not in used:
-        return "simplifier"
-    if round_value >= 8 and ambiguity > 0.3 and "ontologist" not in used:
-        return "ontologist"
-    return None
-
-
-def compute_warnings(round_value: int, ambiguity: float, threshold: float) -> List[str]:
-    warnings: List[str] = []
-    if round_value >= 10:
-        warnings.append("soft round guard reached at round 10; reassess whether the remaining questions are decision-bearing")
-    if round_value >= 20 and ambiguity > threshold:
-        warnings.append("hard round cap reached at round 20; obtain an explicit waiver or abort")
-    return warnings
+def record_change(state: Dict[str, Any]) -> None:
+    bump(state)
+    state["history"].append({"revision": state["revision"], "phase": state["phase"],
+                             "spec_sha256": state["spec_sha256"], "at": now()})
 
 
 def command_start(args: argparse.Namespace) -> int:
@@ -628,264 +96,22 @@ def command_start(args: argparse.Namespace) -> int:
     session = normalize_session(args.session)
     run_id = validate_id(args.id) if args.id else "default"
     idea = bounded_text(args.idea, "idea", 2000)
-    if args.threshold is not None:
-        if not math.isfinite(args.threshold) or not 0.0 <= args.threshold <= 1.0:
-            raise WorkflowError(2, "invalid_threshold", "threshold must be between 0 and 1")
-        threshold = round(float(args.threshold), 6)
-        threshold_source = "explicit"
-    else:
-        threshold = DEPTH_THRESHOLDS[args.depth]
-        threshold_source = "depth:%s" % args.depth
     path, backup, lock = state_paths(context, WORKFLOW, session, run_id, create=True)
     with command_lock(lock):
         if path.exists():
-            existing = load_state(path, backup, WORKFLOW, SCHEMA, run_id, session)
-            raise WorkflowError(
-                5,
-                "already_exists",
-                "interview run already exists",
-                revision=existing["revision"],
-                stage=existing["phase"],
-            )
+            # Existing runs, including v2 scoring runs, are never overwritten.
+            raise WorkflowError(5, "already_exists", "interview run already exists; select another id")
         stamp = now()
         state: Dict[str, Any] = {
-            "schema": SCHEMA,
-            "workflow": WORKFLOW,
-            "id": run_id,
-            "session": session,
-            "revision": 1,
-            "status": "active",
-            "phase": "topology_pending",
-            "type": args.type,
-            "depth": args.depth,
-            "threshold": threshold,
-            "threshold_source": threshold_source,
-            "initial_idea": idea,
-            "topology": {
-                "status": "pending",
-                "components": [],
-                "deferrals": [],
-                "last_targeted_component_id": None,
-                "last_targeted_dimension": None,
-            },
-            "rounds": [],
-            "ontology_snapshots": [],
-            "challenge_modes_used": [],
-            "current_ambiguity": None,
-            "weakest": None,
-            "stall_escalation": False,
-            "challenge_suggestion": None,
-            "warnings": [],
-            "gate_waiver": None,
-            "spec_path": None,
-            "spec_sha256": None,
-            "approval": None,
-            "pressure_pass_count": 0,
-            "terminal_reason": None,
-            "binding": new_binding(context),
-            "recoveries": [],
-            "created_at": stamp,
-            "updated_at": stamp,
+            "schema": SCHEMA, "workflow": WORKFLOW, "id": run_id, "session": session,
+            "revision": 1, "status": "active", "phase": "drafting", "initial_idea": idea,
+            "spec_path": None, "spec_sha256": None, "approval": None, "history": [],
+            "terminal_reason": None, "binding": new_binding(context), "recoveries": [],
+            "created_at": stamp, "updated_at": stamp,
         }
         save_state(path, backup, state)
     emit_state(state, context, full=args.full, changed=True)
     return 0
-
-
-def command_topology(args: argparse.Namespace) -> int:
-    context = workspace_context(args.root)
-    session = normalize_session(args.session)
-    run_id = resolve_run_id(args, context, session)
-    path, backup, lock = state_paths(context, WORKFLOW, session, run_id, create=False)
-    payload = load_json_input(args.input, root=Path(context["worktree"]))
-    with command_lock(lock):
-        state = require_mutable(path, backup, run_id, session, args.expected_revision, context)
-        if is_terminal(state):
-            raise WorkflowError(4, "terminal", "interview is terminal", status=state["status"])
-        if state["phase"] != "topology_pending":
-            raise WorkflowError(5, "topology_locked", "topology can be locked exactly once", stage=state["phase"])
-        topology = validate_topology_payload(payload, DIMENSIONS[state["type"]])
-        state["topology"] = topology
-        state["weakest"] = choose_weakest(active_components(state), DIMENSIONS[state["type"]], None)
-        state["topology"]["last_targeted_component_id"] = state["weakest"]["component_id"]
-        state["topology"]["last_targeted_dimension"] = state["weakest"]["dimension"]
-        state["phase"] = "interviewing"
-        bump(state)
-        save_state(path, backup, state)
-    emit_state(state, context, full=args.full, changed=True)
-    return 0
-
-
-def command_score(args: argparse.Namespace) -> int:
-    context = workspace_context(args.root)
-    session = normalize_session(args.session)
-    run_id = resolve_run_id(args, context, session)
-    path, backup, lock = state_paths(context, WORKFLOW, session, run_id, create=False)
-    payload = load_json_input(args.input, root=Path(context["worktree"]))
-    with command_lock(lock):
-        state = require_mutable(path, backup, run_id, session, args.expected_revision, context)
-        if is_terminal(state):
-            raise WorkflowError(4, "terminal", "interview is terminal", status=state["status"])
-        if state["phase"] not in {"interviewing", "gate_passed"}:
-            raise WorkflowError(5, "invalid_transition", "scores are accepted only while interviewing", stage=state["phase"])
-        if len(state["rounds"]) >= 20:
-            raise WorkflowError(4, "round_limit", "the 20-round hard cap requires waiver or abort")
-        normalized = score_payload(state, payload)
-        components = active_components(state)
-        by_id = {component["id"]: component for component in components}
-        for component_id, scores in normalized["component_scores"].items():
-            by_id[component_id]["clarity_scores"] = scores
-        dimensions = DIMENSIONS[state["type"]]
-        totals = {
-            dimension: round(min(component["clarity_scores"][dimension] for component in components), 6)
-            for dimension in dimensions
-        }
-        weighted = sum(totals[dimension] * WEIGHTS[state["type"]][dimension] for dimension in dimensions)
-        ambiguity = round(max(0.0, min(1.0, 1.0 - weighted)), 6)
-        targeted = dict(state["weakest"])
-        next_weakest = choose_weakest(
-            components,
-            dimensions,
-            state["topology"]["last_targeted_component_id"],
-        )
-        previous_entities = state["ontology_snapshots"][-1]["entities"] if state["ontology_snapshots"] else None
-        stability, reasoning = ontology_stability(previous_entities, normalized["ontology"])
-        round_record = {
-            "round": normalized["round"],
-            "target": targeted,
-            "question": normalized["question"],
-            "answer": normalized["answer"],
-            "component_scores": normalized["component_scores"],
-            "dimension_totals": totals,
-            "ambiguity": ambiguity,
-            "challenge_mode_used": normalized["challenge_mode_used"],
-            "pressure_pass": normalized["pressure_pass"],
-            "recorded_at": now(),
-        }
-        state["rounds"].append(round_record)
-        state["ontology_snapshots"].append(
-            {
-                "round": normalized["round"],
-                "entities": normalized["ontology"],
-                "stability_ratio": stability,
-                "matching_reasoning": reasoning,
-            }
-        )
-        if (
-            normalized["challenge_mode_used"] is not None
-            and normalized["challenge_mode_used"] not in state["challenge_modes_used"]
-        ):
-            state["challenge_modes_used"].append(normalized["challenge_mode_used"])
-        if normalized["pressure_pass"]:
-            state["pressure_pass_count"] += 1
-        state["current_ambiguity"] = ambiguity
-        state["weakest"] = next_weakest
-        state["topology"]["last_targeted_component_id"] = next_weakest["component_id"]
-        state["topology"]["last_targeted_dimension"] = next_weakest["dimension"]
-        recent = [row["ambiguity"] for row in state["rounds"][-3:]]
-        state["stall_escalation"] = (
-            len(recent) == 3 and max(recent) - min(recent) <= 0.05 and ambiguity > state["threshold"]
-        )
-        state["challenge_suggestion"] = compute_challenge_suggestion(state, normalized["round"], ambiguity)
-        state["warnings"] = compute_warnings(normalized["round"], ambiguity, state["threshold"])
-        state["phase"] = "gate_passed" if ambiguity <= state["threshold"] else "interviewing"
-        state["status"] = STATUS_BY_PHASE[state["phase"]]
-        bump(state)
-        save_state(path, backup, state)
-    emit_state(state, context, full=args.full, changed=True)
-    return 0
-
-
-def command_gate(args: argparse.Namespace) -> int:
-    context = workspace_context(args.root)
-    session = normalize_session(args.session)
-    run_id = resolve_run_id(args, context, session)
-    path, backup, _ = state_paths(context, WORKFLOW, session, run_id, create=False)
-    state = load_state(path, backup, WORKFLOW, SCHEMA, run_id, session)
-    emit_state(state, context, full=args.full, changed=False)
-    return 0 if state["phase"] in {"gate_passed", "gate_waived", "crystallized", "approved", "completed"} else 4
-
-
-def command_waive(args: argparse.Namespace) -> int:
-    reason = bounded_text(args.reason, "waiver reason", 1000)
-    context = workspace_context(args.root)
-    session = normalize_session(args.session)
-    run_id = resolve_run_id(args, context, session)
-    path, backup, lock = state_paths(context, WORKFLOW, session, run_id, create=False)
-    with command_lock(lock):
-        state = require_mutable(path, backup, run_id, session, args.expected_revision, context)
-        if is_terminal(state):
-            raise WorkflowError(4, "terminal", "interview is terminal", status=state["status"])
-        if state["phase"] != "interviewing":
-            raise WorkflowError(5, "invalid_transition", "waiver is valid only while the numeric gate is not passed", stage=state["phase"])
-        state["gate_waiver"] = {"reason": reason, "recorded_at": now()}
-        state["phase"] = "gate_waived"
-        state["status"] = STATUS_BY_PHASE[state["phase"]]
-        bump(state)
-        save_state(path, backup, state)
-    emit_state(state, context, full=args.full, changed=True)
-    return 0
-
-
-def normalize_heading(value: str) -> str:
-    return re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", value.casefold())
-
-
-def markdown_sections(text: str) -> Dict[str, str]:
-    matches = list(re.finditer(r"(?m)^#{1,6}\s+(.+?)\s*$", text))
-    sections: Dict[str, str] = {}
-    for index, match in enumerate(matches):
-        start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        sections[normalize_heading(match.group(1))] = text[start:end].strip()
-    return sections
-
-
-def section_value(sections: Dict[str, str], aliases: Sequence[str]) -> Optional[str]:
-    for alias in aliases:
-        value = sections.get(normalize_heading(alias))
-        if value is not None:
-            return value
-    return None
-
-
-def meaningful(value: Optional[str]) -> bool:
-    if value is None:
-        return False
-    stripped = re.sub(r"<!--.*?-->", "", value, flags=re.DOTALL).strip()
-    stripped = re.sub(r"[`*_#<>\-\[\](){}:;,.!?\s]", "", stripped)
-    return len(stripped) >= 2
-
-
-def validate_spec_content(state: Dict[str, Any], content: str) -> None:
-    if not re.search(r"pending[ -]approval|待批(?:准|复)|待审批", content, flags=re.IGNORECASE):
-        raise WorkflowError(2, "invalid_spec", "spec must carry an explicit pending approval marker")
-    sections = markdown_sections(content)
-    required = {
-        "Goal": ("Goal", "目标"),
-        "Topology": ("Topology", "拓扑"),
-        "Constraints": ("Constraints", "约束"),
-        "Non-goals": ("Non-goals", "Non goals", "非目标"),
-        "Decision Boundaries": ("Decision Boundaries", "决策边界"),
-        "Acceptance Criteria": ("Acceptance Criteria", "验收标准"),
-        "Ontology": ("Ontology", "术语", "本体"),
-        "Open Assumptions": ("Open Assumptions", "开放假设", "未决假设"),
-    }
-    missing = [name for name, aliases in required.items() if not meaningful(section_value(sections, aliases))]
-    if missing:
-        raise WorkflowError(2, "invalid_spec", "spec content gate is missing non-empty sections", missing=missing)
-    boundaries = section_value(sections, required["Decision Boundaries"]) or ""
-    folded = boundaries.casefold()
-    if not any(token in folded for token in ("owner", "负责人", "所有者")):
-        raise WorkflowError(2, "invalid_spec", "Decision Boundaries must name an owner")
-    if not any(token in folded for token in ("revisit", "trigger", "重新", "触发")):
-        raise WorkflowError(2, "invalid_spec", "Decision Boundaries must include a revisit or decision trigger")
-    if state["pressure_pass_count"] < 1:
-        raise WorkflowError(5, "pressure_pass_required", "at least one earlier answer needs a recorded pressure pass")
-    if state["gate_waiver"] is not None:
-        remaining = section_value(sections, ("Remaining Gaps", "Remaining Risks", "剩余缺口", "剩余风险"))
-        if not meaningful(remaining):
-            raise WorkflowError(2, "invalid_spec", "waived interviews must include a non-empty Remaining Gaps section")
 
 
 def command_crystallize(args: argparse.Namespace) -> int:
@@ -897,17 +123,18 @@ def command_crystallize(args: argparse.Namespace) -> int:
         state = require_mutable(path, backup, run_id, session, args.expected_revision, context)
         if is_terminal(state):
             raise WorkflowError(4, "terminal", "interview is terminal", status=state["status"])
-        if state["phase"] not in {"gate_passed", "gate_waived", "crystallized", "approved"}:
-            raise WorkflowError(5, "invalid_transition", "crystallize requires a passed or explicitly waived gate", stage=state["phase"])
+        if state["phase"] not in {"drafting", "crystallized", "approved"}:
+            raise WorkflowError(5, "invalid_transition", "crystallize requires an active interview", stage=state["phase"])
         relative, _, content = resolve_artifact_path(state, args.spec_path, label="spec path", max_bytes=1024 * 1024)
         assert content is not None
-        validate_spec_content(state, content)
+        if not content.strip():
+            raise WorkflowError(2, "invalid_spec", "specification must contain text")
         state["spec_path"] = relative
         state["spec_sha256"] = hashlib.sha256(content.encode("utf-8")).hexdigest()
         state["approval"] = None
         state["phase"] = "crystallized"
         state["status"] = STATUS_BY_PHASE[state["phase"]]
-        bump(state)
+        record_change(state)
         save_state(path, backup, state)
     emit_state(state, context, full=args.full, changed=True)
     return 0
@@ -937,10 +164,10 @@ def command_approve(args: argparse.Namespace) -> int:
         if state["phase"] != "crystallized":
             raise WorkflowError(5, "invalid_transition", "approval can be recorded only after crystallization", stage=state["phase"])
         current_spec_content(state)
-        state["approval"] = {"evidence": evidence, "approved_at": now()}
+        state["approval"] = {"evidence": evidence, "approved_at": now(), "spec_sha256": state["spec_sha256"]}
         state["phase"] = "approved"
         state["status"] = STATUS_BY_PHASE[state["phase"]]
-        bump(state)
+        record_change(state)
         save_state(path, backup, state)
     emit_state(state, context, full=args.full, changed=True)
     return 0
@@ -961,7 +188,7 @@ def command_complete(args: argparse.Namespace) -> int:
         state["phase"] = "completed"
         state["status"] = STATUS_BY_PHASE[state["phase"]]
         state["terminal_reason"] = "approved specification completed"
-        bump(state)
+        record_change(state)
         save_state(path, backup, state)
     emit_state(state, context, full=args.full, changed=True)
     return 0
@@ -980,43 +207,20 @@ def command_abort(args: argparse.Namespace) -> int:
         state["phase"] = "aborted"
         state["status"] = STATUS_BY_PHASE[state["phase"]]
         state["terminal_reason"] = reason
-        bump(state)
+        record_change(state)
         save_state(path, backup, state)
     emit_state(state, context, full=args.full, changed=True)
     return 0
 
 
 def parser() -> JsonArgumentParser:
-    root = JsonArgumentParser(description="Deterministic Socratic interview state and scoring")
+    root = JsonArgumentParser(description="Versioned specification approval and recovery")
     sub = root.add_subparsers(dest="command", required=True)
-
     command = sub.add_parser("start")
     command.add_argument("--id")
     common_args(command, selector=False)
     command.add_argument("--idea", required=True)
-    command.add_argument("--depth", choices=sorted(DEPTH_THRESHOLDS), default="standard")
-    command.add_argument("--type", choices=sorted(DIMENSIONS), default="greenfield")
-    command.add_argument("--threshold", type=float)
     command.set_defaults(func=command_start)
-
-    command = sub.add_parser("topology")
-    mutation_args(command)
-    command.add_argument("--input", required=True)
-    command.set_defaults(func=command_topology)
-
-    command = sub.add_parser("score")
-    mutation_args(command)
-    command.add_argument("--input", required=True)
-    command.set_defaults(func=command_score)
-
-    command = sub.add_parser("gate")
-    common_args(command)
-    command.set_defaults(func=command_gate)
-
-    command = sub.add_parser("waive")
-    mutation_args(command)
-    command.add_argument("--reason", required=True)
-    command.set_defaults(func=command_waive)
 
     command = sub.add_parser("crystallize")
     mutation_args(command)

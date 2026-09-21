@@ -1,35 +1,25 @@
-# Persistent runtime
+# Specification approval runtime
 
-The generated script targets Python 3.8+, uses only the standard library, and owns schema validation, topology, component × dimension scoring, ambiguity math, weakest-target rotation, ontology/challenge guards, revisions, binding, crystallization, approval digest, and completion state. The Agent still owns questions, evidence gathering, and rubric judgment.
-
-## Invoke and select a run
-
-Use the quoted installed path:
+Use this Python 3.8+ standard-library runtime when approval needs a repository-owned, recoverable record. It tracks the specification, revision, workspace binding, and approval digest. The interview and document format remain caller-owned.
 
 ```bash
-python3 "<installed-skill-dir>/scripts/interview_state.py" status
-python3 "<installed-skill-dir>/scripts/interview_state.py" start \
-  --idea "<one-line summary>" --depth deep --type greenfield
+python3 "<installed-skill-dir>/scripts/interview_state.py" start --idea "<goal>"
+python3 "<installed-skill-dir>/scripts/interview_state.py" crystallize --spec-path "docs/spec.md" --expected-revision 1
+# Present that exact specification and obtain approval before recording it.
+python3 "<installed-skill-dir>/scripts/interview_state.py" approve --evidence "<actual approval>" --expected-revision 2
+python3 "<installed-skill-dir>/scripts/interview_state.py" complete --expected-revision 3
 ```
 
-Use `python` when that is the host's Python 3 command, or `py -3` on Windows. Exit `3` from `status` means the selected run does not exist. `--depth` sets the ambiguity gate (`quick` 0.30, `standard` 0.20, `deep` 0.10); `--threshold <0..1>` overrides it explicitly.
+Use `python` or `py -3` where appropriate. Add `--id <slug>` to each command for a named run. Use the revision returned by the preceding command rather than assuming the example's numbers still apply.
 
-Use `brownfield` for an existing system. Use `--id` to select a named run and bounded `list --all-sessions --limit 20`, `--latest`, `--full`, or `history --tail <1..20>` only when discovery or diagnosis requires them.
+`crystallize` accepts a nonempty UTF-8 file up to 1 MiB within the bound workspace, rejecting symlink traversal. It records SHA-256 over the original file bytes, including line endings. The runtime accepts the project's headings and organization.
 
-## Topology and scoring loop
+The lifecycle is `drafting → crystallized → approved → completed`; `abort --reason <text>` terminates an active run. Before completion, crystallizing a revision clears previous approval. Both `approve` and `complete` reread the file and reject any byte change. Re-crystallize and obtain fresh approval after an edit, including formatting or LF/CRLF changes.
 
-1. Identify one to six top-level components whose outcomes can succeed or fail independently. Confirm the topology once and submit it with the latest `--expected-revision`; every deferred component needs a reason.
-2. Follow the runtime's current weakest component × dimension. Inspect safe facts yourself and spend user turns on judgments that can change scope, acceptance, rollback, ownership, or handoff.
-3. In this mode only, ask at most one decision-bearing user question per scoring round and preserve answer provenance.
-4. Submit every required active dimension in one contiguous round. Never hand-calculate ambiguity, omit an active dimension, score a deferred component, or silently choose another target.
-5. Obey `metrics.cadence_user_required`, challenge suggestions, stall escalation, score thresholds, and the runtime's round cap. Waive remaining ambiguity only with explicit user acceptance and preserved risks.
+Only record observed user approval of the presented specification. An answer to one interview question approves that decision, not an unseen specification. The runtime checks digest and state consistency, not whether an Agent truthfully represented the user's decision. Specification approval does not independently authorize implementation or external effects.
 
-## Crystallization and approval
+Every mutation uses the latest `--expected-revision`; completed and aborted runs cannot be reopened. State is managed through the CLI rather than hand-edited. See [resume and recovery](resume-and-recovery.md) for conflicts and interrupted sessions.
 
-After `gate` passes or an authorized waiver exists, write the full specification marked `pending approval` and run `crystallize --spec-path <existing-file> --expected-revision <n>`.
+## Existing installations
 
-Ask the user to review the crystallized specification. Only explicit approval may be recorded with `approve --evidence <text>`. Run `complete` only from the separately approved state and only while the spec digest is unchanged. Completion does not authorize implementation.
-
-Never edit state JSON, invent evidence or revisions, or treat a numeric gate as authority over an unresolved blocker. Resolve ownership, revision, or integrity conflicts through [resume and recovery](resume-and-recovery.md) before continuing affected work.
-
-Approval binds the exact crystallized file digest. Any change to that file, including formatting, requires crystallization and fresh approval before completion.
+This runtime uses `agent-workflow/deep-interview/3`. The former scoring runtime's `/2` states and commands are not converted or overwritten. Finish or inspect an existing run with its original installed version; start a new ID and obtain fresh approval when moving to this runtime. Scoring, topology, ontology, numeric gates, waivers, and fixed question cadence are no longer runtime requirements.

@@ -1,46 +1,36 @@
 ---
 name: work-protocol
-description: 'Use when a task needs repository-owned coordination state: one loop owner, isolated writers, commit-fixed review, or evidence-backed high-risk delivery. Not for native goals or temporary subagents unless durable lease, CAS, evidence, or workspace state is required.'
+description: "Use when work needs durable ownership leases, CAS revisions, hash-chained evidence, or isolated writer/reviewer workspaces. Not for ordinary single-session work already covered by the host."
 ---
 
 # work-protocol
 
-Maintain repository-owned coordination through CAS state, one expiring loop-owner lease, hash-chained evidence, and isolated Git worktrees. The Python 3.8+ standard-library runtime owns that state; Agents perform the reasoning and tool work.
-
-Invoke the quoted installed path:
+Coordinate repository-owned state without prescribing a delivery workflow. This Python 3.8+ standard-library runtime provides leases, compare-and-swap revisions, evidence receipts, and Git worktree isolation.
 
 ```bash
-python3 "<installed-skill-dir>/scripts/workctl.py" risk --cross-session
 python3 "<installed-skill-dir>/scripts/workctl.py" init <task-id> --title "<goal>"
+python3 "<installed-skill-dir>/scripts/workctl.py" owner acquire <task-id> <owner-id> --expect-version 1
 ```
 
-Use `python` when that is the host's Python 3 command, or `py -3` on Windows.
+Use `python` or `py -3` where appropriate. Protect the returned lease token outside committed files; later mutations accept `--token-file` or `WORKCTL_LEASE_TOKEN` and require the current `--expect-version`. Check ownership before acting, renew a live lease as needed, and explicitly hand off or release it.
 
-## Task spine
+## State and evidence
 
-1. Select the needed coordination boundary; `risk` can help assess it.
-2. `init` creates `.agents/work/<task-id>/brief.md`, `plan.md`, `state.json`, and `evidence.jsonl` in one authoritative worktree.
-3. Acquire exactly one loop owner: `native`, `autopilot`, `ralph`, `pairroom`, or `custom:<slug>`. Pass the returned token through a protected environment variable or file; use `owner check` before owned actions and `owner heartbeat` only with the current state version.
-4. Every mutation supplies `--expect-version`; stale writers fail instead of overwriting newer state.
-5. Follow `clarifying → planned → executing → verifying → done`. A bounded verify retry may return to executing; `done` requires the latest deterministic verification event in the current verifying cycle to pass. Explicit `blocked` (resumable) and `cancelled` (terminal) states remain visible.
-6. Append commands, exit codes, commits, approvals, and review verdicts as evidence. Never write secrets into committed artifacts.
-7. Run `verify` before handoff or delivery, then release or hand off the owner explicitly.
+`init` creates `state.json` and `evidence.jsonl` under `.agents/work/<task-id>/` in the authoritative checkout. Plans and briefs use the project's existing documents. Owner IDs and nonterminal phase labels are caller-chosen; `active` is the initial phase. The protocol imposes neither a stage sequence nor a retry count.
 
-## Workspace boundary
+Append observed commands, outcomes, commits, approvals, and review findings as evidence. Large payloads can use `evidence --payload-file <json>`; the default result is a compact receipt, and `--full` returns the recorded event. Never invent verifier results or store secrets in evidence.
 
-Externally created worktrees retain their lifecycle owner unless control is explicitly handed off. The managed writer/reviewer workspaces below are created and tracked by this runtime.
+`done` and `cancelled` are terminal. `done` requires the latest verification event since the last phase change to pass and the registered workspaces to satisfy their isolation/scope checks. Contradictory or wrong-typed result fields cannot pass. Run `verify` at handoff to inspect the evidence chain, state, ownership, and workspaces; this checks records, not the truth of an unobserved command.
 
-Writable driver, worker, and integrator roles receive distinct new-branch worktrees pinned to a resolved base commit. Parallel writers claim conservative, non-overlapping path rules; committed, staged, unstaged, unmerged, and untracked changes are checked against those claims, and changed symlinks may not escape. One task has at most one integrator. Reviewers require an exact full commit SHA and receive a clean detached snapshot. Reviewer evidence is appended through the authoritative task, not written into the snapshot.
+## Workspace ownership
 
-## Hard rules
+Use `writer` workspaces for isolated new-branch edits and `reviewer` workspaces for clean snapshots at an exact commit. Multiple writers need non-overlapping path claims; integration responsibility stays with the caller rather than a special runtime role. Review snapshots receive no authoring authority.
 
-- Do not edit `state.json`, the machine-local registry, lease, transaction journal, or evidence hashes manually.
-- Do not start a second orchestration loop while another valid owner lease exists.
-- Do not let two writers share one writable worktree.
-- Do not remove a dirty, unmerged, moved, foreign, or active workspace without an explicit recorded force reason.
-- Machine-local token hashes, leases, locks, authority paths, and worktree paths stay under the Git common directory, never in committed task artifacts.
+Externally created worktrees keep their lifecycle owner unless control is explicitly transferred. The runtime manages only workspaces it creates and records. Preserve dirty, unmerged, foreign, or active work rather than forcing cleanup; a force operation needs an explicit reason and authorization.
 
-## On-demand references
+State, registries, leases, transaction journals, and evidence hashes are CLI-managed. Machine-local paths, token hashes, and locks stay under the Git common directory. Resolve version, binding, or ownership conflicts before further mutations.
 
-- Read [task state and evidence](references/task-state-and-evidence.md) only when creating, resuming, handing off, recovering, or verifying a durable task.
-- Read [workspace isolation](references/workspace-isolation.md) only when adding writers, reviewers, path claims, integration, cleanup, or stale-worktree recovery.
+## References
+
+- [Task state and evidence](references/task-state-and-evidence.md): phases, result validation, ownership, receipts, recovery, and existing installations.
+- [Workspace isolation](references/workspace-isolation.md): writers, reviewers, path claims, integration, and cleanup.

@@ -74,7 +74,7 @@
     {
       "id": "positive-interruption-safe-delivery",
       "kind": "positive",
-      "prompt": "Run this migration end to end with interruption-safe resume across sessions and durable phase receipts. Do not deploy or push.",
+      "prompt": "Run this migration end to end within the existing work-protocol task, retaining interruption-safe handoff and durable phase receipts there. Do not deploy or push.",
       "metadata": {
         "expected_behavior": {
           "baseline": {

@@ -12,7 +12,6 @@ from typing import Dict
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "scripts" / "workflow_runtime"
 TARGETS: Dict[str, Path] = {
-    "autopilot.py": ROOT / "skills" / "autopilot" / "scripts" / "autopilot_state.py",
     "deep_interview.py": ROOT / "skills" / "deep-interview" / "scripts" / "interview_state.py",
     "ralph.py": ROOT / "skills" / "ralph" / "scripts" / "ralph_state.py",
 }

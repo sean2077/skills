@@ -119,7 +119,7 @@
     {
       "id": "positive-auditable-interview",
       "kind": "positive",
-      "prompt": "Run a resumable requirements interview across sessions with deterministic component scoring and an auditable approval digest before any implementation.",
+      "prompt": "Interview me about this service, preserve a versioned specification across sessions, and record an auditable approval digest for the exact specification I approve.",
       "metadata": {
         "expected_behavior": {
           "baseline": {

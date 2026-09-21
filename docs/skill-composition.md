@@ -31,7 +31,7 @@ Combine skills when the task crosses their boundaries. An implementation may nee
 
 Keep one delivery owner. Specialists return their findings to that owner; shared writers coordinate their scope. The [autopilot composition reference](../skills/autopilot/references/composition-and-handoff.md) covers delegation and handoff. The [review feedback reference](../skills/code-review/references/feedback-triage.md) covers validating received findings before authorized corrections.
 
-Choose persistent state for the semantics needed: bounded attempts in `ralph`, phase/revision and receipts in `autopilot`, or durable leases and workspace evidence in `work-protocol`. Temporary delegation and persistence are separate choices.
+Choose persistent state for the semantics needed: bounded attempts in `ralph`, exact-file approval in `deep-interview`, or durable leases and workspace evidence in `work-protocol`. `autopilot` reuses the selected host or project state rather than starting another controller. Temporary delegation and persistence are separate choices.
 
 ## Installation and evidence
 

@@ -382,7 +382,7 @@ class WorkProtocolTest(unittest.TestCase):
         self.repo = Path(self.temp.name) / "repo"
         self.commit = init_repo(self.repo)
         self.context = discover_git_context(self.repo)
-        self.store, self.state = init_task(self.context, "task-1", 1, "Test task")
+        self.store, self.state = init_task(self.context, "task-1", "Test task")
 
     def tearDown(self) -> None:
         # Make reviewer directories writable so TemporaryDirectory can clean as an unprivileged user.
@@ -398,29 +398,13 @@ class WorkProtocolTest(unittest.TestCase):
                     pass
         self.temp.cleanup()
 
-    def complete_artifacts(self) -> None:
-        task_dir = self.store.task_dir()
-        (task_dir / "brief.md").write_text(
-            "# Test task\n\n## Goal\nDeliver the fixture.\n\n"
-            "## Non-goals\nNo external effects.\n\n"
-            "## Acceptance criteria\nDeterministic tests pass.\n\n"
-            "## Authority and external effects\nRepository-only writes.\n",
-            encoding="utf-8",
-        )
-        (task_dir / "plan.md").write_text(
-            "# Plan\n\n## Slices\nImplement and verify.\n\n"
-            "## Risks and dependencies\nGit is available.\n\n"
-            "## Ownership\nOne loop owner.\n",
-            encoding="utf-8",
-        )
-
     def acquire(self, owner: str = "autopilot", version: int = 1):
         return acquire_owner(self.store, version, owner, 60, "test")
 
     def test_artifacts_and_linked_worktree_share_common_authority(self) -> None:
         task_dir = self.repo / ".agents" / "work" / "task-1"
-        self.assertTrue((task_dir / "brief.md").exists())
-        self.assertTrue((task_dir / "plan.md").exists())
+        self.assertEqual({p.name for p in task_dir.iterdir()}, {"state.json", "evidence.jsonl"})
+        self.assertEqual(self.state["title"], "Test task")
         linked = Path(self.temp.name) / "linked"
         git(self.repo, "worktree", "add", "-b", "linked-test", str(linked), self.commit)
         linked_store = TaskStore.for_existing(linked, "task-1")
@@ -469,19 +453,16 @@ class WorkProtocolTest(unittest.TestCase):
         self.assertEqual(state["loop_owner"], "ralph")
         self.assertNotEqual(token, recovered)
 
-    def test_transition_graph_and_bounded_verify_retry(self) -> None:
-        self.complete_artifacts()
+    def test_caller_owned_stages_without_retry_policy(self) -> None:
         state, token = self.acquire()
-        state = transition_task(self.store, 2, token, "planned", "test", "ready")
-        state = transition_task(self.store, 3, token, "executing", "test", "start")
-        state = transition_task(self.store, 4, token, "verifying", "test", "check")
-        state = transition_task(self.store, 5, token, "executing", "test", "fix")
-        self.assertEqual(state["verify_retry_count"], 1)
-        state = transition_task(self.store, 6, token, "verifying", "test", "recheck")
+        for phase in ("design", "human-approval", "audit", "implement", "audit", "implement", "audit"):
+            state = transition_task(self.store, state["version"], token, phase, "test", "caller decision")
+            self.assertEqual(state["phase"], phase)
+        self.assertNotIn("verify_retry_count", state)
         with self.assertRaises(HarnessError):
-            transition_task(self.store, 7, token, "executing", "test", "too many")
+            transition_task(self.store, state["version"], token, "../invalid", "test", "bad phase")
         with self.assertRaises(HarnessError):
-            transition_task(self.store, 7, token, "planned", "test", "invalid")
+            transition_task(self.store, state["version"], token, "done", "test", "no verification")
 
     def test_evidence_tamper_is_detected(self) -> None:
         state, token = self.acquire()
@@ -532,14 +513,14 @@ class WorkProtocolTest(unittest.TestCase):
         self.assertTrue(any("dirty" in issue for issue in result["issues"]))
         remove_workspace(self.store, 3, token, "review", "test", "HEAD", True, "discard dirty review")
 
-    def test_parallel_writers_claims_and_unique_integrator(self) -> None:
+    def test_parallel_writers_require_claims_not_an_integrator(self) -> None:
         state, token = self.acquire()
         first = create_workspace(
             self.store,
             2,
             token,
             "worker-a",
-            "worker",
+            "writer",
             Path(self.temp.name) / "worker-a",
             "test",
             None,
@@ -551,7 +532,7 @@ class WorkProtocolTest(unittest.TestCase):
             3,
             token,
             "worker-b",
-            "worker",
+            "writer",
             Path(self.temp.name) / "worker-b",
             "test",
             None,
@@ -562,31 +543,7 @@ class WorkProtocolTest(unittest.TestCase):
         with self.assertRaises(HarnessError):
             claim_paths(self.store, 5, token, "worker-b", ["src/**"], "test")
         claim_paths(self.store, 5, token, "worker-b", ["tests/**"], "test")
-        create_workspace(
-            self.store,
-            6,
-            token,
-            "integrator",
-            "integrator",
-            Path(self.temp.name) / "integrator",
-            "test",
-            None,
-            "task-1-integrator",
-            "HEAD",
-        )
-        with self.assertRaises(HarnessError):
-            create_workspace(
-                self.store,
-                7,
-                token,
-                "integrator-2",
-                "integrator",
-                Path(self.temp.name) / "integrator-2",
-                "test",
-                None,
-                "task-1-integrator-2",
-                "HEAD",
-            )
+        self.assertTrue(verify_task(self.store)["ok"])
 
     def test_dirty_unmerged_cleanup_requires_explicit_reason(self) -> None:
         state, token = self.acquire()
@@ -594,9 +551,9 @@ class WorkProtocolTest(unittest.TestCase):
             self.store,
             2,
             token,
-            "worker",
-            "worker",
-            Path(self.temp.name) / "worker",
+            "writer",
+            "writer",
+            Path(self.temp.name) / "writer",
             "test",
             None,
             "task-1-worker",
@@ -604,10 +561,10 @@ class WorkProtocolTest(unittest.TestCase):
         )
         (Path(record["path"]) / "dirty.txt").write_text("dirty", encoding="utf-8")
         with self.assertRaises(HarnessError):
-            remove_workspace(self.store, 3, token, "worker", "test", "HEAD", False, "")
+            remove_workspace(self.store, 3, token, "writer", "test", "HEAD", False, "")
         with self.assertRaises(HarnessError):
-            remove_workspace(self.store, 3, token, "worker", "test", "HEAD", True, "")
-        remove_workspace(self.store, 3, token, "worker", "test", "HEAD", True, "explicit discard")
+            remove_workspace(self.store, 3, token, "writer", "test", "HEAD", True, "")
+        remove_workspace(self.store, 3, token, "writer", "test", "HEAD", True, "explicit discard")
 
 
 class GeneratedPayloadTest(unittest.TestCase):
@@ -637,17 +594,18 @@ class GeneratedPayloadTest(unittest.TestCase):
             )
             self.assertEqual(help_result.returncode, 0, help_result.stdout + help_result.stderr)
 
-    def test_workctl_risk_entrypoint_is_side_effect_free(self) -> None:
+    def test_workctl_doctor_entrypoint_is_side_effect_free(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            before = set(Path(temp).iterdir())
+            repo = Path(temp) / "repo"
+            init_repo(repo)
+            before = {p.relative_to(repo): p.read_bytes() for p in repo.rglob("*") if p.is_file()}
             result = subprocess.run(
                 [
                     sys.executable,
                     str(ROOT / "skills" / "work-protocol" / "scripts" / "workctl.py"),
-                    "risk",
-                    "--cross-session",
+                    "doctor",
                 ],
-                cwd=temp,
+                cwd=str(repo),
                 check=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -656,8 +614,8 @@ class GeneratedPayloadTest(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             payload = json.loads(result.stdout)
-            self.assertTrue(payload["needed"])
-            self.assertEqual(before, set(Path(temp).iterdir()))
+            self.assertFalse(payload["runtime_exists"])
+            self.assertEqual(before, {p.relative_to(repo): p.read_bytes() for p in repo.rglob("*") if p.is_file()})
 
 
 if __name__ == "__main__":
