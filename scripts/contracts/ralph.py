@@ -5,7 +5,12 @@ from __future__ import annotations
 from catalog_core import SKILLS_DIR, errors
 
 SKILL = "ralph"
-REQUIRED_PATHS = ('SKILL.md', 'references/profiles.md', 'references/resume-and-recovery.md', 'scripts/ralph_state.py')
+REQUIRED_PATHS = (
+    "SKILL.md",
+    "references/profiles.md",
+    "references/resume-and-recovery.md",
+    "scripts/ralph_state.py",
+)
 
 
 def validate(*, readme_text: str | None = None) -> None:

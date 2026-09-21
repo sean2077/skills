@@ -18,7 +18,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Require consistent, correctly typed verification signals at task completion, rejecting contradictory results and boolean/string exit codes. Recheck current workspace scope and review snapshots before entering `done`; terminal tasks permit ownership housekeeping and cleanup but not additional work.
 - Hash original UTF-8 specification bytes, including LF/CRLF, and bind recorded approval to that digest. Bound artifact reads even if the file grows after its initial size check.
 - Reserve internal coordination event kinds and avoid force-removing workspaces during failed registration, preserving concurrent work.
-
+- Reject terminal-label near-misses such as `Done` or `done.` as caller-chosen phases, so they cannot skip the completion gate or terminal protection.
+- Keep path claims a parallel-writer requirement: a sole writer owning its whole worktree completes without inventing a catch-all claim.
 
 ### Changed
 

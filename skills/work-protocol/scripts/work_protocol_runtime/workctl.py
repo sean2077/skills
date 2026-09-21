@@ -49,6 +49,9 @@ CONTRACT = "agent-work/v2"
 RUNTIME_DIR_NAME = "agent-work"
 TASK_REL_ROOT = ".agents/work"
 TERMINAL_PHASES = {"done", "cancelled"}
+# A caller-chosen label that only differs by case or punctuation would otherwise read as an
+# ordinary nonterminal stage and skip both the completion gate and terminal protection.
+RESERVED_PHASE_STEMS = {"done", "complete", "completed", "cancel", "cancelled", "canceled"}
 WORKSPACE_ROLES = {"writer", "reviewer"}
 WRITABLE_ROLES = {"writer"}
 FULL_COMMIT_RE = re.compile(r"^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$")
@@ -65,6 +68,17 @@ def _need_int(value: Any, label: str, minimum: int = 0) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
         raise HarnessError("%s must be an integer >= %d" % (label, minimum), code=EXIT_DATA)
     return value
+
+
+def validate_phase(phase: Any, label: str = "phase") -> str:
+    """Accept a caller-owned stage, rejecting near-misses of the reserved terminal labels."""
+    phase = validate_identifier(phase, label)
+    if phase not in TERMINAL_PHASES and phase.strip("._-").lower() in RESERVED_PHASE_STEMS:
+        raise HarnessError(
+            "phase %r is reserved; use exactly 'done' or 'cancelled' to terminate" % phase,
+            code=EXIT_STATE,
+        )
+    return phase
 
 
 def validate_owner(owner: str) -> str:
@@ -244,7 +258,7 @@ class TaskStore:
         if state.get("task_id") != self.task_id:
             raise HarnessError("task state identity mismatch", code=EXIT_VERIFY)
         _need_int(state.get("version"), "state.version", 1)
-        validate_identifier(state.get("phase"), "phase")
+        validate_phase(state.get("phase"))
         _validate_title(state.get("title"), self.task_id)
         owner = state.get("loop_owner")
         if owner is not None:
@@ -615,7 +629,7 @@ def transition_task(
     actor: str,
     reason: str,
 ) -> Dict[str, Any]:
-    target = validate_identifier(target, "target phase")
+    target = validate_phase(target, "target phase")
 
     def callback(state: Dict[str, Any], registry: Dict[str, Any]) -> None:
         store.require_lease(state, registry, token)
@@ -991,8 +1005,8 @@ def verify_workspace_record(store: TaskStore, record: Mapping[str, Any]) -> List
                     issues.append("workspace HEAD no longer descends from its base: %s" % record.get("id"))
                 changed = workspace_changed_paths(path, base_commit)
                 rules = record.get("path_rules", [])
-                if changed and not rules:
-                    issues.append("writable workspace has unclaimed changed paths: %s" % record.get("id"))
+                # A sole writer owns its whole worktree; only parallel writers need claims,
+                # which _workspace_issues checks once it knows how many writers exist.
                 for relative in changed:
                     if rules and not match_any(relative, rules):
                         issues.append("changed path is outside ownership for %s: %s" % (record.get("id"), relative))

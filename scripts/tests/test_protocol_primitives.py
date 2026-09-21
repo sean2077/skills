@@ -12,7 +12,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
-from p0_runtime.common import HarnessError, discover_git_context
+from p0_runtime.common import HarnessError, discover_git_context, run_git
 from p0_runtime.workctl import (
     _latest_verification_passed, TaskStore, init_task, acquire_owner, release_owner,
     transition_task, create_workspace, claim_paths, verify_task,
@@ -85,6 +85,42 @@ class ProtocolPrimitivesTest(unittest.TestCase):
         with self.assertRaisesRegex(HarnessError, "workspace verification"):
             transition_task(self.store, 5, self.token, "done", "test", "claimed success")
         self.assertEqual(self.store.read()[0]["phase"], "active")
+
+    def test_sole_writer_owns_its_worktree_without_claims(self):
+        target = Path(self.temp.name) / "only-writer"
+        create_workspace(self.store, 2, self.token, "writer", "writer", target, "test", None, "only-writer", "HEAD")
+        (target / "src.txt").write_bytes(b"whole-worktree ownership")
+        run_git(["add", "-A"], target)
+        run_git(["-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "work"], target)
+        self.store.append_evidence(3, "test", "test", {"passed": True}, self.token)
+        self.assertEqual(transition_task(self.store, 4, self.token, "done", "test", "observed")["phase"], "done")
+        self.assertTrue(verify_task(self.store)["ok"])
+
+    def test_parallel_writers_still_require_claims(self):
+        first = Path(self.temp.name) / "writer-a"
+        second = Path(self.temp.name) / "writer-b"
+        create_workspace(self.store, 2, self.token, "writer-a", "writer", first, "test", None, "writer-a", "HEAD")
+        create_workspace(self.store, 3, self.token, "writer-b", "writer", second, "test", None, "writer-b", "HEAD")
+        self.assertEqual(
+            verify_task(self.store)["issues"],
+            ["parallel writer has no path ownership rules: writer-a",
+             "parallel writer has no path ownership rules: writer-b"],
+        )
+        claim_paths(self.store, 4, self.token, "writer-a", ["src/**"], "test")
+        claim_paths(self.store, 5, self.token, "writer-b", ["tests/**"], "test")
+        (second / "src.txt").write_bytes(b"outside claimed scope")
+        self.assertEqual(
+            verify_task(self.store)["issues"], ["changed path is outside ownership for writer-b: src.txt"]
+        )
+
+    def test_terminal_labels_reject_case_and_punctuation_variants(self):
+        for label in ("Done", "DONE", "done.", "cancelled-", "Completed", "cancel"):
+            with self.subTest(label=label), self.assertRaisesRegex(HarnessError, "reserved"):
+                transition_task(self.store, 2, self.token, label, "test", "no verification")
+        self.assertEqual(self.store.read()[0]["phase"], "active")
+        transition_task(self.store, 2, self.token, "cancelled", "test", "explicit terminal")
+        with self.assertRaises(HarnessError):
+            transition_task(self.store, 3, self.token, "active", "test", "reopen")
 
     def test_terminal_tasks_do_not_create_workspaces(self):
         transition_task(self.store, 2, self.token, "cancelled", "test", "cancel")

@@ -13,7 +13,7 @@ Each mutation uses the current owner token and returned version. Writer branches
 
 ## Claims and verification
 
-One writer can own a whole isolated worktree. Multiple writers require conservative, non-overlapping path claims. Integration may be performed by the caller or another claimed writer; it does not require a distinct `integrator` role.
+One writer can own a whole isolated worktree without claiming paths. Multiple writers require conservative, non-overlapping path claims, and each writer's changes are then checked against its own claim. Integration may be performed by the caller or another claimed writer; it does not require a distinct `integrator` role.
 
 `workspace check` and task verification consider committed, staged, unstaged, untracked, and unmerged changes relative to the recorded base. They detect scope escapes, moved/deleted workspaces, reviewer modifications, changed symlink escapes, and overlapping ownership. Shell globs in claim arguments must be quoted.
 

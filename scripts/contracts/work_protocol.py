@@ -5,7 +5,14 @@ from __future__ import annotations
 from catalog_core import SKILLS_DIR, errors
 
 SKILL = "work-protocol"
-REQUIRED_PATHS = ('SKILL.md', 'references/task-state-and-evidence.md', 'references/workspace-isolation.md', 'scripts/workctl.py', 'scripts/work_protocol_runtime/common.py', 'scripts/work_protocol_runtime/workctl.py')
+REQUIRED_PATHS = (
+    "SKILL.md",
+    "references/task-state-and-evidence.md",
+    "references/workspace-isolation.md",
+    "scripts/workctl.py",
+    "scripts/work_protocol_runtime/common.py",
+    "scripts/work_protocol_runtime/workctl.py",
+)
 
 
 def validate(*, readme_text: str | None = None) -> None:

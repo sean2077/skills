@@ -26,7 +26,7 @@ Actual versions come from command responses. Heartbeats and handoffs also advanc
 
 ## Caller-owned phases and completion
 
-A nonterminal phase is an identifier chosen by the caller; changing it records an event. The protocol supplies no mandatory sequence, planning artifact, or retry budget. `done` and `cancelled` are reserved terminal labels. Terminal tasks permit lease housekeeping and workspace cleanup, not new work, evidence, or reopening.
+A nonterminal phase is an identifier chosen by the caller; changing it records an event. The protocol supplies no mandatory sequence, planning artifact, or retry budget. `done` and `cancelled` are reserved terminal labels, and a near-miss such as `Done` or `done.` is rejected rather than treated as an ordinary stage. Terminal tasks permit lease housekeeping and workspace cleanup, not new work, evidence, or reopening.
 
 To enter `done`, the latest `test`, `verify`, `verification`, `ci`, or `quality-gate` event after the most recent nonterminal phase change must contain a successful result. At least one of the following is required, and **every present result field must agree**:
 
