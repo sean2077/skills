@@ -29,6 +29,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -55,31 +56,19 @@ from catalog_core import (
 # regression suite and for any external caller pinned to the flat module API.
 from contracts.agent_scaffold import validate_agent_scaffold_contract
 from contracts.conventional_commit import validate_conventional_commit_contract
-from contracts.project_docs_organizer import (
-    markdown_h2_sections,
-    method_example_is_tree,
-    validate_project_doc_method_cards,
-    validate_project_doc_numbering_semantics,
-    validate_project_docs_organizer_contract,
-)
 from contracts.semver_release import (
     validate_semver_automation_contract,
     validate_semver_publication_boundary,
     validate_semver_release_contract,
 )
 from contracts.tooling_conventions import (
-    TOOLING_FORCED_SCRIPT_CONTRACT,
     validate_tooling_conventions_contract,
-    validate_tooling_script_contract_semantics,
 )
 
 __all__ = [
-    "TOOLING_FORCED_SCRIPT_CONTRACT",
     "cli",
     "errors",
     "main",
-    "markdown_h2_sections",
-    "method_example_is_tree",
     "parse_frontmatter",
     "readme_skill_rows",
     "report",
@@ -89,9 +78,6 @@ __all__ = [
     "validate_grouping_manifest",
     "validate_npx_discovery_contract",
     "validate_npx_payload_contract",
-    "validate_project_doc_method_cards",
-    "validate_project_doc_numbering_semantics",
-    "validate_project_docs_organizer_contract",
     "validate_readme_catalog_count",
     "validate_repository_release_automation_contract",
     "validate_resident_contract",
@@ -100,85 +86,94 @@ __all__ = [
     "validate_semver_release_contract",
     "validate_targeted_contract_coverage",
     "validate_tooling_conventions_contract",
-    "validate_tooling_script_contract_semantics",
     "warnings",
 ]
 
 
-REFERENCE_LINK = re.compile(r"\]\((references/[^)\s#]+\.md)(?:#[^)]+)?\)")
+MARKDOWN_LINK = re.compile(r"\]\(([^)\s]+)(?:\s+[^)]*)?\)")
 
 
-LEGACY_REFERENCE_LINK = re.compile(r"\]\((?:\./)?reference\.md(?:#[^)]+)?\)", re.IGNORECASE)
+def markdown_links(text: str) -> list[str]:
+    """Read inline link targets outside fenced examples and inline code.
 
-
-REFERENCE_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.md")
-
-
-REFERENCE_LOAD_BOUNDARY = re.compile(
-    r"^(?:read|consult|open|load|use) this (?:only )?(?:when|for|after)\b",
-    re.IGNORECASE | re.MULTILINE,
-)
-
-
-FORBIDDEN_REFERENCE_NAMES = {"reference.md", "references.md", "misc.md", "all.md", "readme.md"}
+    An unterminated fence leaves the remaining lines visible: a malformed
+    document must not silently suppress link validation for its own tail.
+    """
+    lines = text.splitlines()
+    hidden = [False] * len(lines)
+    fence = ""
+    start = 0
+    for index, line in enumerate(lines):
+        marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+        if marker:
+            value = marker.group(1)
+            if not fence:
+                fence, start = value, index
+            elif value[0] == fence[0] and len(value) >= len(fence):
+                hidden[start : index + 1] = [True] * (index + 1 - start)
+                fence = ""
+            continue
+        if fence:
+            hidden[index] = True
+    if fence:
+        hidden[start:] = [False] * (len(lines) - start)
+    visible = [
+        re.sub(r"(`+).*?\1", "", line)
+        for line, is_hidden in zip(lines, hidden)
+        if not is_hidden
+    ]
+    return MARKDOWN_LINK.findall("\n".join(visible))
 
 
 def validate_category_references(skill_dir: Path, skill_text: str) -> None:
-    """Require direct, category-named, non-dangling on-demand reference routing."""
-    skill_name = skill_dir.name
-    legacy_candidates = [path for path in skill_dir.iterdir() if path.name.lower() == "reference.md"]
-    if legacy_candidates:
-        errors.append(f"{skill_name}: root-level reference.md is forbidden; use references/<category>.md")
-    if LEGACY_REFERENCE_LINK.search(skill_text):
-        errors.append(f"{skill_name}: SKILL.md must route references directly to references/<category>.md")
-
-    references_dir = skill_dir / "references"
+    """Check shipped reference reachability and local Markdown link integrity."""
+    root = skill_dir.resolve()
+    references_dir = root / "references"
     reference_files = (
-        {path for path in references_dir.rglob("*") if path.is_file() or path.is_symlink()}
-        if references_dir.is_dir()
-        else set()
+        {path.resolve() for path in references_dir.rglob("*")
+         if path.is_file() and path.suffix.lower() == ".md"}
+        if references_dir.is_dir() else set()
     )
-    if reference_files and not re.search(r"(?mi)^## On-demand references\s*$", skill_text):
-        errors.append(f"{skill_name}: SKILL.md must route references under `## On-demand references`")
-    linked: set[Path] = set()
-    for relative in REFERENCE_LINK.findall(skill_text):
-        relative_path = Path(relative)
-        if relative_path.parent != Path("references"):
-            errors.append(f"{skill_name}: reference link must target references/<category>.md: {relative}")
+    if (root / "reference.md").is_file():
+        reference_files.add(root / "reference.md")
+    visited: set[Path] = set()
+    pending = [(root / "SKILL.md", skill_text)]
+    while pending:
+        source, text = pending.pop()
+        if source in visited:
             continue
-        lower_name = relative_path.name.lower()
-        if relative_path.name != lower_name or not REFERENCE_NAME.fullmatch(relative_path.name):
-            errors.append(f"{skill_name}: reference link filename must be lowercase kebab-case: {relative}")
-        if lower_name in FORBIDDEN_REFERENCE_NAMES:
-            errors.append(f"{skill_name}: reference link uses a forbidden catch-all name: {relative}")
-        target = skill_dir / relative
-        linked.add(target)
-        if not target.is_file():
-            errors.append(f"{skill_name}: SKILL.md reference link does not exist: {relative}")
-
-    for path in sorted(reference_files):
-        relative = path.relative_to(skill_dir).as_posix()
-        if path.parent != references_dir:
-            errors.append(f"{skill_name}: nested reference categories are unsupported: {relative}")
-        lower_name = path.name.lower()
-        if path.name != lower_name or not REFERENCE_NAME.fullmatch(path.name):
-            errors.append(f"{skill_name}: reference filename must be lowercase kebab-case: {relative}")
-        if lower_name in FORBIDDEN_REFERENCE_NAMES:
-            errors.append(f"{skill_name}: catch-all reference filename is forbidden: {relative}")
-        if path not in linked:
-            errors.append(f"{skill_name}: orphan reference is not linked directly from SKILL.md: {relative}")
+        visited.add(source)
+        for link in markdown_links(text):
+            try:
+                parsed = urlsplit(link)
+            except ValueError as exc:
+                errors.append(f"{skill_dir.name}: invalid Markdown link {link}: {exc}")
+                continue
+            if parsed.scheme or parsed.netloc or not parsed.path:
+                continue
+            relative = unquote(parsed.path)
+            if Path(relative).suffix.lower() != ".md":
+                continue
+            target = (source.parent / relative).resolve()
+            try:
+                target.relative_to(root)
+            except ValueError:
+                errors.append(f"{skill_dir.name}: local Markdown link escapes skill payload: {link}")
+                continue
+            if not target.is_file():
+                errors.append(f"{skill_dir.name}: local Markdown link does not exist: {link}")
+            elif target in reference_files and target not in visited:
+                try:
+                    pending.append((target, target.read_text(encoding="utf-8")))
+                except (OSError, UnicodeError) as exc:
+                    errors.append(f"{skill_dir.name}: cannot read reference {link}: {exc}")
+    for path in sorted(reference_files - visited):
+        # A symlink escaping the payload is also rejected by payload validation.
         try:
-            reference_text = path.read_text(encoding="utf-8")
-        except OSError as exc:
-            errors.append(f"{skill_name}: cannot read reference {relative}: {exc}")
-        else:
-            if not REFERENCE_LOAD_BOUNDARY.search(reference_text[:600]):
-                errors.append(
-                    f"{skill_name}: reference must state its conditional load boundary near the top: {relative}"
-                )
-
-    if linked and not references_dir.is_dir():
-        errors.append(f"{skill_name}: SKILL.md links references/ but the directory does not exist")
+            relative = path.relative_to(root)
+        except ValueError:
+            relative = path
+        errors.append(f"{skill_dir.name}: orphan reference is not reachable from SKILL.md: {relative}")
 
 
 def validate_resident_contract(skill_dir: Path, skill_text: str, frontmatter: dict[str, object]) -> None:
@@ -199,10 +194,6 @@ def validate_resident_contract(skill_dir: Path, skill_text: str, frontmatter: di
         errors.append(
             f"{skill_name}: resident SKILL.md is {len(skill_text)} chars "
             f"(>{RESIDENT_SKILL_MAX_CHARS}); route detail to categorized references"
-        )
-    if re.search(r"(?mi)^## When To Use\s*$", skill_text):
-        errors.append(
-            f"{skill_name}: trigger boundaries belong in frontmatter description, not a resident `When To Use` section"
         )
 
 

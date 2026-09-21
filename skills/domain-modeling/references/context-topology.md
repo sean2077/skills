@@ -1,7 +1,5 @@
 # Context Topology
 
-Read this only when choosing whether project terminology should stay in one glossary, gain subject headings, or split behind a `CONTEXT-MAP.md`.
-
 ## Maturity ladder
 
 Use the lightest shape that solves the current retrieval and ambiguity problem:

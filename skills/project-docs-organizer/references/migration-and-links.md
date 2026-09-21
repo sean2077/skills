@@ -1,7 +1,5 @@
 # Documentation Migration and Links
 
-Read this when moving, merging, deleting, archiving, or relinking existing project docs.
-
 ## Build the migration map
 
 For every source path, record its destination and action: keep, rename, move, split, merge,

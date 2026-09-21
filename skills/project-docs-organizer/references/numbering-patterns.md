@@ -1,36 +1,9 @@
 # Local Documentation Numbering
 
-Read this after semantic boundaries are stable and the project needs a decision about numeric
-ordering. Numbers are presentation, never a classification method.
+Use numeric prefixes when stable display or reading order improves navigation enough to justify path and link changes. Preserve an explicit user choice, coherent existing convention, or generator-owned ordering.
 
-## Decide whether numbering applies
+Name groups by meaning first. For siblings that benefit from ordered display, tokens with insertion gaps such as `10-`, `20-`, and `30-` make later additions easier. `00-` can identify genuine first-stop material.
 
-Keep numbering disabled by default. Enable it only when the IA decision record identifies a
-stable sibling display or reading order that materially improves an observed reader route and
-the navigation benefit exceeds path/link churn. The absence of a coherent established convention
-is permission to choose, not evidence for numbering. Keep numbering disabled when:
+Treat a prefix as position among siblings rather than a cross-project category code. Apply deeper ordering where readers follow a meaningful sequence, and weigh any renumbering against link churn. Numbered directories, files, both, or neither can all fit a project.
 
-- the user explicitly declines it;
-- a coherent established convention already routes readers effectively;
-- a documentation generator owns ordering or navigation; or
-- no observed reader route requires stable sibling ordering; or
-- renaming stable public paths would cost more than the evidenced ordering problem.
-
-README-only projects have no directory layer to number. If an established convention is itself
-the retrieval failure, present the migration cost and let the maintainer reconsider it.
-
-## Use sibling-local ordering tokens
-
-- Name semantic groups first, then prefix only the siblings whose display order should remain
-  predictable.
-- Use two-digit tokens with insertion gaps by default: `10-`, `20-`, `30-`, and so on.
-- Use `00-` only for real first-stop content. Do not create an entry page or directory merely
-  to consume the token.
-- Treat each number as sibling-local position, not category meaning. Numeric ranges carry no
-  cross-project or cross-subtree semantics.
-- Add prefixes inside a group only when readers must follow a genuine reading or execution order.
-- Renumber existing paths only when the navigation benefit justifies link churn and the
-  migration contract covers every active route.
-
-The result may use numbered directories, numbered files, both, or neither. The decision follows
-reader navigation and project convention; it never follows project size alone.
+Reconcile changed paths through [migration and links](migration-and-links.md).

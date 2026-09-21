@@ -1,27 +1,10 @@
 # Tables and records
 
-Read this only when the request involves Sheets or Base/多维表格, including worksheets, cells,
-ranges, formulas, formatting, records, fields, views, forms, dashboards, workflows, roles, or
-BaseApp/AppMode.
+## Select the object
 
-## Fast-path contract
+Use `sheets` for spreadsheet grids and `base` for typed records. A BaseApp/AppMode is a presentation layer over Base data, not a Miaoda/Spark app. Route `/sheets/` to Sheets and `/base/` or Base-style `/app/` links to Base regardless of hostname. Preserve URLs/tokens exactly.
 
-Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
-
-For the documented shortcuts below, execute directly. Do not preflight `sheets --help`,
-`base --help`, shortcut help, schema, workbook inspection, or URL resolution when the needed URL,
-token, sheet/table ID, range, and effective identity are already supplied.
-
-- Known Sheet URL + sheet name/range: normally one read or one write command.
-- Known Base token + table ID: normally one query/write command; do not resolve the Base again.
-- Base URL without coordinates: one `+url-resolve`, then the requested operation.
-- Base title only: one `+title-resolve`, then the requested operation.
-- Inspect workbook/table/field metadata only when the operation truly depends on unknown structure.
-- Batch rows, cells, records, or styles instead of looping one command per item.
-
-Use `sheets` for spreadsheet grids and `base` for typed records. A BaseApp/AppMode is a
-presentation layer over Base data, not a Miaoda/Spark app. Route `/sheets/` to Sheets and `/base/`
-or Base-style `/app/` links to Base regardless of hostname. Preserve URLs/tokens exactly.
+Use known coordinates directly. Resolve missing Base coordinates through `+url-resolve` or `+title-resolve`, and inspect workbook, table, or field metadata when needed to interpret the operation. Batch compatible row, cell, record, and style changes.
 
 ## Sheets read fast paths
 
@@ -96,11 +79,9 @@ fail-fast without rollback: preview once, show the exact operations, obtain conf
 the same payload with `--yes`. Do not use it merely to combine writes already supported by
 `--writes`, `--ranges`, `+table-put`, or `+styles-put`.
 
-## Sheets verification budget
+## Sheets verification
 
-Sheets are the main exception to the global no-ritual-readback rule because a successful request may
-not prove that formulas/types/layout are correct. Verify only the affected range or object, not the
-whole workbook. Formula writes must run the known verifier directly; do not inspect its help first:
+A successful request may not establish correct formulas, types, or layout. Verify the affected range or object. For formula writes, run:
 
 ```bash
 lark-cli sheets +formula-verify --url '<sheet-url>' --sheet-name '<sheet>' \
@@ -114,7 +95,7 @@ every row/cell in a batch.
 ## Base resolution and read fast paths
 
 Skip resolution when `base_token`, `table_id`, and any needed record/field IDs are already known.
-Otherwise use exactly one resolver:
+Resolve the missing coordinates with:
 
 ```bash
 lark-cli base +url-resolve --url '<base-or-app-url>' --as user
@@ -157,13 +138,8 @@ service to settle, then perform one focused `+record-list`/`+record-search` acce
 and reconfirm record deletion, bulk replacement, role/member changes, advanced permissions,
 workflow enable/disable, or AppMode publication-visible changes.
 
-## Drift fallback
+## Command discovery
 
-For a documented shortcut, run exact help only after an unknown option/command or payload-shape
-error. For complex shortcut JSON, prefer its targeted `--print-schema`/flag schema when exposed;
-use registered method schema only after selecting the exact method. Do not begin a common Sheet or
-Base task with broad service help. Do not reconstruct retired sheets resource commands. The
-maintained surface is the documented `+` shortcuts; a missing legacy resource name is not a reason
-to invent a replacement.
+Consult the installed help/schema for unfamiliar or changed operations. Confirm parameter types before consequential writes; use the [setup and safety guide](setup-auth-and-safety.md) for identity, confirmation, and uncertain outcomes.
 
 **Official coverage:** `lark-base`, `lark-sheets`.

@@ -1,7 +1,5 @@
 # Evaluation contract
 
-Read this only when authoring or debugging a `skill-eval` manifest, adapter, verifier, CI gate, or result consumer.
-
 ## Suite manifest
 
 Paths are repository-relative. Commands are argv arrays; supported placeholders are `{python}`, `{repo}`, `{workspace}`, `{mode}`, and `{case_id}`.
@@ -82,7 +80,7 @@ Use executable tests, static checks, or exact artifact assertions. A model judgm
 
 ## Comparable executions
 
-Both baseline and treatment must complete with valid trigger and scope gates. A failed host, baseline skill leakage, or an out-of-scope control cannot supply a passing comparison even with cheap metrics. The baseline task verifier may fail: a functioning control that gets the task wrong is legitimate evidence, unlike an invalid execution. Stored comparisons retain their existing shape; `validate-result` now rejects historical false-green pairs with an invalid baseline.
+Both baseline and treatment must complete with valid trigger and scope gates. A failed host, baseline skill leakage, or an out-of-scope control cannot supply a passing comparison even with cheap metrics. The baseline task verifier may fail: a functioning control that gets the task wrong is legitimate evidence, unlike an invalid execution. `validate-result` also checks baseline validity in stored comparisons.
 
 ## Exit classes
 

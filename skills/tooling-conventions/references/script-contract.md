@@ -1,66 +1,25 @@
-# Contextual Command Contract
+# Command Contracts
 
-Read this when implementing or auditing a committed command after its Job Boundary and Contract
-Profile are known. A profile means the relevant contract facts, not a mandatory artifact.
-The Contract Profile decides which cards apply; this is not one mandatory CLI or implementation
-template.
+Design a command around its actual invokers, effects, and the project's established CLI conventions.
 
-## Always-on safety boundaries
+## Input and authority
 
-- Never let unknown or invalid input reach a dangerous default action. Preserve the target
-  project's existing CLI grammar and exit-code convention; when a new authoritative entry has no
-  governing convention, choose and document the smallest interface its real invokers need.
-- Route deploys, releases, credential changes, device mutation, and other hazardous effects through
-  the project's authoritative path. An escape hatch exists only when project policy names its
-  trigger, warning, prohibited environments, owner, and removal condition.
-- Never commit or print secrets. Use the target platform's permission, redaction, temporary-storage,
-  and cleanup mechanisms; do not promise secure erasure that the storage layer cannot provide.
-- Preserve installed paths, service bindings, machine-readable output, and other external command
-  contracts until every active consumer moves in one coordinated change.
+Validate input before dangerous actions. Preserve established flags, exit meanings, installed paths, service bindings, and machine-readable output while consumers depend on them. Route consequential effects through the authorized deploy, release, credential, or device workflow.
 
-## Conditional contract cards
+Handle secrets with the platform's permissions, redaction, temporary-storage, and cleanup mechanisms. Keep credentials out of committed files and logs.
 
-### Invocation and help
+## Context and state
 
-Apply when humans or automation invoke the entry directly. Preserve the project's parser, flags,
-usage format, and exit meanings. Add discoverability for a new interface only when an actual
-invoker needs it; do not retrofit `-h/--help`, subcommands, or a universal exit number merely to
-match this skill.
+Where several entries resolve the same target, environment, preset, or path, share the owning precedence logic. Derive it from project policy and callers.
 
-### Context resolution
+Choose transactions, atomic replacement, rollback, checkpoints, or idempotency according to the state owner's guarantees and the command's failure and retry model. Preserve independent recovery when aggregation would obscure it.
 
-Apply when several entries or call sites select the same preset, profile, environment, target, or
-path. Consolidate duplicated precedence into the project's language-native shared resolver or
-configuration authority. Derive precedence from callers and policy rather than imposing a fixed
-flag/environment/inference/default order.
+## Output and preview
 
-### State mutation and retry
+Provide diagnostics that help the real consumer interpret success, partial failure, and recovery. Keep machine output and exit semantics stable.
 
-Apply when the command owns persistent state or partial failure matters. Choose the transaction,
-atomic replacement, rollback, checkpoint, idempotency key, or convergence mechanism supported by
-that state owner. Require idempotency only when retry or convergence is part of the observed
-contract; a generic skill does not prescribe `.tmp` files, `fsync`, rename semantics, or a ledger.
+For a preview or dry-run mode, verify that it uses the real selection logic and avoids the effects it claims to suppress. Follow the project's confirmation and non-interactive policies.
 
-### Output and observability
+## Inventory and verification
 
-Apply when a human must diagnose multiple steps or a machine consumes output. Preserve structured
-stdout and exit semantics, route diagnostics through the project logger or stderr as appropriate,
-and use prefixes or JSON only when the consumer contract calls for them.
-
-### Preview and confirmation
-
-Apply when a hazardous effect can be previewed faithfully. Do not claim a dry run unless tests prove
-the preview has no forbidden side effects and represents the real selection logic. Confirmation
-flags, interactive prompts, and non-interactive defaults remain project-owned.
-
-### Inventory registration, when adopted
-
-If the target repository already owns a structural tool inventory, adding, moving, or removing an
-affected command or registered directory updates it in the same commit. Update Project Tool Policy
-separately when semantic metadata changes. Do not create an inventory solely to satisfy this
-reference.
-
-## Review outcome
-
-Summarize affected contracts, failure/recovery consequences, and observed verification. Do not
-report every irrelevant card or create a separate decision record unless the project needs one.
+Update an existing inventory and its project-specific policy when affected entries or metadata change. Select checks that exercise the command's actual contract; see [verification](verification.md) and [path migrations](path-migrations.md).

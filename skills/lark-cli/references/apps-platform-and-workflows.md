@@ -1,23 +1,8 @@
 # Apps, platform, and workflows
 
-Read this only when the request involves Miaoda/Spark app development or operations, real-time event
-consumption, a capability absent from registered CLI commands, creating or maintaining a custom
-lark-cli skill, or cross-domain automation not covered by a more specific reference.
+## Select the operation
 
-## Fast-path contract
-
-Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
-
-- Treat the commands below as the maintained command cache. Do not run `apps --help`, `event --help`,
-  global help, auth status, or schema before a matching common operation when the recipe and
-  effective identity are already clear.
-- A known `app_...` ID or known EventKey goes directly to the business command. An application name
-  may add one `apps +list --keyword` resolver; do not enumerate all applications first.
-- Use exact shortcut help only when a requested option is not documented here or the installed CLI
-  reports an unknown command/option or validation-shape mismatch. Auth, scope, ACL, not-found, and
-  business failures are not evidence of command drift.
-- Reuse IDs and command facts discovered earlier in the task. Do not repeat a resolver, help, list,
-  schema, or status command without a state-changing reason.
+Use a known app ID or EventKey directly. Resolve application names with a focused `apps +list --keyword` query. Consult the installed help/schema for unfamiliar operations or uncertain arguments, and reuse discovered command facts while applicable.
 
 ## Miaoda/Spark apps
 
@@ -145,8 +130,7 @@ lark-cli apps +env-delete --app-id 'app_xxx' --key 'KEY' --yes --as user
 
 ## Real-time events
 
-When the EventKey is known and no custom projection is needed, consume directly; do not run
-`event list`, `event schema`, or `event --help` first. Agent inspection must be bounded:
+Use the known EventKey to consume events. Bound inspection by event count and timeout:
 
 ```bash
 lark-cli event consume 'im.message.receive_v1' \
@@ -184,25 +168,12 @@ Escalate only when no cached shortcut covers the requested capability:
 
 The raw path must be a bare `/open-apis/...` path without query strings or fragments. Put query values
 in `--params` and request bodies in `--data`; do not append `?query=...` or `#fragment` to the path.
-Do not start with broad service help. Do not guess a URL path, HTTP method, identity, scope, parameter
-location, enum, or pagination contract. Preserve the same identity and global safety rules. When the
+Confirm the endpoint path, HTTP method, identity, scope, parameter location, enums, and pagination contract. Preserve the same identity and global safety rules. When the
 endpoint is unsupported or ambiguous, report the boundary instead of improvising a plausible call.
 
-## Maintaining the command cache
+## Maintaining recipes
 
-References are the L1 execution cache; CLI help/schema is the L2 drift-recovery mechanism. When a
-cached recipe fails specifically because a command or option changed:
-
-1. Capture the structured error and inspect the exact command's help once.
-2. Correct and execute the business command; do not repeat discovery elsewhere in the same task.
-3. Update the relevant reference with the working command, required inputs, returned IDs/status,
-   expected call budget, and any verification exception.
-4. Add or update the catalog contract fixture so a future edit cannot restore unconditional help or
-   schema preflight.
-
-Do not rewrite a recipe after auth, scope, ACL, resource-not-found, rate-limit, or business errors;
-those do not prove CLI drift. Keep one lean resident router and detailed category references rather
-than copying all generated CLI help.
+When an installed command changes, update the affected recipe from its help/schema and observed behavior. Preserve required inputs, returned IDs/status, and safety semantics. Auth, scope, ACL, rate-limit, and business errors need their own diagnosis rather than a command rewrite.
 
 ## Cross-domain automation
 

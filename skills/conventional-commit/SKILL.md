@@ -39,7 +39,7 @@ message-selection decisions unless the user asks.
 2. Inspect Git only when those facts are missing, stale, or ambiguous. Read
    [`message-style.md`](references/message-style.md) when type, scope, language,
    breaking notation, or a user-supplied message needs judgment.
-3. In message-only mode, return exactly one normalized subject and stop.
+3. In message-only mode, return the normalized subject without staging or committing.
 4. In commit mode, run `git -C <repo-root> symbolic-ref --quiet --short HEAD` before staging.
    Exit status 1 means detached HEAD; any other nonzero status is a Git preflight
    error. Stop before staging in either case. Then run
@@ -54,12 +54,9 @@ message-selection decisions unless the user asks.
 7. Verify status and the recorded subject, tree, and parent boundary as defined in
    `staging-safety.md`; report any mismatch without rewriting history.
 
-## Output contract
+## Handoff
 
-- Message-only success: exactly the subject as plain text.
-- Commit success: one line, `Committed: <short-hash> <subject>` or its localized equivalent.
-- Blocked: one short sentence naming the blocker. Include extra diagnostics only when
-  needed to act on a failed verification.
+For message-only requests, return the selected subject. After a commit, report the actual hash and subject. Explain any blocker or verification mismatch sufficiently for the user to act.
 
 ## On-demand references
 

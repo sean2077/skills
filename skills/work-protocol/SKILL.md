@@ -5,7 +5,7 @@ description: 'Use when a task needs repository-owned coordination state: one loo
 
 # work-protocol
 
-Use only when coordination state must survive. The Python 3.8+ standard-library runtime owns CAS state, one expiring loop-owner lease, hash-chained evidence, and Git worktree isolation; native Agent loops still own reasoning and tools. Task length, native subagents, or a durable goal alone do not trigger it.
+Maintain repository-owned coordination through CAS state, one expiring loop-owner lease, hash-chained evidence, and isolated Git worktrees. The Python 3.8+ standard-library runtime owns that state; Agents perform the reasoning and tool work.
 
 Invoke the quoted installed path:
 
@@ -18,7 +18,7 @@ Use `python` when that is the host's Python 3 command, or `py -3` on Windows.
 
 ## Task spine
 
-1. Use `risk` first. Skip the protocol for a low-risk task with one writer and clear acceptance.
+1. Select the needed coordination boundary; `risk` can help assess it.
 2. `init` creates `.agents/work/<task-id>/brief.md`, `plan.md`, `state.json`, and `evidence.jsonl` in one authoritative worktree.
 3. Acquire exactly one loop owner: `native`, `autopilot`, `ralph`, `pairroom`, or `custom:<slug>`. Pass the returned token through a protected environment variable or file; use `owner check` before owned actions and `owner heartbeat` only with the current state version.
 4. Every mutation supplies `--expect-version`; stale writers fail instead of overwriting newer state.
@@ -28,10 +28,7 @@ Use `python` when that is the host's Python 3 command, or `py -3` on Windows.
 
 ## Workspace boundary
 
-Session entry is not workspace ownership. Starting in a host-created worktree does not
-trigger this protocol or register that worktree with it. Keep the host as lifecycle
-owner unless control is explicitly handed off; this runtime's managed writer/reviewer
-workspaces below are a separate opt-in contract, not automatic adoption of external ones.
+Externally created worktrees retain their lifecycle owner unless control is explicitly handed off. The managed writer/reviewer workspaces below are created and tracked by this runtime.
 
 Writable driver, worker, and integrator roles receive distinct new-branch worktrees pinned to a resolved base commit. Parallel writers claim conservative, non-overlapping path rules; committed, staged, unstaged, unmerged, and untracked changes are checked against those claims, and changed symlinks may not escape. One task has at most one integrator. Reviewers require an exact full commit SHA and receive a clean detached snapshot. Reviewer evidence is appended through the authoritative task, not written into the snapshot.
 

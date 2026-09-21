@@ -5,7 +5,7 @@ description: Use when a verifiable goal needs a fixed attempt budget and mechani
 
 # ralph
 
-Use only when a verifiable goal needs fixed rounds plus mechanical stop or resume evidence; a native loop or host durable goal is enough when objective and acceptance suffice. The Agent changes the system and runs the verifier; this standard-library runtime is the sole round controller: it owns rounds, revisions, stable signatures, optional scores, binding, and stop conditions, never executes verifier commands, and never lets workers own transitions or overlapping writes.
+Run a verifiable goal with a fixed attempt budget and explicit stop/resume state. The Agent changes the system and runs the verifier; this standard-library runtime records rounds, revisions, signatures, scores, bindings, and stop conditions.
 
 Invoke the quoted script path directly:
 
@@ -24,7 +24,7 @@ python3 "<installed-skill-dir>/scripts/ralph_state.py" start \
   --goal "<verifiable goal>" --max-rounds 10 --stall-window 3
 ```
 
-Use `--id <slug>` for parallel runs. Session isolation, newest-first `list --all-sessions --limit 20`, `--latest`, compact output, `--full`, and bounded `history --tail <1..20>` follow the same runtime contract as the other deterministic workflow skills.
+Use `--id <slug>` to name a run. Session isolation, newest-first `list --all-sessions --limit 20`, `--latest`, compact output, `--full`, and bounded `history --tail <1..20>` follow the same runtime contract as the other deterministic workflow skills.
 
 Use `--keep-policy score-improvement --plateau-window <n>` with `--score 0..1` only when partial quality has a real rubric. Select `--profile research` or `--profile adversarial-qa` only when the matching reference applies.
 
@@ -43,7 +43,7 @@ Use `--keep-policy score-improvement --plateau-window <n>` with `--score 0..1` o
 
 A successful transition into a terminal status returns success because the result was recorded. A later mutation attempt returns terminal exit `4`. One pending round accepts exactly one `check`.
 
-Inside a `work-protocol` task, mutate only while holding and checking an explicit `ralph` owner lease; never acquire or start a nested loop owner.
+Inside a `work-protocol` task, acquire its `ralph` owner lease and check ownership before mutations.
 
 ## Completion report
 
@@ -55,7 +55,6 @@ Report goal, terminal status, rounds used, verifier commands actually run, best 
 - Use the latest revision for every mutation.
 - Stop on terminal status, binding mismatch, revision conflict, unsafe action, or user interruption.
 - Change strategy after stall/plateau evidence; do not buy a new run merely to repeat an exhausted approach.
-- Nested ralph loops are forbidden.
 
 ## On-demand references
 

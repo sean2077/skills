@@ -1,7 +1,5 @@
 # Semantic Version Selection
 
-Read this when selecting a release base, inferring a bump, choosing a prerelease, or checking unsupported release models.
-
 ## Analyzer first
 
 After fetching tags, prefer the bundled read-only analyzer:
@@ -87,7 +85,7 @@ Peel each tied tag object with `git rev-parse '<tag>^{commit}'`. When highest-pr
 Before using the result, run `git merge-base --is-ancestor <base> HEAD`. Status 1 means it is not HEAD-reachable; another nonzero status is a Git error. Stop instead of choosing a different tag by incidental list order.
 
 - For a **prerelease** (`v0.5.0-beta.2`): base = the previous HEAD-reachable valid SemVer tag (including an earlier prerelease of the same version). Release notes cover that incremental range. If the project maintains a committed changelog, append its next section and retain earlier prerelease sections during the preview round.
-- For a **stable** `vX.Y.Z` when same-`X.Y.Z` prereleases exist: see **Promote-and-merge** below.
+- For a **stable** `vX.Y.Z` when same-`X.Y.Z` prereleases exist: see [prerelease promotion](prerelease-promotion.md).
 - First-ever release means there is no HEAD-reachable valid SemVer base: base = repo root (`git log` with no range, or `--root`); default start tag `v0.1.0` or the version file's current value.
 
 ## Unsupported models

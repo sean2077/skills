@@ -1,7 +1,5 @@
 # Scoring and payloads
 
-Read this only when preparing the first topology/score submission, handling ontology or challenge behavior, or responding to payload rejection.
-
 ## Topology payload
 
 ```json
@@ -52,13 +50,11 @@ brownfield ambiguity = 1 - (goal×0.35 + constraints×0.25 + criteria×0.25 + co
 
 The weakest target is the lowest component × dimension pair. Exact ties rotate away from the last targeted component when possible, then use stable component/dimension order.
 
-## Question routing and cadence
+## Questions and cadence
 
-Inspect safe code, configuration, documentation, and bounded research before asking the user for discoverable facts. Ask a `[from-user]` question only when its answer can change a CRITICAL axis: scope boundary, acceptance criterion, rollback contract, lane assignment, or handoff target. Otherwise record a conservative default plus its revisit trigger in the answer.
+Ask about consequential decisions owned by the user. Offer useful options and an evidence-backed recommendation where the available facts support one. Keep approval tied to the decision or specification actually presented.
 
-For each user-owned question, offer 2–4 concrete choices plus free text. Mark exactly one `Recommended` only when inspected evidence favors it and cite that evidence briefly; otherwise state `No reliable default`. A “yes”, “ok”, or “proceed” answering an individual interview question does not approve the final specification. The same words can explicitly approve the presented crystallized specification when that is the clear subject of the approval request; preserve the evidence and exact digest.
-
-After two consecutive rounds whose answers do not contain `[from-user]`, the runtime sets `metrics.cadence_user_required` and refuses another non-user round. Ask the decision nearest the current weakest target rather than inventing a low-value question.
+The runtime tracks provenance across rounds. After two consecutive rounds whose answers are not `[from-user]`, `metrics.cadence_user_required` requires a user-owned answer before another non-user round.
 
 ## Round payload
 

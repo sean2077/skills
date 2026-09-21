@@ -1,5 +1,7 @@
 # Native-first skill audit — 2026-09-20
 
+> Historical review record. Decisions and measurements below describe this audit’s revision. Current guidance lives in the skills and [harness design principles](../harness-constraint-policy.md).
+
 ## Scope and evidence
 
 Base: `de02c169cf095ac351f5b996a1b8c71f75e8b5d7` (main, including the September 17

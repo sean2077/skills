@@ -22,7 +22,7 @@ LIVE_EVAL_VERIFIER = (
 
 
 class CategoryReferenceTests(unittest.TestCase):
-    def validate(self, skill_text: str, references: dict[str, str], *, legacy_root: bool = False) -> list[str]:
+    def validate(self, skill_text: str, references: dict[str, str]) -> list[str]:
         with tempfile.TemporaryDirectory() as temporary:
             skill_dir = Path(temporary) / "fixture-skill"
             skill_dir.mkdir()
@@ -30,8 +30,6 @@ class CategoryReferenceTests(unittest.TestCase):
                 path = skill_dir / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
-            if legacy_root:
-                (skill_dir / "reference.md").write_text("legacy\n", encoding="utf-8")
             validator.errors.clear()
             validator.validate_category_references(skill_dir, skill_text)
             return list(validator.errors)
@@ -54,34 +52,13 @@ class CategoryReferenceTests(unittest.TestCase):
         )
         self.assertEqual(errors, [])
 
-    def test_equivalent_reference_load_boundaries_are_accepted(self) -> None:
-        introductions = (
-            "Consult this when selecting a release base.",
-            "Open this only for a breaking migration.",
-            "Use this after the semantic boundary is stable.",
-            "Load this when another tool needs the schema.",
-        )
-        for introduction in introductions:
-            with self.subTest(introduction=introduction):
-                errors = self.validate(
-                    "## On-demand references\n[Alpha](references/alpha.md)",
-                    {"references/alpha.md": f"# Alpha\n\n{introduction}\n"},
-                )
-                self.assertEqual(errors, [])
-
-    def test_reference_router_heading_is_required(self) -> None:
-        errors = self.validate(
-            "[Alpha](references/alpha.md)",
-            {"references/alpha.md": "# Alpha\n\nRead this when alpha applies.\n"},
-        )
-        self.assertTrue(any("On-demand references" in error for error in errors))
-
-    def test_reference_load_boundary_is_required(self) -> None:
-        errors = self.validate(
-            "## On-demand references\n[Alpha](references/alpha.md)",
-            {"references/alpha.md": "# Alpha\n\nAlways load this document.\n"},
-        )
-        self.assertTrue(any("conditional load boundary" in error for error in errors))
+    def test_reference_prose_and_headings_are_unrestricted(self) -> None:
+        for heading in ("", "## References", "### Further reading"):
+            with self.subTest(heading=heading):
+                self.assertEqual(self.validate(
+                    heading + "\n[Alpha](references/alpha.md)",
+                    {"references/alpha.md": "# Alpha\n\nAn ordinary explanation.\n"},
+                ), [])
 
     def test_missing_link_target(self) -> None:
         errors = self.validate("[Missing](references/missing.md)", {})
@@ -91,27 +68,63 @@ class CategoryReferenceTests(unittest.TestCase):
         errors = self.validate("# Router\n", {"references/orphan.md": "# Orphan\n"})
         self.assertTrue(any("orphan reference" in error for error in errors))
 
-    def test_forbidden_generic_name(self) -> None:
+    def test_reference_layout_and_names_are_project_owned(self) -> None:
+        for path in ("reference.md", "references/misc.md", "references/Upper.MD",
+                     "references/topic/details.md"):
+            with self.subTest(path=path):
+                self.assertEqual(self.validate(f"[Details]({path})", {path: "# Details\n"}), [])
+
+    def test_dangling_root_reference_is_rejected(self) -> None:
+        errors = self.validate("[Missing](reference.md)", {})
+        self.assertTrue(any("does not exist" in error for error in errors))
+
+    def test_indirect_reference_routes_are_reachable(self) -> None:
+        self.assertEqual(self.validate("[Overview](references/overview.md)", {
+            "references/overview.md": "[Details](topic/details.md#result)",
+            "references/topic/details.md": "[Overview](../overview.md)",
+        }), [])
+
+    def test_unreachable_reference_cycle_is_rejected(self) -> None:
+        errors = self.validate("# Skill", {
+            "references/a.md": "[B](b.md)",
+            "references/b.md": "[A](a.md)",
+        })
+        self.assertEqual(sum("orphan reference" in error for error in errors), 2)
+
+    def test_nested_dangling_reference_is_rejected(self) -> None:
+        errors = self.validate("[Overview](references/overview.md)", {
+            "references/overview.md": "[Missing](missing.md)",
+        })
+        self.assertTrue(any("does not exist" in error for error in errors))
+
+    def test_fenced_examples_and_inline_code_are_not_links(self) -> None:
+        text = ("```markdown\n[Example](missing.md)\n```\n"
+                "~~~md\n[Example](other.md)\n~~~\n"
+                "`[Example](inline.md)`\n[Real](references/real.md)")
+        self.assertEqual(self.validate(text, {"references/real.md": "# Real"}), [])
+
+    def test_unterminated_fence_does_not_suppress_later_links(self) -> None:
         errors = self.validate(
-            "[Misc](references/misc.md)",
-            {"references/misc.md": "# Misc\n"},
+            "```markdown\n[Alpha](references/alpha.md) [Missing](references/missing.md)",
+            {"references/alpha.md": "# Alpha\n"},
         )
-        self.assertTrue(any("catch-all" in error for error in errors))
+        self.assertEqual(sum("does not exist" in error for error in errors), 1)
+        self.assertFalse([error for error in errors if "orphan reference" in error])
 
-    def test_root_legacy_reference(self) -> None:
-        errors = self.validate("# Router\n", {}, legacy_root=True)
-        self.assertTrue(any("root-level reference.md" in error for error in errors))
+    def test_url_fragments_and_encoded_paths(self) -> None:
+        self.assertEqual(self.validate(
+            "[Web](https://example.org/guide.md) [Here](#here) "
+            "[Space](references/a%20b.md#section)",
+            {"references/a b.md": "# Section"},
+        ), [])
 
-    def test_dangling_legacy_router_link(self) -> None:
-        errors = self.validate("[Legacy](reference.md)", {})
-        self.assertTrue(any("must route references directly" in error for error in errors))
+    def test_malformed_url_is_reported_without_crashing(self) -> None:
+        errors = self.validate("[Broken](https://[invalid/guide.md)", {})
+        self.assertTrue(any("invalid Markdown link" in error for error in errors))
 
-    def test_non_category_filename_is_rejected(self) -> None:
-        errors = self.validate(
-            "[Upper](references/Upper.MD)",
-            {"references/Upper.MD": "# Upper\n"},
-        )
-        self.assertTrue(any("lowercase kebab-case" in error for error in errors))
+    def test_outside_payload_link_is_rejected(self) -> None:
+        errors = self.validate("[Outside](../outside.md)", {})
+        self.assertTrue(any("escapes skill payload" in error for error in errors))
 
     def test_resident_frontmatter_rejects_extra_fields(self) -> None:
         errors = self.validate_resident(
@@ -120,12 +133,11 @@ class CategoryReferenceTests(unittest.TestCase):
         )
         self.assertTrue(any("only name + description" in error for error in errors))
 
-    def test_trigger_section_is_not_resident(self) -> None:
-        errors = self.validate_resident(
+    def test_trigger_section_heading_is_not_a_format_error(self) -> None:
+        self.assertEqual(self.validate_resident(
             "---\nname: fixture-skill\ndescription: fixture\n---\n\n## When To Use\n",
             {"name": "fixture-skill", "description": "fixture"},
-        )
-        self.assertTrue(any("trigger boundaries belong in frontmatter" in error for error in errors))
+        ), [])
 
     def test_resident_line_budget_routes_detail_to_references(self) -> None:
         skill_text = "\n".join(["---", "name: fixture-skill", "description: fixture", "---"] + ["detail"] * 101)
@@ -351,8 +363,14 @@ class SemverAutomationContractTests(unittest.TestCase):
     def test_migration_discussion_prose_is_not_a_mechanical_gate(self) -> None:
         original = self.files()["skill"]
         changed = original.replace(
-            "use it without a migration interview", "retain the established release path"
+            "use that established release flow", "retain the established release path"
         )
+        self.assertNotEqual(original, changed)
+        self.assertEqual([], self.validate(skill=changed))
+
+    def test_release_commit_subject_follows_project_convention(self) -> None:
+        original = self.files()["skill"]
+        changed = original.replace("`release: <exact-tag>`", "`chore(release): <exact-tag>`")
         self.assertNotEqual(original, changed)
         self.assertEqual([], self.validate(skill=changed))
 
@@ -364,8 +382,8 @@ class SemverAutomationContractTests(unittest.TestCase):
     def test_existing_flow_can_be_kept_without_an_adoption_offer(self) -> None:
         original = self.files()["automation"]
         changed = original.replace(
-            "use it without asking the owner to defend it against",
-            "retain it instead of comparing it again with",
+            "Existing release requests follow the established project flow.",
+            "Follow the project release process for an existing release.",
         )
         self.assertNotEqual(original, changed)
         self.assertEqual([], self.validate(automation=changed))
@@ -735,265 +753,6 @@ class ConventionalCommitContractTests(unittest.TestCase):
         )
 
 
-class ProjectDocsOrganizerContractTests(unittest.TestCase):
-    METHOD_HEADINGS = (
-        "Reader role",
-        "Task or journey",
-        "Domain capability, ownership, and language",
-        "Product, subsystem, or interface surface",
-        "Content purpose or information type",
-        "Lifecycle or authority",
-    )
-    METHOD_FIELDS = (
-        "- **Signals**: signal",
-        "- **Ask**: question",
-        "- **Fits when**: fit",
-        "- **Fails when**: failure",
-        "- **Axis role**: role",
-        "- **Micro-example**: example",
-    )
-
-    def valid_files(self) -> dict[str, str]:
-        cards = "\n".join(
-            f"## {heading}\n" + "\n".join(self.METHOD_FIELDS) for heading in self.METHOD_HEADINGS
-        )
-        return {
-            "SKILL.md": "Use project-owned structure and preserve useful content.\n",
-            "references/information-architecture.md": (
-                "Reuse an established structure; compare only unresolved boundaries.\n"
-            ),
-            "references/classification-methods.md": cards,
-            "references/numbering-patterns.md": (
-                "Keep numbering disabled by default. Enable it only for stable sibling order that improves "
-                "an observed reader route and outweighs path/link churn. A coherent established convention "
-                "or documentation generator owns ordering or navigation. Use `10-`, `20-`, and `00-` as "
-                "sibling-local position, not category meaning. Add nested numbers only for a genuine reading "
-                "or execution order."
-            ),
-            "references/migration-and-links.md": (
-                "Build the migration map. Before deleting, gather evidence. Run "
-                "rg -n -F 'old/path.md' <project-root>. Coordinate external wikis or issue trackers. "
-                "Finish with git diff --check."
-            ),
-        }
-
-    def validate(
-        self,
-        *,
-        overrides: dict[str, str] | None = None,
-        removed: set[str] | None = None,
-        extras: dict[str, str] | None = None,
-        readme_text: str | None = None,
-    ) -> list[str]:
-        files = self.valid_files()
-        files.update(overrides or {})
-        for relative in removed or set():
-            files.pop(relative, None)
-        files.update(extras or {})
-        with tempfile.TemporaryDirectory() as temporary:
-            skill_dir = Path(temporary) / "project-docs-organizer"
-            for relative, content in files.items():
-                path = skill_dir / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(content, encoding="utf-8")
-            validator.errors.clear()
-            validator.validate_project_docs_organizer_contract(
-                skill_dir,
-                readme_text=(
-                    readme_text
-                    if readme_text is not None
-                    else (
-                        "| [project-docs-organizer](skills/project-docs-organizer/) | "
-                        "Evidence-gated local numbering. | Documentation |"
-                    )
-                ),
-            )
-            return list(validator.errors)
-
-    def test_valid_evidence_led_contract(self) -> None:
-        self.assertEqual(self.validate(), [])
-
-    def test_missing_required_reference_is_rejected(self) -> None:
-        errors = self.validate(removed={"references/classification-methods.md"})
-        self.assertTrue(any("missing required files" in error for error in errors))
-
-    def test_legacy_zone_catalog_is_rejected(self) -> None:
-        errors = self.validate(
-            extras={"references/zone-catalog.md": "# Optional Documentation Zone Catalog\n"}
-        )
-        self.assertTrue(any("retired references/zone-catalog.md" in error for error in errors))
-
-    def test_incomplete_method_card_set_is_rejected(self) -> None:
-        methods = self.valid_files()["references/classification-methods.md"].replace(
-            "## Lifecycle or authority", "## Records"
-        )
-        errors = self.validate(overrides={"references/classification-methods.md": methods})
-        self.assertTrue(any("method-card set is incomplete" in error for error in errors))
-
-    def test_method_fields_are_validated_inside_each_card(self) -> None:
-        methods = self.valid_files()["references/classification-methods.md"]
-        methods = methods.replace("- **Signals**: signal\n", "", 1).replace(
-            "## Task or journey\n",
-            "## Task or journey\n- **Signals**: duplicate\n",
-            1,
-        )
-        errors = self.validate(overrides={"references/classification-methods.md": methods})
-        self.assertTrue(
-            any("Reader role method card" in error and "Signals (0)" in error for error in errors)
-        )
-        self.assertTrue(
-            any("Task or journey method card" in error and "Signals (2)" in error for error in errors)
-        )
-
-    def test_empty_method_field_is_rejected(self) -> None:
-        methods = self.valid_files()["references/classification-methods.md"].replace(
-            "- **Ask**: question",
-            "- **Ask**:",
-            1,
-        )
-        errors = self.validate(overrides={"references/classification-methods.md": methods})
-        self.assertTrue(any("Ask (empty)" in error for error in errors))
-
-    def test_method_card_directory_examples_reject_every_fence_form(self) -> None:
-        methods = self.valid_files()["references/classification-methods.md"]
-        for fence in ("```", "```markdown", "~~~text"):
-            with self.subTest(fence=fence):
-                invalid = methods.replace(
-                    "- **Micro-example**: example",
-                    f"- **Micro-example**: example\n{fence}\ndocs/\n  users/\n{fence[:3]}",
-                    1,
-                )
-                errors = self.validate(
-                    overrides={"references/classification-methods.md": invalid}
-                )
-                self.assertTrue(any("micro-example must be prose" in error for error in errors))
-
-    def test_method_card_unfenced_directory_tree_is_rejected(self) -> None:
-        methods = self.valid_files()["references/classification-methods.md"].replace(
-            "- **Micro-example**: example",
-            "- **Micro-example**: example\ndocs/\n  users/\n  maintainers/",
-            1,
-        )
-        errors = self.validate(overrides={"references/classification-methods.md": methods})
-        self.assertTrue(any("micro-example must be prose" in error for error in errors))
-
-    def test_global_number_range_semantics_are_rejected(self) -> None:
-        numbering = (
-            self.valid_files()["references/numbering-patterns.md"]
-            + " The developer area is `2x`."
-        )
-        errors = self.validate(overrides={"references/numbering-patterns.md": numbering})
-        self.assertTrue(any("retired zone-template semantics" in error for error in errors))
-
-    def test_reworded_fixed_numeric_ranges_are_rejected(self) -> None:
-        numbering = self.valid_files()["references/numbering-patterns.md"]
-        for rule in (
-            "Reserve 20-29 for development.",
-            "Iteration uses 30–39.",
-            "Maintenance occupies 4x.",
-            "Reference occupies 60 to 69.",
-            "The complete catalog spans 00-94.",
-        ):
-            with self.subTest(rule=rule):
-                errors = self.validate(
-                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
-                )
-                self.assertTrue(any("fixed numeric range notation" in error for error in errors))
-
-    def test_numeric_quantity_outside_numbering_rules_is_not_a_fixed_range(self) -> None:
-        skill = self.valid_files()["SKILL.md"] + " Present 2-3 candidates for a tied decision."
-        errors = self.validate(overrides={"SKILL.md": skill})
-        self.assertFalse(any("fixed numeric range notation" in error for error in errors))
-
-    def test_forced_numbering_without_opt_outs_is_rejected(self) -> None:
-        numbering = self.valid_files()["references/numbering-patterns.md"].replace(
-            "coherent established convention", "project exception"
-        ).replace(
-            "documentation generator owns ordering or navigation", "the project is large"
-        )
-        errors = self.validate(overrides={"references/numbering-patterns.md": numbering})
-        self.assertTrue(any("evidence and opt-out numbering contract" in error for error in errors))
-
-    def test_default_on_numbering_is_rejected_across_contract(self) -> None:
-        for relative, rule in (
-            ("SKILL.md", "Enable numbering by default when no convention exists."),
-            (
-                "references/information-architecture.md",
-                "Otherwise use local numbering by default.",
-            ),
-            (
-                "references/numbering-patterns.md",
-                "The skill provides optional default-on local numbering.",
-            ),
-        ):
-            with self.subTest(relative=relative):
-                invalid = self.valid_files()[relative] + " " + rule
-                errors = self.validate(overrides={relative: invalid})
-                self.assertTrue(
-                    any("default-on numbering contradicts the evidence gate" in error for error in errors)
-                )
-
-    def test_stale_readme_summary_is_rejected_by_domain_contract(self) -> None:
-        errors = self.validate(
-            readme_text=(
-                "| [project-docs-organizer](skills/project-docs-organizer/) | Use optional "
-                "default-on local numbering when no coherent convention governs. | Documentation |"
-            )
-        )
-        self.assertTrue(
-            any("default-on numbering contradicts the evidence gate" in error for error in errors)
-        )
-
-    def test_explicit_default_on_rejections_are_not_false_positives(self) -> None:
-        numbering = self.valid_files()["references/numbering-patterns.md"]
-        for rule in (
-            "Do not enable numbering by default.",
-            "Never use local numbering by default.",
-        ):
-            with self.subTest(rule=rule):
-                errors = self.validate(
-                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
-                )
-                self.assertFalse(
-                    any("default-on numbering contradicts the evidence gate" in error for error in errors)
-                )
-
-    def test_contradictory_forced_numbering_rules_are_rejected(self) -> None:
-        numbering = self.valid_files()["references/numbering-patterns.md"]
-        for rule in (
-            "Always number every project.",
-            "Numeric prefixes are mandatory for all documentation trees.",
-            "Every repository must use numbering.",
-            "Numbering cannot be disabled.",
-            "All documentation trees are numbered.",
-            "Numbering applies to every project.",
-        ):
-            with self.subTest(rule=rule):
-                errors = self.validate(
-                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
-                )
-                self.assertTrue(
-                    any("unconditional numbering mandate" in error for error in errors)
-                )
-
-    def test_explicit_numbering_opt_out_phrasings_are_not_false_positives(self) -> None:
-        numbering = self.valid_files()["references/numbering-patterns.md"]
-        for rule in (
-            "Numbering is not mandatory.",
-            "Do not always number every project.",
-            "Not every repository must use numbering.",
-            "Do not enable numbering for every project.",
-            "Do not number every project.",
-            "Not all documentation trees are numbered.",
-            "Numbering does not apply to every project.",
-        ):
-            with self.subTest(rule=rule):
-                errors = self.validate(
-                    overrides={"references/numbering-patterns.md": numbering + " " + rule}
-                )
-                self.assertFalse(
-                    any("unconditional numbering mandate" in error for error in errors)
-                )
 
 
 class PublicSummaryContractTests(unittest.TestCase):
@@ -1015,34 +774,6 @@ class PublicSummaryContractTests(unittest.TestCase):
         )
 
 
-class ToolingScriptContractTests(unittest.TestCase):
-    def setUp(self) -> None:
-        validator.errors.clear()
-
-    @staticmethod
-    def contextual_contract() -> str:
-        return (
-            "The Contract Profile decides which cards apply. "
-            "Never let unknown or invalid input reach a dangerous default action. "
-            "Preserve the project's existing CLI grammar and exit-code convention. "
-            "Use a language-native shared resolver. Require idempotency only when retry or convergence. "
-            "Do not claim a dry run unless tests prove it is safe. Inventory registration, when adopted."
-        )
-
-    def test_forced_universal_contract_rules_are_rejected(self) -> None:
-        for forced_rule in validator.TOOLING_FORCED_SCRIPT_CONTRACT:
-            with self.subTest(forced_rule=forced_rule):
-                validator.errors.clear()
-                validator.validate_tooling_script_contract_semantics(
-                    f"{self.contextual_contract()} {forced_rule}"
-                )
-                self.assertTrue(
-                    any("evidence-gated and project-owned" in error for error in validator.errors)
-                )
-
-    def test_contextual_command_contract_is_accepted(self) -> None:
-        validator.validate_tooling_script_contract_semantics(self.contextual_contract())
-        self.assertEqual(validator.errors, [])
 
 
 class LarkCliContractTests(unittest.TestCase):
@@ -1083,6 +814,15 @@ class LarkCliContractTests(unittest.TestCase):
         )
 
     def test_current_payload_is_valid(self) -> None:
+        self.assertEqual([], self.validate())
+
+    def test_domain_guidance_has_no_mandatory_prose_or_call_budget(self) -> None:
+        from contracts.lark_cli import REFERENCE_COVERAGE
+
+        for name, upstream in REFERENCE_COVERAGE.items():
+            text = "# Domain guide\n\nUse the selected operation with verified identity and authority.\n\n"
+            text += "**Official coverage:** " + ", ".join(f"`{item}`" for item in upstream) + ".\n"
+            (self.skill_dir / name).write_text(text, encoding="utf-8")
         self.assertEqual([], self.validate())
 
     def test_language_triggers_must_be_in_parsed_description(self) -> None:

@@ -93,4 +93,4 @@ Official installer reference: [vercel-labs/skills](https://github.com/vercel-lab
 
 ## Maintenance trigger
 
-Reverify this page when a host path, trust model, hook schema, installer flag, compatibility claim, audited pin, or public/private catalog boundary changes. Prefer dated, bounded language over “universal,” “all hosts,” or unqualified “latest.” Follow the [documentation maintenance policy](documentation-maintenance.md) for source selection and duplication rules.
+Reverify this page when a host path, trust model, hook schema, installer flag, compatibility claim, audited pin, or public/private catalog boundary changes. Prefer dated, bounded language over “universal,” “all hosts,” or unqualified “latest.” Follow the [documentation maintenance](documentation-maintenance.md) policy for source selection and duplication rules.

@@ -1,8 +1,5 @@
 # Agent Scaffold Retrofit
 
-Read this only when adopting an existing `AGENTS.md`, `CLAUDE.md`, hook config,
-or hand-authored host agent into the current harness.
-
 ## Preview before mutation
 
 Follow the SKILL.md workflow from the target repository: run `plan`, resolve

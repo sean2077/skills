@@ -1,7 +1,5 @@
 # Commit Staging Safety
 
-Read this when Git inspection or staging is required before creating the local commit.
-
 ## Inspect only what is missing
 
 Do not rerun discovery when the conversation already provides reliable paths, diffs,

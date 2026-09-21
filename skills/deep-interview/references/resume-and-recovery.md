@@ -1,7 +1,5 @@
 # Resume and recovery
 
-Read this only when an interview is interrupted or reports discovery, revision, binding, lock, or state-health trouble.
-
 State is stored at `.agent-workflows/deep-interview/<session>/<id>.json`. Git worktrees share discovery through the common repository root while mutation ownership stays bound to one worktree and branch. Outside Git, invoke every command with the same `--root <directory>`.
 
 Use read-only discovery first:

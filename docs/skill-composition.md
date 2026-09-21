@@ -1,20 +1,6 @@
 # Choosing and combining skills
 
-This guide is for catalog consumers choosing the smallest useful installation and workflow. It is not another always-loaded router. Each catalog skill remains independently installable; the linked skill owns its operational rules.
-
-## Start with the native host
-
-An ordinary explanation, fix, plan, review, or continuation can need **no catalog skill**.
-Select a skill only for a missing capability or a project boundary worth reinforcing; do not
-perform the native workflow and then repeat it through an identically named custom route.
-Reuse valid acceptance, decisions, and verification, and rerun only invalidated evidence or
-project-required gates. Host support and exact invocation behavior vary: see the dated
-[native overlap notes](compatibility.md#native-overlap-and-visibility-2026-09-20).
-
-Keep routine installations small. Native planning, subagents, resume, and compaction are not
-reasons to install `ralph` or `work-protocol`; those routes own distinct bounded-attempt and
-writer-integrity contracts. A native initializer does not by itself prove the cross-host
-source/projection reconciliation provided by `agent-scaffold`.
+Each catalog skill is independently installable and owns its operational guidance. Choose the routes that add useful methods or controls to your host and project. Host capability and invocation details are described in the dated [compatibility notes](compatibility.md).
 
 ## Start with the requested outcome
 
@@ -25,7 +11,7 @@ source/projection reconciliation provided by `agent-scaffold`.
 | Test local feasibility | [prototype](../skills/prototype/SKILL.md) | Disposable evidence, not production readiness |
 | Resolve user-owned requirements | [deep-interview](../skills/deep-interview/SKILL.md) | Approval of meaning is not permission for external side effects |
 | Write settled requirements/design for people | [spec-writing](../skills/spec-writing/SKILL.md) | Preserve settled decisions; don't reopen an interview by default |
-| Deliver an authorized task end to end | [autopilot](../skills/autopilot/SKILL.md) | Native loop first; load specialists only for actual gaps |
+| Deliver an authorized task end to end | [autopilot](../skills/autopilot/SKILL.md) | Own the authorized outcome, integration, and verification |
 | Perform explicitly required test-first work | [tdd](../skills/tdd/SKILL.md) | User or applicable project policy must require it; tests alone are not a trigger |
 | Clean up while preserving behavior | [ai-slop-cleaner](../skills/ai-slop-cleaner/SKILL.md) | Authoring, not a general defect review |
 | Review a concrete change or received findings | [code-review](../skills/code-review/SKILL.md) | Verify claims and revision; review alone does not authorize edits |
@@ -39,18 +25,16 @@ source/projection reconciliation provided by `agent-scaffold`.
 | Design project-owned command boundaries | [tooling-conventions](../skills/tooling-conventions/SKILL.md) | Tool governance, not installing a complete Agent harness |
 | Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Service-specific identity, permissions, and side-effect checks |
 
-## Compose only at a real boundary
+## Combining routes
 
-A small known fix needs implementation and verification, not interview, research, prototype, persistence, and parallel review by default. A complex delivery may need clarification for one unresolved decision and a source comparison for another; neither should repeat evidence already established by the other.
+Combine skills when the task crosses their boundaries. An implementation may need a source comparison for an uncertain dependency or clarification of an unresolved requirement. Reuse settled decisions and applicable verification rather than restarting the work.
 
-For end-to-end work, keep one delivery owner. The [autopilot composition reference](../skills/autopilot/references/composition-and-handoff.md) owns specialist dispatch, compact delegation, capability/cost selection, integration, and transfer. It describes optional capabilities, not mandatory sibling installations or a second runtime. A specialist returns its result to the existing owner.
+Keep one delivery owner. Specialists return their findings to that owner; shared writers coordinate their scope. The [autopilot composition reference](../skills/autopilot/references/composition-and-handoff.md) covers delegation and handoff. The [review feedback reference](../skills/code-review/references/feedback-triage.md) covers validating received findings before authorized corrections.
 
-For feedback on a patch, use the [review feedback reference](../skills/code-review/references/feedback-triage.md). Receiving a comment and applying it are different actions: validate the claim first, and edit only when authorized. A review is tied to the inspected revision, not to an indefinitely reusable approval label.
+Choose persistent state for the semantics needed: bounded attempts in `ralph`, phase/revision and receipts in `autopilot`, or durable leases and workspace evidence in `work-protocol`. Temporary delegation and persistence are separate choices.
 
-Do not add `ralph` merely because a task takes several attempts, or `work-protocol` merely because more than one Agent exists. Execution topology and durable state are separate choices. Prefer serial native execution when coordination costs more than it saves; keep genuine ownership, revision, and publication boundaries intact.
+## Installation and evidence
 
-## Install selectively; measure the result honestly
+Use the [README installation commands](../README.md#install). Installed descriptions contribute discovery context; bodies and references are loaded as needed.
 
-Install the routes you actually use with the commands in the [README](../README.md#install). Full instructions and references are on-demand, but every installed description still participates in discovery. No new bundle, universal dispatcher, or mandatory dependency is needed for this guide.
-
-Format validation, routing probes, and real delivery success are different evidence. See the [live evaluation guide](../evals/agent-skills/README.md) before interpreting a passed manifest or a model's stated intention as improved engineering performance. The [2026-09-20 audit](audits/2026-09-20-native-first.md) records the current keep/change decisions, research, and measurement limits; the [2026-09-06 audit](audits/2026-09-06-harness.md) remains historical evidence.
+The [evaluation guide](../evals/agent-skills/README.md) explains measured baseline/treatment comparisons. Historical review records are in the [September 20 audit](audits/2026-09-20-native-first.md) and [September 6 audit](audits/2026-09-06-harness.md).

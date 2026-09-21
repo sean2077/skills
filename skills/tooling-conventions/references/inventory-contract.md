@@ -1,8 +1,5 @@
 # Structural Tool Inventory Contract
 
-Read this when recurring command drift justifies a machine-readable inventory. Smaller projects
-can use the classification workflow without creating an inventory solely for this skill.
-
 ## Bundled checker versus project root
 
 The checker is a distributable skill asset, not a command copied into the target project:

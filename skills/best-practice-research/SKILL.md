@@ -5,18 +5,16 @@ description: "Use for a source-backed technical comparison or recommendation req
 
 # best-practice-research
 
-Resolve a technical decision using current external evidence and the target project's actual constraints, not a generic best-practice checklist.
+Resolve a technical decision using external evidence and the target project's constraints.
 
-## Research contract
+Identify the relevant compatibility, platform, deployment, ownership, and cost requirements. Reuse repository facts and sources that remain applicable; browse for current or uncertain external facts.
 
-- Identify the decision and relevant compatibility, platform, deployment, ownership, and cost constraints. Reuse inspected repository facts and sources still valid for this date/version; do not repeat an ecosystem sweep at each handoff.
-- Browse for current or niche facts. Prefer official documentation, specifications, source, release notes, and original research. Use secondary evidence only for relevant experience or an explicit primary-source gap.
-- Cite the claims where used and make source date/version and applicability clear. Distinguish standards requirements, vendor recommendations, common practice, and your local inference.
-- Compare viable alternatives when the decision has them; include operational burden and migration risk. Do not manufacture options or treat popularity, a benchmark, or a vendor claim as evidence of local utility.
-- Stop when further evidence no longer changes feasible options, ranking, or material risks. Resolve empirical local uncertainty with a bounded experiment rather than more generic searching.
+Prefer official documentation, specifications, source, release notes, and original research. Use secondary sources for relevant experience or gaps in primary evidence. Cite claims where used and identify the applicable date/version. Distinguish requirements, recommendations, observed practice, and local inference.
 
-Lead with the recommendation, supporting evidence, trade-offs, and any validation still needed. Scale the format to the decision; no fixed headings or source-count quota. Research does not authorize code changes.
+Compare viable alternatives, including operational burden and migration risk. Assess whether benchmarks, adoption, and vendor claims transfer to this project. Conclude when the evidence supports a decision; use a bounded experiment for material uncertainty that only local observation can resolve.
 
-## On-demand references
+Present the recommendation, supporting evidence, trade-offs, and validation still needed. Keep research within the granted scope of authority.
 
-- Read [source evaluation](references/source-evaluation.md) when sources conflict, vendor-controlled evidence dominates, or freshness/adoption affects the recommendation.
+## References
+
+- [Source evaluation](references/source-evaluation.md): conflicting sources, vendor-controlled evidence, freshness, and adoption.

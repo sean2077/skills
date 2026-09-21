@@ -1,12 +1,6 @@
 # Document Metadata
 
-Read this when choosing or interpreting document metadata. These are starting points and
-judgment principles, not a schema, fixed lifecycle, or development gate.
-
-## Start small
-
-For a project without an existing convention, two optional top-level YAML fields are usually
-enough:
+Follow the project's existing metadata convention. For documents that need status and freshness context, a small flat header is a useful starting point:
 
 ```yaml
 ---
@@ -15,29 +9,10 @@ updated: "2026-09-08"
 ---
 ```
 
-`status` describes the document's current condition. Values such as `draft`, `needs-revision`,
-`active`, or `superseded` are examples, not a required vocabulary or transition sequence.
-`updated` records the last meaningful content update when known; it is a freshness clue,
-not proof of review, approval, or correctness. Omit dates that cannot be established.
+`status` describes the document's condition, using values meaningful to the project. `updated` records the last meaningful content change when known. Interpret both alongside the content, current implementation, relevant decisions, and user intent; a date is not proof of review or correctness.
 
-## Read and maintain in context
+A proposal or superseded plan can inform discussion without becoming settled implementation guidance. Check the source header when an excerpt loses that context, and expose consequential uncertainty.
 
-Consider metadata together with the content, current code, relevant decisions, and user
-intent. Check the source header when a retrieved excerpt leaves that context unclear.
-A revision-needed plan normally supplies discussion context rather than settled requirements;
-an explicit request to revise or try it can still guide the task without making it generally
-approved. Keep consequential uncertainty visible instead of applying a fixed status filter.
+Update metadata when the document's meaning or status changes. Moving or polishing a draft does not approve it. Preserve useful project fields and repair replacement/source links during migration.
 
-Missing metadata alone neither establishes trust nor blocks work. Use available evidence and
-project conventions to judge what is usable, and seek clarification when an unresolved
-substantive decision matters, not merely because a field is absent.
-
-Keep metadata aligned with meaningful content or status changes. Polishing or moving a draft
-does not approve it. Preserve existing fields, and update metadata links when moving docs.
-
-Project Agents choose which documents benefit, how they are organized, what fields and values
-mean, and how to use them. Prefer an established convention over renaming or bulk migration.
-Add a flat field, such as a scope or replacement link, only for a concrete project need; avoid
-nested metadata frameworks. Respect formats with their own frontmatter, including `SKILL.md`,
-and edit generated documentation through its source. No extra policy file or validator is
-needed just to adopt these principles.
+Add flat fields where they serve an actual consumer. Respect formats with their own frontmatter, including `SKILL.md`, and edit generated documentation through its source.

@@ -1,30 +1,12 @@
 # Documents and files
 
-Read this only when the request involves Docs, Drive files/folders, Wiki spaces/nodes, native
-Markdown resources, Slides, Whiteboards, cloud URLs/tokens, import/export, comments, versions,
-labels, subscriptions, or permissions.
+## Route by object
 
-## Fast-path routing and call budget
+Route `/docx/` and document tokens to `docs`; `/wiki/` to `wiki` for node/space operations and `docs` for underlying document content; `/sheets/` to Sheets; `/base/` or Base-style `/app/` to Base; `/slides/` to Slides; ordinary uploaded files/folders to `drive`.
 
-Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+Use `drive +inspect` to resolve ambiguous types or unwrap a Wiki node. Use `drive +search` for title/keyword discovery.
 
-Route by the user's object, not by a discovery ritual:
-
-- `/docx/` or known document token -> `docs`; `/wiki/` -> `wiki` for node/space operations and
-  `docs` for underlying document content; `/sheets/` -> Sheets; `/base/` or Base-style `/app/` ->
-  Base; `/slides/` -> Slides; uploaded ordinary files/folders -> `drive`.
-- A clear URL path is enough to choose the service. Do not call `drive +inspect` first.
-- Use `drive +inspect` only when a URL/token type is genuinely ambiguous or a Wiki node must be
-  unwrapped to its underlying object.
-- A known URL/token plus a common read/upload/download/import should usually take one command.
-- A title/keyword-only discovery should take one `drive +search`, then one owning-service command.
-- Do not run service help, auth status, schema, or type resolvers before a matching recipe below when the recipe and effective identity are already clear.
-
-Feishu/Lark and compatible `doubao.com` URLs are opaque identifiers, not ordinary webpages. Preserve
-the complete value and do not WebFetch a protected resource merely because its hostname differs.
-Identity is workflow state: preserve the same explicit `--as user` or `--as bot` when a Drive/Wiki
-resolver returns a token later consumed by Docs, Slides, or another owning service. Do not silently
-fall back to a service's usual identity default mid-chain.
+Feishu/Lark and compatible `doubao.com` URLs are opaque resource identifiers. Preserve the complete value and access protected content through its owning service. Preserve the same explicit `--as user` or `--as bot` across commands consuming returned tokens; service defaults do not transfer identity.
 
 ## Read and locate documents directly
 

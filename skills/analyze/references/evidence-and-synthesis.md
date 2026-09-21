@@ -1,26 +1,7 @@
 # Evidence and synthesis
 
-Read this only when an analysis spans several boundaries, sources conflict, or the conclusion needs explicit confidence calibration.
+Follow the evidence that can explain the question: callers, implementation, configuration, tests, observed execution, and the applicable contract. Check that observations match the relevant revision, inputs, and environment. Documentation may describe intended behavior while a reproduction shows a defect; establish that distinction rather than treating either as universally authoritative.
 
-## Evidence order
+For a material claim, connect the observation to its location and explain the inference. Consider contradictory evidence and identify what remains unknown. Preserve useful intermediate findings in the task's existing notes.
 
-In explanation mode, prefer, in order: observed runtime/test output; executable behavior and invariants; configuration actually loaded; caller/callee contracts; focused tests; current documentation; comments; history; naming alone. Causal investigations use a different ladder; see [causal-evidence.md](causal-evidence.md).
-
-A lower-ranked source may still win when it is the only source addressing the exact condition. Say why.
-
-## Claim ledger
-
-For disputed or hard-to-track load-bearing claims, keep the relevant evidence together in
-the existing notes or answer; no separate ledger or fixed field set is required. Useful details are:
-
-- the claim;
-- path plus symbol, section, or focused line range;
-- `fact`, `inference`, or `unknown`;
-- evidence for and against;
-- confidence and the observation that would change it.
-
-Merge claims that describe the same mechanism. Keep distinct claims separate when they imply different behavior or probes.
-
-## Synthesis discipline
-
-Lead with the answer, not the browsing history. Explain the minimum causal or ownership chain needed for the reader to understand the result. Mention files because they support a claim, not as an inventory dump.
+Lead the answer with the best-supported explanation and its consequences. Include the code path or observations needed to evaluate it, along with material limits. For unresolved causal questions, use [causal evidence](causal-evidence.md).

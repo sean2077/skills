@@ -50,14 +50,7 @@ def validate_agent_scaffold_contract() -> None:
 
 
 def validate_terminology_contract() -> None:
-    """Keep multilingual names equal without adding a primary-language rule.
-
-    Resident template wording is protected by rendered-copy drift reconciliation
-    in `scripts/check-agent-scaffold.sh`, so this module asserts only structure
-    and load targets rather than prose phrasing. `docs/harness-constraint-policy.md`
-    rejects substring fixtures that merely restate prose: they pin wording without
-    proving an executable invariant, and they break every legitimate rewording.
-    """
+    """Check the template's glossary routes; behavioral meaning is reviewed separately."""
     root = SKILLS_DIR / "agent-scaffold"
     template = root / "assets" / "scaffold" / "AGENTS.harness.md"
     reference = root / "references" / "terminology.md"
@@ -65,38 +58,9 @@ def validate_terminology_contract() -> None:
         return
 
     template_text = template.read_text(encoding="utf-8")
-    reference_text = reference.read_text(encoding="utf-8")
     required = {
-        # Structural load contract: the always-resident section heading, plus the
-        # two terminology sources an Agent is instructed to open. These are
-        # navigation and load targets, so a miss is a real behavior regression.
-        "managed terminology section": (
-            "### Project terminology (hard rule)", template_text
-        ),
         "managed map-first fallback source": ("CONTEXT-MAP.md", template_text),
         "managed default glossary source": ("CONTEXT.md", template_text),
-        "maintained-language coverage": (
-            "## Canonical term languages", reference_text
-        ),
-        "cross-language names are not aliases": (
-            "Cross-language equivalents are not aliases", reference_text
-        ),
-        "simple equivalent field": (
-            "_Equivalent (zh-CN)_: 工作树", reference_text
-        ),
-        "no preferred-or-alias middle state": (
-            "Do not add `_Preferred_` or `_Aliases_` fields by default.",
-            reference_text,
-        ),
-        "progressive topology guidance": (
-            "## Progressive context topology", reference_text
-        ),
-        "optional active-modeling route": (
-            "`domain-modeling` catalog skill", reference_text
-        ),
-        "no automatic active-route install": (
-            "does not install it automatically", reference_text
-        ),
     }
     missing = [
         label

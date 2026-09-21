@@ -1,9 +1,5 @@
 # Project-Owned Formatting Hooks
 
-Read this only when a target project wants format-on-edit behavior. Agent Scaffold deliberately
-does **not** install or wire a formatter because formatter selection, file scope, working directory,
-generated-file exclusions, monorepo routing, and failure policy vary by project.
-
 ## Integration recipe
 
 1. Implement the formatter at a project-owned path outside `.agents/tools/`, such as

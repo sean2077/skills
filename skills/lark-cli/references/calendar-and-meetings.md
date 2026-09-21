@@ -1,32 +1,12 @@
 # Calendar and meetings
 
-Read this only when the request involves calendar events, attendees, rooms, availability, active or
-historical video meetings, meeting bots/events, recordings, Minutes/妙记, Note/智能纪要,
-transcripts, or meeting-summary workflows.
+## Select the operation
 
-## Fast-path contract and call budget
+Use `calendar +agenda` for a bounded agenda and `calendar +get` for known event metadata. `+get` does not include attendees or rooms; use `+list-attendees` for those. A calendar share token can be used with `+join-event`.
 
-Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+Use `+search-event` to find scheduled events and `+suggestion` to explore candidate times. Resolve attendee names through `contact +search-user`, retain returned typed IDs, and check availability needed for scheduling.
 
-Use the documented shortcuts directly; do not preflight calendar/VC/Note/Minutes service help when
-the recipe and effective identity are already clear.
-
-- Today's or a bounded agenda: one `calendar +agenda` call.
-- Known `calendar_id + event_id` for event metadata: one `calendar +get` call. `+get` does not
-  include attendees or rooms.
-- Known event attendees or rooms: one `calendar +list-attendees` call.
-- Calendar share token from a share URL, QR code, share card, or RSVP card: one
-  `calendar +join-event` call.
-- Search a future/scheduled event: one `calendar +search-event` call; fetch details only for the
-  selected event when basic search fields are insufficient.
-- Exact create request with known attendee IDs and time: one `calendar +create` call.
-- Fuzzy scheduling: one `calendar +suggestion`, then one `+create` after the user selects a slot.
-- Historical meeting search: one `vc +search`; use one `vc +detail` only for selected meeting IDs.
-- Known `note_id`, `minute_token`, or document token: start in that domain directly; do not walk
-  backward through VC merely to rediscover it.
-
-Resolve a human attendee name once through `contact +search-user`; preserve the returned `ou_` ID.
-Do not resolve known `ou_`, `oc_`, `omm_`, calendar, event, meeting, note, or minute IDs again.
+Search historical meetings through `vc +search` and inspect selected meetings through `+detail`. A known Note, Minutes, or document identifier can be consumed by its owning service directly.
 
 ## Route by lifecycle and artifact
 
@@ -196,12 +176,9 @@ paths.
   collection read-only unless updates were separately requested.
 - Link-only request: return the product/document URLs from detail output without fetching bodies.
 
-## Drift fallback
+## Command discovery
 
-Exact shortcut help is allowed only after an unknown command/option or missing documented field.
-Meeting-product and bot capabilities may change or be limited-release, so discover only that exact
-shortcut/resource and cache the result. Preserve availability error codes/hints instead of running
-broad service help or repeatedly requesting scopes.
+Use the installed help/schema for missing or uncertain command details. Identity and confirmation rules are in [setup and safety](setup-auth-and-safety.md).
 
 **Official coverage:** `lark-calendar`, `lark-meeting`, `lark-minutes`, `lark-note`, `lark-vc-agent`,
 `lark-vc`, `lark-workflow-meeting-summary`, `lark-workflow-standup-report`.

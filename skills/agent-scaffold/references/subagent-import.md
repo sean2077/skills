@@ -1,8 +1,5 @@
 # Agent Scaffold Subagent Import
 
-Read this only when adopting hand-written `.claude/agents/*.md` or
-`.codex/agents/*.toml` into the dual-host `.agents/subagents/` SSOT.
-
 Python is a harness prerequisite, and the installer runs `generate-subagents.py --import` before
 projecting:
 

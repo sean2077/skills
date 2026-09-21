@@ -1,7 +1,5 @@
 # Legacy and Hard Cases
 
-Read this when working on a bug, legacy code, a repository without a test harness, generated code, concurrency, distributed behavior, migrations, compatibility, security, performance, visual output, property-based testing, data/ML systems, or embedded targets.
-
 ## Bug fixes
 
 Reproduce the defect through the narrowest stable affected seam before changing production code. Minimize the case without removing the causal condition. Confirm the new test fails on the unpatched behavior and passes with the fix; where practical, temporarily reverse only the production fix to prove the regression test is sensitive. Preserve the minimized case after any broader property or fuzz test that discovered it.

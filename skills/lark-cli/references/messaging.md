@@ -1,31 +1,14 @@
 # Messaging
 
-Read this only when the request involves IM messages, P2P/group chats, threads, reactions,
-interactive cards, chat media, feeds, pins, flags, or chat membership.
+## Select and resolve the target
 
-## Fast-path contract and call budget
+Use a known `chat_id` (`oc_...`) directly. A user or bot `open_id` (`ou_...`) works with `--user-id`, which resolves the P2P chat. Use a known message ID (`om_...`) for message operations.
 
-Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
+Resolve people through `contact +search-user`, bots through `contact +search-bot`, and chat titles through `im +chat-search`. Require a unique, verified recipient and resolve ambiguous matches before sending. Message, chat, thread, open, image, and file IDs are distinct opaque types.
 
-Use `im` shortcuts below directly. Do not run `im --help`, shortcut help, schema, auth status, or a
-dry-run before a matching ordinary operation when the recipe and effective identity are already clear.
+Ordinary human messaging uses `--as user`; use `--as bot` for intended application actions with access to the target chat.
 
-- Known `chat_id` (`oc_...`) -> one IM command. Do not search the chat again.
-- Known user/bot `open_id` (`ou_...`) -> one IM command with `--user-id`; the shortcut resolves the
-  P2P chat. Do not call Contact or search chats first.
-- Known message ID (`om_...`) -> reply/read/modify it directly; do not search for the message again.
-- Person name/email only -> one `contact +search-user`, then one IM command after a unique match.
-- Bot/agent name only -> one `contact +search-bot`, then one IM command after a unique match.
-- Group-chat title only -> one `im +chat-search`, then one IM command after a unique match.
-
-Require a unique, verified recipient. If multiple people/chats match, show compact candidates and ask
-the user to choose; do not add broader exploratory searches unless a targeted refinement is possible.
-Carry IDs exactly: message, chat, thread, open, image, and file IDs are different opaque types.
-
-Unless the user explicitly asks to act as the application, ordinary user messaging uses `--as user`.
-Replace it with `--as bot` only when bot identity is intended and has access to the target chat.
-
-## Resolve a missing target once
+## Resolve a missing target
 
 ```bash
 # Person by name or email; omit --has-chatted when new contacts must remain discoverable

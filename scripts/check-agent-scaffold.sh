@@ -195,7 +195,7 @@ fi
   || fail "missing terminology reference"
 [ -f "$repo/CONTEXT.md" ] \
   || fail "dogfood project terminology source missing: CONTEXT.md"
-grep -qF '| Canonical project terminology, context grouping, language equivalents, and avoided names | [CONTEXT.md](CONTEXT.md) |' \
+grep -qE '\]\((\./)?CONTEXT\.md\)' \
   "$repo/AGENTS.md" \
   || fail "dogfood AGENTS.md no longer declares CONTEXT.md as the terminology source"
 # shellcheck disable=SC2016  # backticks are literal Markdown in the rejected wording

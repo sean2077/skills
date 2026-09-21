@@ -1,9 +1,5 @@
 # Release Notes and Committed Changelogs
 
-Read this when the repository maintains a committed changelog, a tag workflow consumes one, or
-direct publication needs a prepared release-notes file. Skip the template when an existing
-workflow owns note generation independently of a changelog.
-
 ## Detect the release-note authority
 
 Inspect release docs, existing changelog or fragment directories, and tag workflows before

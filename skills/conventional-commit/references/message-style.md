@@ -1,8 +1,5 @@
 # Conventional Commit Message Style
 
-Read this when selecting the subject language, type, scope, breaking marker, or
-normalizing a user-supplied message.
-
 ## Language priority
 
 1. Follow an explicit user request.

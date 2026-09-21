@@ -27,7 +27,7 @@ Use `python3` when that is the repository's Python 3 command, or `py -3` on Wind
 4. Let the adapter modify only its isolated fixture copy. The runtime independently computes changed paths, rejects escaping symlinks, and fails if the adapter mutates any other repository path.
 5. Run a read-only deterministic verifier. Any verifier mutation of the fixture or surrounding repository is a protocol failure.
 6. Compare only compatible pairs. Correctness must pass before absolute or relative token, tool-call, time, and intervention budgets are considered.
-7. Keep the result JSON as CI evidence; add or revise a skill only when the measured result justifies its routing and context cost.
+7. Retain result JSON as evidence for measured behavioral and cost claims; report structural and deterministic checks separately.
 
 ## Hard rules
 

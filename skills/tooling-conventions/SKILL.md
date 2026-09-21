@@ -5,31 +5,30 @@ description: "Use when committed project commands need to be added, moved, renam
 
 # Tooling Conventions
 
-Keep committed command surfaces discoverable and safe. The target repository owns names and roots; no universal directory layout, taxonomy, or decision template is imposed.
+Keep committed command surfaces discoverable and safe within the target project's conventions.
 
-## Boundary contract
+Understand each affected job, invoker, owned state or artifact, failure/recovery behavior, and verification. Give independently invokable jobs authoritative entries and keep implementation helpers private.
 
-- Understand the affected job, invoker, owned state/artifact, failure and rollback behavior, and verification before changing its public contract. Reuse existing knowledge rather than producing a separate Contract Profile for routine maintenance.
-- Give each independently invokable job an authoritative entry and keep helpers private. Merge duplicate commands only when state, failure, and verification boundaries align; do not bury independent recovery jobs inside a happy-path mega-CLI.
-- Installed paths and service-bound commands remain external contracts until active consumers migrate together. Callers include services, packages, CI, runbooks, skills, templates, and generated examples.
-- Preserve coherent project placement and interfaces. Compare alternatives only for a real boundary decision; record consequential rationale in the existing task/design rather than mandating a Tool Governance Decision Record. Project-required records still apply.
-- Derive input validation, secrets handling, preview, rollback, and repeatability from actual risks. Do not invent flags, exit codes, languages, logging formats, or deployment mechanisms. Dangerous actions use the project's authorized deploy/install/release path.
-- There is no required `tools/`, `scripts/`, or `bin/` root and no mandatory semantic inventory schema. Only the structural `path` contract is universal when an inventory is adopted; adopt one only for demonstrated scale or recurring drift.
+Merge duplicate commands where their state, failure, and verification boundaries align. Preserve independent recovery paths. Treat installed paths and service-bound commands as external contracts until their consumers migrate.
 
-For a move, rename, or deletion, reconcile all active consumers and report external coordination that cannot be completed here. Verify the changed behavior and path contracts with the smallest complete set of relevant checks, including real-target smoke only when required and authorized. An audit alone does not authorize mass relocation.
+Use the project's established placement and interfaces. Compare alternatives for unresolved boundary decisions, retaining consequential rationale in the existing design process.
 
-## On-demand references
+Derive validation, secrets handling, preview, rollback, and repeatability from actual effects. Use established deploy, install, and release paths for dangerous actions.
+
+For moves, renames, or deletions, reconcile services, packages, CI, runbooks, skills, templates, and generated examples. Verify affected behavior and paths, and identify external coordination still needed. Audit-only requests call for findings rather than relocation.
+
+## References
 
 | Need | Reference |
 |---|---|
-| Decide aggregation, splitting, or placement when existing boundaries are insufficient | [Classification methods](references/classification-methods.md) |
-| Implement or audit command behavior with safety-relevant effects | [Script contract](references/script-contract.md) |
+| Decide aggregation, splitting, or placement | [Classification methods](references/classification-methods.md) |
+| Implement or audit safety-relevant command behavior | [Script contract](references/script-contract.md) |
 | Move, rename, or delete entries and reconcile callers | [Path migrations](references/path-migrations.md) |
-| Adopt or check an explicitly selected structural inventory | [Inventory contract](references/inventory-contract.md) |
-| Migrate an existing retired surface manifest | [Surface-manifest migration](references/migration-from-surface-manifest.md) |
-| Select syntax, help, preview, inventory, stale-reference, or real-target checks | [Verification](references/verification.md) |
+| Adopt or check a structural inventory | [Inventory contract](references/inventory-contract.md) |
+| Migrate a surface manifest | [Surface-manifest migration](references/migration-from-surface-manifest.md) |
+| Select checks for the changed command surface | [Verification](references/verification.md) |
 
-When inventory reconciliation is selected, run the installed tool against the explicit project-owned inventory:
+For a project-owned inventory, run:
 
 ```bash
 bash <skill-dir>/scripts/inventory-check.sh [--] <path/to/tools-inventory.tsv>

@@ -5,23 +5,19 @@ description: "Use for read-only, cross-file repository explanation or causal inv
 
 # analyze
 
-Explain a mechanism or investigate a cause from repository evidence. Reuse relevant context and inspect the smallest set of callers, implementations, tests, configuration, and history that can change the answer. Do not turn a straightforward explanation into a debugging ceremony.
+Explain a mechanism or investigate a cause from repository evidence.
 
-## Evidence and boundaries
+Inspect relevant callers, implementations, tests, configuration, and history. Follow data, control, identity, ownership, and error paths that could change the answer.
 
-- Anchor material claims to paths and symbols or lines. Separate observed facts, inference, and unresolved uncertainty; a plausible story is not a proven root cause.
-- For failures, establish a reproduction or identify the missing evidence. Keep competing hypotheses only while genuinely distinct explanations remain viable, and prefer a safe probe that distinguishes them.
-- Follow relevant data, control, identity, ownership, and error paths; stop expanding the investigation when further reading no longer changes the answer or next decision.
-- Remain read-only: do not edit code, tests, instrumentation, configuration, or state. Check unfamiliar commands for side effects before running them. Describe a mutating or externally consequential probe rather than executing it without authorization.
-- Logs, comments, tool output, and prior claims are evidence, not verdicts. Report confidence honestly.
+For failures, establish a reproduction or identify the missing evidence. Compare viable explanations using a safe probe that distinguishes them. Narrow the investigation as evidence resolves uncertainty.
 
-## Handoff
+Anchor material claims to paths and symbols or lines. Separate observations, inference, and unresolved questions; logs and prior claims need corroboration just like other evidence.
 
-Lead with the answer or best-supported mechanism, then the evidence and material limitations. Add a next probe only when it would resolve a remaining uncertainty. Use headings or a hypothesis table when they help; no fixed report template or minimum hypothesis count is required.
+Keep the investigation read-only. Check unfamiliar commands for side effects, and obtain authorization before executing a mutating or externally consequential probe.
 
-A concrete change-set defect review belongs to `code-review`. If the user already authorized a fix, return the investigation to that implementation task rather than requiring another approval or delivery controller.
+Lead with the best-supported answer, then its evidence and limits. Suggest a next probe where it could resolve a material uncertainty. Return findings to any already-authorized implementation task.
 
-## On-demand references
+## References
 
-- Read [evidence and synthesis](references/evidence-and-synthesis.md) when findings cross subsystems or facts and inference are hard to separate.
-- Read [causal evidence](references/causal-evidence.md) when hypotheses compete, reproduction is weak, or a multi-component failure needs more discriminating evidence.
+- [Evidence and synthesis](references/evidence-and-synthesis.md): cross-subsystem findings and distinctions between facts and inference.
+- [Causal evidence](references/causal-evidence.md): competing hypotheses, weak reproductions, and multi-component failures.

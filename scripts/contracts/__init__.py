@@ -25,7 +25,6 @@ REQUIRED_SKILLS = frozenset(
         "conventional-commit",
         "deep-interview",
         "lark-cli",
-        "project-docs-organizer",
         "ralph",
         "semver-release",
         "tdd",
