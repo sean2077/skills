@@ -22,7 +22,7 @@ LIVE_EVAL_VERIFIER = (
 
 
 class CategoryReferenceTests(unittest.TestCase):
-    def validate(self, skill_text: str, references: dict[str, str], *, legacy_root: bool = False) -> list[str]:
+    def validate(self, skill_text: str, references: dict[str, str]) -> list[str]:
         with tempfile.TemporaryDirectory() as temporary:
             skill_dir = Path(temporary) / "fixture-skill"
             skill_dir.mkdir()
@@ -30,8 +30,6 @@ class CategoryReferenceTests(unittest.TestCase):
                 path = skill_dir / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
-            if legacy_root:
-                (skill_dir / "reference.md").write_text("legacy\n", encoding="utf-8")
             validator.errors.clear()
             validator.validate_category_references(skill_dir, skill_text)
             return list(validator.errors)
@@ -104,6 +102,14 @@ class CategoryReferenceTests(unittest.TestCase):
                 "~~~md\n[Example](other.md)\n~~~\n"
                 "`[Example](inline.md)`\n[Real](references/real.md)")
         self.assertEqual(self.validate(text, {"references/real.md": "# Real"}), [])
+
+    def test_unterminated_fence_does_not_suppress_later_links(self) -> None:
+        errors = self.validate(
+            "```markdown\n[Alpha](references/alpha.md) [Missing](references/missing.md)",
+            {"references/alpha.md": "# Alpha\n"},
+        )
+        self.assertEqual(sum("does not exist" in error for error in errors), 1)
+        self.assertFalse([error for error in errors if "orphan reference" in error])
 
     def test_url_fragments_and_encoded_paths(self) -> None:
         self.assertEqual(self.validate(

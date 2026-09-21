@@ -21,7 +21,7 @@ Choose an observable behavior, stable seam, independent oracle, test level, and 
 
 Derive commands, working directories, layout, and frameworks from project instructions, manifests, CI, wrappers, and tests. Inspect unfamiliar wrappers for effects before running them. Deployment, publication, flashing, shared-state migration, and production access require explicit authority and suitable isolation.
 
-Preserve legitimate failing tests. Change an oracle only when evidence shows its contract is wrong, and explain the correction.
+Preserve legitimate failing tests; never weaken, delete, skip, quarantine, or regenerate a legitimate failure merely to reach GREEN. Change an oracle only when evidence shows its contract is wrong, and explain the correction.
 
 Retain observed RED and GREEN evidence for each capability, including commands and relevant failures. Report pre-existing failures, unrun checks, changed test contracts, and residual risk.
 

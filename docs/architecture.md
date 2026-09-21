@@ -48,7 +48,7 @@ Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata
 - `work-protocol` is public and owns optional durable coordination state such as CAS revisions, leases, hash-chained evidence, and commit-fixed review.
 - Coordinate state ownership when composing runtimes and keep one active writer per mutable surface.
 
-The [harness constraint policy](harness-constraint-policy.md) is authoritative for deciding whether a new script, state machine, or targeted contract earns its maintenance and context cost.
+The [harness design principles](harness-constraint-policy.md) are authoritative for deciding whether a new script, state machine, or targeted contract earns its maintenance and context cost.
 
 ## Validation ownership
 

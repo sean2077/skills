@@ -68,7 +68,7 @@ The catalog is read directly from `skills/`; there are no generated `.claude/ski
 | Understand product surfaces, source ownership, generators, and validation layers | [Repository architecture](docs/architecture.md) |
 | Develop, validate, regenerate, and release | [Development guide](docs/development.md) |
 | Check host, installer, trust, and support claims | [Compatibility and verification matrix](docs/compatibility.md) |
-| Maintain documentation and evidence freshness | [Documentation maintenance policy](docs/documentation-maintenance.md) |
+| Maintain documentation and evidence freshness | [Documentation maintenance](docs/documentation-maintenance.md) |
 | Decide when mechanical controls justify their cost | [Harness design principles](docs/harness-constraint-policy.md) |
 | Use the repository's canonical terminology, context grouping, language equivalents, and avoided names | [Project language](CONTEXT.md) |
 | Follow repository-level Agent rules | [Agent contract](AGENTS.md) |

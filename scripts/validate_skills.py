@@ -94,20 +94,34 @@ MARKDOWN_LINK = re.compile(r"\]\(([^)\s]+)(?:\s+[^)]*)?\)")
 
 
 def markdown_links(text: str) -> list[str]:
-    """Read inline link targets outside fenced examples and inline code."""
-    visible: list[str] = []
+    """Read inline link targets outside fenced examples and inline code.
+
+    An unterminated fence leaves the remaining lines visible: a malformed
+    document must not silently suppress link validation for its own tail.
+    """
+    lines = text.splitlines()
+    hidden = [False] * len(lines)
     fence = ""
-    for line in text.splitlines():
+    start = 0
+    for index, line in enumerate(lines):
         marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
         if marker:
             value = marker.group(1)
             if not fence:
-                fence = value
+                fence, start = value, index
             elif value[0] == fence[0] and len(value) >= len(fence):
+                hidden[start : index + 1] = [True] * (index + 1 - start)
                 fence = ""
             continue
-        if not fence:
-            visible.append(re.sub(r"(`+).*?\1", "", line))
+        if fence:
+            hidden[index] = True
+    if fence:
+        hidden[start:] = [False] * (len(lines) - start)
+    visible = [
+        re.sub(r"(`+).*?\1", "", line)
+        for line, is_hidden in zip(lines, hidden)
+        if not is_hidden
+    ]
     return MARKDOWN_LINK.findall("\n".join(visible))
 
 
@@ -155,7 +169,10 @@ def validate_category_references(skill_dir: Path, skill_text: str) -> None:
                     errors.append(f"{skill_dir.name}: cannot read reference {link}: {exc}")
     for path in sorted(reference_files - visited):
         # A symlink escaping the payload is also rejected by payload validation.
-        relative = path.relative_to(root) if path.is_relative_to(root) else path
+        try:
+            relative = path.relative_to(root)
+        except ValueError:
+            relative = path
         errors.append(f"{skill_dir.name}: orphan reference is not reachable from SKILL.md: {relative}")
 
 

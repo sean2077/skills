@@ -11,7 +11,7 @@ Own an authorized outcome from the current plan through verified handoff.
 
 Reuse approved decisions and relevant evidence. Resolve uncertainties that could change scope, authority, or acceptance, then implement coherent slices.
 
-Verify affected behavior with observed commands and results. Reuse checks while their revision, inputs, environment, and coverage remain applicable; rerun invalidated checks and project-required gates. Review the integrated result for defects and acceptance gaps, and adapt the approach when new evidence warrants it.
+Verify affected behavior with observed commands and results, and never invent a verifier result. Reuse checks while their revision, inputs, environment, and coverage remain applicable; rerun invalidated checks and project-required gates. Review the integrated result for defects and acceptance gaps, and adapt the approach when new evidence warrants it.
 
 For a remote deliverable, retrieve the actual object and verify its target, revision, and state. Report the outcome, checks, real identifiers, and remaining limits; a successful push alone does not establish that a PR exists.
 

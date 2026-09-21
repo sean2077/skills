@@ -11,7 +11,7 @@ Operate Feishu/Lark through the installed `lark-cli` when that is the selected i
 
 Identify the requested outcome, target, recipients, time range, and supplied IDs. Reuse applicable command knowledge and resolve missing or ambiguous inputs. Prefer shortcuts, then registered APIs, then raw OpenAPI where their capabilities fit.
 
-Check the installed command's help/schema when flags, identity, or target semantics are uncertain. Use service help to locate unfamiliar operations. Refresh affected command knowledge when the installed interface changes.
+Check the installed command's help/schema when flags, identity, or target semantics are uncertain. Use service help to locate unfamiliar operations. Refresh affected command knowledge when the installed interface changes. Never invent flags, methods, enums, IDs, URLs, or parameter shapes.
 
 For raw `lark-cli api <METHOD> <path>`, use the known endpoint contract: a bare `/open-apis/...` path, query values through `--params`, and bodies through `--data`.
 

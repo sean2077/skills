@@ -13,6 +13,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Replace reference heading/naming/load-sentence checks with payload-contained reference reachability, and remove prose-only method-card and retired-rule fixtures while retaining executable runtime and publication tests.
 - Mark past audits as historical and keep current guidance separate from review narratives; refresh the dogfooded scaffold contract from its source template.
 
+### Fixed
+
+- Restore three boundaries lost as collateral to the prose removal: the `lark-cli` ban on inventing flags, methods, enums, IDs, URLs, or parameter shapes; the enumerated `tdd` prohibition on weakening, deleting, skipping, quarantining, or regenerating a legitimate failure to reach GREEN; and the `autopilot` ban on inventing a verifier result.
+- Validate Markdown links after an unterminated code fence instead of treating the rest of the document as an example, and use the containment check's own `relative_to`/`ValueError` form in the orphan report rather than the Python 3.9-only `Path.is_relative_to`. The regression suite covers the unterminated-fence case.
+- Align the `docs/architecture.md`, `docs/compatibility.md`, and `README.md` link text with the renamed design-principles and documentation-maintenance pages.
+
 ## [v6.2.0] — 2026-09-20
 
 ### Added
