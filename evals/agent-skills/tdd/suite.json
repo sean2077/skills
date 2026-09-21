@@ -134,7 +134,7 @@
             "workflow": "prototype"
           },
           "treatment": {
-            "route": "prototype",
+            "route": "none",
             "workflow": "prototype"
           }
         }

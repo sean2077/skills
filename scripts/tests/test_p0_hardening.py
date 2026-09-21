@@ -233,7 +233,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
         self.temp.cleanup()
 
     def test_owner_check_and_heartbeat_preserve_generation(self) -> None:
-        state, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
+        state, token = acquire_owner(self.store, 1, "delivery", 60, "test")
         checked, lease = check_owner(self.store, token)
         self.assertEqual(checked["version"], 2)
         generation = lease["generation"]
@@ -245,7 +245,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
         self.assertGreater(refreshed["expires_epoch"], old_expiry)
 
     def test_done_requires_latest_verification_in_current_cycle(self) -> None:
-        _, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
+        _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
         transition_task(self.store, 2, token, "planned", "test", "ready")
         transition_task(self.store, 3, token, "executing", "test", "start")
         transition_task(self.store, 4, token, "verifying", "test", "verify")
@@ -259,7 +259,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
 
     @unittest.skipIf(not hasattr(os, "symlink"), "symlink unsupported")
     def test_writable_workspace_enforces_claims_and_symlink_boundary(self) -> None:
-        _, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
+        _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
         workspace = Path(self.temp.name) / "worker-a"
         record = create_workspace(
             self.store,
@@ -293,7 +293,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
         remove_workspace(self.store, 4, token, "worker-a", "test", "HEAD", True, "hardening cleanup")
 
     def test_workspace_cannot_be_nested_in_worktree_or_git_common_dir(self) -> None:
-        _, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
+        _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
         forbidden = [
             self.repo / "nested-worker",
             self.store.context.common_dir / "nested-worker",
@@ -318,7 +318,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
 
     def test_secret_like_evidence_payload_is_rejected_by_cli(self) -> None:
         with mock.patch("p0_runtime.workctl.secrets.token_urlsafe", return_value="-leading-option"):
-            _, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
+            _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
         self.assertEqual(token, "workctl_-leading-option")
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):

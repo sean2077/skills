@@ -56,11 +56,11 @@ ROUTE_ALIASES = {
     "tooling-governance": "tooling-conventions",
     "work-coordination": "work-protocol",
 }
+# Plausible host phrasings for a canonical workflow. Task vocabulary is independent
+# of the shipped catalog, so a synonym stays as long as its target workflow does.
 WORKFLOW_ALIASES = {
     "agent-harness": "harness-management",
-    "ai-slop-cleaner": "implementation",
     "analyze": "analysis",
-    "autopilot": "delivery",
     "best-practice-research": "research",
     "bounded-iteration": "iteration",
     "causal-investigation": "analysis",
@@ -87,9 +87,6 @@ WORKFLOW_ALIASES = {
 # Observation names only; never inject desired values or case oracle metadata.
 # Keep the vocabulary candidate-local rather than taxing every probe with every key.
 BOUNDARY_OBSERVATIONS = {
-    "analyze": ("invent_hypotheses",),
-    "autopilot": ("repeat_valid_checks",),
-    "code-review": ("repeat_valid_checks",),
     "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
     "domain-modeling": ("topology_redesign",),
     "tdd": ("separate_behavior_card",),
@@ -106,27 +103,10 @@ BOUNDARY_OBSERVATIONS = {
         "migration_interview", "preserve_existing_workflow", "compare_options",
         "infrastructure_mutation", "create_unrequested_publisher", "claim_complete",
     ),
-    "ai-slop-cleaner": (
-        "behavior_change", "fixed_smell_passes", "ritual_no_test_approval", "claim_verified",
-    ),
-    "prototype": ("production_promotion", "claim_real_integration"),
     "best-practice-research": ("primary_sources", "local_fit", "repeat_source_sweep"),
     "conventional-commit": ("git_preflight", "preserve_unrelated_index"),
 }
 OBSERVATION_GUIDANCE = {
-    "analyze": (
-        "When selected, report workflow, mode, and mutation. Include result only when a "
-        "next probe is actually requested."
-    ),
-    "autopilot": (
-        "When selected, report workflow, control_plane, persistent_state, test_first, and "
-        "external_side_effects when material. Report preserve_decisions, nested_controller, "
-        "remote_readback, recheck_revision, and claim_independent_approval as booleans when material."
-    ),
-    "code-review": (
-        "When selected, report workflow and mutation. Report verify_feedback, recheck_revision, "
-        "invent_requirements, and claim_independent_approval as booleans when material."
-    ),
     "tdd": (
         "When selected, report workflow and test_first. Report preserve_parent_contract "
         "when a delivery owner is active."
