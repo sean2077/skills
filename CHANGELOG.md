@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v7.0.0] — 2026-09-21
+
 ### Breaking
 
 - Retire `autopilot`, `analyze`, `prototype`, `ai-slop-cleaner`, and generic `code-review` from the catalog (18 → 13 skills), including their payloads, catalog entries, and evaluation suites. The duplicate `autopilot_state.py` controller is also removed. Finish active old runs with the prior installed runtime; use host/project workflows for new work. Previously installed copies need explicit consumer/global cleanup; unrelated same-name skills are not removed.
@@ -535,7 +537,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v6.2.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v7.0.0...HEAD
+[v7.0.0]: https://github.com/sean2077/skills/compare/v6.2.0...v7.0.0
 [v6.2.0]: https://github.com/sean2077/skills/compare/v6.1.0...v6.2.0
 [v6.1.0]: https://github.com/sean2077/skills/compare/v6.0.0...v6.1.0
 [v6.0.0]: https://github.com/sean2077/skills/compare/v5.0.0...v6.0.0
