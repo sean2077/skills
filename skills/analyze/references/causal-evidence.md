@@ -1,42 +1,19 @@
 # Causal evidence
 
-Read this when hypotheses overlap, reproduction is weak, a failure crosses components, or evidence quality needs explicit ranking; an obvious, directly evidenced cause needs no extra hypothesis exercise.
+Establish the observed failure, expected behavior, relevant revision, inputs, and environment. A reliable reproduction strengthens causal claims; when one is unavailable, use the available traces and code while making that limitation explicit.
 
-## Entry gate
+## Competing explanations
 
-Do not name a root cause merely because one explanation is plausible.
+Focus on explanations consistent with the observations and supported by a plausible mechanism. For each leading hypothesis, identify a prediction that distinguishes it from alternatives. Consider disconfirming evidence and update confidence as results arrive.
 
-- Establish a reliable reproduction or state precisely what is missing.
-- When no useful reproduction exists, produce a minimal reproduction plan before ranking causes.
-- State the observed result separately from the expected result and from any prior interpretation.
+A controlled reproduction can establish more than a plausible reading of code. Traces and state transitions can locate a failure boundary; tests describe intended contracts only to the extent their assertions and setup cover this case. Logs, history, comments, and names provide leads whose relevance must be checked.
 
-## Distinct hypotheses
+## Discriminating probes
 
-Keep only genuinely distinct hypotheses while evidence permits; there is no minimum or target count. Two labels are distinct only when they imply different observations or probes; merge explanations that reduce to the same state transition or ownership defect.
+Prefer a safe probe whose possible outcomes change the diagnosis. Track the relevant inputs, identities, state, outputs, and timing across component boundaries. Account for retries, cancellation, concurrency, and stale state when they could explain the same symptom.
 
-For each leading hypothesis record:
+Keep read-only investigations read-only. Inspect unfamiliar commands and obtain authority for probes that mutate state or contact consequential external systems.
 
-- the mechanism it predicts;
-- evidence for it;
-- evidence against it;
-- the observation that would falsify or materially down-rank it.
+## Conclusion
 
-Down-rank explicitly when evidence conflicts. Do not merely reorder a list.
-
-## Evidence hierarchy
-
-In causal mode, prefer controlled reproduction and minimized counterexample; then direct state or trace at the failing boundary; executable code and configuration; focused tests; correlated logs or metrics; documentation; history; intuition.
-
-Correlation can locate a boundary without proving mechanism. A test may prove one path and say nothing about the observed environment.
-
-## Discriminating probe
-
-When hypotheses compete, choose a safe probe whose outcomes distinguish them and state the predictions. When only one supported mechanism remains, verify its critical prediction instead of inventing alternatives.
-
-For multi-component failures, probe one boundary at a time and capture request/input, identity, relevant state, response/output, timing, and retry/cancellation context. Avoid broad logging that creates noise or leaks secrets.
-
-If the best probe requires mutation, instrumentation, or an external side effect, describe it and hand it off after the read-only investigation.
-
-## Present the conclusion
-
-Report the observed symptom, best-supported mechanism, evidence, and material unknowns. Without a useful reproduction, identify the missing evidence and a feasible reproduction or discriminating probe. Use a ranked table only when alternatives remain; omit empty headings and a next-probe ritual after the question is resolved.
+Explain the most likely mechanism and supporting observations. Distinguish a confirmed cause from a hypothesis, and identify a useful next observation when material uncertainty remains.

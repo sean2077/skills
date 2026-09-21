@@ -1,10 +1,8 @@
 # Test Design and Oracles
 
-Read this when selecting the observation seam, test level, examples, assertions, expected values, snapshots, or coverage boundary for a TDD slice.
-
 ## Define the behavior
 
-Identify the following before the first test. Use the test and existing task context; a separate behavior card or fixed field template is optional:
+Choose the behavior and test boundary before the first test:
 
 - **Behavior:** the capability or invariant being added, in domain language.
 - **Observation seam:** where an external observer can distinguish success from failure.
@@ -15,7 +13,7 @@ Identify the following before the first test. Use the test and existing task con
 
 A public seam is contractually observable, not necessarily a language-level exported function. It may be a library API, command and exit status, process protocol, HTTP or message boundary, rendered artifact, persisted state, schema, compiler/type interface, device signal, or domain service. Prefer the cheapest stable seam: close enough to diagnose, broad enough to survive internal refactoring.
 
-Do not ask the user to approve an obvious existing seam. Ask or record an explicit assumption when multiple reasonable choices change compatibility, ownership, runtime cost, destructive risk, or what the project promises to consumers.
+Clarify choices that materially affect compatibility, ownership, cost, safety, or the promised behavior.
 
 ## Choose level by risk, not fashion
 
@@ -38,7 +36,7 @@ Good sources include an acceptance criterion, protocol or language specification
 
 Avoid tautologies: do not compute the expected value with the same algorithm, constants, parser, query builder, serializer, or generated output used by production code. For complex calculations, use a small hand-verifiable case, a distinct model, or a property that must hold across cases.
 
-Several assertions are appropriate when they jointly prove one behavior, such as value plus emitted effect, exit status plus stderr, or response plus persisted state. Do not split a coherent contract merely to satisfy a one-assertion rule, and do not combine unrelated behaviors in one opaque test.
+Several assertions are appropriate when they jointly prove one behavior, such as value plus emitted effect, exit status plus stderr, or response plus persisted state. Keep assertions focused on the same coherent behavior.
 
 ## Prefer durable observations
 

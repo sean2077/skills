@@ -1,7 +1,5 @@
 # Workspace isolation
 
-Read this only when adding writers, reviewers, path claims, integration, cleanup, or stale-worktree recovery.
-
 ## Create fixed or writable worktrees
 
 ```bash

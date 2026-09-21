@@ -1,9 +1,5 @@
 # Repository line endings
 
-Read this when adopting or diagnosing LF/CRLF policy, aligning editor settings, or migrating
-existing files. Both scaffold profiles install the same EOL policy; worktree governance is
-an independent choice.
-
 ## Ownership and precedence
 
 `apply` / `upgrade` prepend a managed defaults block in the root `.gitattributes`:

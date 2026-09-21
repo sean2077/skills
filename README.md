@@ -2,7 +2,7 @@
 
 A curated catalog of 18 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
 
-Install only the routes you expect an agent to discover. Each installed skill contributes discovery metadata; its full instructions and bundled resources are loaded only when needed. Format validation, installer discovery, host wiring, and runtime behavior are separate claims—see the [compatibility matrix](docs/compatibility.md).
+Each installed skill contributes discovery metadata; its instructions and bundled resources are loaded when needed. Format validation, installer discovery, host wiring, and runtime behavior are separate claims—see the [compatibility matrix](docs/compatibility.md).
 
 ## Install
 
@@ -10,7 +10,7 @@ Install only the routes you expect an agent to discover. Each installed skill co
 # One skill for the Claude Code and Codex targets
 npx skills add sean2077/skills --skill analyze -a claude-code -a codex
 
-# Optional complete catalog; check native overlaps before choosing this
+# Complete catalog
 npx skills add sean2077/skills --skill '*' -a claude-code -a codex
 
 # One skill from a local catalog checkout; keep the catalog root as the source
@@ -19,10 +19,7 @@ npx skills add . --skill agent-scaffold -a codex
 
 Repeat `--skill` and `-a` for selective installs. Use an explicit local prefix when installing a skill directory directly, for example `./skills/agent-scaffold`. The [installer section of the compatibility matrix](docs/compatibility.md#installer-semantics) owns option scope, catalog-root behavior, and the audited CLI pin.
 
-No skill is required for work the native host already handles adequately. In current Claude Code,
-a local `code-review` replaces the bundled `/code-review`, but `/review` still runs the bundled
-implementation. Review [native overlap and visibility](docs/compatibility.md#native-overlap-and-visibility-2026-09-20)
-before installing everything; installing fewer routes is preferable to adding another router.
+Check the dated [native overlap notes](docs/compatibility.md#native-overlap-and-visibility-2026-09-20) for host-specific naming and discovery behavior before choosing routes.
 
 ## Catalog
 
@@ -49,7 +46,7 @@ Use the [selection and composition guide](docs/skill-composition.md) to distingu
 | [tooling-conventions](skills/tooling-conventions/) | Derive project-owned command boundaries, placement, and evidence-gated safety contracts, with optional structural inventory reconciliation. | Shell, Governance |
 | [work-protocol](skills/work-protocol/) | Externalize coordination only when durable ownership, CAS state, evidence integrity, isolated writers, or commit-fixed review materially matter. | Python, Git, Coordination |
 
-Each selected catalog skill is independently installable from `skills/<name>/`. The project-private `.agents/skills/skill-eval` workflow is used by this repository's harness and is not a public install target. The former `trace` route has moved into `analyze`; remove stale `trace` projections after upgrading.
+Each selected catalog skill is independently installable from `skills/<name>/`. The project-private `.agents/skills/skill-eval` workflow is used by this repository's harness and is not a public install target.
 
 ## Repository map
 
@@ -72,10 +69,10 @@ The catalog is read directly from `skills/`; there are no generated `.claude/ski
 | Develop, validate, regenerate, and release | [Development guide](docs/development.md) |
 | Check host, installer, trust, and support claims | [Compatibility and verification matrix](docs/compatibility.md) |
 | Maintain documentation and evidence freshness | [Documentation maintenance policy](docs/documentation-maintenance.md) |
-| Decide when mechanical controls justify their cost | [Harness constraint policy](docs/harness-constraint-policy.md) |
+| Decide when mechanical controls justify their cost | [Harness design principles](docs/harness-constraint-policy.md) |
 | Use the repository's canonical terminology, context grouping, language equivalents, and avoided names | [Project language](CONTEXT.md) |
 | Follow repository-level Agent rules | [Agent contract](AGENTS.md) |
-| Review the current native-first audit and all 18 keep/change decisions | [2026-09-20 audit](docs/audits/2026-09-20-native-first.md) |
+| Review historical native-first findings and evidence | [2026-09-20 audit](docs/audits/2026-09-20-native-first.md) |
 | Review release history and pending changes | [Changelog](CHANGELOG.md) |
 
 ## License

@@ -1,8 +1,5 @@
 # Release Publishing and Verification
 
-Read this when deciding what repository-owned completion boundary follows the pushed tag and
-proving that every applicable publication or handoff finished on the intended commit.
-
 ## Declare the completion boundary before pushing
 
 Inspect project release docs, GitHub/GitLab workflows, package or artifact publishers, deployment

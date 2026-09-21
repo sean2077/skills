@@ -1,7 +1,5 @@
 # Resume and recovery
 
-Read this only when an autopilot run is interrupted or reports discovery, binding, revision, lock, or state-health trouble.
-
 ## Locate the run
 
 State is stored at `.agent-workflows/autopilot/<session>/<id>.json`. In Git repositories the root is shared through Git's common directory, so linked worktrees can discover the same run while mutations remain bound to one worktree and branch. Outside Git, pass a stable `--root <directory>` from every invocation.

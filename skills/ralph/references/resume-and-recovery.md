@@ -1,7 +1,5 @@
 # Resume and recovery
 
-Read this only when a ralph run is interrupted or reports a pending round, discovery problem, revision conflict, binding mismatch, lock, or corrupt state.
-
 State is stored at `.agent-workflows/ralph/<session>/<id>.json`. Git worktrees share discovery through the common repository root but not mutation ownership. Outside Git, use the same explicit `--root <directory>` every time.
 
 Use `list --all-sessions --limit 20`, `status --latest`, and `history --tail <n>` to locate bounded evidence. A pending round means an attempt was opened but no result was recorded: inspect the working tree and verifier evidence, then submit that exact round once or `abort`; never call `next` again.

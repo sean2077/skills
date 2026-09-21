@@ -1,7 +1,5 @@
 # Persistent runtime
 
-Read this only when autopilot needs durable workflow state for resume, handoff, revision/binding ownership, bounded retry, or formal receipts.
-
 The generated script targets Python 3.8+, uses only the standard library, and owns phase, revision, workspace binding, plan-path validation, retry count, and terminal state. The Agent still owns judgment, implementation, tool use, and verification.
 
 ## Invoke and select a run
@@ -15,7 +13,7 @@ python3 "<installed-skill-dir>/scripts/autopilot_state.py" start --goal "<one-li
 
 Use `python` when that is the host's Python 3 command, or `py -3` on Windows. Exit `3` from `status` means the selected run does not exist.
 
-Use `--id` only for parallel runs. Host session variables isolate runs automatically; use `--session`, bounded `list --all-sessions --limit 20`, or `status --latest` only for explicit discovery. Default responses are compact; add `--full` or bounded `history --tail <1..20>` only for diagnosis.
+Use `--id` to select a named run. Host session variables isolate runs automatically; use `--session`, bounded `list --all-sessions --limit 20`, or `status --latest` only for explicit discovery. Default responses are compact; add `--full` or bounded `history --tail <1..20>` only for diagnosis.
 
 ## Runtime flow
 
@@ -33,6 +31,6 @@ A read-only status may report `binding.ok=false`; do not mutate until ownership 
 
 ## Coordination and side effects
 
-Inside a `work-protocol` task, mutate only while holding its explicit autopilot owner lease; never acquire or start a nested loop owner. Use PairRoom for an independent peer rather than recreating a relay protocol here.
+Inside a `work-protocol` task, acquire its autopilot owner lease and check ownership before mutations.
 
-The runtime does not authorize merge, push, deployment, publication, or any other external side effect. Apply the stop conditions in the SKILL.md hard rules.
+The runtime does not authorize merge, push, deployment, publication, or any other external side effect. Resolve ownership, revision, or integrity conflicts through [resume and recovery](resume-and-recovery.md) before continuing affected work.

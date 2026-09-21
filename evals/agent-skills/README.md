@@ -20,41 +20,13 @@ On Windows, use a temporary output path and the same commands from PowerShell. T
 
 Review treatment selection, verifier results, scope, and cost together. Both executions must complete with valid selection/trigger and scope boundaries; an invalid baseline cannot yield a passing comparison. A completed, correctly isolated baseline may still fail the task oracle. Do not accept a routing change merely because the manifest validates or an offline adapter can reproduce the expected JSON.
 
-## Native-first revision probes
+## Decision and safety coverage
 
-The 2026-09-20 revision expands coverage from 9 suites / 56 cases to 15 suites / 107 cases (103 after PR #9; four safety cases added in its follow-up).
-New scenarios distinguish clear approval from an answer to one question, semantic adaptive
-approval from exact persistent digests, native resume from repository-owned state, current
-verification from redundant reruns, bounded maintenance from required design records, and
-selected Lark CLI use from an unrelated URL or another chosen interface. Release cases retain
-existing pipelines and publication boundaries; cleanup/prototype cases distinguish sufficient
-verification from unsupported success.
+The suites cover approval of a whole specification, formal digest approval, native versus repository-owned state, verification reuse, documentation/tooling decisions, selected Lark CLI use, and release publication boundaries. Expected observations assert task outcomes rather than incidental wording or optional record formats. Explicit project-required records retain their own expectations.
 
-Observation names are candidate-local and neutral: the adapter offers vocabulary, not the
-expected decision or field value. Guidance names keys without assigning `key=value` answers, and
-candidate skill names alias onto the canonical workflow list. It does not synthesize omitted
-observations. The old forced `inline-delta`/full-record vocabulary now also allows `none` and
-`existing-context`. Cases leave `decision_artifact` and `decision_depth` out of the expected
-subset when the task does not require a particular representation; replacing one compulsory form
-with another would reject valid adaptive choices.
-Required outcomes such as comparing requested alternatives, preserving settled decisions, and
-reconciling affected links/callers remain asserted. Four docs/tooling scenarios had become
-route-only after removal of `decision_depth`; their semantic expectations now reject an answer
-that selects the right route but skips the requested work. Explicit project-required records
-retain exact expectations; optional representations remain unconstrained.
-These are intentional semantic expectation changes, not relaxed cost budgets or evidence of
-a live performance win.
+Lark cases cover identity, ambiguous or contradictory results, fresh confirmation, CLI confirmation gates, untrusted instructions, and file containment. Deterministic tests exercise the verifier with missing, unsafe, or wrong-typed observations. They validate the oracle and protocol; live model compliance and real CLI operation require separate execution.
 
-Lark safety cases cover identity, ambiguous/contradictory results, fresh confirmation,
-CLI confirmation gates, untrusted instructions, and file containment. The installed safety
-instructions and domain exceptions are unchanged. Their exact English spelling is not a
-mechanical safety check: equivalent prose can fail a substring check while a negated rule
-passes it. Catalog checks retain parsed discovery metadata and payload/reference integrity;
-actual behavior needs model evaluation and, where available, host/CLI enforcement.
-
-Deterministic regression tests exercise the real verifier with omitted, unsafe, or wrong-typed
-observations, optional record representations, and explicit record requirements. They validate
-the oracle and protocol, **not** that a live model followed the skill or operated Lark safely.
+Historical changes to probe coverage are recorded in the [September 20 audit](../../docs/audits/2026-09-20-native-first.md). Current suite manifests are the case inventory.
 
 ## Measurement and failure boundaries
 

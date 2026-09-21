@@ -1,27 +1,10 @@
 # People and work
 
-Read this only when the request involves contacts/user resolution, ordinary tasks and lists,
-approval definitions/instances/tasks, attendance records, OKR objectives/key results/alignment, or
-assignments and stand-up summaries.
+## Select and resolve the work item
 
-## Fast-path contract and call budget
+Use known typed IDs directly. Resolve people through `contact +search-user` and bots through `contact +search-bot`. Require a unique, verified person and show the resolved identity before assigning work, adding members, or taking approval actions.
 
-Known-safe recipes skip routine help, schema, and auth-status preflight; the resident identity, uncertainty, and verification exceptions still apply.
-
-Do not preflight `contact`, `task`, `approval`, `attendance`, or `okr` service help for the documented
-paths below when the recipe and effective identity are already clear.
-
-- Known `ou_`/bot ID: use it directly; zero resolver calls.
-- Person name/email: one `contact +search-user`; bot name: one `contact +search-bot`.
-- List pending tasks assigned to the current user: one `task +get-my-tasks --complete=false`.
-- Known task GUID/AppLink: one task action command.
-- Task title then action: one task list/search call plus one action; no help calls.
-- Simple task create with explicit fields/IDs: one `task +create`.
-- Approval/attendance/OKR paths not documented here use exact shortcut/resource discovery only,
-  never broad help first.
-
-Require a unique, verified recipient/person result. Carry the typed ID unchanged and show the
-resolved human-readable identity before assigning work, adding members, or taking an approval action.
+Use `task +get-my-tasks --complete=false` for pending tasks. A known task GUID/AppLink can be used in its action command; a title needs list/search resolution first. Discover unfamiliar approval, attendance, and OKR operations through the installed help/schema.
 
 ## Contact fast paths
 
@@ -94,12 +77,12 @@ lark-cli task +complete --task-id '<task-guid-or-applink>' --as user
 
 A display ID such as `t104121` is not the task GUID. If only a title is supplied, first run
 `+get-my-tasks --query` (or `+search` when broader filtering is requested), require a unique match,
-then run the action. Do not inspect help between those calls.
+then run the action using the resolved GUID.
 
 For “create a task for me,” resolve the logged-in user's `open_id` once with `contact +get-user`, then
 pass it as `--assignee`; do not run both `auth status` and contact lookup. Use `--data` only for a
 requested field lacking a documented named flag; in that case inspect `lark-cli schema task.tasks.create`
-once for the exact body field and cache it. Do not run schema for the common flags above.
+for the missing body field and retain the applicable result.
 
 The create response's `data.guid`/URL is sufficient. The complete response's `status`,
 `completed_at`, and `already_completed` are sufficient; do not routinely call task get afterward.
@@ -124,8 +107,7 @@ path, follow the exact installed command but auto-fill fixed transport fields `e
 `employee_no` and `user_ids` as an empty array instead of asking the user for them. Supply the
 requested date range/timezone once. Missing records are not proof of absence or misconduct.
 
-Because attendance command surfaces are lower-frequency and may vary, inspect only the exact
-shortcut/resource needed if it is not already cached; do not begin with `attendance --help`.
+Consult the installed attendance help/schema to resolve unfamiliar commands or uncertain parameters.
 
 ## OKR
 
@@ -143,11 +125,8 @@ Use **Calendar and meetings** for agenda semantics, reusing it when its relevant
 active context. Collect first and summarize with source IDs and time ranges; never complete tasks,
 answer approvals, or edit OKRs because the report suggests an action.
 
-## Drift fallback
+## Command discovery
 
-For a documented task/contact shortcut, exact help is allowed only after an unknown option/command.
-For approval/attendance/OKR operations absent from this reference, discover the narrowest exact
-shortcut or registered resource, cache the result, then execute. Never invent a `+<verb>` or repeat
-identical help/schema calls.
+Use installed help/schema for an unfamiliar option or changed command. For identity, permissions, confirmation, and uncertain outcomes, follow [setup and safety](setup-auth-and-safety.md).
 
 **Official coverage:** `lark-approval`, `lark-attendance`, `lark-contact`, `lark-okr`, `lark-task`.

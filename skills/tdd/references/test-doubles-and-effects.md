@@ -1,7 +1,5 @@
 # Test Doubles and Effects
 
-Read this when a slice touches time, randomness, files, databases, networks, processes, remote services, queues, operating-system resources, or hardware.
-
 ## Double only for a reason
 
 Replace an uncontrolled boundary when using the real dependency would be unsafe, destructive, non-deterministic, unavailable, prohibitively slow, or unable to produce the required condition. Do not mock an owned collaborator merely because mocking is convenient; a real collaborator often preserves more design freedom and gives stronger evidence.

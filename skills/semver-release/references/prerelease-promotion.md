@@ -1,8 +1,5 @@
 # Prerelease Promotion
 
-Read this when promoting alpha, beta, or rc tags into a stable release and selecting the
-final release-note range, version identity, and any committed-changelog consolidation.
-
 The examples use the analyzer's `v`-prefixed tag model. For an established unprefixed or custom
 mapping, apply the same SemVer-core comparison while preserving each complete repository tag;
 stop for owner input when the stable/prerelease mapping is not documented and unambiguous.

@@ -1,7 +1,5 @@
 # Cleanup safety
 
-Read this only when deciding whether an abstraction, fallback, compatibility branch, or test seam is safe to remove.
-
 ## Deletion test
 
 Delete a layer when its removal makes complexity disappear and callers remain simpler. Keep or redesign it when removal spreads policy, state, retries, validation, or compatibility knowledge across callers.

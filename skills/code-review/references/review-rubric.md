@@ -1,20 +1,22 @@
 # Review rubric
 
-Read this only when calibrating severity, reviewing a high-risk boundary, or deciding whether a concern is actionable rather than stylistic.
+## Severity and confidence
 
-## Severity
+Rank severity by consequence and reachable scope, separately from confidence:
 
-- **Critical:** plausible data loss, secret exposure, remote compromise, broad authorization bypass, or unrecoverable production impact.
-- **High:** incorrect behavior on an important path, durable corruption, tenant/user isolation failure, or release-blocking regression.
-- **Medium:** bounded functional defect, reliability degradation, compatibility break, or maintenance trap likely to cause defects.
-- **Low:** real but narrow defect with limited impact. Do not use Low for preference-only feedback.
+- **Critical:** a credible path to catastrophic loss, compromise, or outage.
+- **High:** substantial correctness, security, data, or availability impact in a supported path.
+- **Medium:** a bounded but meaningful failure that warrants correction.
+- **Low:** a minor defect with limited impact.
 
-Severity combines impact and reach, not reviewer confidence. State confidence separately.
+Explain the actual consequence rather than relying on the label.
 
-## Actionability gate
+## Supported findings
 
-A finding survives only when the review can name: changed or newly exposed behavior; triggering condition; consequence; supporting code path; and a bounded correction direction. Otherwise present it as an open question or residual risk.
+A finding identifies the changed behavior, a reachable trigger, the resulting failure, and a precise location. Check why existing guards or tests do not eliminate the concern. Offer a correction when known; identifying a defect does not require already knowing its solution.
 
-## Boundary checklist
+Use questions for unresolved intent and preferences for stylistic alternatives. State meaningful evidence gaps rather than presenting speculation as a confirmed defect.
 
-Check trust transitions, authorization, serialization, retries/idempotency, partial writes, concurrency, cancellation, migration order, version negotiation, resource cleanup, observability, and rollback only where the change touches those concerns.
+## Risk-directed inspection
+
+Follow relevant trust, identity, ownership, concurrency, cancellation, retry, persistence, compatibility, packaging, and rollback boundaries. Choose checks from the change's failure modes and supported environments.

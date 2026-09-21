@@ -1,8 +1,5 @@
 # Agent Scaffold Diagnostics
 
-Read this when a target needs machine-readable planning, prerequisite diagnosis,
-or installed-contract troubleshooting.
-
 ## Structured output
 
 `plan`, `doctor`, and `verify` accept `--json` and write one JSON document to

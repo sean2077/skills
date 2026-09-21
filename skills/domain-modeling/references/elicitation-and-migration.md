@@ -1,7 +1,5 @@
 # Elicitation and Migration
 
-Read this only when domain boundaries or terminology are unclear, a young project needs owner input, or an existing glossary must be regrouped or split safely.
-
 ## Evidence before questions
 
 Inspect available evidence first:
@@ -45,8 +43,7 @@ Cross-check answers against code and tests. Surface contradictions rather than s
 
 ## Consequential topology decisions
 
-Before a material split, make the following clear in the existing task or project-owned design,
-without duplicating an approved decision or requiring a new record:
+For a material split, explain the relevant decisions in the existing task or project design:
 
 - selected mode: up-front or incremental;
 - current problem with the existing glossary;
@@ -55,7 +52,7 @@ without duplicating an approved decision or requiring a new record:
 - unresolved terms or low-confidence boundaries;
 - why headings are insufficient, or why they remain sufficient.
 
-When authority or costly-to-reverse consequences remain unresolved, present viable options and obtain owner direction before moving files. Honor an already-delegated choice rather than reopening approval merely because alternatives exist.
+When authority or costly-to-reverse consequences remain unresolved, present viable options and obtain owner direction before moving files. Use authority already delegated for the choice.
 
 ## Atomic migration
 

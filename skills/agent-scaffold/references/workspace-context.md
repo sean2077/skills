@@ -1,8 +1,5 @@
 # Session entry and task workspace
 
-Read this when choosing where to start a session, retaining a primary-checkout session,
-using a workbench-created worktree, or migrating an existing scaffold workflow.
-
 ## Separate three decisions
 
 | Decision | Meaning | Default |

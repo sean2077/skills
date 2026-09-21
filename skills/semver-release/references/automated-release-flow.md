@@ -1,21 +1,10 @@
-# Preferred Automated Release Flow
+# Changelog-backed Release Automation
 
-Read this when the existing release path has a material gap, or the user requests a comparison
-or adoption of changelog-backed tag-triggered publication. It is not a mandatory checkpoint
-for releasing through a coherent project-owned alternative.
+## Adoption and scope
 
-## Decide whether to adopt it
+Use this changelog-backed sequence when the repository owns it or the user authorizes its adoption. For a requested redesign or a demonstrated gap, compare alternatives and agree the affected changelog authority, workflow, permissions, publisher, and completion boundary.
 
-Inspect the project's release policy and actual completion evidence. When the established
-flow safely satisfies this release, use it without asking the owner to defend it against
-this preferred example. A release request is not a pipeline-migration request.
-
-When a gap or explicit redesign request makes comparison useful, explain the relevant trade-offs.
-Obtain authorization before changing changelog authority, workflow, permissions, publisher, or
-release surface. Reuse an already-approved migration decision; do not ask again. With unresolved
-authority, make no infrastructure changes and proceed only within a known safe existing boundary.
-Land and validate an authorized setup change before choosing or pushing its release tag, then
-rerun release planning.
+Land and validate an authorized setup change before choosing or pushing its release tag, then rerun release planning. Existing release requests follow the established project flow.
 
 Treat the complete repository tag as the release identity: it may be `v1.2.3`, `1.2.3`,
 `release-1.2.3`, or another project-owned form. Do not change a prefix to fit an example.

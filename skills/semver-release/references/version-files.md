@@ -1,7 +1,5 @@
 # Release Version Files
 
-Read this when synchronizing ecosystem manifests, lockfiles, or prerelease identities.
-
 ## Version-file sync
 
 Keep the manifest identity aligned with what that ecosystem will publish. A git

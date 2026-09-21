@@ -89,12 +89,9 @@ def validate_semver_automation_contract(
     }
     required = {
         "skill": (
-            "Prefer changelog-backed tag-triggered automation",
             "The analyzer models `v`-prefixed SemVer tags",
-            "create `release: <exact-tag>`",
         ),
         "automation": (
-            "Preferred Automated Release Flow",
             "opaque exact string",
             "before any forge Release creation",
             "Do not generate fallback notes",
@@ -303,7 +300,6 @@ def validate_semver_release_contract(readme_text: str | None = None) -> None:
     release_stage_contract = (
         "Stage every release file and no unrelated path",
         "git diff --cached --check",
-        "create `release: <exact-tag>`",
         "require a clean",
         "push the tag without force",
     )

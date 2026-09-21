@@ -1,45 +1,27 @@
-# PROJECT — Agent Contract
+# Skills — Agent Contract
 
-> `AGENTS.md` is the canonical repository-level contract; `CLAUDE.md` is a symlink to it. Keep this file an actionable entry point and put durable detail in `docs/`.
+`skills/` is the published catalog. `.agents/skills/` is this repository's private harness; its `skill-eval` route is not a public install target.
 
-## Project
+## Editing and verification
 
-`sean2077/skills` publishes independently installable Agent Skills under `skills/`. The repository-private `.agents/skills/skill-eval` workflow belongs to the dogfooded project harness and is not a catalog target. Consumers need no build step; maintainers must regenerate checked-in runtime payloads from their source modules before committing.
+Edit canonical sources using the [ownership map](docs/architecture.md). Generate runtime payloads from `scripts/workflow_runtime/` and `scripts/p0_runtime/`; update scaffold-owned copies through `agent-scaffold upgrade`.
 
-## Required workflow
+Run affected checks from [development](docs/development.md); `.github/workflows/validate.yml` defines CI. Add an Unreleased entry for user- or maintainer-visible changes. Use Conventional Commits without `Co-Authored-By`.
 
-1. Read this contract and any applicable nested `AGENTS.md` before changing files.
-2. Follow the scaffold-managed worktree rule below; documentation-only work is not an exception.
-3. Edit the canonical source, not a generated projection or scaffold-owned managed copy. Use the ownership map in [repository architecture](docs/architecture.md).
-4. Run the changed-surface checks and the appropriate full gates from the [development guide](docs/development.md). `.github/workflows/validate.yml` is the normative CI definition.
-5. Add an Unreleased changelog entry for user- or maintainer-visible behavior. Use Conventional Commits, omit `Co-Authored-By`, and keep all required gates green before merging to `main`.
+Keep frontmatter strict-YAML compatible; quote scalars containing `: `. Published descriptions use one physical line within the 320-character routing budget. Installer examples use quoted globs and `./` for local skill directories. Project-scope `skills remove` from the catalog root can remove catalog files.
 
-## Repository boundaries
+Skills target Linux, macOS, and Windows through Git Bash, with LF source and real symlinks where required. Distinguish format, installation, wiring, and behavior evidence in support claims.
 
-- `skills/` is the published product; `.agents/skills/` is the private project harness. Never infer one catalog from the other.
-- `scripts/workflow_runtime/` and `scripts/p0_runtime/` are maintainer source. Run their generators instead of editing generated skill runtime payloads.
-- Format validation, installer discovery, host wiring, and runtime behavior are different evidence layers. Keep support claims in [compatibility.md](docs/compatibility.md).
-- Prefer model-native reasoning for reversible single-session work. Add deterministic controls only for the costly machine-checkable boundaries described in the [harness constraint policy](docs/harness-constraint-policy.md).
-- Skills and bundled scripts target Linux, macOS, and Windows through Git Bash, with LF line endings and real symlinks where the scaffold requires them.
-
-## High-cost maintenance traps
-
-- Keep frontmatter strict-YAML compatible. Quote a scalar containing `: `.
-- Keep every published `description` on one physical line and within the 320-character routing budget; preserve decisive triggers and exclusions.
-- Treat copy-paste commands as interfaces: verify working directory, scope, quoting, identity, side effects, and expected result. Quote shell globs such as `'*'`.
-- Prefix local skill directories with `./`; otherwise the installer may interpret the value as a GitHub repository.
-- Do not describe the CI-audited `skills@1.5.17` pin as upstream latest. Do not run project-scope `skills remove` from the catalog root.
-
-## Canonical references
+## References
 
 | Topic | Source |
 |---|---|
-| Product surfaces, generated ownership, and validation boundaries | [docs/architecture.md](docs/architecture.md) |
-| Local workflow, commands, platform checks, and releases | [docs/development.md](docs/development.md) |
-| Host, installer, trust, and certification claims | [docs/compatibility.md](docs/compatibility.md) |
-| Documentation ownership, evidence, and freshness | [docs/documentation-maintenance.md](docs/documentation-maintenance.md) |
-| Mechanical-control selection | [docs/harness-constraint-policy.md](docs/harness-constraint-policy.md) |
-| Canonical project terminology, context grouping, language equivalents, and avoided names | [CONTEXT.md](CONTEXT.md) |
+| Product surfaces and source/generated ownership | [Architecture](docs/architecture.md) |
+| Commands, checks, and releases | [Development](docs/development.md) |
+| Dated host and installer verification | [Compatibility](docs/compatibility.md) |
+| Documentation ownership and freshness | [Documentation maintenance](docs/documentation-maintenance.md) |
+| Skill and control design | [Harness principles](docs/harness-constraint-policy.md) |
+| Canonical project terminology | [CONTEXT.md](CONTEXT.md) |
 | Pending and historical release changes | [CHANGELOG.md](CHANGELOG.md) |
 
 <!-- agent-scaffold:start — managed; keep project prose outside; upgrade refreshes this block. -->
@@ -59,11 +41,11 @@ Keep one lifecycle owner. `done --dir <absolute-wt>` merges, ff-only pushes, and
 
 ### Authority documents (hard rules)
 
-`AGENTS.md` is the canonical repository-level Agent contract; read the applicable nested chain before acting. Keep it lean and current; route detail to project docs and nest only for real local differences. Repair durable guidance drift in the same change; follow higher-priority instructions and surface material disagreement instead of guessing. Judge document metadata against evidence and user intent: drafts/superseded notes are not settled guidance; missing metadata is not a blocker.
+`AGENTS.md` is the canonical repository-level Agent contract; read the applicable nested chain before acting. Keep it lean and current; route detail to project docs and nest only for real local differences. Repair durable guidance drift in the same change; follow higher-priority instructions and surface material disagreement instead of guessing. Interpret document status and freshness alongside repository evidence and user intent.
 
 ### Project terminology (hard rule)
 
-Every Agent, project skill, and subagent uses the declared glossary, else root `CONTEXT-MAP.md`, then `CONTEXT.md`; read only relevant contexts before using project terms. A term and each language equivalent are equally valid names for one concept — use whichever is clearest and do not force one language. Reserve avoided names for history or compatibility. Resolve durable term changes with evidence and owner intent; update the glossary in the same change. Adopt an existing glossary. Never seed an empty glossary.
+Every Agent, project skill, and subagent uses the declared glossary, else root `CONTEXT-MAP.md`, then `CONTEXT.md`; read only relevant contexts before using project terms. A term and each language equivalent are equally valid names for one concept — use whichever is clearest and do not force one language. Reserve avoided names for history or compatibility. Resolve durable term changes with evidence and owner intent; update the glossary in the same change. Adopt an existing glossary; add definitions as durable concepts are resolved.
 
 ### Sources and projections
 

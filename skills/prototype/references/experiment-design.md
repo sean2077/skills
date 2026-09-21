@@ -1,7 +1,5 @@
 # Experiment design
 
-Read this only when choosing the experiment seam, deciding what may be faked, or interpreting an inconclusive prototype.
-
 ## Seam selection
 
 Exercise the narrowest boundary whose behavior determines the decision. Keep upstream/downstream pieces fake only when their behavior is already known and the fake cannot manufacture the desired result.

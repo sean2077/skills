@@ -1,7 +1,5 @@
 # Source evaluation
 
-Read this only when sources conflict, a vendor controls most available evidence, or freshness and ecosystem adoption materially affect the recommendation.
-
 ## Source record
 
 Capture author/owner, publication or release date, version applicability, claim, evidence type, and known incentives. Prefer the source closest to the behavior: standard text, implementation source, conformance test, official documentation, then independent operational evidence.

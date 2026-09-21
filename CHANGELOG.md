@@ -6,6 +6,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Remove historical workflow disclaimers, fixed question/report/method-card requirements, and repeated process rules throughout skill guidance, references, repository docs, and scaffold templates.
+- Let Lark operations use needed help/schema and verification without fixed call budgets or failure-first discovery; retain identity, confirmation, and ambiguous-write protections.
+- Replace reference heading/naming/load-sentence checks with payload-contained reference reachability, and remove prose-only method-card and retired-rule fixtures while retaining executable runtime and publication tests.
+- Mark past audits as historical and keep current guidance separate from review narratives; refresh the dogfooded scaffold contract from its source template.
+
 ## [v6.2.0] — 2026-09-20
 
 ### Added

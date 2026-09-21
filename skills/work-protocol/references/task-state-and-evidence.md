@@ -1,7 +1,5 @@
 # Task state and evidence
 
-Read this only when creating, resuming, handing off, recovering, or verifying a durable `work-protocol` task.
-
 ## Portable and local state
 
 Committed artifacts live at `.agents/work/<task-id>/`:

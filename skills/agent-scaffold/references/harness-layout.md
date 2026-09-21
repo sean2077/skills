@@ -1,7 +1,5 @@
 # Agent Scaffold Harness Layout
 
-Read this only when changing installed file placement, optional profiles, SSOT projections, or third-party skill coexistence.
-
 ## Contents
 
 - [Bundled files: provenance + landing](#bundled-files-provenance--landing)
@@ -106,9 +104,7 @@ description: "<what it does and when to use it>"
 ## Workflow
 ```
 
-Keep the resident `SKILL.md` to routing, invariants, and the workflow skeleton. Put long
-checklists and worked examples in descriptive lowercase-kebab-case reference files linked directly
-from `SKILL.md`; avoid catch-alls such as `reference.md`, `misc.md`, or `references/README.md`.
+Keep the skill entry focused on its method and important boundaries, and route detailed material through useful reference links.
 Directories prefixed with `_` are support material and are skipped by the relinker.
 
 ## Project-owned third-party policy

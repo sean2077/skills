@@ -5,25 +5,25 @@ description: "Use for defect review of a concrete diff, PR, or implementation, o
 
 # code-review
 
-Find actionable defects in a concrete change, or verify feedback about it. Review is not permission to edit, and feedback is a claim rather than an instruction to obey blindly.
+Find actionable defects in a concrete change and verify received feedback against the code.
 
-## Review contract
+## Review
 
-- Identify base/head revisions or the explicit dirty snapshot, intended behavior, and acceptance. Missing specifications are a limit, not permission to invent requirements.
-- Inspect the whole diff and relevant callers, contracts, tests, configuration, and generated boundaries. Trace applicable error, concurrency, compatibility, and rollback paths, not just changed lines.
-- For each finding establish a concrete trigger, consequence, and evidence that existing guards do not prevent it. Discard unsupported claims and style preferences unless they violate project policy or create a real risk.
-- Run focused checks when safe and useful. Reuse relevant observed evidence for the same snapshot instead of repeating an author's entire test suite; do not treat green tests as proof about untested paths.
-- Recheck revision freshness before reporting. Review a moved head's delta or explicitly bind conclusions to the old snapshot. Keep confirmed defects separate from questions and uncertainty.
+Identify the base/head revisions or dirty snapshot, intended behavior, and acceptance. Treat missing requirements as uncertainty to resolve or disclose.
 
-Lead with findings ranked by impact and confidence. Each needs a concise title, precise location, trigger, consequence, and supporting evidence; suggest a bounded correction when useful. These can fit in a paragraph rather than six mandatory fields. Report material verification gaps even when no defect survives; do not manufacture findings to meet a quota.
+Inspect the whole diff and relevant callers, contracts, tests, configuration, and generated boundaries. Trace applicable error, concurrency, compatibility, and rollback paths.
 
-## Authority and collaboration
+For each finding, establish a trigger, consequence, and evidence that existing guards do not prevent it. Separate defects from questions and style preferences. Run safe, focused checks where useful, reusing applicable evidence while accounting for untested paths.
 
-Do not edit in reviewer-only mode or apply received feedback without authorization. A self-check is not independent approval. Give additional reviewers fixed scope, acceptance, and evidence, not a desired verdict or the full transcript. Additional reviewers are optional; deduplicate and verify their findings.
+Check revision freshness before reporting. Review a moved head's delta or bind conclusions explicitly to the inspected snapshot.
 
-If a host already performed the requested review, inspect uncovered risks or stale evidence rather than restarting the same review under another skill name.
+Lead with confirmed findings ranked by impact and confidence. Give precise locations, triggers, consequences, and supporting evidence; include a bounded correction where useful. Report material verification gaps even when no defect is found.
 
-## On-demand references
+## Collaboration
 
-- Read [feedback triage](references/feedback-triage.md) when assessing received comments, applying authorized corrections, or resolving reviewer disagreement.
-- Read [review rubric](references/review-rubric.md) when calibrating severity or assessing a high-risk or uncertain concern.
+Review-only requests do not authorize edits. Validate received findings before applying authorized corrections. Additional reviewers need fixed scope, acceptance, and evidence; verify and deduplicate their findings. Distinguish self-checks from independent approval.
+
+## References
+
+- [Feedback triage](references/feedback-triage.md): received comments, authorized corrections, and reviewer disagreement.
+- [Review rubric](references/review-rubric.md): severity and high-risk or uncertain concerns.

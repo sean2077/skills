@@ -19,8 +19,7 @@ and artifact publication under the target repository's policy.
   merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress.
 - Preserve the repository's release-note authority: committed changelog, fragments,
   generated notes, or forge-native notes. Do not invent a root changelog by default.
-- Prefer changelog-backed tag-triggered automation only when the repository already owns it or
-  the user approves its adoption after a concrete comparison with the current flow.
+- Use the repository-owned release workflow and obtain authorization for infrastructure changes.
 - Keep every package/version identity semantically aligned with the tag.
 - Stage the exact release snapshot, run its gates, and return to a clean tree before tagging.
 - Never move, replace, or recreate an existing tag.
@@ -33,7 +32,7 @@ and artifact publication under the target repository's policy.
 1. Read repository release policy and inspect the branch, worktree, remotes, version sources,
    complete tag format, changelog or fragments, notes producer, signing requirements, publisher,
    outputs, and release workflows. Fetch tags before selecting a base. When the observed flow is
-   complete and unambiguous, use it without a migration interview. Read
+   complete and unambiguous, use that established release flow. Read
    [`automated-release-flow.md`](references/automated-release-flow.md) only for a real workflow
    gap or an explicitly requested comparison/adoption. Make no infrastructure change without
    authorization; an ordinary release request does not authorize redesigning its pipeline.
@@ -45,8 +44,7 @@ and artifact publication under the target repository's policy.
 
    Resolve every `attention` result before mutation. The analyzer models `v`-prefixed SemVer tags;
    preserve an established unprefixed or custom tag format and follow
-   [`version-selection.md`](references/version-selection.md) manually. If Python is unavailable
-   or another custom release model exceeds the analyzer, report the unsupported boundary.
+   [`version-selection.md`](references/version-selection.md) manually. Use the manual rules when Python is unavailable or the release model exceeds the analyzer, and disclose the analyzer checks that could not run.
 3. Follow the repository-owned release-note pipeline. Read
    [`changelog.md`](references/changelog.md) only when the project maintains a committed
    changelog or needs a prepared notes file. Synchronize only authoritative project version
@@ -55,8 +53,7 @@ and artifact publication under the target repository's policy.
    [`prerelease-promotion.md`](references/prerelease-promotion.md). Get the date from the
    environment rather than guessing it.
 4. Run repository release gates. Stage every release file and no unrelated path; verify with
-   `git diff --cached --check` and short status, create `release: <exact-tag>`, then require a clean
-   tree. Create the repository-required signed tag or the default annotated tag, push the
+   `git diff --cached --check` and short status, create the release commit using the project convention (for example, `release: <exact-tag>`), then require a clean tree. Create the repository-required signed tag or the default annotated tag, push the
    release branch/trunk, and push the tag without force.
 5. Follow [`publishing.md`](references/publishing.md) and declare the repository-owned completion
    boundary before pushing. Stop at a verified pushed tag only when policy makes it terminal;

@@ -1,7 +1,5 @@
 # Persistent runtime
 
-Read this only when deep-interview needs deterministic topology/scoring, cross-session resume, revision ownership, formal audit, or an approval digest.
-
 The generated script targets Python 3.8+, uses only the standard library, and owns schema validation, topology, component × dimension scoring, ambiguity math, weakest-target rotation, ontology/challenge guards, revisions, binding, crystallization, approval digest, and completion state. The Agent still owns questions, evidence gathering, and rubric judgment.
 
 ## Invoke and select a run
@@ -16,7 +14,7 @@ python3 "<installed-skill-dir>/scripts/interview_state.py" start \
 
 Use `python` when that is the host's Python 3 command, or `py -3` on Windows. Exit `3` from `status` means the selected run does not exist. `--depth` sets the ambiguity gate (`quick` 0.30, `standard` 0.20, `deep` 0.10); `--threshold <0..1>` overrides it explicitly.
 
-Use `brownfield` for an existing system. Use `--id` only for parallel runs and bounded `list --all-sessions --limit 20`, `--latest`, `--full`, or `history --tail <1..20>` only when discovery or diagnosis requires them.
+Use `brownfield` for an existing system. Use `--id` to select a named run and bounded `list --all-sessions --limit 20`, `--latest`, `--full`, or `history --tail <1..20>` only when discovery or diagnosis requires them.
 
 ## Topology and scoring loop
 
@@ -32,4 +30,6 @@ After `gate` passes or an authorized waiver exists, write the full specification
 
 Ask the user to review the crystallized specification. Only explicit approval may be recorded with `approve --evidence <text>`. Run `complete` only from the separately approved state and only while the spec digest is unchanged. Completion does not authorize implementation.
 
-Never edit state JSON, invent evidence or revisions, or treat a numeric gate as authority over an unresolved blocker. Apply the stop conditions in the SKILL.md hard rules.
+Never edit state JSON, invent evidence or revisions, or treat a numeric gate as authority over an unresolved blocker. Resolve ownership, revision, or integrity conflicts through [resume and recovery](resume-and-recovery.md) before continuing affected work.
+
+Approval binds the exact crystallized file digest. Any change to that file, including formatting, requires crystallization and fresh approval before completion.

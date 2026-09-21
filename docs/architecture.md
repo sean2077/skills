@@ -18,12 +18,12 @@ This page is the canonical map of product surfaces, source ownership, generated 
 ```text
 skills/<name>/
 ├── SKILL.md                 # resident route, invariants, shortest safe workflow
-├── references/<topic>.md    # optional, directly routed on-demand detail
+├── references/<topic>.md    # optional reference material
 ├── scripts/                 # optional deterministic runtime/helper
 └── assets/                  # optional installed templates or output resources
 ```
 
-Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata. Reference files use descriptive lowercase kebab-case names and one clear load boundary; do not add root-level `reference.md` files or catch-alls such as `misc.md`, `all.md`, or `references/README.md`.
+Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata. Reference pages must be reachable from `SKILL.md`, directly or through another reference. Validation checks local targets and containment; names and headings are editorial choices.
 
 ## Source and generated ownership
 
@@ -46,7 +46,7 @@ Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata
 - `ralph` normally uses its deterministic bounded verifier loop because fixed attempts and mechanical terminal states are its user-facing boundary.
 - `skill-eval` owns comparable A/B execution and repository-isolated evidence for this project's evaluations.
 - `work-protocol` is public and owns optional durable coordination state such as CAS revisions, leases, hash-chained evidence, and commit-fixed review.
-- One controller owns each state plane and one active writer owns each mutable surface. Do not nest retry, ownership, or orchestration controllers around the same work.
+- Coordinate state ownership when composing runtimes and keep one active writer per mutable surface.
 
 The [harness constraint policy](harness-constraint-policy.md) is authoritative for deciding whether a new script, state machine, or targeted contract earns its maintenance and context cost.
 

@@ -1,7 +1,5 @@
 # Agent Scaffold Host Integration
 
-Read this only when changing scaffold-owned hook behavior, Claude Code or Codex wiring, JSON reconciliation, or trust. For project-owned format-on-edit, read [format hooks](format-hooks.md).
-
 ## Contents
 
 - [Hook semantics](#hook-semantics)

@@ -12,8 +12,6 @@ REQUIRED_TEXT = [
     "stalled",
     "plateaued",
     "exhausted",
-    "One pending round accepts exactly one `check`",
-    "never executes verifier commands",
     "list --all-sessions",
     "history --tail <1..20>",
     ".agent-workflows/ralph/<session>/<id>.json",
