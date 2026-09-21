@@ -93,16 +93,16 @@ jobs:
         run: |
           python scripts/generate_workflow_runtimes.py --check
           python scripts/generate_p0_runtimes.py --check
-          python scripts/tests/test_oma_migration_workflows.py
+          python scripts/tests/test_workflow_runtimes.py
           python -m unittest -v scripts.tests.test_p0_agent_workflows
           python -m unittest -v scripts.tests.test_p0_hardening
+          python scripts/tests/test_protocol_primitives.py
           python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
           for suite in evals/agent-skills/*/suite.json; do
             python .agents/skills/skill-eval/scripts/skill_eval.py validate "$suite"
           done
           python .agents/skills/skill-eval/scripts/skill_eval.py run evals/examples/tdd/suite.json --output "$RUNNER_TEMP/tdd-skill-eval.json"
           python .agents/skills/skill-eval/scripts/skill_eval.py validate-result "$RUNNER_TEMP/tdd-skill-eval.json"
-          python skills/work-protocol/scripts/workctl.py risk --cross-session
 
       - name: Validate official Agent Skills specification
         run: |
@@ -112,24 +112,24 @@ jobs:
           python -m skills_ref.cli validate .agents/skills/skill-eval
 
       - name: Check agent-scaffold invariants
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           python scripts/tests/test_agent_scaffold_core.py
           python scripts/tests/test_workspace_entry.py
           bash scripts/check-agent-scaffold.sh
 
       - name: Exercise tooling inventory reconciliation
-        if: always()
+        if: ${{ !cancelled() }}
         run: bash scripts/tests/test-tooling-inventory.sh
 
       - name: E2E installer test with mandatory real links
-        if: always()
+        if: ${{ !cancelled() }}
         env:
           AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS: "1"
         run: bash scripts/e2e-agent-scaffold.sh
 
       - name: Smoke-test real npx skills discovery
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           set +e
           output="$(NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add . -l 2>&1)"
@@ -148,7 +148,7 @@ jobs:
           fi
 
       - name: Smoke-test installed skill payloads
-        if: always()
+        if: ${{ !cancelled() }}
         run: |
           repo="$(pwd)"
           source="$repo"
@@ -182,7 +182,7 @@ jobs:
           done
 
       - name: Shellcheck bundled scripts
-        if: always() && runner.os == 'Linux'
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: |
           find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
 
@@ -209,12 +209,13 @@ jobs:
           python scripts/generate_p0_runtimes.py --check
           python -m compileall -q \
             scripts/workflow_runtime scripts/p0_runtime \
-            skills/autopilot/scripts skills/deep-interview/scripts skills/ralph/scripts \
+            skills/deep-interview/scripts skills/ralph/scripts \
             .agents/skills/skill-eval/scripts skills/work-protocol/scripts \
             evals/agent-skills
           python -m unittest -v \
-            scripts.tests.test_oma_migration_workflows.RuntimeTests.test_generated_runtimes_are_current_and_compile \
-            scripts.tests.test_oma_migration_workflows.RuntimeTests.test_read_only_discovery_has_no_filesystem_side_effects \
-            scripts.tests.test_oma_migration_workflows.RuntimeTests.test_deep_interview_brownfield_formula_topology_and_rotation
+            scripts.tests.test_workflow_runtimes.RuntimeTests.test_generated_runtimes_are_current_and_compile \
+            scripts.tests.test_workflow_runtimes.RuntimeTests.test_read_only_discovery_has_no_filesystem_side_effects \
+            scripts.tests.test_workflow_runtimes.RuntimeTests.test_approval_requires_unchanged_original_bytes_including_eol
           python -m unittest -v scripts.tests.test_p0_agent_workflows
           python -m unittest -v scripts.tests.test_p0_hardening
+          python scripts/tests/test_protocol_primitives.py

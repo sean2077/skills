@@ -21,7 +21,6 @@ PACKAGE = Path(__file__).resolve().parent
 REQUIRED_SKILLS = frozenset(
     {
         "agent-scaffold",
-        "autopilot",
         "conventional-commit",
         "deep-interview",
         "lark-cli",

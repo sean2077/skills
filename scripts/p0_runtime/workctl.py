@@ -44,27 +44,16 @@ EXIT_LEASE = 11
 EXIT_STATE = 12
 EXIT_WORKSPACE = 13
 EXIT_VERIFY = 14
-CONTRACT = "agent-work/v1"
-RUNTIME_DIR_NAME = "agent-work-v1"
+CONTRACT = "agent-work/v2"
+RUNTIME_DIR_NAME = "agent-work"
 TASK_REL_ROOT = ".agents/work"
-PHASES = {"clarifying", "planned", "executing", "verifying", "done", "blocked", "cancelled"}
-BUILTIN_OWNERS = {"native", "autopilot", "ralph", "pairroom"}
-WORKSPACE_ROLES = {"driver", "worker", "reviewer", "integrator"}
-WRITABLE_ROLES = {"driver", "worker", "integrator"}
-TRANSITIONS = {
-    "clarifying": {"planned", "blocked", "cancelled"},
-    "planned": {"executing", "blocked", "cancelled"},
-    "executing": {"verifying", "blocked", "cancelled"},
-    "verifying": {"done", "executing", "blocked", "cancelled"},
-    "blocked": {"clarifying", "planned", "executing", "verifying", "cancelled"},
-    "done": set(),
-    "cancelled": set(),
-}
+TERMINAL_PHASES = {"done", "cancelled"}
+# A caller-chosen label that only differs by case or punctuation would otherwise read as an
+# ordinary nonterminal stage and skip both the completion gate and terminal protection.
+RESERVED_PHASE_STEMS = {"done", "complete", "completed", "cancel", "cancelled", "canceled"}
+WORKSPACE_ROLES = {"writer", "reviewer"}
+WRITABLE_ROLES = {"writer"}
 FULL_COMMIT_RE = re.compile(r"^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$")
-CUSTOM_OWNER_RE = re.compile(r"^custom:[a-z0-9][a-z0-9._-]{0,63}$")
-MAX_ARTIFACT_BYTES = 256 * 1024
-BRIEF_SECTIONS = ("Goal", "Non-goals", "Acceptance criteria", "Authority and external effects")
-PLAN_SECTIONS = ("Slices", "Risks and dependencies", "Ownership")
 VERIFICATION_EVIDENCE_KINDS = {"test", "verify", "verification", "ci", "quality-gate"}
 
 
@@ -80,13 +69,19 @@ def _need_int(value: Any, label: str, minimum: int = 0) -> int:
     return value
 
 
+def validate_phase(phase: Any, label: str = "phase") -> str:
+    """Accept a caller-owned stage, rejecting near-misses of the reserved terminal labels."""
+    phase = validate_identifier(phase, label)
+    if phase not in TERMINAL_PHASES and phase.strip("._-").lower() in RESERVED_PHASE_STEMS:
+        raise HarnessError(
+            "phase %r is reserved; use exactly 'done' or 'cancelled' to terminate" % phase,
+            code=EXIT_STATE,
+        )
+    return phase
+
+
 def validate_owner(owner: str) -> str:
-    if owner in BUILTIN_OWNERS or CUSTOM_OWNER_RE.fullmatch(owner or ""):
-        return owner
-    raise HarnessError(
-        "loop owner must be native, autopilot, ralph, pairroom, or custom:<slug>",
-        code=EXIT_DATA,
-    )
+    return validate_identifier(owner, "owner id")
 
 
 def token_hash(token: str) -> str:
@@ -196,6 +191,12 @@ class TaskStore:
     def __init__(self, context: GitContext, task_id: str):
         self.context = context
         self.task_id = validate_identifier(task_id, "task id")
+        legacy = context.common_dir / "agent-work-v1" / "tasks" / (self.task_id + ".json")
+        if legacy.exists() or legacy.is_symlink():
+            raise HarnessError(
+                "agent-work/v1 task exists; finish or inspect it with the previous runtime; "
+                "use a new task id for v2", code=EXIT_DATA,
+            )
         self.runtime = context.common_dir / RUNTIME_DIR_NAME
         self.registry_path = self.runtime / "tasks" / (self.task_id + ".json")
         self.lock_path = self.runtime / "locks" / (self.task_id + ".lock")
@@ -256,13 +257,11 @@ class TaskStore:
         if state.get("task_id") != self.task_id:
             raise HarnessError("task state identity mismatch", code=EXIT_VERIFY)
         _need_int(state.get("version"), "state.version", 1)
-        if state.get("phase") not in PHASES:
-            raise HarnessError("task state has invalid phase", code=EXIT_VERIFY)
+        validate_phase(state.get("phase"))
+        _validate_title(state.get("title"), self.task_id)
         owner = state.get("loop_owner")
         if owner is not None:
             validate_owner(owner)
-        _need_int(state.get("verify_retry_count", 0), "state.verify_retry_count")
-        _need_int(state.get("max_verify_retries", 2), "state.max_verify_retries")
         return state
 
     def _recover_transaction(self) -> None:
@@ -325,6 +324,10 @@ class TaskStore:
                 code=EXIT_CONFLICT,
                 details={"expected_version": expected_version, "current_version": state["version"]},
             )
+        if state["phase"] in TERMINAL_PHASES and not (
+            kind.startswith("owner-") or kind in {"workspace-remove", "workspace-prune-stale"}
+        ):
+            raise HarnessError("task is terminal: %s" % state["phase"], code=EXIT_STATE)
         old_state_digest = digest_json(state)
         old_registry_digest = digest_json(registry)
         callback(state, registry)
@@ -371,6 +374,16 @@ class TaskStore:
         payload: Mapping[str, Any],
         token: str,
     ) -> Dict[str, Any]:
+        validate_identifier(kind, "evidence kind")
+        if kind in {"task-init", "state-transition"} or kind.startswith(("owner-", "workspace-")):
+            raise HarnessError("reserved runtime evidence kind: %s" % kind, code=EXIT_DATA)
+        if not isinstance(payload, dict):
+            raise HarnessError("evidence payload must be an object", code=EXIT_DATA)
+        if len(canonical_json(payload)) > 1024 * 1024:
+            raise HarnessError("evidence payload exceeds 1 MiB", code=EXIT_DATA)
+        if _secret_like_paths(payload):
+            raise HarnessError("evidence payload contains secret-like keys", code=EXIT_DATA)
+
         def no_state_change(state: Dict[str, Any], registry: Dict[str, Any]) -> None:
             self.require_lease(state, registry, token)
 
@@ -404,76 +417,39 @@ def _validate_title(title: str, task_id: str) -> str:
     return normalized
 
 
-def _markdown_section_issues(path: Path, sections: Sequence[str], label: str) -> List[str]:
-    issues: List[str] = []
-    try:
-        info = path.lstat()
-    except FileNotFoundError:
-        return ["missing %s: %s" % (label, path.name)]
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
-        return ["%s must be a regular non-symlink file" % label]
-    if info.st_size > MAX_ARTIFACT_BYTES:
-        return ["%s exceeds %d bytes" % (label, MAX_ARTIFACT_BYTES)]
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        return ["%s is not readable UTF-8: %s" % (label, exc)]
-    lines = text.splitlines()
-    positions: Dict[str, int] = {}
-    for index, line in enumerate(lines):
-        stripped = line.strip()
-        for section in sections:
-            if stripped == "## %s" % section and section not in positions:
-                positions[section] = index
-    for section in sections:
-        if section not in positions:
-            issues.append("%s is missing section: %s" % (label, section))
-            continue
-        start = positions[section] + 1
-        later = [position for position in positions.values() if position > positions[section]]
-        end = min(later) if later else len(lines)
-        content = "\n".join(lines[start:end]).strip()
-        if not content:
-            issues.append("%s section is incomplete: %s" % (label, section))
-    return issues
-
-
-def _artifact_issues(store: "TaskStore", registry: Mapping[str, Any]) -> Dict[str, List[str]]:
-    root = store.task_dir(registry)
-    return {
-        "brief": _markdown_section_issues(root / "brief.md", BRIEF_SECTIONS, "brief.md"),
-        "plan": _markdown_section_issues(root / "plan.md", PLAN_SECTIONS, "plan.md"),
-    }
-
-
 def _latest_verification_passed(events: Sequence[Mapping[str, Any]]) -> bool:
-    """Require the latest verification after the most recent verifying transition to pass."""
-    verifying_seq = 0
-    for event in events:
-        payload = event.get("payload")
-        if event.get("kind") == "state-transition" and isinstance(payload, dict) and payload.get("target") == "verifying":
-            verifying_seq = int(event.get("seq", 0))
-    if not verifying_seq:
-        return False
+    """Require a consistent, typed result after the latest nonterminal stage change."""
     latest: Optional[Mapping[str, Any]] = None
     for event in events:
-        if int(event.get("seq", 0)) <= verifying_seq or event.get("kind") not in VERIFICATION_EVIDENCE_KINDS:
-            continue
         payload = event.get("payload")
-        if isinstance(payload, dict):
-            latest = payload
+        if event.get("kind") == "state-transition":
+            if not isinstance(payload, dict) or payload.get("target") not in TERMINAL_PHASES:
+                latest = None
+        elif event.get("kind") in VERIFICATION_EVIDENCE_KINDS:
+            latest = payload if isinstance(payload, dict) else None
     if latest is None:
         return False
-    return bool(
-        latest.get("passed") is True
-        or latest.get("exit_code") == 0
-        or latest.get("status") in ("passed", "success")
-    )
+    signals: List[bool] = []
+    if "passed" in latest:
+        if type(latest["passed"]) is not bool:
+            return False
+        signals.append(latest["passed"])
+    if "exit_code" in latest:
+        code = latest["exit_code"]
+        if type(code) is not int or not 0 <= code <= 255:
+            return False
+        signals.append(code == 0)
+    if "status" in latest:
+        status = latest["status"]
+        if not isinstance(status, str):
+            return False
+        signals.append(status in ("passed", "success"))
+    return bool(signals) and all(signals)
+
 
 def init_task(
     context: GitContext,
     task_id: str,
-    max_verify_retries: int,
     title: str,
     force_existing: bool = False,
 ) -> Tuple[TaskStore, Dict[str, Any]]:
@@ -498,11 +474,9 @@ def init_task(
             "contract": CONTRACT,
             "task_id": task_id,
             "version": 1,
-            "phase": "clarifying",
+            "phase": "active",
+            "title": title,
             "loop_owner": None,
-            "verify_retry_count": 0,
-            "max_verify_retries": max_verify_retries,
-            "blocked_from": None,
             "created_at": created,
             "updated_at": created,
         }
@@ -520,14 +494,6 @@ def init_task(
             "created_at": created,
             "updated_at": created,
         }
-        brief = task_dir / "brief.md"
-        plan = task_dir / "plan.md"
-        brief.write_text(
-            "# %s\n\n## Goal\n\n## Non-goals\n\n## Acceptance criteria\n\n## Authority and external effects\n"
-            % title,
-            encoding="utf-8",
-        )
-        plan.write_text("# Plan\n\n## Slices\n\n## Risks and dependencies\n\n## Ownership\n", encoding="utf-8")
         write_json_atomic(task_dir / "state.json", state, mode=0o644)
         event = _make_event(task_dir / "evidence.jsonl", task_id, "task-init", getpass.getuser(), {"title": title})
         _append_event(task_dir / "evidence.jsonl", event, task_id)
@@ -662,43 +628,20 @@ def transition_task(
     actor: str,
     reason: str,
 ) -> Dict[str, Any]:
-    if target not in PHASES:
-        raise HarnessError("unknown target phase: %s" % target, code=EXIT_STATE)
+    target = validate_phase(target, "target phase")
 
     def callback(state: Dict[str, Any], registry: Dict[str, Any]) -> None:
         store.require_lease(state, registry, token)
-        current = state["phase"]
-        if target not in TRANSITIONS[current]:
-            raise HarnessError("invalid state transition: %s -> %s" % (current, target), code=EXIT_STATE)
-        artifacts = _artifact_issues(store, registry)
-        required_issues: List[str] = []
-        if target in ("planned", "executing", "verifying", "done"):
-            required_issues.extend(artifacts["brief"])
-        if target in ("executing", "verifying", "done"):
-            required_issues.extend(artifacts["plan"])
-        if required_issues:
-            raise HarnessError(
-                "task artifacts are incomplete: %s" % "; ".join(required_issues),
-                code=EXIT_STATE,
-                details={"issues": required_issues},
-            )
         if target == "done":
             events, _ = _read_evidence(store.evidence_path(registry), store.task_id)
             if not _latest_verification_passed(events):
                 raise HarnessError(
-                    "done requires successful deterministic verification evidence",
+                    "done requires successful deterministic verification evidence after the latest stage change",
                     code=EXIT_STATE,
                 )
-        if current == "verifying" and target == "executing":
-            retries = int(state.get("verify_retry_count", 0))
-            maximum = int(state.get("max_verify_retries", 0))
-            if retries >= maximum:
-                raise HarnessError("verification retry limit reached", code=EXIT_STATE)
-            state["verify_retry_count"] = retries + 1
-        if target == "blocked":
-            state["blocked_from"] = current
-        elif current == "blocked":
-            state["blocked_from"] = None
+            issues = _workspace_issues(store, registry)
+            if issues:
+                raise HarnessError("workspace verification failed: %s" % "; ".join(issues), code=EXIT_WORKSPACE)
         state["phase"] = target
 
     state, _, _ = store.mutate(
@@ -835,6 +778,8 @@ def create_workspace(
     if target.exists() and any(target.iterdir() if target.is_dir() else [target]):
         raise HarnessError("workspace target must not exist or must be empty", code=EXIT_WORKSPACE)
     state, registry = store.read()
+    if state["phase"] in TERMINAL_PHASES:
+        raise HarnessError("task is terminal: %s" % state["phase"], code=EXIT_STATE)
     if state["version"] != expected_version:
         raise HarnessError("state version conflict before workspace creation", code=EXIT_CONFLICT)
     store.require_lease(state, registry, token)
@@ -842,8 +787,6 @@ def create_workspace(
     if workspace_id in workspaces:
         raise HarnessError("workspace id already exists", code=EXIT_CONFLICT)
     _assert_unique_workspace_path(registry, target)
-    if role == "integrator" and any(item.get("role") == "integrator" for item in workspaces.values()):
-        raise HarnessError("task already has an integrator", code=EXIT_WORKSPACE)
     if role == "reviewer":
         if not commit or not FULL_COMMIT_RE.fullmatch(commit):
             raise HarnessError("reviewer snapshot must be an exact full commit SHA, not a ref", code=EXIT_WORKSPACE)
@@ -881,8 +824,6 @@ def create_workspace(
             if workspace_id in items:
                 raise HarnessError("workspace id was concurrently registered", code=EXIT_CONFLICT)
             _assert_unique_workspace_path(task_registry, target)
-            if role == "integrator" and any(item.get("role") == "integrator" for item in items.values()):
-                raise HarnessError("task already has an integrator", code=EXIT_WORKSPACE)
             items[workspace_id] = {
                 "id": workspace_id,
                 "role": role,
@@ -907,7 +848,8 @@ def create_workspace(
     except Exception:
         if role == "reviewer" and target.exists():
             _set_reviewer_read_only(target, False)
-        run_git(["worktree", "remove", "--force", str(target)], store.context.worktree_root, check=False, timeout=120)
+        # Preserve any concurrent edits made after creation if registration fails.
+        run_git(["worktree", "remove", str(target)], store.context.worktree_root, check=False, timeout=120)
         raise
 
 
@@ -1027,6 +969,8 @@ def _changed_symlink_issues(root: Path, paths: Sequence[str]) -> List[str]:
 
 def verify_workspace_record(store: TaskStore, record: Mapping[str, Any]) -> List[str]:
     issues: List[str] = []
+    if record.get("role") not in WORKSPACE_ROLES:
+        return ["unknown workspace role: %s" % record.get("id")]
     path = Path(str(record.get("path", "")))
     if not path.is_absolute() or not path.exists():
         return ["workspace missing: %s" % record.get("id")]
@@ -1060,8 +1004,8 @@ def verify_workspace_record(store: TaskStore, record: Mapping[str, Any]) -> List
                     issues.append("workspace HEAD no longer descends from its base: %s" % record.get("id"))
                 changed = workspace_changed_paths(path, base_commit)
                 rules = record.get("path_rules", [])
-                if changed and not rules:
-                    issues.append("writable workspace has unclaimed changed paths: %s" % record.get("id"))
+                # A sole writer owns its whole worktree; only parallel writers need claims,
+                # which _workspace_issues checks once it knows how many writers exist.
                 for relative in changed:
                     if rules and not match_any(relative, rules):
                         issues.append("changed path is outside ownership for %s: %s" % (record.get("id"), relative))
@@ -1204,6 +1148,35 @@ def assert_writable_context(store: TaskStore, cwd: Path) -> None:
     raise HarnessError("current worktree is not a registered writable workspace", code=EXIT_WORKSPACE)
 
 
+def _workspace_issues(store: TaskStore, registry: Mapping[str, Any]) -> List[str]:
+    issues: List[str] = []
+    workspaces = _need_dict(registry.get("workspaces", {}), "workspaces")
+    paths: Dict[str, str] = {}
+    writable = []
+    for workspace_id, record in workspaces.items():
+        issues.extend(verify_workspace_record(store, record))
+        canonical = os.path.normcase(str(Path(record.get("path", "")).resolve(strict=False)))
+        if canonical in paths:
+            issues.append("workspaces share a path: %s and %s" % (paths[canonical], workspace_id))
+        paths[canonical] = workspace_id
+        if record.get("role") in WRITABLE_ROLES:
+            writable.append((workspace_id, record))
+    if len(writable) > 1:
+        for workspace_id, record in writable:
+            if not record.get("path_rules"):
+                issues.append("parallel writer has no path ownership rules: %s" % workspace_id)
+    for index, (left_id, left) in enumerate(writable):
+        for right_id, right in writable[index + 1 :]:
+            for left_rule in left.get("path_rules", []):
+                for right_rule in right.get("path_rules", []):
+                    if patterns_overlap(left_rule, right_rule):
+                        issues.append(
+                            "path rules overlap: %s:%s and %s:%s"
+                            % (left_id, left_rule, right_id, right_rule)
+                        )
+    return issues
+
+
 def verify_task(store: TaskStore) -> Dict[str, Any]:
     issues: List[str] = []
     with FileMutex(store.lock_path):
@@ -1225,35 +1198,9 @@ def verify_task(store: TaskStore) -> Dict[str, Any]:
         elif state.get("loop_owner") is not None:
             issues.append("state records a loop owner without a lease")
         workspaces = _need_dict(registry.get("workspaces", {}), "workspaces")
-        integrators = [item for item in workspaces.values() if item.get("role") == "integrator"]
-        if len(integrators) > 1:
-            issues.append("multiple integrators are registered")
-        paths: Dict[str, str] = {}
-        writable = []
-        for workspace_id, record in workspaces.items():
-            issues.extend(verify_workspace_record(store, record))
-            canonical = os.path.normcase(str(Path(record.get("path", "")).resolve(strict=False)))
-            if canonical in paths:
-                issues.append("workspaces share a path: %s and %s" % (paths[canonical], workspace_id))
-            paths[canonical] = workspace_id
-            if record.get("role") in WRITABLE_ROLES:
-                writable.append((workspace_id, record))
-        implementation_writers = [(workspace_id, record) for workspace_id, record in writable if record.get("role") in ("driver", "worker")]
-        if len(implementation_writers) > 1:
-            if len(integrators) != 1:
-                issues.append("parallel writers require exactly one integrator")
-            for workspace_id, record in implementation_writers:
-                if not record.get("path_rules"):
-                    issues.append("parallel writer has no path ownership rules: %s" % workspace_id)
-        for index, (left_id, left) in enumerate(writable):
-            for right_id, right in writable[index + 1 :]:
-                for left_rule in left.get("path_rules", []):
-                    for right_rule in right.get("path_rules", []):
-                        if patterns_overlap(left_rule, right_rule):
-                            issues.append(
-                                "path rules overlap: %s:%s and %s:%s"
-                                % (left_id, left_rule, right_id, right_rule)
-                            )
+        issues.extend(_workspace_issues(store, registry))
+        if state["phase"] == "done" and not _latest_verification_passed(events):
+            issues.append("completed task lacks current passing verification")
         return {
             "ok": not issues,
             "issues": sorted(set(issues)),
@@ -1280,31 +1227,32 @@ def _secret_like_paths(value: Any, prefix: str = "") -> List[str]:
     return found
 
 
-def risk_decision(args: argparse.Namespace) -> Dict[str, Any]:
-    reasons: List[str] = []
-    score = 0
-    weighted = [
-        (args.cross_session, 2, "expected to cross sessions"),
-        (args.architectural_boundaries >= 2, 2, "crosses multiple architecture boundaries"),
-        (args.external_effects, 3, "has data, release, migration, or external side effects"),
-        (args.multiple_writers, 3, "requires multiple writable workers"),
-        (args.ambiguous_acceptance, 2, "acceptance criteria are ambiguous"),
-        (args.high_failure_cost, 3, "failure cost is high"),
-    ]
-    for enabled, weight, reason in weighted:
-        if enabled:
-            score += weight
-            reasons.append(reason)
-    needed = bool(args.force or score >= 2)
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "contract": CONTRACT,
-        "needed": needed,
-        "score": score,
-        "threshold": 2,
-        "explicit": bool(args.force),
-        "reasons": reasons,
-    }
+def _evidence_payload(inline: Optional[str], path: Optional[Path]) -> Dict[str, Any]:
+    """Read bounded strict JSON before opening or mutating any task state."""
+    def unique_object(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate object key: %s" % key)
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise ValueError("non-finite number: %s" % value)
+
+    try:
+        if path is not None:
+            with path.open("rb") as handle:
+                data = handle.read(1024 * 1024 + 1)
+        else:
+            data = (inline or "{}").encode("utf-8")
+        if len(data) > 1024 * 1024:
+            raise ValueError("payload exceeds 1 MiB")
+        payload = json.loads(data.decode("utf-8"), object_pairs_hook=unique_object,
+                             parse_constant=reject_constant)
+    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
+        raise HarnessError("evidence input must be bounded, valid JSON: %s" % exc, code=EXIT_USAGE) from exc
+    return _need_dict(payload, "evidence payload")
 
 
 def _show_payload(store: TaskStore) -> Dict[str, Any]:
@@ -1350,20 +1298,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pretty", action="store_true", help="pretty-print JSON output")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    risk = sub.add_parser("risk", help="deterministically decide whether task artifacts are warranted")
-    risk.add_argument("--cross-session", action="store_true")
-    risk.add_argument("--architectural-boundaries", type=int, default=1)
-    risk.add_argument("--external-effects", action="store_true")
-    risk.add_argument("--multiple-writers", action="store_true")
-    risk.add_argument("--ambiguous-acceptance", action="store_true")
-    risk.add_argument("--high-failure-cost", action="store_true")
-    risk.add_argument("--force", action="store_true", help="explicit opt-in")
-
     init = sub.add_parser("init", help="initialize .agents/work/<task-id> in this authoritative worktree")
     init.add_argument("task_id")
     init.add_argument("--repo", type=Path, default=Path.cwd())
     init.add_argument("--title", default="")
-    init.add_argument("--max-verify-retries", type=int, default=2)
     init.add_argument("--idempotent", action="store_true")
 
     show = sub.add_parser("show", help="show redacted state, lease, and workspace registry")
@@ -1378,14 +1316,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     transition = sub.add_parser("transition", help="perform a validated, token-checked state transition")
     _add_task_arg(transition)
-    transition.add_argument("target", choices=sorted(PHASES))
+    transition.add_argument("target", help="caller-owned stage; done/cancelled are terminal")
     transition.add_argument("--reason", default="")
     _add_mutation_args(transition)
 
     evidence = sub.add_parser("evidence", help="append a sequenced, hash-chained evidence event")
     _add_task_arg(evidence)
     evidence.add_argument("--kind", required=True)
-    evidence.add_argument("--payload", default="{}", help="JSON object; secrets must not be included")
+    payload_input = evidence.add_mutually_exclusive_group()
+    payload_input.add_argument("--payload", help="JSON object; secrets must not be included")
+    payload_input.add_argument("--payload-file", type=Path, help="read the JSON object from a UTF-8 file")
+    evidence.add_argument("--full", action="store_true", help="include the recorded payload rather than only its receipt")
     _add_mutation_args(evidence)
 
     owner = sub.add_parser("owner", help="acquire, check, heartbeat, recover, hand off, or release the single loop owner")
@@ -1455,15 +1396,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        if args.command == "risk":
-            _emit(risk_decision(args), args.pretty)
-            return EXIT_OK
         if args.command == "init":
-            if args.max_verify_retries < 0 or args.max_verify_retries > 100:
-                raise HarnessError("max verify retries must be 0..100", code=EXIT_USAGE)
             context = discover_git_context(args.repo)
             store, state = init_task(
-                context, args.task_id, args.max_verify_retries, args.title, force_existing=args.idempotent
+                context, args.task_id, args.title, force_existing=args.idempotent
             )
             _emit({"ok": True, "task": state, "task_dir": str(store.task_dir())}, args.pretty)
             return EXIT_OK
@@ -1556,17 +1492,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             _emit({"ok": True, "task": state}, args.pretty)
             return EXIT_OK
         if args.command == "evidence":
-            try:
-                payload = json.loads(args.payload)
-            except json.JSONDecodeError as exc:
-                raise HarnessError("--payload must be valid JSON", code=EXIT_USAGE) from exc
-            if not isinstance(payload, dict):
-                raise HarnessError("--payload must be a JSON object", code=EXIT_USAGE)
-            if len(canonical_json(payload)) > 1024 * 1024:
-                raise HarnessError("evidence payload exceeds 1 MiB", code=EXIT_DATA)
-            forbidden = _secret_like_paths(payload)
-            if forbidden:
-                raise HarnessError("evidence payload contains secret-like keys: %s" % ", ".join(forbidden[:8]), code=EXIT_DATA)
+            payload = _evidence_payload(args.payload, args.payload_file)
             store = TaskStore.for_existing(args.repo, args.task_id)
             event = store.append_evidence(
                 args.expect_version,
@@ -1575,7 +1501,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 payload,
                 _token_from_args(args),
             )
-            _emit({"ok": True, "event": event, "version": args.expect_version + 1}, args.pretty)
+            receipt = {key: event[key] for key in ("seq", "kind", "hash")}
+            result = {"ok": True, "receipt": receipt, "version": args.expect_version + 1}
+            if args.full:
+                result["event"] = event
+            _emit(result, args.pretty)
             return EXIT_OK
         if args.command == "workspace":
             store = TaskStore.for_existing(args.repo, args.task_id)

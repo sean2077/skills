@@ -30,7 +30,7 @@ Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata
 | Edit here | Produces or reconciles | Rule |
 |---|---|---|
 | `skills/<name>/SKILL.md`, references, scripts, and assets | Public installable payload | Edit the skill source directly; update README/catalog metadata and tests when its route or payload changes. |
-| `scripts/workflow_runtime/{common,autopilot,deep_interview,ralph}.py` | Standalone runtime scripts shipped by `autopilot`, `deep-interview`, and `ralph` | Run `python scripts/generate_workflow_runtimes.py`; do not hand-edit generated runtime files. |
+| `scripts/workflow_runtime/{common,deep_interview,ralph}.py` | Standalone approval and bounded-loop runtimes shipped by `deep-interview` and `ralph` | Run `python scripts/generate_workflow_runtimes.py`; do not hand-edit generated runtime files. |
 | `scripts/p0_runtime/{common,skill_eval,workctl}.py` | Private `skill-eval` and public `work-protocol` runtime packages | Run `python scripts/generate_p0_runtimes.py`; keep the public/private publication boundary intact. |
 | `.agents/skills/<name>/` | `.claude/skills/<name>` real-directory symlink projections | Run `.agents/relink-skills.sh`; preserve unrelated entries and fail on ownership conflicts. |
 | `.agents/subagents/<name>/` | `.claude/agents/*.md` and `.codex/agents/*.toml` | Run `.agents/tools/generate-subagents.py`; generated projections are not edit targets. |
@@ -41,11 +41,11 @@ Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata
 
 ## Runtime design
 
-- `autopilot` and `deep-interview` default to model-native single-session work; their persistence/control runtimes are opt-in when explicit resume, handoff, revision, or audit state adds value.
+- `autopilot` is delivery guidance without its own persistent controller. `deep-interview` adds an optional exact-file approval record; conversation and document structure remain caller-owned.
 - Generated workflow runtimes reject non-standard JSON numbers and attempt a best-effort parent-directory sync after atomic state replacement on POSIX hosts.
 - `ralph` normally uses its deterministic bounded verifier loop because fixed attempts and mechanical terminal states are its user-facing boundary.
 - `skill-eval` owns comparable A/B execution and repository-isolated evidence for this project's evaluations.
-- `work-protocol` is public and owns optional durable coordination state such as CAS revisions, leases, hash-chained evidence, and commit-fixed review.
+- `work-protocol` is public and owns optional durable coordination state such as CAS revisions, leases, hash-chained evidence, and commit-fixed review. Owner IDs and nonterminal phases are caller-owned; completion still requires consistent verification and workspace checks.
 - Coordinate state ownership when composing runtimes and keep one active writer per mutable surface.
 
 The [harness design principles](harness-constraint-policy.md) are authoritative for deciding whether a new script, state machine, or targeted contract earns its maintenance and context cost.
@@ -57,7 +57,7 @@ The [harness design principles](harness-constraint-policy.md) are authoritative 
 | Route budget, duplicate descriptions, and payload entry types | `scripts/catalog_health.py` and focused fixtures |
 | Frontmatter, names, README coverage, references, manifests, and generic catalog rules | `scripts/validate_skills.py` and focused fixtures |
 | High-risk skill-specific executable invariants | Registered `scripts/contracts/<skill>.py` modules and targeted tests |
-| Generated runtime parity and behavior | Runtime generators plus P0, hardening, and migration workflow tests |
+| Generated runtime parity and behavior | Runtime generators plus P0, hardening, coordination primitive, and approval/loop tests |
 | Official Agent Skills format | Pinned `skills-ref` validation for every catalog skill and the `skill-eval` project skill |
 | Scaffold shape, managed drift, symlinks, hooks, and throwaway installation | Agent-scaffold core, static, and E2E checks |
 | Installer discovery and payload fidelity | The audited `skills` CLI discovery/install smoke tests and byte comparison in CI |

@@ -217,7 +217,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.repo = Path(self.temp.name) / "repo"
         self.commit = init_repo(self.repo)
-        self.store, _ = init_task(discover_git_context(self.repo), "task-1", 2, "Hardening task")
+        self.store, _ = init_task(discover_git_context(self.repo), "task-1", "Hardening task")
 
     def tearDown(self) -> None:
         for current, dirs, files in os.walk(self.temp.name):
@@ -232,19 +232,6 @@ class WorkProtocolHardeningTest(unittest.TestCase):
                     pass
         self.temp.cleanup()
 
-    def complete_artifacts(self) -> None:
-        task_dir = self.store.task_dir()
-        (task_dir / "brief.md").write_text(
-            "# Hardening task\n\n## Goal\nShip safely.\n\n## Non-goals\nNo network.\n\n"
-            "## Acceptance criteria\nTests pass.\n\n## Authority and external effects\nRepository only.\n",
-            encoding="utf-8",
-        )
-        (task_dir / "plan.md").write_text(
-            "# Plan\n\n## Slices\nImplement, review, verify.\n\n"
-            "## Risks and dependencies\nGit worktrees.\n\n## Ownership\nOne owner.\n",
-            encoding="utf-8",
-        )
-
     def test_owner_check_and_heartbeat_preserve_generation(self) -> None:
         state, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
         checked, lease = check_owner(self.store, token)
@@ -258,7 +245,6 @@ class WorkProtocolHardeningTest(unittest.TestCase):
         self.assertGreater(refreshed["expires_epoch"], old_expiry)
 
     def test_done_requires_latest_verification_in_current_cycle(self) -> None:
-        self.complete_artifacts()
         _, token = acquire_owner(self.store, 1, "autopilot", 60, "test")
         transition_task(self.store, 2, token, "planned", "test", "ready")
         transition_task(self.store, 3, token, "executing", "test", "start")
@@ -280,7 +266,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
             2,
             token,
             "worker-a",
-            "worker",
+            "writer",
             workspace,
             "test",
             None,
@@ -319,7 +305,7 @@ class WorkProtocolHardeningTest(unittest.TestCase):
                     2,
                     token,
                     "forbidden-%d" % index,
-                    "worker",
+                    "writer",
                     path,
                     "test",
                     None,

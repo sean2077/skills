@@ -22,7 +22,6 @@ STATE_ROOT_NAME = ".agent-workflows"
 ID_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 SESSION_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 MAX_STATE_BYTES = 2 * 1024 * 1024
-MAX_INPUT_JSON_BYTES = 128 * 1024
 DEFAULT_HISTORY_TAIL = 5
 MAX_HISTORY_TAIL = 20
 DEFAULT_LIST_LIMIT = 20
@@ -116,23 +115,6 @@ def bounded_text(
             actual=len(text),
         )
     return text
-
-
-def validate_string_list(
-    value: Any,
-    field: str,
-    *,
-    max_items: int,
-    item_limit: int,
-) -> List[str]:
-    if not isinstance(value, list) or len(value) > max_items:
-        raise WorkflowError(
-            2,
-            "invalid_input",
-            "%s must be a list with at most %d items" % (field, max_items),
-            field=field,
-        )
-    return [bounded_text(item, "%s[%d]" % (field, index), item_limit) for index, item in enumerate(value)]
 
 
 def require_dict(value: Any, field: str) -> Dict[str, Any]:
@@ -404,39 +386,6 @@ def lexical_relative_to_root(path: Path, root: Path) -> Tuple[Path, Path]:
     if matched_root is None:
         raise ValueError("path is outside the bound root")
     return matched_root, path.relative_to(matched_root)
-
-
-def load_json_input(value: str, *, root: Path) -> Dict[str, Any]:
-    bound_root = root.resolve()
-    candidate = Path(value).expanduser()
-    if not candidate.is_absolute():
-        candidate = bound_root / candidate
-    lexical = Path(os.path.abspath(str(candidate)))
-    try:
-        lexical_root, relative = lexical_relative_to_root(lexical, bound_root)
-    except ValueError as exc:
-        raise WorkflowError(2, "invalid_input_file", "input file must stay inside the bound worktree", path=value) from exc
-    cursor = lexical_root
-    for part in relative.parts:
-        cursor = cursor / part
-        if cursor.is_symlink():
-            raise WorkflowError(2, "invalid_input_file", "input path must not traverse a symlink", path=str(lexical))
-    try:
-        path = lexical.resolve(strict=True)
-    except (OSError, RuntimeError) as exc:
-        raise WorkflowError(2, "invalid_input_file", "input file does not exist", path=str(lexical)) from exc
-    if not path.is_file():
-        raise WorkflowError(2, "invalid_input_file", "input must be a regular file", path=str(path))
-    try:
-        path.relative_to(bound_root)
-    except ValueError as exc:
-        raise WorkflowError(2, "invalid_input_file", "input file must stay inside the bound worktree", path=value) from exc
-    try:
-        return read_json(path, kind="invalid_input_file", max_bytes=MAX_INPUT_JSON_BYTES)
-    except WorkflowError as exc:
-        if exc.kind == "invalid_input_file":
-            exc.code = 2
-        raise
 
 
 def validate_common_state(
@@ -812,7 +761,12 @@ def resolve_artifact_path(
         if size > max_bytes:
             raise WorkflowError(2, "artifact_too_large", "%s exceeds its size limit" % label, path=value, limit=max_bytes)
         try:
-            content = resolved.read_text(encoding="utf-8")
+            # Preserve original UTF-8 bytes, including CRLF, for approval digests.
+            with resolved.open("rb") as handle:
+                raw = handle.read(max_bytes + 1)
+            if len(raw) > max_bytes:
+                raise WorkflowError(2, "artifact_too_large", "%s exceeds its size limit" % label, path=value, limit=max_bytes)
+            content = raw.decode("utf-8")
         except (OSError, UnicodeError) as exc:
             raise WorkflowError(2, "invalid_artifact", "%s must be readable UTF-8 text" % label, path=value) from exc
     return relative.as_posix(), resolved, content

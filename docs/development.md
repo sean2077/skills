@@ -87,9 +87,10 @@ python scripts/tests/test_live_skill_eval_adapter.py
 
 python scripts/generate_workflow_runtimes.py --check
 python scripts/generate_p0_runtimes.py --check
-python scripts/tests/test_oma_migration_workflows.py
+python scripts/tests/test_workflow_runtimes.py
 python -m unittest -v scripts.tests.test_p0_agent_workflows
 python -m unittest -v scripts.tests.test_p0_hardening
+python scripts/tests/test_protocol_primitives.py
 
 python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
 for suite in evals/agent-skills/*/suite.json; do
@@ -102,7 +103,6 @@ python .agents/skills/skill-eval/scripts/skill_eval.py run \
 python .agents/skills/skill-eval/scripts/skill_eval.py validate-result "$result"
 rm -f "$result"
 trap - EXIT
-python skills/work-protocol/scripts/workctl.py risk --cross-session
 
 for skill in skills/*; do
   [[ -d "$skill" ]] && python -m skills_ref.cli validate "$skill"
