@@ -23,9 +23,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Retain concise feedback verification, revision freshness, authority, and real remote-deliverable checks in the existing composition guide, without new routes, aliases, or resident AGENTS instructions.
-- Remove retired candidates from evaluation guidance and update surviving experiment cases to route to the host (`none`) while preserving their workflow and non-selection requirements. Check candidate metadata and suite route references against the shipped catalog.
-
+- Move the concise feedback-verification, revision-freshness, authority, and real remote-deliverable checks from the retired review/delivery skills into the existing composition guide, without new routes, aliases, or resident AGENTS instructions.
+- Remove retired candidates from evaluation guidance and update surviving experiment cases to route to the host (`none`) while preserving their workflow and non-selection requirements. Check candidate metadata and suite route references against the shipped catalog; keep workflow synonyms whose canonical workflow still exists.
 - Remove historical workflow disclaimers, fixed question/report/method-card requirements, and repeated process rules throughout skill guidance, references, repository docs, and scaffold templates.
 - Let Lark operations use needed help/schema and verification without fixed call budgets or failure-first discovery; retain identity, confirmation, and ambiguous-write protections.
 - Replace reference heading/naming/load-sentence checks with payload-contained reference reachability, and remove prose-only method-card and retired-rule fixtures while retaining executable runtime and publication tests.

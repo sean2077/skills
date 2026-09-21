@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of 13 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
+A curated catalog of 13 reusable [Agent Skills](https://agentskills.io/specification) for requirements, documentation, repository operations, release, and productivity.
 
 Each installed skill contributes discovery metadata; its instructions and bundled resources are loaded when needed. Format validation, installer discovery, host wiring, and runtime behavior are separate claims—see the [compatibility matrix](docs/compatibility.md).
 

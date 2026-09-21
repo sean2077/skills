@@ -56,8 +56,11 @@ ROUTE_ALIASES = {
     "tooling-governance": "tooling-conventions",
     "work-coordination": "work-protocol",
 }
+# Plausible host phrasings for a canonical workflow. Task vocabulary is independent
+# of the shipped catalog, so a synonym stays as long as its target workflow does.
 WORKFLOW_ALIASES = {
     "agent-harness": "harness-management",
+    "analyze": "analysis",
     "best-practice-research": "research",
     "bounded-iteration": "iteration",
     "causal-investigation": "analysis",

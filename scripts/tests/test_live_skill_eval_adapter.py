@@ -67,6 +67,14 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             self.assertFalse(set(inventory) - routes)
         self.assertFalse(set(self.adapter.ROUTE_ALIASES.values()) - routes)
 
+    def test_workflow_synonyms_survive_their_skill(self) -> None:
+        self.assertFalse(set(self.adapter.WORKFLOW_ALIASES.values())
+                         - set(self.adapter.WORKFLOWS))
+        for reported, expected in (("analyze", "analysis"), ("experiment", "prototype"),
+                                   ("review", "code-review")):
+            with self.subTest(workflow=reported):
+                self.assertEqual(expected, self.adapter.normalize_workflow(reported))
+
     def test_suite_candidates_and_expected_routes_match_catalog(self) -> None:
         routes = set(self.adapter.catalog_routes(ROOT))
         suites = sorted((ROOT / "evals").rglob("suite.json"))
