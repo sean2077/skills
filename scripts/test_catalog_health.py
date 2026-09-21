@@ -35,8 +35,8 @@ class CatalogHealthTests(unittest.TestCase):
         return catalog_health.validate_catalog(self.repo)[0]
 
     def test_clean_catalog_passes(self) -> None:
-        self.write_skill("analyze", "Use for read-only repository explanation.")
-        self.write_skill("code-review", "Use to review a concrete patch for defects.")
+        self.write_skill("alpha", "Use for read-only repository explanation.")
+        self.write_skill("beta", "Use to review a concrete patch for defects.")
         errors, total_chars, longest = catalog_health.validate_catalog(self.repo)
         self.assertEqual(errors, [])
         self.assertEqual(total_chars, 84)

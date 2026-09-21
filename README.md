@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of 18 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
+A curated catalog of 13 reusable [Agent Skills](https://agentskills.io/specification) for software delivery, analysis, repository operations, and productivity.
 
 Each installed skill contributes discovery metadata; its instructions and bundled resources are loaded when needed. Format validation, installer discovery, host wiring, and runtime behavior are separate claims—see the [compatibility matrix](docs/compatibility.md).
 
@@ -8,7 +8,7 @@ Each installed skill contributes discovery metadata; its instructions and bundle
 
 ```bash
 # One skill for the Claude Code and Codex targets
-npx skills add sean2077/skills --skill analyze -a claude-code -a codex
+npx skills add sean2077/skills --skill tdd -a claude-code -a codex
 
 # Complete catalog
 npx skills add sean2077/skills --skill '*' -a claude-code -a codex
@@ -23,22 +23,19 @@ Check the dated [native overlap notes](docs/compatibility.md#native-overlap-and-
 
 ## Catalog
 
+Repository analysis, disposable experiments, general cleanup, code review, and ordinary delivery use the host or project's workflow rather than separate catalog skills. See [installation cleanup](docs/skill-composition.md#installation-and-evidence) for previously installed entries.
+
 Use the [selection and composition guide](docs/skill-composition.md) to distinguish adjacent routes without loading a whole workflow chain.
 
 | Skill | Description | Stack |
 |-------|-------------|-------|
 | [agent-scaffold](skills/agent-scaffold/) | Apply or refresh a dual-host (Claude Code + Codex) harness: `.agents/` SSOT, mandatory real-symlink projections, reconciled host hooks, subagent projection, lean authority and terminology contracts, repository LF/CRLF defaults, `default`/`light` governance profiles, and structured plan/doctor/verify output. | Shell, Python, Governance |
-| [ai-slop-cleaner](skills/ai-slop-cleaner/) | Perform behavior-preserving, bounded cleanup of duplication, dead code, needless abstraction, boundary leaks, and weak coverage with explicit verification. | Engineering, Refactoring |
-| [analyze](skills/analyze/) | Explain repository behavior or investigate failures through read-only evidence, with hypotheses and discriminating probes only while uncertainty warrants them. | Engineering, Analysis |
-| [autopilot](skills/autopilot/) | Deliver authorized work end to end with bounded delegation, observed verification, and real handoff, reusing host or project state. | Python, Delivery |
 | [best-practice-research](skills/best-practice-research/) | Compare current primary sources and viable trade-offs to produce a repository-specific technical recommendation. | Research, Engineering |
-| [code-review](skills/code-review/) | Review concrete changes and received findings against current code, with revision-bound evidence, actionable defects, and explicit authoring boundaries. | Engineering, Review |
 | [conventional-commit](skills/conventional-commit/) | Create one scoped local Conventional Commit or return one history-aware message-only subject while preserving unrelated index state. | Git |
 | [deep-interview](skills/deep-interview/) | Turn unresolved requirements into an approved specification through an adaptive interview, with optional revision-bound, exact-file approval records. | Python, Requirements |
 | [domain-modeling](skills/domain-modeling/) | Actively define, challenge, group, split, and migrate project terminology with user-selectable up-front or incremental modeling, evidence-backed context boundaries, multilingual canonical equivalents, and atomic `CONTEXT.md`/`CONTEXT-MAP.md` evolution. | Domain Modeling, Documentation |
 | [lark-cli](skills/lark-cli/) | Handle selected 飞书/Feishu/Lark CLI operations through one lean `lark-cli` entry point with on-demand domain references, explicit identity continuity, command discovery, and side-effect safety. | Lark, CLI, Productivity |
 | [project-docs-organizer](skills/project-docs-organizer/) | Derive project-owned documentation structure from reader, task, domain, ownership, lifecycle, and retrieval evidence; use optional sibling-local numbering only when stable order materially improves reader navigation. | Documentation |
-| [prototype](skills/prototype/) | Reduce one uncertainty through a disposable, bounded experiment with explicit oracle, safety, conclusion, and cleanup boundaries. | Engineering, Experimentation |
 | [ralph](skills/ralph/) | Use a deterministic bounded verifier loop only when fixed attempts and mechanical pass, stall, plateau, exhaustion, or resume state are part of the task boundary. | Python, Iteration |
 | [semver-release](skills/semver-release/) | Plan and publish a semver release with deterministic reachable-tag/bump analysis, a preferred changelog-backed tag workflow, project-owned version synchronization, and policy-derived publication verification. | Git, Python, Release |
 | [spec-writing](skills/spec-writing/) | Write or revise human-facing requirements and design documents, compare unresolved material options, preserve settled meaning, clarify authority and acceptance, and separate working history from the reader narrative. | Documentation, Requirements |

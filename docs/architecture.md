@@ -41,7 +41,7 @@ Keep `SKILL.md` lean because its frontmatter is always-resident routing metadata
 
 ## Runtime design
 
-- `autopilot` is delivery guidance without its own persistent controller. `deep-interview` adds an optional exact-file approval record; conversation and document structure remain caller-owned.
+- `deep-interview` adds an optional exact-file approval record; conversation and document structure remain caller-owned.
 - Generated workflow runtimes reject non-standard JSON numbers and attempt a best-effort parent-directory sync after atomic state replacement on POSIX hosts.
 - `ralph` normally uses its deterministic bounded verifier loop because fixed attempts and mechanical terminal states are its user-facing boundary.
 - `skill-eval` owns comparable A/B execution and repository-isolated evidence for this project's evaluations.

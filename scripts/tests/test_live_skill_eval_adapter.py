@@ -44,13 +44,56 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             (root / "skills" / "not-a-skill").mkdir()
             self.assertEqual(("alpha", "zeta"), self.adapter.catalog_routes(root))
 
+    def test_retired_routes_fall_back_to_host_without_losing_intent(self) -> None:
+        routes = self.adapter.catalog_routes(ROOT)
+        retired = {
+            "autopilot": "delivery", "analyze": "analysis", "prototype": "prototype",
+            "ai-slop-cleaner": "implementation", "code-review": "code-review",
+        }
+        for route, workflow in retired.items():
+            with self.subTest(route=route):
+                self.assertNotIn(route, routes)
+                actual = self.adapter.canonicalize_behavior(
+                    {"mode": "treatment"}, {"route": route, "workflow": workflow},
+                    "tdd", False, routes,
+                )
+                self.assertEqual("none", actual["route"])
+                self.assertEqual(workflow, actual["workflow"])
+
+    def test_candidate_metadata_references_only_shipped_routes(self) -> None:
+        routes = set(self.adapter.catalog_routes(ROOT))
+        for inventory in (self.adapter.BOUNDARY_OBSERVATIONS,
+                          self.adapter.OBSERVATION_GUIDANCE):
+            self.assertFalse(set(inventory) - routes)
+        self.assertFalse(set(self.adapter.ROUTE_ALIASES.values()) - routes)
+
+    def test_suite_candidates_and_expected_routes_match_catalog(self) -> None:
+        routes = set(self.adapter.catalog_routes(ROOT))
+        suites = sorted((ROOT / "evals").rglob("suite.json"))
+        self.assertTrue(suites)
+        for path in suites:
+            with self.subTest(suite=path.relative_to(ROOT)):
+                suite = json.loads(path.read_text(encoding="utf-8"))
+                candidate = ROOT / suite["skill_path"]
+                self.assertEqual(ROOT / "skills", candidate.parent)
+                self.assertIn(candidate.name, routes)
+                self.assertTrue((candidate / "SKILL.md").is_file())
+                for case in suite["cases"]:
+                    expected = case.get("metadata", {}).get("expected_behavior", {})
+                    for mode, behavior in expected.items():
+                        with self.subTest(case=case["id"], mode=mode):
+                            if "route" in behavior:
+                                self.assertIn(behavior["route"], routes | {"none"})
+                            if "workflow" in behavior:
+                                self.assertIn(behavior["workflow"], self.adapter.WORKFLOWS)
+
     def test_baseline_normalization_preserves_host_workflow(self) -> None:
-        routes = ("analyze", "autopilot", "tdd")
+        routes = ("spec-writing", "deep-interview", "tdd")
         for workflow in ("analysis", "delivery", "interview", "tdd"):
             with self.subTest(workflow=workflow):
                 actual = self.adapter.canonicalize_behavior(
                     {"mode": "baseline"},
-                    {"route": "autopilot", "workflow": workflow},
+                    {"route": "spec-writing", "workflow": workflow},
                     "none",
                     False,
                     routes,
@@ -157,10 +200,10 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
     def test_baseline_host_selection_is_not_silently_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            skill = root / "skills" / "analyze"
+            skill = root / "skills" / "fixture-skill"
             skill.mkdir(parents=True)
             (skill / "SKILL.md").write_text(
-                "---\nname: analyze\ndescription: fixture\n---\n", encoding="utf-8"
+                "---\nname: fixture-skill\ndescription: fixture\n---\n", encoding="utf-8"
             )
             request = {
                 "repository_root": str(root),
@@ -173,7 +216,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                 "result": json.dumps(
                     {
                         "selected": True,
-                        "behavior": {"route": "analyze", "workflow": "analysis"},
+                        "behavior": {"route": "fixture-skill", "workflow": "analysis"},
                     }
                 )
             }

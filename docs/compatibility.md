@@ -16,7 +16,7 @@ Review baseline:
 | Agent Skills format | `requirements-validation.txt`, `scripts/validate_skills.py`, `scripts/catalog_health.py`, and the pinned official `skills-ref` validation in `.github/workflows/validate.yml` | Published skill payloads are checked for repository rules and the pinned Agent Skills specification. | Identical discovery, optional-field support, or executable-language support in every client. |
 | Installer discovery | CI runs `skills@1.5.17` against the catalog root, compares the discovered names, installs the catalog, rejects special entries, and byte-diffs installed payloads. | The audited CLI pin discovers and copies this catalog as tested by the workflow. | Runtime support for every target listed by any installer version. |
 | Host wiring | `agent-scaffold` static, core, and throwaway-repository E2E checks cover `.agents/`, Claude Code symlink projections, Codex project paths, hooks, and generated subagents. | The repository can create and verify its project-owned Claude Code + Codex harness shape. | User trust, hook approval, organization policy, cloud variants, or untested hosts. |
-| Harness behavior | Runtime generators, P0 behavior/hardening tests, skill-eval contracts, and work-protocol risk checks exercise owned state and safety boundaries. | The checked repository behavior is bounded by those executable tests. | Universal task effectiveness or host behavior outside the tested permissions and fixtures. |
+| Harness behavior | Runtime generators, P0 behavior/hardening tests, skill-eval contracts, and coordination primitive tests exercise owned state and safety boundaries. | The checked repository behavior is bounded by those executable tests. | Universal task effectiveness or host behavior outside the tested permissions and fixtures. |
 
 The public catalog is exactly the set of skills published under `skills/`. `.agents/skills/skill-eval` is project-private: its `metadata.internal: true` marker, manifest exclusion, README exclusion, and normal discovery exclusion keep it outside public catalog claims unless internal skills are explicitly enabled.
 
@@ -28,9 +28,9 @@ not update the older installer pin, hook tests, or Lark command-version evidence
 | Current documented native capability | Catalog decision |
 |---|---|
 | Codex discovers skill names/descriptions before loading selected instructions; discovery has a context budget | Shorten and front-load routing descriptions; install only routes needed. Do not turn every skill into an always-loaded prompt. |
-| Native planning, continuation/resume, and subagents can own ordinary delivery | Use them first. Keep `autopilot` as a delivery-boundary overlay and formal runtimes only for semantic state the host does not supply. |
+| Native planning, continuation/resume, and subagents can own ordinary delivery | Use the host/project workflow for ordinary delivery. Keep formal runtimes only for the required repository-owned semantics. |
 | Claude Code bundles review, debugging, looping, and app run/verify skills | Do not repeat an adequate native workflow just to run a catalog route. Native app verification is useful evidence but does not replace unrelated project-required tests. |
-| A local Claude `code-review` shadows bundled `/code-review`, not the bundled `/review` alias | The catalog name remains stable for existing consumers; selective installation is an intentional override, not a transparent supplement. Use `/review` to request the bundled review. |
+| A local Claude `code-review` shadows bundled `/code-review`, not the bundled `/review` alias | This catalog no longer publishes `code-review`; inspect and remove any old installation from this catalog to undo its local override. Preserve unrelated same-name skills. |
 | Claude exposes `/skills` visibility controls and `/skill-doctor` usage/cost inspection | Prefer host-local visibility choices over editing shared SKILL frontmatter or adding a custom always-on routing layer. |
 
 Check the installed host's actual command/menu availability and organization policy before
@@ -71,7 +71,7 @@ The upstream `skills` CLI target list is discovery metadata, not this repository
 
 ```bash
 # Selected skills to selected targets; repeat --skill and -a as needed
-npx skills add sean2077/skills --skill analyze -a claude-code -a codex
+npx skills add sean2077/skills --skill tdd -a claude-code -a codex
 
 # Every catalog skill to only these two targets
 npx skills add sean2077/skills --skill '*' -a claude-code -a codex

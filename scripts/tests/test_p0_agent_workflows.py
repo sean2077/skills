@@ -398,7 +398,7 @@ class WorkProtocolTest(unittest.TestCase):
                     pass
         self.temp.cleanup()
 
-    def acquire(self, owner: str = "autopilot", version: int = 1):
+    def acquire(self, owner: str = "delivery", version: int = 1):
         return acquire_owner(self.store, version, owner, 60, "test")
 
     def test_artifacts_and_linked_worktree_share_common_authority(self) -> None:
@@ -424,7 +424,7 @@ class WorkProtocolTest(unittest.TestCase):
             except HarnessError as exc:
                 results.append(("error", owner, exc.code, ""))
 
-        threads = [threading.Thread(target=contender, args=(owner,)) for owner in ("autopilot", "ralph")]
+        threads = [threading.Thread(target=contender, args=(owner,)) for owner in ("delivery", "ralph")]
         for thread in threads:
             thread.start()
         for thread in threads:

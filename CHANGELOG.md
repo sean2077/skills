@@ -8,7 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking
 
-- Remove the duplicate `autopilot_state.py` controller while retaining the `autopilot` delivery skill. Finish active runs with the prior installed runtime; new delivery uses host continuation or the existing project coordination record.
+- Retire `autopilot`, `analyze`, `prototype`, `ai-slop-cleaner`, and generic `code-review` from the catalog (18 → 13 skills), including their payloads, catalog entries, and evaluation suites. The duplicate `autopilot_state.py` controller is also removed. Finish active old runs with the prior installed runtime; use host/project workflows for new work. Previously installed copies need explicit consumer/global cleanup; unrelated same-name skills are not removed.
 - Replace deep-interview's scoring/topology engine with `agent-workflow/deep-interview/3` exact-file specification approval. Questions and document format remain caller-owned. Legacy `/2` runs are preserved and rejected rather than silently converted; use the old runtime to finish them or a new ID with fresh approval.
 - Change work-protocol to `agent-work/v2`: caller-chosen owner IDs and nonterminal phases, generic `writer`/`reviewer` workspaces, and no mandatory brief, plan, integrator, risk heuristic, or retry count. Existing v1 tasks stay untouched and require their original runtime; new tasks use new IDs.
 - Evidence input now accepts `--payload-file`; ordinary output is a compact sequence/kind/hash receipt. Use `--full` when the complete event is needed.
@@ -23,6 +23,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Retain concise feedback verification, revision freshness, authority, and real remote-deliverable checks in the existing composition guide, without new routes, aliases, or resident AGENTS instructions.
+- Remove retired candidates from evaluation guidance and update surviving experiment cases to route to the host (`none`) while preserving their workflow and non-selection requirements. Check candidate metadata and suite route references against the shipped catalog.
+
 - Remove historical workflow disclaimers, fixed question/report/method-card requirements, and repeated process rules throughout skill guidance, references, repository docs, and scaffold templates.
 - Let Lark operations use needed help/schema and verification without fixed call budgets or failure-first discovery; retain identity, confirmation, and ambiguous-write protections.
 - Replace reference heading/naming/load-sentence checks with payload-contained reference reachability, and remove prose-only method-card and retired-rule fixtures while retaining executable runtime and publication tests.
@@ -30,7 +33,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Restore three boundaries lost as collateral to the prose removal: the `lark-cli` ban on inventing flags, methods, enums, IDs, URLs, or parameter shapes; the enumerated `tdd` prohibition on weakening, deleting, skipping, quarantining, or regenerating a legitimate failure to reach GREEN; and the `autopilot` ban on inventing a verifier result.
+- Restore three boundaries lost as collateral to the prose removal: the `lark-cli` ban on inventing flags, methods, enums, IDs, URLs, or parameter shapes; the enumerated `tdd` prohibition on weakening, deleting, skipping, quarantining, or regenerating a legitimate failure to reach GREEN; and the ban on inventing a verifier result, now retained in the composition guide.
 - Validate Markdown links after an unterminated code fence instead of treating the rest of the document as an example, and use the containment check's own `relative_to`/`ValueError` form in the orphan report rather than the Python 3.9-only `Path.is_relative_to`. The regression suite covers the unterminated-fence case.
 - Align the `docs/architecture.md`, `docs/compatibility.md`, and `README.md` link text with the renamed design-principles and documentation-maintenance pages.
 

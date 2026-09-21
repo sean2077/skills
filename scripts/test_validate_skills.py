@@ -193,7 +193,7 @@ class TargetedContractCoverageTests(unittest.TestCase):
 
     def test_prompt_only_skill_needs_no_contract(self) -> None:
         errors = self.validate(
-            skill_names={"analyze", "work-protocol"},
+            skill_names={"prompt-skill", "work-protocol"},
             covered={"work-protocol"},
             required={"work-protocol"},
         )
@@ -201,9 +201,9 @@ class TargetedContractCoverageTests(unittest.TestCase):
 
     def test_required_targeted_contract_cannot_disappear(self) -> None:
         errors = self.validate(
-            skill_names={"autopilot", "work-protocol"},
-            covered={"autopilot"},
-            required={"autopilot", "work-protocol"},
+            skill_names={"runtime-skill", "work-protocol"},
+            covered={"runtime-skill"},
+            required={"runtime-skill", "work-protocol"},
         )
         self.assertTrue(
             any("required targeted contracts are missing" in error for error in errors)
@@ -211,17 +211,17 @@ class TargetedContractCoverageTests(unittest.TestCase):
 
     def test_orphaned_targeted_contract_is_rejected(self) -> None:
         errors = self.validate(
-            skill_names={"autopilot"},
-            covered={"autopilot", "retired-skill"},
-            required={"autopilot"},
+            skill_names={"runtime-skill"},
+            covered={"runtime-skill", "retired-skill"},
+            required={"runtime-skill"},
         )
         self.assertTrue(any("contracts for missing skills" in error for error in errors))
 
     def test_unregistered_targeted_contract_is_rejected(self) -> None:
         errors = self.validate(
-            skill_names={"analyze", "autopilot"},
-            covered={"analyze", "autopilot"},
-            required={"autopilot"},
+            skill_names={"prompt-skill", "runtime-skill"},
+            covered={"prompt-skill", "runtime-skill"},
+            required={"runtime-skill"},
         )
         self.assertTrue(any("not registered as required" in error for error in errors))
 
@@ -238,9 +238,9 @@ class LiveEvalVerifierTests(unittest.TestCase):
         spec.loader.exec_module(cls.verifier)
 
     def test_expected_behavior_is_a_recursive_subset(self) -> None:
-        expected = {"route": "analyze", "details": {"mutation": "none"}}
+        expected = {"route": "prompt-skill", "details": {"mutation": "none"}}
         actual = {
-            "route": "analyze",
+            "route": "prompt-skill",
             "details": {"mutation": "none", "confidence": "high"},
             "extra": True,
         }
@@ -248,7 +248,7 @@ class LiveEvalVerifierTests(unittest.TestCase):
 
     def test_missing_or_changed_behavior_is_reported(self) -> None:
         mismatches = self.verifier.subset_mismatches(
-            {"route": "autopilot", "persistent_state": False},
+            {"route": "runtime-skill", "persistent_state": False},
             {"route": "other"},
         )
         self.assertTrue(any("behavior.route" in mismatch for mismatch in mismatches))
