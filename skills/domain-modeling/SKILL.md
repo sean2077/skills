@@ -17,7 +17,7 @@ Use recurring scenarios to distinguish durable concepts from local implementatio
 
 Capture resolved terminology during authorized work and keep unresolved boundaries visible. Keep behavioral and architectural detail in its owning project documents.
 
-For topology changes, migrate entries and active routes together, including `CONTEXT-MAP.md` and `AGENTS.md`. Verify links, ownership, and attached language equivalents. An assessment-only request calls for findings rather than edits.
+For topology changes, migrate entries and active routes together, including `CONTEXT-MAP.md` and `AGENTS.md`. Verify links, ownership, and attached language equivalents. A route inside a scaffold- or tool-managed block belongs to its generator, so refresh it through the owning command instead of editing the block. An assessment-only request calls for findings rather than edits.
 
 Report changed concepts, supporting evidence, and remaining ambiguity.
 
