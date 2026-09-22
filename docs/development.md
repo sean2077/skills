@@ -137,6 +137,20 @@ The [live routing guide](../evals/agent-skills/README.md) owns measurement seman
 
 The optional [task outcome fixtures](../evals/tasks/README.md) inspect actual artifacts and captured tool results under no-skill, brief-request, and pinned-skill conditions. Their CI reference actions validate the oracles, not model effectiveness. The release execution fixture runs repository-owned shell scripts against local Git and a mock publisher; it never publishes.
 
+### Optional skill-verifier
+
+Use the project `skill-verifier` subagent for substantive skill changes, task-artifact review, or uncertain evaluation claims. Routine wording fixes need no extra reviewer. Pass the absolute task checkout, revision (and dirty changes when relevant), scope, acceptance, and existing result paths. For example:
+
+> Use skill-verifier to inspect the spec-writing change at <revision> in <absolute-task-checkout> and the supplied results. Look for regressions and assertions that could pass a wrong output. Return findings and evidence; do not modify the reviewed files.
+
+The source is `.agents/subagents/skill-verifier/{metadata.json,instructions.md}`. Generate the Claude/Codex projections with `python .agents/tools/generate-subagents.py`; `--check` verifies drift. The existing private-harness test and static scaffold gate cover this wiring. It is not installed by catalog/scaffold consumers, and neither the project `skill-eval` nor its manuals are duplicated in the role.
+
+Models and reasoning effort are left to the host. Claude exposes Read/Grep/Glob/Bash, not editing or delegation tools; Bash can still write. Codex requests `read-only`, but parent runtime overrides can change effective permissions. Inspect the actual host policy; tests needing writes belong in a separately authorized disposable environment, not the reviewed checkout. The parent handles blocked execution and corrections.
+
+A cold-reader/anonymous A/B judgment needs a fresh instance with only the task, acceptance, and anonymized artifacts. Do not reuse the source-review instance or give it version identities; inherited project context may prevent a truly blind claim. Keep baseline/treatment execution separate from this evaluator, and follow the [task outcome guide](../evals/tasks/README.md) for measured comparisons. The parent evaluates the findings rather than treating the subagent's verdict as approval.
+
+These are configured boundaries, not live-host certification. Host discovery, actual permissions and inherited context need an observed run. Documentation checked 2026-09-22: [Claude subagents](https://code.claude.com/docs/en/sub-agents) and [Codex subagents](https://developers.openai.com/codex/subagents).
+
 ## Generated files
 
 ```bash

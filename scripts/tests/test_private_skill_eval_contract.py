@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -67,6 +71,85 @@ class PrivateSkillEvalContractTest(unittest.TestCase):
         self.assertTrue(projection.is_symlink())
         target = os.readlink(str(projection)).replace("\\", "/")
         self.assertEqual("../../.agents/skills/skill-eval", target)
+
+
+class PrivateSkillVerifierTest(unittest.TestCase):
+    """Check private scope, configured capabilities, and generated parity, not prose."""
+
+    SOURCE = ROOT / ".agents/subagents/skill-verifier"
+    GENERATOR = ROOT / ".agents/tools/generate-subagents.py"
+    PROJECTIONS = (".claude/agents/skill-verifier.md", ".codex/agents/skill-verifier.toml")
+
+    def test_verifier_is_a_private_subagent_not_an_installable_skill(self) -> None:
+        self.assertEqual({"metadata.json", "instructions.md"}, {p.name for p in self.SOURCE.iterdir()})
+        self.assertTrue(all(p.is_file() and not p.is_symlink() for p in self.SOURCE.iterdir()))
+        self.assertTrue((self.SOURCE / "instructions.md").read_text(encoding="utf-8").strip())
+        self.assertFalse((ROOT / "skills/skill-verifier").exists())
+        self.assertFalse((ROOT / ".agents/skills/skill-verifier").exists())
+        manifest = json.loads((ROOT / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
+        self.assertTrue(all(Path(path).parts[0] == "skills" for path in manifest["skills"]))
+        self.assertNotIn("./skills/skill-verifier", manifest["skills"])
+        self.assertNotIn("agents", manifest)
+        # Project-specific roles must not be installed into scaffold consumers.
+        self.assertFalse(list((ROOT / "skills/agent-scaffold/assets").rglob("*skill-verifier*")))
+
+    def test_capability_defaults_preserve_host_model_selection(self) -> None:
+        meta = json.loads((self.SOURCE / "metadata.json").read_text(encoding="utf-8"))
+        self.assertEqual(self.SOURCE.name, meta["name"])
+        self.assertTrue(meta["description"].strip())
+        self.assertEqual({"Read", "Grep", "Glob", "Bash"}, set(meta["claude"]["tools"]))
+        self.assertEqual("read-only", meta["codex"]["sandbox_mode"])
+        self.assertNotIn("model", meta["claude"])
+        self.assertNotIn("model", meta["codex"])
+        self.assertNotIn("model_reasoning_effort", meta["codex"])
+
+    def test_generator_parity_and_negative_drift_cases(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="private verifier ") as directory:
+            root = Path(directory)
+            generator = root / ".agents/tools/generate-subagents.py"
+            generator.parent.mkdir(parents=True)
+            shutil.copy2(self.GENERATOR, generator)
+            source = root / ".agents/subagents/skill-verifier"
+            shutil.copytree(self.SOURCE, source)
+
+            def generate(*args: str) -> subprocess.CompletedProcess:
+                return subprocess.run(
+                    [sys.executable, str(generator), *args], cwd=root,
+                    env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
+                    capture_output=True, text=True, encoding="utf-8", timeout=30,
+                )
+
+            result = generate()
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            for relative in self.PROJECTIONS:
+                self.assertEqual(
+                    (ROOT / relative).read_text(encoding="utf-8"),
+                    (root / relative).read_text(encoding="utf-8"),
+                )
+
+            def snapshot():
+                return {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+            before = snapshot()
+            self.assertEqual(0, generate("--check").returncode)
+            self.assertEqual(before, snapshot())
+            for path in [source / "instructions.md"] + [root / p for p in self.PROJECTIONS]:
+                with self.subTest(path=path.relative_to(root)):
+                    original = path.read_bytes()
+                    path.write_bytes(original + b"\nFixture-only drift.\n")
+                    drifted = snapshot()
+                    self.assertEqual(1, generate("--check").returncode)
+                    self.assertEqual(drifted, snapshot(), "check mode must not repair the fixture")
+                    path.write_bytes(original)
+            for relative in self.PROJECTIONS:
+                with self.subTest(missing=relative):
+                    path = root / relative
+                    original = path.read_bytes()
+                    path.unlink()
+                    self.assertEqual(1, generate("--check").returncode)
+                    self.assertFalse(path.exists())
+                    path.write_bytes(original)
+            self.assertEqual(0, generate("--check").returncode)
 
 
 if __name__ == "__main__":

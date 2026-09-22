@@ -11,7 +11,7 @@ This page is the canonical map of product surfaces, source ownership, generated 
 | Project-private harness | `.agents/` | Trusted Claude Code and Codex project layers in this repository | It is not part of the public catalog; `.claude/` and `.codex/` are projections or host configuration. |
 | Maintainer control plane | `scripts/`, `evals/`, and `.github/workflows/` | Contributors and CI | Owns validation, generation, behavior fixtures, installer smoke tests, and release automation. |
 
-`skills/` and `.agents/skills/` intentionally coexist. The first is the product; the second is this repository's dogfooded harness and currently includes the private `skill-eval` workflow.
+`skills/` and `.agents/skills/` intentionally coexist. The first is the product; the second is this repository's dogfooded harness and includes the private `skill-eval` workflow and the opt-in `skill-verifier` project subagent. The verifier reviews evidence; the existing evaluation tools own execution and the parent owns fixes and delivery. See [invocation and permissions](development.md#optional-skill-verifier).
 
 ## Published skill layout
 
