@@ -175,9 +175,10 @@ def carries_version(tag: str) -> bool:
 
     A tag that is SemVer on its own always counts. An embedded value counts only when
     its leading component is below `YEAR_LIKE_MAJOR`, so `release-2.0.0` is reported
-    while date-like tags such as `docs-2026.10.22` stay quiet. This is a heuristic, not
-    a format decision: a reported tag is confirmed with the repository owner, and a
-    repository that really versions with four-digit majors is asked about too.
+    while date-like tags such as `docs-2026.10.22` stay quiet. This is a heuristic
+    with a known blind spot: a custom format whose version is itself year-sized
+    (`release-2026.10.22`) is not reported, and covering that is the agent's job
+    (inspect the complete tag format) rather than this check's.
     """
     if parse_semver("v" + tag) is not None:
         return True
