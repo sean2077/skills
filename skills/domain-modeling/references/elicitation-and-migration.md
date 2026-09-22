@@ -77,3 +77,11 @@ When ownership cannot yet be resolved:
 - record the ambiguity in the task report or owning planning source, not as a fake glossary entry;
 - avoid creating a temporary context that future Agents may mistake for settled authority;
 - revisit the split when new workflows, ownership, or semantic collisions provide evidence.
+
+## Decisions illustrated
+
+**Same name, different concepts.** “Session” means an authenticated identity in Access and a running conversation in Chat. Keep two owning definitions with their relationship explicit; sharing a spelling is not evidence for merging lifecycles or APIs.
+
+**Rename with consumers.** The team adopts “device lease / 设备租约” instead of “reservation.” Move the definition and both canonical names together, update affected documentation and lookup routes, and keep an existing `reservation_id` protocol field unchanged until its own compatibility contract permits migration.
+
+**No new glossary entry.** A one-off local variable named `retry_count` introduces no durable project concept. Leave it in code. Add terminology when scenarios expose recurring meaning or ownership ambiguity, not merely because a noun appeared in a conversation.

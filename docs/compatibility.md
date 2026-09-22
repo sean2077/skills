@@ -1,13 +1,20 @@
 # Compatibility and verification matrix
 
-Review baseline:
+## Evidence baselines
 
-- Repository: local `main` at `8fa013752416a7aa082d023489e8141a0764f8b6`
-- Repository and official documentation reviewed: **2026-08-25**
-- CI-audited installer pin: `skills@1.5.17`
-- Upstream release observed on the review date: [`v1.5.23`](https://github.com/vercel-labs/skills/releases/tag/v1.5.23)
+Track each interface independently. A new repository commit does not invalidate every host observation, and a recent documentation edit is not a new runtime certification.
 
-“Compatible” is not one binary property. Carry a claim forward only when the named evidence still applies to the current commit.
+| Surface | Pinned or reviewed basis | Evidence and unverified boundary |
+|---|---|---|
+| Installer | CI uses `skills@1.5.17`; original review 2026-08-25 | Real discovery, install, regular-file inventory and byte comparison in [validation CI](../.github/workflows/validate.yml). This is a reproducibility pin, not a claim to be latest. |
+| Claude / Codex scaffold | Project layouts; documentation review 2026-08-25, overlap notes 2026-09-20 | [Core tests](../scripts/tests/test_agent_scaffold_core.py), [workspace tests](../scripts/tests/test_workspace_entry.py) and installer E2E cover source/projection ownership and hook payloads. Real authenticated discovery, trust and hook execution are separate observations. |
+| Grok-compatible payloads | Explicit compatibility branches in the shared hook parser | Simulated payload/expansion tests only. No independent Grok installation or live-host certification is inferred from Claude compatibility. |
+| Lark CLI | Command recipes reviewed against v1.0.93 on 2026-09-04 | Domain references and [mock outcome case](../evals/tasks/README.md) are not live service/API certification. Preserve recipe-specific evidence when updating CLI syntax. |
+| Task evaluation capture | Claude CLI/stream documentation reviewed 2026-09-22 | Importer and negative-fixture tests; actual host runs require a configured CLI and retained results. Unknown usage stays unknown. |
+
+For a new observation, retain the host/tool version, platform, relevant configuration, exact operation, source revision, command/result, and the claim it supports in the existing test result or review record. Recheck the affected interface when it changes; do not impose a universal recurring approval process. A static configuration file, simulated payload, actual host invocation, and task outcome are different levels of evidence.
+
+The initial installer review used repository revision `8fa013752416a7aa082d023489e8141a0764f8b6` and observed upstream `v1.5.23`. Those are historical facts, not current-main or latest-release labels. Upgrading the tested pin is a separate change with discovery/install/payload checks.
 
 ## Support layers
 

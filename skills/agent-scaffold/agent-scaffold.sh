@@ -12,7 +12,7 @@
 #   upgrade    refresh current managed runtime files, then reconcile the contract
 #
 # Flags:
-#   --profile <default|light>  default includes worktree governance; light omits it
+#   --profile <default|light>  override installed choice; fresh installs use default
 #   --json                     structured output for plan, doctor, or verify
 #   -h, --help                 show this help
 #
@@ -44,31 +44,32 @@ case "$MODE" in
   *) die "unknown mode: $MODE (apply|plan|doctor|verify|upgrade)" ;;
 esac
 
-PROFILE=default
+PROFILE=""
+PROFILE_EXPLICIT=0
 JSON_OUTPUT=0
 HELP_OUTPUT=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --profile)
       [[ $# -ge 2 ]] || die "--profile requires default or light"
+      PROFILE_EXPLICIT=1
       PROFILE="$2"
       shift
       ;;
-    --profile=*) PROFILE="${1#*=}" ;;
+    --profile=*) PROFILE_EXPLICIT=1; PROFILE="${1#*=}" ;;
     --json) JSON_OUTPUT=1 ;;
     -h|--help) HELP_OUTPUT=1 ;;
     *) die "unknown flag: $1" ;;
   esac
   shift
 done
-case "$PROFILE" in default|light) ;; *) die "unknown profile: $PROFILE (default|light)" ;; esac
+[[ "$PROFILE_EXPLICIT" == 0 || -n "$PROFILE" ]] || die "--profile requires default or light"
+case "$PROFILE" in ""|default|light) ;; *) die "unknown profile: $PROFILE (default|light)" ;; esac
 if [[ "$JSON_OUTPUT" == 1 ]]; then
   case "$MODE" in plan|doctor|verify) ;; *) die "--json is available only for plan, doctor, and verify" ;; esac
 fi
 [[ "$HELP_OUTPUT" == 0 ]] || usage 0
 
-WORKTREE_FLOW=1
-[[ "$PROFILE" == light ]] && WORKTREE_FLOW=0
 FORCE_SCRIPTS=0
 [[ "$MODE" == upgrade ]] && FORCE_SCRIPTS=1
 
@@ -115,6 +116,9 @@ resolve_python() {
 run_python() { PYTHONUTF8=1 "${PYTHON_CMD[@]}" "$@"; }
 resolve_python || die "python 3.8+ is required (set PYTHON_BIN, or install python/python3/py -3)"
 run_core() { run_python "$CORE" --manifest "$MANIFEST" "$@"; }
+[[ -n "$PROFILE" ]] || PROFILE="$(run_core profile --target "$TARGET")"
+WORKTREE_FLOW=1
+[[ "$PROFILE" == light ]] && WORKTREE_FLOW=0
 atomic_replace_file() { run_core files atomic-replace --source "$1" --target "$2"; }
 
 asset_field() {  # <asset-id> <field>

@@ -141,3 +141,7 @@ for every exact ordinary action merely because the flag exists.
 - Pass user values as distinct argv/data fields; do not concatenate them into `sh -c` or `eval`.
 
 **Official coverage:** `lark-shared`.
+
+## Interface evidence
+
+Keep a reused command recipe tied to the installed CLI version and the operation actually checked. A mock can establish identity propagation or no blind write retry; it does not certify the live CLI or service. For an uncertain write, distinguish a confirmed failure from an unknown outcome before retrying.

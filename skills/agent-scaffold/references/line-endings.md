@@ -52,8 +52,8 @@ git check-attr text eol -- path/to/file
 bash <skill-dir>/agent-scaffold.sh verify --profile default --json
 ```
 
-Use the same `--profile` that installed the harness (`default` or `light`). A
-mismatched profile can fail unrelated worktree-policy checks.
+Omit `--profile` to reuse the identifiable installed policy, or supply the intended
+`default`/`light` choice explicitly. An ambiguous older installation needs an explicit choice.
 
 `line-endings.tracked` reports mismatching **tracked** text using Git's effective rules:
 CRLF/mixed normalized index content or mismatching worktree endings. Empty/no-newline files,

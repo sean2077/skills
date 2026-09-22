@@ -88,6 +88,8 @@ jobs:
           python scripts/tests/test_tdd_contract.py
           python scripts/tests/test_private_skill_eval_contract.py
           python scripts/tests/test_live_skill_eval_adapter.py
+          python scripts/tests/test_task_outcomes.py
+          python scripts/tests/test_release_execution.py
 
       - name: Validate deterministic workflow and P0 runtimes
         run: |
@@ -211,7 +213,7 @@ jobs:
             scripts/workflow_runtime scripts/p0_runtime \
             skills/deep-interview/scripts skills/ralph/scripts \
             .agents/skills/skill-eval/scripts skills/work-protocol/scripts \
-            evals/agent-skills
+            evals/agent-skills evals/tasks
           python -m unittest -v \
             scripts.tests.test_workflow_runtimes.RuntimeTests.test_generated_runtimes_are_current_and_compile \
             scripts.tests.test_workflow_runtimes.RuntimeTests.test_read_only_discovery_has_no_filesystem_side_effects \

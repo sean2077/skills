@@ -25,6 +25,7 @@ Skills target Linux, macOS, and Windows through Git Bash, with LF source and rea
 | Pending and historical release changes | [CHANGELOG.md](CHANGELOG.md) |
 
 <!-- agent-scaffold:start — managed; keep project prose outside; upgrade refreshes this block. -->
+<!-- agent-scaffold:profile=default -->
 ## Agent Harness
 
 `.agents/` is the harness source; `.claude/` and `.codex/` hold generated projections. `CLAUDE.md` links to this contract.

@@ -87,6 +87,40 @@ class WorkspaceEntryTests(unittest.TestCase):
         self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
         return result
 
+    def patch_hook(self, source, target, *, mode="guard", envelope="codex"):
+        patch = "*** Begin Patch\n*** Update File: %s\n*** Move to: %s\n@@\n-old\n+new\n*** End Patch\n" % (source, target)
+        data = {"cwd": str(self.external), "tool_input": {"patch": patch}}
+        if envelope == "grok":
+            data = {"workspaceRoot": str(self.external), "toolInput": {"input": patch}}
+        elif envelope == "string":
+            data["tool_input"] = patch
+        env = dict(self.env, AUTHORITY_DOC_MAX_ROOT="1")
+        return subprocess.run(
+            [sys.executable, "-X", "utf8", str(self.external / INSTALLED), "--" + mode],
+            input=json.dumps(data), cwd=str(self.external), env=env,
+            capture_output=True, text=True, encoding="utf-8", timeout=30,
+        )
+
+    def test_patch_rename_checks_both_source_and_destination(self):
+        for envelope in ("codex", "grok", "string"):
+            for src, dst, expected in (
+                ("src/file.txt", str(self.primary / "renamed.txt"), 2),
+                ("src/file.txt", os.path.relpath(self.primary / "renamed.txt", self.external), 2),
+                (str(self.primary / "src/file.txt"), "renamed.txt", 2),
+                ("src/file.txt", "src/renamed.txt", 0),
+                ("src/file.txt", str(self.primary / "ignored.txt"), 0),
+            ):
+                with self.subTest(envelope=envelope, src=src, dst=dst):
+                    result = self.patch_hook(src, dst, envelope=envelope)
+                    self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+
+    def test_rename_to_authority_document_reaches_budget_check(self):
+        self.write(self.external / "AGENTS.md", "# Contract\nline two\nline three\n")
+        result = self.patch_hook("notes.md", "AGENTS.md", mode="budget")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("AGENTS.md", result.stdout)
+        self.assertIn("budget", result.stdout)
+
     def test_primary_entry_can_target_internal_and_external_worktrees(self):
         for task in (self.internal, self.external):
             for claude in (False, True):
