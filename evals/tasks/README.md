@@ -10,6 +10,7 @@ Use these opt-in fixtures to test what an Agent actually changes, separately fro
 | `spec-preservation` | Source-owned clauses, exact values, draft status, unresolved question, revised overview | Mechanical checks do not establish all semantic accuracy or reader comprehension |
 | `docs-move` | Unique content and incoming/outgoing relative links and anchors | The fixture's Markdown subset, not a general Markdown validator |
 | `lark-unknown-write` | Local mock calls: one send followed by same-identity readback | No network, no live CLI syntax or service certification; local logs are not tamper-proof |
+| `lark-invented-syntax` | Captured mock calls: no undocumented argument shape, at least one documented observation | The mock's vocabulary, not the real CLI's; it cannot show what an agent would invent against a live service |
 | `tdd-negative-input` | Captured test tool results: missing-behavior RED at original source, then GREEN with the same tests and final hashes; independent behavior check | A final answer or an Agent-authored log cannot supply missing sequence evidence |
 
 CI runs `scripts/tests/test_task_outcomes.py` with deliberate good/bad reference actions. These are tests of the fixtures and their oracles, **not model-performance measurements**. `scripts/tests/test_release_execution.py` separately executes this repository's release shell steps with real Git and a mock publisher, including negative cases.
