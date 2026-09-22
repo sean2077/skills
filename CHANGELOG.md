@@ -27,6 +27,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Name the `round_pending` stage in the `ralph` result list, state that the `project-docs-organizer` metadata convention does not apply to a format that owns its frontmatter (such as `SKILL.md`), and point a route inside a managed block at its generator in `domain-modeling`'s migration steps.
 - Replace wording/heading-based skill checks with payload inventories and actual Git/mock-release outcome tests. Workflow display names and comments no longer determine publication or installer validation.
 - Add opt-in task fixtures for mixed-index commits, specification preservation, document moves, ambiguous mock writes and actual RED/GREEN traces, with no-skill/brief/pinned-skill controls and honest unknown-cost reporting.
 - Apply selected Anthropic/OpenAI authoring principles: task-specific reasons and examples, risk-proportionate freedom, optional cold-reader checks, and concrete terminology boundaries. Keep all 13 routes and existing approval/authorization semantics.
