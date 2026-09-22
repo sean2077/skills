@@ -54,10 +54,14 @@ class TddContractTests(unittest.TestCase):
 
     def test_equivalent_prose_is_not_an_executable_failure(self) -> None:
         path = self.skill / "SKILL.md"
-        text = path.read_text(encoding="utf-8").replace(
-            "REFACTOR only while green.", "Refactor only after the relevant checks pass."
-        )
-        path.write_text(text, encoding="utf-8")
+        original = path.read_text(encoding="utf-8")
+        marker = "improve the design while green"
+        # Assert the rewrite target first: a sentence that has drifted out of SKILL.md
+        # would turn this test into a no-op that asserts nothing about rewording.
+        self.assertIn(marker, original)
+        reworded = "improve the design once the relevant checks pass"
+        path.write_text(original.replace(marker, reworded), encoding="utf-8")
+        self.assertIn(reworded, path.read_text(encoding="utf-8"))
         validate_tdd_contract(self.skill, readme_text="A reworded catalog summary.")
         self.assertEqual([], errors)
 

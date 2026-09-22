@@ -1478,6 +1478,11 @@ def command_abort(args: argparse.Namespace) -> int:
             raise WorkflowError(4, "terminal", "ralph run is already terminal", status=state["status"])
         state["status"] = "aborted"
         state["terminal_reason"] = reason
+        if state["pending_round"] is not None:
+            # `round` counts recorded rounds plus one open pending round, and abort
+            # records no result, so discard the opened attempt instead of leaving
+            # round inconsistent with history.
+            state["round"] = len(state["history"])
         state["pending_round"] = None
         bump(state)
         save_state(path, backup, state)
