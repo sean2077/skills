@@ -291,6 +291,30 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(report["other_format_tags"], ["1.0.0", "2.3.4"])
         self.assertIsNone(report["base"])
 
+    def test_mixed_custom_format_history_reports_the_tag_format_boundary(self) -> None:
+        self.tag("v1.0.0")
+        self.commit("feat: another release line")
+        self.tag("release-2.0.0")
+        self.commit("fix: patch after the custom tag")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 1)
+        self.assertIn("tag-format", self.attention_ids(report))
+        self.assertEqual(report["other_format_tags"], ["release-2.0.0"])
+
+    def test_unrelated_tags_do_not_look_like_versions(self) -> None:
+        self.tag("v1.0.0")
+        self.tag("nightly")
+        self.tag("build]2026.07")
+        self.commit("fix: ordinary patch")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 0)
+        self.assertNotIn("tag-format", self.attention_ids(report))
+        self.assertEqual(report["selected_tag"], "v1.0.1")
+
     def test_unrelated_tags_block_a_first_release_claim(self) -> None:
         self.tag("nightly")
         self.commit("feat: first modeled release content")

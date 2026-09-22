@@ -26,6 +26,11 @@ SEMVER_RE = re.compile(
     r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
 CREATED_PRERELEASE_RE = re.compile(r"^[a-z][a-z0-9-]*\.[1-9][0-9]*$")
+# A SemVer value embedded in another tag format, such as `release-2.0.0`. The leading
+# guard keeps `docs-2026.09.22`-style tags from matching on their date-like prefix.
+EMBEDDED_SEMVER_RE = re.compile(
+    r"(?:^|[^0-9A-Za-z.])v?(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$"
+)
 CONVENTIONAL_RE = re.compile(r"^([A-Za-z]+)(?:\([^)]+\))?(!)?:\s+\S")
 BREAKING_FOOTER_RE = re.compile(r"(?m)^BREAKING(?: CHANGE|-CHANGE):")
 PATCH_TYPES = {
@@ -161,6 +166,14 @@ def tag_exists(repo: Path, tag: str) -> bool:
 
 def peel_tag(repo: Path, tag: str) -> str:
     return run_git(repo, "rev-parse", f"{tag}^{{commit}}").stdout.strip()
+
+
+def carries_version(tag: str) -> bool:
+    """True when a tag outside the modeled shape still embeds a SemVer value."""
+    if parse_semver(tag) is not None or parse_semver("v" + tag) is not None:
+        return True
+    match = EMBEDDED_SEMVER_RE.search(tag)
+    return bool(match) and parse_semver("v" + match.group("version")) is not None
 
 
 def default_branch(repo: Path) -> Optional[str]:
@@ -380,15 +393,13 @@ def build_plan(repo_arg: str, target: Optional[str], release_branch: Optional[st
             other_format_tags.append(tag)
     result["ignored_invalid_tags"] = sorted(invalid_tags)
     result["other_format_tags"] = sorted(other_format_tags)
-    unprefixed_semver = sorted(
-        tag for tag in other_format_tags if parse_semver("v" + tag) is not None
-    )
-    if unprefixed_semver:
+    version_like = sorted(tag for tag in other_format_tags if carries_version(tag))
+    if version_like:
         add_check(
             "tag-format",
             "attention",
-            "Unprefixed SemVer tags exist outside the modeled v-prefixed format",
-            tags=unprefixed_semver[:20],
+            "Tags outside the modeled v-prefixed format carry a SemVer version",
+            tags=version_like[:20],
         )
         require_attention(
             "tag-format",

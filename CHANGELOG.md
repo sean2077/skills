@@ -12,7 +12,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Report the `semver-release` analyzer's tag-format and release-line boundaries instead of returning a confident plan. A repository whose releases are tagged without the `v` prefix, or whose reachable tags use another shape, now raises a `tag-format` attention rather than proposing `v0.1.0` as a first release, and HEAD on a branch other than the locally resolved remote default branch raises `release-line` unless `--release-branch` names it.
+- Report the `semver-release` analyzer's tag-format and release-line boundaries instead of returning a confident plan. A repository whose releases are tagged without the `v` prefix, or whose reachable tags use another shape, now raises a `tag-format` attention rather than proposing `v0.1.0` as a first release — including a mixed history where a custom-format tag such as `release-2.0.0` carries a version alongside `v`-prefixed tags, while unrelated tags stay quiet unless nothing else is reachable — and HEAD on a branch other than the locally resolved remote default branch raises `release-line` unless `--release-branch` names it.
 - Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
 - Reuse a valid installed scaffold profile when the flag is omitted; mark new installations explicitly and require a choice for ambiguous legacy state. Fresh installs still default to guarded worktrees.
 
