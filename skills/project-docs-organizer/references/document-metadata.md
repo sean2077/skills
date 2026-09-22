@@ -15,4 +15,4 @@ A proposal or superseded plan can inform discussion without becoming settled imp
 
 Update metadata when the document's meaning or status changes. Moving or polishing a draft does not approve it. Preserve useful project fields and repair replacement/source links during migration.
 
-Add flat fields where they serve an actual consumer. Do not add fields to a format that owns its frontmatter, including `SKILL.md`, whose fields are the host's or the specification's to define; edit generated documentation through its source instead.
+Add flat fields where they serve an actual consumer. Do not add fields outside a format's own schema, including `SKILL.md`, whose fields the host or the specification defines; edit generated documentation through its source instead.
