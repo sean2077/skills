@@ -97,7 +97,11 @@ class PrivateSkillVerifierTest(unittest.TestCase):
         meta = json.loads((self.SOURCE / "metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(self.SOURCE.name, meta["name"])
         self.assertTrue(meta["description"].strip())
-        self.assertEqual({"Read", "Grep", "Glob", "Bash"}, set(meta["claude"]["tools"]))
+        # An explicit read-tool allowlist excludes shell execution as well as editing
+        # and delegation; omitting tools would inherit every subagent tool instead. The
+        # shell was removed after a review instance ran Git mutations in the primary
+        # worktree, which the Edit/Write trunk guard cannot see.
+        self.assertEqual({"Read", "Grep", "Glob"}, set(meta["claude"]["tools"]))
         self.assertEqual("read-only", meta["codex"]["sandbox_mode"])
         self.assertNotIn("model", meta["claude"])
         self.assertNotIn("model", meta["codex"])
