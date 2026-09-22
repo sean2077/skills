@@ -130,7 +130,10 @@ class ReleasePlanTests(unittest.TestCase):
             self.git("tag", "--list").stdout,
         )
         self.assertEqual(status, 0)
-        self.assertEqual(report["status"], "ready")
+        self.assertEqual(report["status"], "analyzed")
+        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["analysis_scope"], "local-v-prefixed-semver")
+        self.assertEqual(report["release_policy"], "not_verified")
         self.assertEqual(report["inferred_bump"], "patch")
         self.assertEqual(report["selected_tag"], "v1.2.4")
         self.assertEqual(
@@ -289,9 +292,11 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("tag-format", self.attention_ids(report))
         self.assertEqual(report["other_format_tags"], ["1.0.0", "2.3.4"])
+        self.assertIsNone(report["selected_tag"])
+        self.assertIsNone(report["inferred_tag"])
         self.assertIsNone(report["base"])
 
-    def test_mixed_custom_format_history_reports_the_tag_format_boundary(self) -> None:
+    def test_mixed_custom_format_history_is_reported_without_guessing_tag_meaning(self) -> None:
         self.tag("v1.0.0")
         self.commit("feat: another release line")
         self.tag("release-2.0.0")
@@ -299,15 +304,19 @@ class ReleasePlanTests(unittest.TestCase):
 
         status, report = self.plan()
 
-        self.assertEqual(status, 1)
-        self.assertIn("tag-format", self.attention_ids(report))
+        self.assertEqual(status, 0)
+        self.assertNotIn("tag-format", self.attention_ids(report))
+        self.assertEqual(report["status"], "analyzed")
+        self.assertEqual(report["release_policy"], "not_verified")
         self.assertEqual(report["other_format_tags"], ["release-2.0.0"])
 
-    def test_unrelated_tags_do_not_look_like_versions(self) -> None:
+    def test_out_of_model_tags_are_reported_without_year_heuristics(self) -> None:
         self.tag("v1.0.0")
         self.tag("nightly")
         self.tag("build]2026.07")
         self.tag("docs-2026.10.22")
+        self.tag("release-2026.10.22")
+        self.tag("release-1999.10.22")
         self.commit("fix: ordinary patch")
 
         status, report = self.plan()
@@ -315,6 +324,7 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertNotIn("tag-format", self.attention_ids(report))
         self.assertEqual(report["selected_tag"], "v1.0.1")
+        self.assertEqual(report["other_format_tags"], ["build]2026.07", "docs-2026.10.22", "nightly", "release-1999.10.22", "release-2026.10.22"])
 
     def test_unrelated_tags_block_a_first_release_claim(self) -> None:
         self.tag("nightly")
@@ -325,13 +335,17 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("tag-format", self.attention_ids(report))
 
-    def test_release_line_is_checked_against_the_default_branch(self) -> None:
+    def test_release_line_is_checked_only_against_explicit_policy(self) -> None:
         self.tag("v1.0.0")
         self.use_default_branch("main")
         self.git("checkout", "-q", "-b", "feature/experiment")
         self.commit("fix: work in progress")
 
         status, report = self.plan()
+        self.assertEqual(status, 0)
+        self.assertEqual(next(check["status"] for check in report["checks"] if check["id"] == "release-line"), "not_checked")
+
+        status, report = self.plan(release_branch="main")
         self.assertEqual(status, 1)
         self.assertIn("release-line", self.attention_ids(report))
 
@@ -339,14 +353,22 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertNotIn("release-line", self.attention_ids(report))
 
-    def test_unresolvable_default_branch_is_a_warning_not_an_attention(self) -> None:
+    def test_unspecified_release_branch_is_a_warning_not_an_attention(self) -> None:
         self.tag("v1.0.0")
         self.commit("fix: ordinary patch")
 
         status, report = self.plan()
 
         self.assertEqual(status, 0)
-        self.assertTrue(any("default branch" in item for item in report["warnings"]))
+        self.assertEqual(next(check["status"] for check in report["checks"] if check["id"] == "release-line"), "not_checked")
+
+    def test_default_branch_does_not_override_supplied_release_policy(self) -> None:
+        self.tag("v1.0.0")
+        self.use_default_branch("main")
+        self.commit("fix: ordinary patch")
+        status, report = self.plan(release_branch="release/stable")
+        self.assertEqual(status, 1)
+        self.assertIn("release-line", self.attention_ids(report))
 
     def test_first_release_defaults_to_v0_1_0(self) -> None:
         status, report = self.plan()
@@ -460,6 +482,16 @@ class ReleasePlanTests(unittest.TestCase):
                 completed = self.planner_cli(*args)
                 self.assertEqual(completed.returncode, 2)
                 self.assertIn("cannot be combined", completed.stderr)
+
+    def test_analysis_error_preserves_scope_and_policy_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            status, report = self.plan_repo(Path(directory))
+        self.assertEqual(status, 2)
+        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["status"], "error")
+        self.assertEqual(report["analysis_scope"], "local-v-prefixed-semver")
+        self.assertEqual(report["release_policy"], "not_verified")
+        self.assertTrue(report["error"])
 
     def test_pure_planner_help_succeeds(self) -> None:
         completed = self.planner_cli("--help")

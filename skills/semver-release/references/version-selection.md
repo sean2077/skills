@@ -13,25 +13,11 @@ strict-SemVer tags, equal-precedence build-metadata ambiguity, conventional-comm
 target availability, and prerelease decisions. Resolve its `attention` entries before mutation.
 The manual rules below are the fallback and the review contract for the analyzer.
 
-The analyzer deliberately models `v`-prefixed SemVer tags, and it now reports that boundary itself: a
-reachable tag outside the model that still carries a SemVer value — `1.2.3` or `release-2.0.0`,
-alongside a `v`-prefixed history or without one — raises a `tag-format` attention instead of
-returning a confident plan, and unrelated tags such as `nightly` do so only when no `v`-prefixed
-SemVer tag is reachable. The embedded-value test is a heuristic, and its limits are the agent's
-responsibility: it keeps date-like tags such as `docs-2026.10.22` quiet, which means a custom format
-whose version is itself year-sized (`release-2026.10.22`) is not reported either. Step 1's inspection
-of the complete tag format, plus repository policy, is what covers that case; do not read a `ready`
-plan as proof that no other version-bearing format exists. If repository policy instead owns an
-unprefixed or custom mapping such as `1.2.3` or `release-1.2.3`, preserve the repository's complete
-tag format. Use its documented mapping to validate and compare the embedded SemVer value manually; if
-the mapping is absent, mixed, or ambiguous, ask the owner instead of inferring a format from a few
-historical tags. Changelog extraction and CI publication still use the complete tag as an opaque exact
-identity.
+The analyzer models only local, reachable `v`-prefixed SemVer tags. JSON schema 2 returns `status: analyzed` and exit 0 when that calculation completes; `analysis_scope: local-v-prefixed-semver` and `release_policy: not_verified` make clear that publication eligibility has not been established. This replaces schema 1's ambiguous `ready` status. Exit 1 still requires attention and exit 2 indicates an analysis error. Remote freshness, repository tag policy, and downstream publication gates remain the caller's responsibility.
 
-The release line is checked the same way: HEAD on a branch other than the locally resolved remote
-default branch raises a `release-line` attention, and `--release-branch <name>` records an approved
-release line. When the default branch cannot be resolved locally, the analyzer warns instead of
-asserting one.
+Every tag outside that model is listed in `other_format_tags` with a warning. The analyzer does not guess whether `release-2.0.0`, `release-2026.10.22`, or `nightly` denotes a release, date, or other marker. When modeled tags exist, the reported candidate is only a calculation within that model, not a decision to disregard the other tags. When other tags exist but none fit the model, it returns `tag-format` attention without a selected or inferred target; it cannot establish a first release. Use the repository's documented mapping for unprefixed or custom versions and resolve ambiguity before mutation.
+
+Pass `--release-branch <name>` only after establishing the expected branch from repository policy. The analyzer compares HEAD with that exact branch and reports a mismatch; without it, branch policy is explicitly unchecked. A remote default branch is not assumed to be the publication branch. Neither this argument nor successful local analysis establishes authorization to publish.
 
 For a manual fallback, an attached branch and empty `git status --porcelain` are not sufficient:
 run `git status --long --branch` and stop if it reports a merge, rebase/am, cherry-pick, revert,
