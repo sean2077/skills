@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from catalog_core import REPO, SKILLS_DIR, errors, parse_frontmatter
+from catalog_core import SKILLS_DIR, errors, parse_frontmatter
 
 SKILL = "lark-cli"
 
@@ -85,32 +85,9 @@ def validate_lark_cli_contract(
             f"lark-cli/SKILL.md: routing description lost language/product triggers: {missing_triggers}"
         )
 
-    # Safety instructions and domain exceptions remain in the installed payload.
-    # Searching their English spelling cannot establish identity, confirmation,
-    # containment, or invented-syntax behavior. Exercise those decisions in the
-    # live-eval suite, and keep the task fixtures whose oracles are deterministic:
-    # the invented-syntax boundary is one of them.
-    fixtures = {
-        "evals/tasks/cases.py": REPO / "evals" / "tasks" / "cases.py",
-        "scripts/tests/test_task_outcomes.py": REPO / "scripts" / "tests" / "test_task_outcomes.py",
-    }
-    texts_by_label = {
-        label: path.read_text(encoding="utf-8") if path.exists() else ""
-        for label, path in fixtures.items()
-    }
-    for label, markers in (
-        ("evals/tasks/cases.py", ("lark-invented-syntax", "no undocumented mock invocation")),
-        (
-            "scripts/tests/test_task_outcomes.py",
-            ("test_invented_mock_argument_shape_is_rejected",),
-        ),
-    ):
-        missing_markers = [marker for marker in markers if marker not in texts_by_label[label]]
-        if missing_markers:
-            errors.append(
-                f"{label}: the invented-syntax task fixture or its oracle coverage is missing: "
-                f"{missing_markers}"
-            )
+    # Distribution checks do not establish agent behavior. CI executes the task
+    # outcome oracles with good/bad reference actions; do not pin test names or
+    # English assertion text here as a substitute for executing those tests.
 
     for label, official_skills in REFERENCE_COVERAGE.items():
         reference_text = texts[label]

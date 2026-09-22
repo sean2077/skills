@@ -90,11 +90,8 @@ common="$skill/assets/runtime/hooks/hook-common.sh"
 grep -qF '/../../..' "$common" || fail "hook-common.sh lost the 3-level install fallback"
 grep -qF 'rev-parse --show-toplevel' "$common" || fail "hook-common.sh lost the git-root fallback"
 grep -qF 'cygpath -u' "$common" || fail "hook-common.sh lost Windows/MSYS path conversion"
-# Codex invokes hook-paths.py directly and injects no project-root variable, so its own
-# resolver — not the project-owned helper above — carries these fallbacks on that path.
-hook_paths="$skill/assets/runtime/hooks/hook-paths.py"
-grep -qF '"..", "..", ".."' "$hook_paths" || fail "hook-paths.py lost the 3-level install fallback"
-grep -qF '"--show-toplevel"' "$hook_paths" || fail "hook-paths.py lost the git-toplevel fallback"
+# HookProjectRootTests exercises the Python resolver's results and precedence in
+# real temporary repository layouts; spelling a fallback here cannot prove it runs.
 
 # Hook commands are host-specific because each host expands the command string
 # differently. Claude Code and Grok both inject CLAUDE_PROJECT_DIR (Grok's

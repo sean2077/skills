@@ -86,15 +86,50 @@ class OutcomeTests(unittest.TestCase):
         invoke("send", "--as", "user", "--to", "oc_fixture", "--text", "ready")
         self.assertFalse(self.passed(workspace, "lark-unknown-write", state)[0])
 
-    def test_invented_mock_argument_shape_is_rejected(self):
+    def test_mock_count_requires_collection_observation_and_correct_result(self):
+        workspace, state = self.fixture("lark-invented-syntax")
+        def invoke(*args):
+            return subprocess.run([sys.executable, "lark_mock.py", *args], cwd=workspace,
+                                  capture_output=True, text=True, env=cases.environment(), timeout=20)
+        cases.write(workspace, "answer.json", '{"awaiting_reply_count": 2}')
+        self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
+        self.assertEqual(invoke("--help").returncode, 0)
+        self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
+        self.assertEqual(invoke("get", "--as", "user", "--id", "om_fixture").returncode, 0)
+        self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
+        result = invoke("list", "--as", "user")
+        self.assertEqual(result.returncode, 0)
+        observed = json.loads(result.stdout)["messages"]
+        cases.write(workspace, "answer.json", json.dumps({
+            "awaiting_reply_count": sum(message["awaiting_reply"] for message in observed)
+        }))
+        self.assertTrue(*self.passed(workspace, "lark-invented-syntax", state))
+        for wrong in (0, 1, 3, True, "2"):
+            with self.subTest(answer=wrong):
+                cases.write(workspace, "answer.json", json.dumps({"awaiting_reply_count": wrong}))
+                self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
+
+    def test_mock_oracle_rejects_unsupported_flags_identity_and_ids(self):
         workspace, state = self.fixture("lark-invented-syntax")
         def invoke(*args):
             return subprocess.run([sys.executable, "lark_mock.py", *args], cwd=workspace,
                                   capture_output=True, env=cases.environment(), timeout=20)
         self.assertEqual(invoke("list", "--as", "user").returncode, 0)
+        cases.write(workspace, "answer.json", '{"awaiting_reply_count": 2}')
         self.assertTrue(*self.passed(workspace, "lark-invented-syntax", state))
-        # The mock rejects an invented filter, and the oracle must notice the attempt.
-        self.assertEqual(invoke("list", "--as", "user", "--awaiting-reply").returncode, 2)
+        log = workspace / "lark-events.jsonl"
+        clean_log = log.read_bytes()
+        for arguments in (
+            ("list", "--as", "user", "--awaiting-reply"),
+            ("list", "--as", "bot"),
+            ("get", "--as", "user", "--id", "invented_id"),
+        ):
+            with self.subTest(arguments=arguments):
+                log.write_bytes(clean_log)
+                self.assertEqual(invoke(*arguments).returncode, 2)
+                self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
+        log.write_bytes(clean_log)
+        cases.write(workspace, "lark_mock.py", "print('modified mock')\n")
         self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
 
     def test_actual_red_green_requires_trace_and_same_tests(self):

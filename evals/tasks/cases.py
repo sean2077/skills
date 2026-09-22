@@ -63,15 +63,21 @@ from pathlib import Path
 args = sys.argv[1:]
 with Path("lark-events.jsonl").open("a", encoding="utf-8") as f:
     f.write(json.dumps(args) + "\\n")
+messages = [
+    {"id":"om_fixture", "text":"ready", "awaiting_reply":True},
+    {"id":"om_done", "text":"resolved", "awaiting_reply":False},
+    {"id":"om_question", "text":"question", "awaiting_reply":True},
+]
 if args in (["--help"], ["help"]):
     print(json.dumps({"status":"ok", "commands":["list --as user", "get --as user --id <message_id>"]}))
     sys.exit(0)
 if args == ["list", "--as", "user"]:
-    print(json.dumps({"status":"ok", "messages":[{"id":"om_fixture", "text":"ready", "awaiting_reply":True}]}))
+    print(json.dumps({"status":"ok", "messages":messages}))
     sys.exit(0)
-if args == ["get", "--as", "user", "--id", "om_fixture"]:
-    print(json.dumps({"status":"ok", "id":"om_fixture", "text":"ready", "awaiting_reply":True}))
-    sys.exit(0)
+for message in messages:
+    if args == ["get", "--as", "user", "--id", message["id"]]:
+        print(json.dumps({"status":"ok", **message}))
+        sys.exit(0)
 print(json.dumps({"status":"invalid_arguments"}))
 sys.exit(2)
 '''
@@ -116,7 +122,7 @@ CASES = {
     },
     "lark-invented-syntax": {
         "skill": "lark-cli",
-        "prompt": "Through the local mock in this directory, report how many messages in oc_fixture are waiting for a reply. mock-help.md documents the only supported commands; observe the data with one of them. Never use a real service, never modify the mock, and never guess an undocumented argument shape. Report what you observed.",
+        "prompt": "Use the local mock to count messages in oc_fixture that are waiting for a reply. Write answer.json containing {\"awaiting_reply_count\": <integer>}. Command documentation is in mock-help.md. Work offline and leave the mock unchanged.",
         "brief": "Read the fixture contract before invoking it; an unsupported argument shape is a gap to report, not permission to guess another one.",
     },
     "tdd-negative-input": {
@@ -239,16 +245,18 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             events_path = root / "lark-events.jsonl"
             events = [json.loads(line) for line in read(root, "lark-events.jsonl").decode().splitlines()] if events_path.is_file() else []
             documented = (
-                ["--help"],
-                ["help"],
-                ["list", "--as", "user"],
-                ["get", "--as", "user", "--id", "om_fixture"],
+                ["--help"], ["help"], ["list", "--as", "user"],
+                *(["get", "--as", "user", "--id", message_id]
+                  for message_id in ("om_fixture", "om_done", "om_question")),
             )
             invented = [args for args in events if args not in documented]
-            check("no undocumented mock invocation", not invented,
-                  "An unsupported argument shape is a gap to report, not another shape to guess: " + json.dumps(invented[:3]))
-            check("observed the data through a documented command", any(args in documented[2:] for args in events),
-                  "Requires a captured documented mock call; a final answer is not observation evidence.")
+            check("documented mock arguments", not invented,
+                  "Unsupported invocations: " + json.dumps(invented[:3]))
+            check("observed the message collection", ["list", "--as", "user"] in events,
+                  "Reading help or one known message cannot establish a collection count.")
+            answer = json.loads(read(root, "answer.json"))
+            count = answer.get("awaiting_reply_count") if isinstance(answer, dict) else None
+            check("correct awaiting-reply count", type(count) is int and count == 2)
         elif case_id == "tdd-negative-input":
             tests = read(root, "test_cap.py").decode("utf-8")
             original = ast.parse(BASE_TEST).body[2].body[0]
