@@ -101,4 +101,7 @@ Use existing executable tests rather than duplicating them in another runtime:
 | `domain-modeling` | Concrete contextual examples and routing probes; review definitions and migrated consumers before a live efficacy claim |
 | `best-practice-research`, `tooling-conventions` | Routing probes and inventory tests where applicable; compare real recommendations/commands with a brief-request control before further pruning |
 
+Task JSON artifacts and captured result records reject duplicate keys and non-finite constants,
+just like the runner's control files. A later duplicate value cannot erase a contradictory answer.
+
 This fixture set does not certify any host or establish gains for all 13 skills.

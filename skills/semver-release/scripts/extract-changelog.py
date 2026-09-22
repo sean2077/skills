@@ -21,8 +21,8 @@ from typing import List, Optional, Sequence, Tuple
 CANONICAL_HEADING_RE = re.compile(
     r"^ — (?P<date>\d{4}-\d{2}-\d{2})[ \t]*$"
 )
-H2_RE = re.compile(r"^##(?:[ \t]+|$)")
-H1_RE = re.compile(r"^#(?:[ \t]+|$)")
+H2_RE = re.compile(r"^[ ]{0,3}##(?:[ \t]+|$)")
+H1_RE = re.compile(r"^[ ]{0,3}#(?:[ \t]+|$)")
 FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
 
 
@@ -81,7 +81,7 @@ def extract_notes(text: str, exact_tag: str) -> str:
         _, _, line, outside_fence = record
         if not outside_fence:
             continue
-        if line.startswith(target_prefix):
+        if H2_RE.match(line) and line.lstrip(" ").startswith(target_prefix):
             matches.append((index, record))
 
     if not matches:
@@ -90,7 +90,7 @@ def extract_notes(text: str, exact_tag: str) -> str:
         raise ExtractionError(f"multiple changelog headings match exact tag {exact_tag!r}")
 
     target_index, (_, body_start, heading_line, _) = matches[0]
-    canonical = CANONICAL_HEADING_RE.fullmatch(heading_line[len(target_prefix) :])
+    canonical = CANONICAL_HEADING_RE.fullmatch(heading_line.lstrip(" ")[len(target_prefix) :])
     if canonical is None:
         raise ExtractionError(
             f"heading for {exact_tag!r} must be '## [{exact_tag}] — YYYY-MM-DD'"

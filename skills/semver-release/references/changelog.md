@@ -66,7 +66,9 @@ match the actual tag exactly.
 
 When a repository adopts this fallback heading for the preferred automated flow, extract the
 trimmed body after the one matching heading through—but not including—the next level-one or
-level-two heading.
+level-two ATX (`#` / `##`) heading, including up to three leading spaces. Fenced examples,
+four-space indented code, and deeper headings remain body content. The target heading uses the
+same indentation rule, and indented duplicates are still rejected.
 Do not include the release heading itself in the notes file. The bundled reference implementation
 treats the complete tag as an opaque exact string:
 

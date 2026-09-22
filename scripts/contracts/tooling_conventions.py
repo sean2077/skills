@@ -6,9 +6,63 @@ Loaded and dispatched by `contracts.run_all()`; edit this file alone when the
 
 from __future__ import annotations
 
-from catalog_core import README, REPO, SKILLS_DIR, errors, readme_skill_rows
+import shlex
+
+from catalog_core import README, REPO, SKILLS_DIR, dirty_load, errors, readme_skill_rows
 
 SKILL = "tooling-conventions"
+
+
+def _literal_false(value: object) -> bool:
+    """Report a condition that statically disables a job or step.
+
+    A condition is caller-owned policy, so only a literal `false` is read; an
+    expression such as `!cancelled()` stays enabled.
+    """
+    if value is False:
+        return True
+    if isinstance(value, str):
+        condition = value.strip()
+        if condition.startswith("${{") and condition.endswith("}}"):
+            condition = condition[3:-2].strip()
+        return condition.lower() == "false"
+    return False
+
+
+def validate_inventory_ci(workflow_text: str) -> None:
+    """Require the dedicated suite invocation, not its name, comment, or example."""
+    try:
+        if dirty_load is None:
+            raise ValueError("StrictYAML is required for workflow validation")
+        workflow = dirty_load(workflow_text, allow_flow_style=True).data
+    except Exception as exc:
+        # StrictYAML validation and underlying scanner/parser errors have
+        # different base classes. Only catch broadly around the YAML parser.
+        errors.append("tooling-conventions: invalid inventory CI workflow: " + str(exc)[:200])
+        return
+    try:
+        for job in workflow.get("jobs", {}).values():
+            if _literal_false(job.get("if")):
+                continue
+            for step in job.get("steps", []):
+                if _literal_false(step.get("if")):
+                    continue
+                run = step.get("run")
+                if not isinstance(run, str):
+                    continue
+                # Parse a dedicated step, not shell fragments or heredoc contents.
+                try:
+                    argv = shlex.split(run, comments=True)
+                except ValueError:
+                    continue
+                if argv == ["bash", "scripts/tests/test-tooling-inventory.sh"]:
+                    return
+    except (AttributeError, TypeError):
+        pass
+    errors.append(
+        "tooling-conventions: CI must run 'bash scripts/tests/test-tooling-inventory.sh' "
+        "as its own enabled step"
+    )
 
 
 def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> None:
@@ -34,70 +88,11 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
     if readme_text is None:
         readme_text = README.read_text(encoding="utf-8") if README.exists() else ""
     public_summary = readme_skill_rows(readme_text, "tooling-conventions")
-    memory_compile = (
-        'compile(pathlib.Path(sys.argv[1]).read_bytes(), sys.argv[1], "exec")'
-    )
-    for label in ("references/verification.md", "scripts/inventory-check.sh"):
-        if memory_compile not in texts[label]:
-            errors.append(f"tooling-conventions/{label}: in-memory Python compile command is missing")
-    stale = [label for label, value in texts.items() if "py_compile" in value]
-    if stale:
-        errors.append(f"tooling-conventions: py_compile bytecode-producing guidance remains in {stale}")
-
-    fixture = REPO / "scripts" / "tests" / "test-tooling-inventory.sh"
-    fixture_text = fixture.read_text(encoding="utf-8") if fixture.exists() else ""
-    fixture_contract = (
-        "valid path-雪.py",
-        "-dash.sh",
-        "inventory check left Python bytecode residue",
-        "structural findings above use exit 1",
-        "Exact parent segments remain blocking",
-        "invalid inventory path (must be normalized and relative)",
-        "invalid audit_level for tool.sh: maybe",
-        "expected invalid CLI arguments to exit 2",
-        "failed to create temporary directory",
-        "expected an unsafe temporary-directory result",
-        "directory inventory row does not cover nested commands",
-        "TOOLS_DIR did not override the inventory directory",
-        "default skip policy hid a project-owned command",
-        "python3 fallback did not complete the inventory check",
-        "py -3 fallback did not complete the inventory check",
-        "expected missing Python preflight to exit 2",
-        "expected a glob-metacharacter executable Python CLI to exit 1",
-        "glob-metacharacter file name borrowed another tracked file's mode",
-    )
-    missing_fixture = [value for value in fixture_contract if value not in fixture_text]
-    if missing_fixture:
-        errors.append(
-            "tooling-conventions: structural-inventory CI fixture is incomplete: "
-            f"{missing_fixture}"
-        )
+    # CI executes the inventory behavior suite, including literal pathspecs,
+    # interpreter fallback, neutral scans and bytecode-free syntax checks.
+    # Fixture captions and equivalent shell/Python spellings are not interfaces.
     workflow = REPO / ".github" / "workflows" / "validate.yml"
-    workflow_text = workflow.read_text(encoding="utf-8") if workflow.exists() else ""
-    if "bash scripts/tests/test-tooling-inventory.sh" not in workflow_text:
-        errors.append("tooling-conventions: CI does not run the focused inventory-check suite")
-    checker_contract = (
-        'SKIP_RE="${INVENTORY_CHECK_SKIP:-a^}"',
-        'python_compatible "$PYTHON_BIN"',
-        "elif python_compatible python3; then",
-        "elif python_compatible py -3; then",
-        'PYTHONUTF8=1 "${PYTHON_CMD[@]}" -c',
-        'echo "python 3.8+ interpreter unavailable for syntax check: $path',
-        ':(literal)$pathspec',
-    )
-    missing_checker_contract = [
-        value for value in checker_contract if value not in texts["scripts/inventory-check.sh"]
-    ]
-    if missing_checker_contract:
-        errors.append(
-            "tooling-conventions/scripts/inventory-check.sh: neutral-scan/preflight contract "
-            f"is incomplete: {missing_checker_contract}"
-        )
-    if "(internal|vendor|tests?|legacy)" in texts["scripts/inventory-check.sh"]:
-        errors.append(
-            "tooling-conventions/scripts/inventory-check.sh: semantic directory exclusions "
-            "remain in the structural checker"
-        )
+    validate_inventory_ci(workflow.read_text(encoding="utf-8") if workflow.is_file() else "")
 
     # Placement and decision-artifact policy is semantic, not a fixed sentence.
     # Keep the executable inventory and migration boundaries below.

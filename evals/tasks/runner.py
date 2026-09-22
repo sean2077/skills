@@ -15,26 +15,18 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from p0_runtime.common import HarnessError
 from p0_runtime.skill_eval import run_protocol_process, repository_snapshot, snapshot_digest
-from cases import CASES, digest, git, prepare, read, verify
+from cases import CASES, decode_json, digest, git, prepare, read, verify
 
 CONTRACT = "skill-task-outcome/1"
 METRICS = ("input_tokens", "output_tokens", "tool_calls", "wall_time_seconds")
 
 
 def load(path: Path) -> dict:
-    def unique(pairs):
-        obj = {}
-        for key, value in pairs:
-            if key in obj:
-                raise ValueError("duplicate JSON key: " + key)
-            obj[key] = value
-        return obj
     with path.open("rb") as handle:
         data = handle.read(8 * 1024 * 1024 + 1)
     if len(data) > 8 * 1024 * 1024:
         raise ValueError("JSON input exceeds 8 MiB")
-    obj = json.loads(data, object_pairs_hook=unique,
-                     parse_constant=lambda v: (_ for _ in ()).throw(ValueError(v)))
+    obj = decode_json(data)
     if not isinstance(obj, dict):
         raise ValueError("expected JSON object")
     return obj

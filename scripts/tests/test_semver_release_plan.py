@@ -429,6 +429,53 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(report["base"]["tag"], "v1.0.0")  # type: ignore[index]
         self.assertEqual(report["selected_tag"], "v1.0.1")
 
+    def test_promotion_rejects_ambiguous_previous_stable_builds(self) -> None:
+        self.tag("v1.0.0+one")
+        first = self.git("rev-parse", "HEAD").stdout.strip()
+        self.commit("fix: second stable build")
+        self.tag("v1.0.0+two")
+        second = self.git("rev-parse", "HEAD").stdout.strip()
+        self.commit("feat: next candidate")
+        self.tag("v1.1.0-rc.1")
+        self.commit("fix: final correction")
+        before = self.git("show-ref").stdout, self.git("status", "--porcelain").stdout
+
+        status, report = self.plan("v1.1.0")
+
+        self.assertEqual(status, 1)
+        self.assertIn("release-notes-base", self.attention_ids(report))
+        self.assertIsNone(report["release_notes_base"])
+        check = next(c for c in report["checks"] if c["id"] == "release-notes-base")
+        self.assertEqual(check["tags"], {"v1.0.0+one": first, "v1.0.0+two": second})
+        self.assertEqual(before, (self.git("show-ref").stdout, self.git("status", "--porcelain").stdout))
+
+    def test_promotion_accepts_stable_aliases_on_the_same_commit(self) -> None:
+        self.tag("v1.0.0+one")
+        self.tag("v1.0.0+two")
+        stable = self.git("rev-parse", "HEAD").stdout.strip()
+        self.commit("feat: next candidate")
+        self.tag("v1.1.0-rc.1")
+        self.commit("fix: final correction")
+        for ordering in ("refname", "-refname"):
+            with self.subTest(ordering=ordering):
+                self.git("config", "tag.sort", ordering)
+                status, report = self.plan("v1.1.0")
+                self.assertEqual(status, 0)
+                self.assertEqual(report["release_notes_base"], {"tag": "v1.0.0+one", "commit": stable})
+
+    def test_promotion_ignores_ambiguity_below_the_previous_stable(self) -> None:
+        self.tag("v0.9.0+one")
+        self.commit("fix: second old build")
+        self.tag("v0.9.0+two")
+        self.commit("feat: unambiguous stable")
+        self.tag("v1.0.0")
+        self.commit("feat: next candidate")
+        self.tag("v1.1.0-rc.1")
+        self.commit("fix: final correction")
+        status, report = self.plan("v1.1.0")
+        self.assertEqual(status, 0)
+        self.assertEqual(report["release_notes_base"]["tag"], "v1.0.0")
+
     def test_numbered_prerelease_can_advance_explicitly(self) -> None:
         self.tag("v1.2.3")
         self.commit("feat: preview capability")

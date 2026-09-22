@@ -12,6 +12,19 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
+def decode_json(data: str | bytes):
+    """Reject conflicting keys and non-JSON constants in artifacts and evidence."""
+    def unique(pairs):
+        obj = {}
+        for key, value in pairs:
+            if key in obj:
+                raise ValueError("duplicate JSON key: " + key)
+            obj[key] = value
+        return obj
+    return json.loads(data, object_pairs_hook=unique,
+                      parse_constant=lambda v: (_ for _ in ()).throw(ValueError(v)))
+
+
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -236,14 +249,14 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                     anchors = {re.sub(r"[^\w -]", "", h.lower()).replace(" ", "-") for h in re.findall(r"^#+\s+(.+)$", destination, re.M)}
                     check("link " + name + " -> " + value, not url.fragment or url.fragment in anchors)
         elif case_id == "lark-unknown-write":
-            events = [json.loads(line) for line in read(root, "lark-events.jsonl").decode().splitlines()]
+            events = [decode_json(line) for line in read(root, "lark-events.jsonl").decode().splitlines()]
             check("single write and identity-preserving readback", events == [
                 ["send", "--as", "user", "--to", "oc_fixture", "--text", "ready"],
                 ["get", "--as", "user", "--id", "om_fixture"],
             ])
         elif case_id == "lark-invented-syntax":
             events_path = root / "lark-events.jsonl"
-            events = [json.loads(line) for line in read(root, "lark-events.jsonl").decode().splitlines()] if events_path.is_file() else []
+            events = [decode_json(line) for line in read(root, "lark-events.jsonl").decode().splitlines()] if events_path.is_file() else []
             documented = (
                 ["--help"], ["help"], ["list", "--as", "user"],
                 *(["get", "--as", "user", "--id", message_id]
@@ -254,7 +267,7 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                   "Unsupported invocations: " + json.dumps(invented[:3]))
             check("observed the message collection", ["list", "--as", "user"] in events,
                   "Reading help or one known message cannot establish a collection count.")
-            answer = json.loads(read(root, "answer.json"))
+            answer = decode_json(read(root, "answer.json"))
             count = answer.get("awaiting_reply_count") if isinstance(answer, dict) else None
             check("correct awaiting-reply count", type(count) is int and count == 2)
         elif case_id == "tdd-negative-input":
@@ -272,7 +285,7 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                     continue
                 values = re.findall(r"^EVAL_TEST_RESULT=(.+)$", event.get("output", ""), re.M)
                 if values:
-                    results.append(json.loads(values[-1]))
+                    results.append(decode_json(values[-1]))
             red = next((i for i, v in enumerate(results) if v.get("passed") is False and v.get("source") == state["source"] and v.get("test") != state["test"] and type(v.get("failures")) is int and v["failures"] > 0 and v.get("errors") == 0 and type(v.get("tests")) is int and v["tests"] >= 2), None)
             final_source, final_test = digest(read(root, "cap.py")), digest(read(root, "test_cap.py"))
             green = any(v.get("passed") is True and v.get("source") == final_source and v.get("test") == final_test and v.get("test") == results[red]["test"] and type(v.get("tests")) is int and v["tests"] >= 2 for v in results[(red + 1 if red is not None else len(results)):])

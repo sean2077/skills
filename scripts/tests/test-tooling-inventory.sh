@@ -24,8 +24,8 @@ trap cleanup EXIT
 
 negative_fails=0
 
-run_with_python_candidate() { # <python|python3|py|none> <inventory>
-    local selected="$1" inventory="$2"
+run_with_python_candidate() { # <python|python3|py|none> <inventory> [PYTHON_BIN]
+    local selected="$1" inventory="$2" override="${3:-}"
     (
         # shellcheck disable=SC2317,SC2329 # exported to model launcher availability in child Bash
         python() {
@@ -45,6 +45,7 @@ run_with_python_candidate() { # <python|python3|py|none> <inventory>
         }
         export -f python python3 py
         PYTHON_FIXTURE_CANDIDATE="$selected" REAL_PYTHON="$REAL_PYTHON" \
+        PYTHON_BIN="$override" \
             bash "$CHECKER" "$inventory" 2>&1
     )
 }
@@ -123,9 +124,11 @@ printf 'path\n-dash.sh\n' > "$fixture/dash/tools/inventory.tsv"
 INVENTORY_CHECK_SKIP='(^|/)generated/' bash "$CHECKER" "$fixture/dash/tools/inventory.tsv"
 
 # The unset skip policy is neutral: semantic-looking project directories remain audited.
-mkdir -p "$fixture/neutral-skip/tools/legacy"
+mkdir -p "$fixture/neutral-skip/tools/legacy" "$fixture/neutral-skip/tools/vendor" "$fixture/neutral-skip/tools/tests"
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$fixture/neutral-skip/tools/listed.sh"
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$fixture/neutral-skip/tools/legacy/unlisted.sh"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$fixture/neutral-skip/tools/vendor/unlisted.sh"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$fixture/neutral-skip/tools/tests/unlisted.sh"
 printf 'path\nlisted.sh\n' > "$fixture/neutral-skip/tools/inventory.tsv"
 set +e
 neutral_skip_output="$(
@@ -136,10 +139,16 @@ set -e
 if [[ "$neutral_skip_rc" != 1 ]]; then
     echo "default skip policy hid a project-owned command (got $neutral_skip_rc)" >&2
     negative_fails=$((negative_fails + 1))
-elif ! grep -qF 'FAIL: unregistered command (no inventory row): legacy/unlisted.sh' \
-    <<<"$neutral_skip_output"; then
-    echo "neutral default did not report a semantic-looking project path" >&2
-    negative_fails=$((negative_fails + 1))
+else
+    # Each conventional-looking directory name is checked separately: a narrowed
+    # default such as `(internal|vendor|tests?)` must not stay green behind `legacy/`.
+    for hidden in legacy/unlisted.sh vendor/unlisted.sh tests/unlisted.sh; do
+        grep -qF "FAIL: unregistered command (no inventory row): $hidden" <<<"$neutral_skip_output" \
+            || {
+                echo "neutral default did not report a semantic-looking project path: $hidden" >&2
+                negative_fails=$((negative_fails + 1))
+            }
+    done
 fi
 
 # Invalid rows and malformed contracts remain blocking structural findings.
@@ -266,6 +275,35 @@ if [[ "$python_preflight_rc" != 2 ]]; then
 elif ! grep -qF 'python 3.8+ interpreter unavailable for syntax check: run.py' \
     <<<"$python_preflight_output"; then
     echo "missing Python preflight diagnostic was not reported" >&2
+    negative_fails=$((negative_fails + 1))
+fi
+
+# A PYTHON_BIN override is honored before the PATH candidates, and is itself preflighted.
+incompatible_python_bin="$fixture/incompatible-python"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 1' > "$incompatible_python_bin"
+chmod +x "$incompatible_python_bin"
+
+set +e
+python_bin_output="$(
+    run_with_python_candidate none "$fixture/python-preflight/tools/inventory.tsv" "$REAL_PYTHON"
+)"
+python_bin_rc=$?
+set -e
+if [[ "$python_bin_rc" != 0 ]]; then
+    echo "PYTHON_BIN override did not complete the inventory check (got $python_bin_rc)" >&2
+    echo "$python_bin_output" >&2
+    negative_fails=$((negative_fails + 1))
+fi
+
+set +e
+incompatible_bin_output="$(
+    run_with_python_candidate none "$fixture/python-preflight/tools/inventory.tsv" "$incompatible_python_bin"
+)"
+incompatible_bin_rc=$?
+set -e
+if [[ "$incompatible_bin_rc" != 2 ]]; then
+    echo "expected an incompatible PYTHON_BIN to keep the preflight at exit 2 (got $incompatible_bin_rc)" >&2
+    echo "$incompatible_bin_output" >&2
     negative_fails=$((negative_fails + 1))
 fi
 

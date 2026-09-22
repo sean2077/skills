@@ -482,8 +482,19 @@ def build_plan(repo_arg: str, target: Optional[str], release_branch: Optional[st
                 previous = sorted(
                     stable_candidates,
                     key=cmp_to_key(lambda left, right: compare_semver(left[1], right[1])),
-                )[-1]
-                result["release_notes_base"] = {"tag": previous[0], "commit": peel_tag(repo, previous[0])}
+                )[-1][1]
+                # Build metadata has no SemVer precedence. Apply the same ambiguity
+                # check as the release base before choosing a promotion notes range.
+                peeled = {tag: peel_tag(repo, tag) for tag, version in stable_candidates
+                          if compare_semver(version, previous) == 0}
+                if len(set(peeled.values())) != 1:
+                    add_check("release-notes-base", "attention",
+                              "Previous stable tags resolve to different commits", tags=peeled)
+                    require_attention("release-notes-base",
+                                      "Resolve equal-precedence stable tag ambiguity before selecting promotion notes.")
+                else:
+                    tag = sorted(peeled)[0]
+                    result["release_notes_base"] = {"tag": tag, "commit": peeled[tag]}
             else:
                 result["release_notes_base"] = {"tag": None, "commit": None}
         else:
