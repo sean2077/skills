@@ -122,23 +122,40 @@ class PrivateSkillVerifierTest(unittest.TestCase):
             result = generate()
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             for relative in self.PROJECTIONS:
+                # Bytes, not read_text(): universal newlines would hide a CRLF
+                # regression that the generator's own newline="\n" write exists to prevent.
                 self.assertEqual(
-                    (ROOT / relative).read_text(encoding="utf-8"),
-                    (root / relative).read_text(encoding="utf-8"),
+                    (ROOT / relative).read_bytes(),
+                    (root / relative).read_bytes(),
+                    "%s must match the committed projection byte for byte" % relative,
                 )
 
             def snapshot():
                 return {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
 
+            # Exit 1 alone conflates detected drift with a validation crash, which is
+            # also SystemExit(1), so require the drift report to name the affected files.
+            def drift_report(*expected: str) -> None:
+                checked = generate("--check")
+                self.assertEqual(1, checked.returncode)
+                self.assertIn("DRIFT in", checked.stderr)
+                for relative in expected:
+                    self.assertIn(relative, checked.stderr)
+
             before = snapshot()
             self.assertEqual(0, generate("--check").returncode)
             self.assertEqual(before, snapshot())
-            for path in [source / "instructions.md"] + [root / p for p in self.PROJECTIONS]:
+            # A drifted source is reported through its projections, not by source path.
+            for path, expected in (
+                (source / "instructions.md", self.PROJECTIONS),
+                (root / self.PROJECTIONS[0], (self.PROJECTIONS[0],)),
+                (root / self.PROJECTIONS[1], (self.PROJECTIONS[1],)),
+            ):
                 with self.subTest(path=path.relative_to(root)):
                     original = path.read_bytes()
                     path.write_bytes(original + b"\nFixture-only drift.\n")
                     drifted = snapshot()
-                    self.assertEqual(1, generate("--check").returncode)
+                    drift_report(*expected)
                     self.assertEqual(drifted, snapshot(), "check mode must not repair the fixture")
                     path.write_bytes(original)
             for relative in self.PROJECTIONS:
@@ -146,7 +163,7 @@ class PrivateSkillVerifierTest(unittest.TestCase):
                     path = root / relative
                     original = path.read_bytes()
                     path.unlink()
-                    self.assertEqual(1, generate("--check").returncode)
+                    drift_report(relative)
                     self.assertFalse(path.exists())
                     path.write_bytes(original)
             self.assertEqual(0, generate("--check").returncode)
