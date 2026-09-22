@@ -1,0 +1,15 @@
+{
+  "name": "skill-verifier",
+  "description": "Review substantive skill changes, task artifacts, and evaluation evidence for regressions, unnecessary constraints, weak assertions, or unsupported benefit claims. Not for implementation or routine wording fixes.",
+  "claude": {
+    "tools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "codex": {
+    "sandbox_mode": "read-only"
+  }
+}

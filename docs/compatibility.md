@@ -7,7 +7,7 @@ Track each interface independently. A new repository commit does not invalidate 
 | Surface | Pinned or reviewed basis | Evidence and unverified boundary |
 |---|---|---|
 | Installer | CI uses `skills@1.5.17`; original review 2026-08-25 | Real discovery, install, regular-file inventory and byte comparison in [validation CI](../.github/workflows/validate.yml). This is a reproducibility pin, not a claim to be latest. |
-| Claude / Codex scaffold | Project layouts; documentation review 2026-08-25, overlap notes 2026-09-20 | [Core tests](../scripts/tests/test_agent_scaffold_core.py), [workspace tests](../scripts/tests/test_workspace_entry.py) and installer E2E cover source/projection ownership and hook payloads. Real authenticated discovery, trust and hook execution are separate observations. |
+| Claude / Codex scaffold | Project layouts; documentation review 2026-08-25, subagent-definition review 2026-09-22, overlap notes 2026-09-20 | [Core tests](../scripts/tests/test_agent_scaffold_core.py), [workspace tests](../scripts/tests/test_workspace_entry.py) and installer E2E cover source/projection ownership and hook payloads. Real authenticated discovery, trust and hook execution are separate observations. |
 | Grok-compatible payloads | Explicit compatibility branches in the shared hook parser | Simulated payload/expansion tests only. No independent Grok installation or live-host certification is inferred from Claude compatibility. |
 | Lark CLI | Command recipes reviewed against v1.0.93 on 2026-09-04 | Domain references and [mock outcome case](../evals/tasks/README.md) are not live service/API certification. Preserve recipe-specific evidence when updating CLI syntax. |
 | Task evaluation capture | Claude CLI/stream documentation reviewed 2026-09-22 | Importer and negative-fixture tests; actual host runs require a configured CLI and retained results. Unknown usage stays unknown. |
@@ -50,6 +50,12 @@ Sources checked 2026-09-20: [OpenAI skills](https://learn.chatgpt.com/docs/build
 [OpenAI prompt/skill adaptation](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra),
 [Claude skills and visibility](https://code.claude.com/docs/en/skills), and
 [Claude best practices](https://code.claude.com/docs/en/best-practices).
+
+## Project subagent definitions (2026-09-22)
+
+This is a documentation review of the two host formats, not certification of a locally authenticated host run. Claude Code project subagents are Markdown files in `.claude/agents/<name>.md` with required `name` and `description`; optional `tools` is a comma-separated list, and omitting it inherits every subagent tool. Codex project subagents are one TOML file per `.codex/agents/<name>.toml` with required `name`, `description`, and `developer_instructions`, where `sandbox_mode` narrows that agent's permission level. Both hosts load these only from a trusted project layer, and Codex reapplies the parent turn's live sandbox and approval overrides when it spawns a child, so a configured `read-only` value is not evidence of the effective sandbox. This repository's `.agents/subagents/skill-verifier/` source and its two projections are covered by the [private-harness contract test](../scripts/tests/test_private_skill_eval_contract.py) and the generator `--check`; discovery, real permissions, and inherited context remain unverified.
+
+Sources checked 2026-09-22: [Claude Code subagents](https://code.claude.com/docs/en/sub-agents) and [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents).
 
 ## Codex facts
 
