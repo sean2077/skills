@@ -65,7 +65,8 @@ match the actual tag exactly.
 ## Extract the preferred-flow notes
 
 When a repository adopts this fallback heading for the preferred automated flow, extract the
-trimmed body after the one matching heading through—but not including—the next level-two heading.
+trimmed body after the one matching heading through—but not including—the next level-one or
+level-two heading.
 Do not include the release heading itself in the notes file. The bundled reference implementation
 treats the complete tag as an opaque exact string:
 

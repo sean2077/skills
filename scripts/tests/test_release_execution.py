@@ -59,6 +59,13 @@ class ReleaseExecutionTests(unittest.TestCase):
         write(self.repo, "CHANGELOG.md", "# Changelog\n\n## [v1.0.0] — 2026-09-22\n\n### Changed\n\n- Verified release.\n")
         git(self.repo, "add", "."); git(self.repo, "commit", "-qm", "fixture")
         git(self.repo, "tag", "v1.0.0")
+        # The workflow verifies trunk reachability, so the fixture needs a trunk ref.
+        git(self.repo, "branch", "-M", "main")
+        bare = self.root / "origin.git"
+        bare.mkdir()
+        git(bare, "init", "-q", "--bare")
+        git(self.repo, "remote", "add", "origin", bare.as_posix())
+        git(self.repo, "push", "-q", "origin", "main")
         self.mock = self.root / "mock-gh.py"; self.mock.write_text(MOCK_GH)
         self.record = self.root / "gh-record.jsonl"
         self.env = environment()
@@ -100,6 +107,18 @@ class ReleaseExecutionTests(unittest.TestCase):
         write(self.repo, "CHANGELOG.md", "# Changelog\n\nNo matching release\n")
         cp = self.bash(self.extract + "\n" + self.publish)
         self.assertNotEqual(cp.returncode, 0)
+        self.assertFalse(self.record.exists())
+
+    def test_tag_outside_the_trunk_is_rejected_before_publishing(self):
+        write(self.repo, "CHANGELOG.md", "# Changelog\n\n## [v1.2.0] — 2026-09-22\n\n- Branch release.\n")
+        git(self.repo, "checkout", "-q", "-b", "feature/experiment")
+        git(self.repo, "add", "."); git(self.repo, "commit", "-qm", "branch work")
+        git(self.repo, "tag", "v1.2.0")
+
+        cp = self.bash(self.extract + "\n" + self.publish, GITHUB_REF_NAME="v1.2.0")
+
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("not reachable from main", cp.stderr)
         self.assertFalse(self.record.exists())
 
     def test_prerelease_flags_and_moved_tag(self):

@@ -17,10 +17,12 @@ external handoff. Do not create a forge release or require a release URL for a t
 
 ### Tag-triggered release workflow
 
-Push the release branch/trunk, then the tag. Wait for the tag workflow and verify the outputs it
-actually owns: packages, artifacts, deployments, a forge release, or a downstream handoff. Do not
-race it with a second manual publisher or substitute the fallback changelog format for a workflow
-that already owns another note-generation contract.
+Match the candidate tag to the repository-owned workflow's accepted tag pattern before pushing:
+a valid SemVer prerelease label such as `v1.2.0-canary.1` may still be unsupported there, and a
+pushed tag cannot be moved. Push the release branch/trunk, then the tag. Wait for the tag workflow
+and verify the outputs it actually owns: packages, artifacts, deployments, a forge release, or a
+downstream handoff. Do not race it with a second manual publisher or substitute the fallback
+changelog format for a workflow that already owns another note-generation contract.
 
 #### Preferred changelog-backed workflow
 

@@ -466,6 +466,23 @@ class SemverChangelogExtractionTests(unittest.TestCase):
         self.assertIn("## [still-an-example] — 2000-01-02", output or "")
         self.assertTrue((output or "").endswith("- kept\n"))
 
+    def test_level_one_separator_ends_the_section(self) -> None:
+        changelog = """# Changelog
+
+## [v1.2.3] — 2026-07-21
+
+- released
+
+# Older releases
+
+## [v1.2.2] — 2026-07-20
+
+- previous
+"""
+        completed, output = self.run_extract(changelog, "v1.2.3")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual("- released\n", output)
+
     def test_invalid_sections_fail_without_replacing_existing_output(self) -> None:
         cases = {
             "missing": "## [other] — 2026-07-21\n\n- notes\n",
