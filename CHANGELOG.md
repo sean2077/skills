@@ -12,6 +12,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Treat an inventory candidate path as a literal Git pathspec. A file name containing `[`, `*`, or `?` previously matched other tracked files, so the checker could read a different file's mode and pass over an unregistered executable Python command. The scaffold gate reads its own asset modes the same way now.
 - Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
 - Reuse a valid installed scaffold profile when the flag is omitted; mark new installations explicitly and require a choice for ambiguous legacy state. Fresh installs still default to guarded worktrees.
 

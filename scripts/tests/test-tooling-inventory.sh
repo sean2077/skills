@@ -401,6 +401,34 @@ elif [[ ! -d "$fixture/default/tools" ]]; then
     negative_fails=$((negative_fails + 1))
 fi
 
+# A file name with glob metacharacters must not borrow another tracked file's mode.
+if command -v git >/dev/null 2>&1; then
+    mkdir -p "$fixture/glob-mode/tools"
+    printf '%s\n' '#!/usr/bin/env python3' 'print("deploy")' > "$fixture/glob-mode/tools/deploy[A].py"
+    printf '%s\n' 'print("helper")' > "$fixture/glob-mode/tools/deployA.py"
+    printf 'path\n' > "$fixture/glob-mode/tools/inventory.tsv"
+    (
+        cd "$fixture/glob-mode"
+        git init -q .
+        git config user.name "Inventory Fixture"
+        git config user.email "inventory@example.invalid"
+        git add -A
+        git update-index --chmod=+x 'tools/deploy[A].py'
+        git commit -qm "glob-mode fixture"
+    )
+    set +e
+    glob_output="$(bash "$CHECKER" "$fixture/glob-mode/tools/inventory.tsv" 2>&1)"
+    glob_rc=$?
+    set -e
+    if [[ "$glob_rc" != 1 ]]; then
+        echo "expected a glob-metacharacter executable Python CLI to exit 1 (got $glob_rc)" >&2
+        negative_fails=$((negative_fails + 1))
+    elif ! grep -qF 'FAIL: unregistered command (no inventory row): deploy[A].py' <<<"$glob_output"; then
+        echo "glob-metacharacter file name borrowed another tracked file's mode" >&2
+        negative_fails=$((negative_fails + 1))
+    fi
+fi
+
 if find "$fixture" -type d -name __pycache__ -print -quit | grep -q . \
     || find "$fixture" -type f -name '*.pyc' -print -quit | grep -q .; then
     echo "inventory check left Python bytecode residue" >&2
