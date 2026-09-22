@@ -129,8 +129,11 @@ def validate_category_references(skill_dir: Path, skill_text: str) -> None:
          if path.is_file() and path.suffix.lower() == ".md"}
         if references_dir.is_dir() else set()
     )
-    if (root / "reference.md").is_file():
-        reference_files.add(root / "reference.md")
+    # Root payload files that carry their own reachability obligation: a shipped
+    # NOTICE.md must be routed from SKILL.md, and a routed one must keep existing.
+    for optional in ("reference.md", "NOTICE.md"):
+        if (root / optional).is_file():
+            reference_files.add(root / optional)
     visited: set[Path] = set()
     pending = [(root / "SKILL.md", skill_text)]
     while pending:
