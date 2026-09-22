@@ -15,7 +15,7 @@ Both scaffold-owned hooks read the tool-call JSON on **stdin**. Host configs inv
 - **Claude Code and Grok** (`.claude/settings.json`) run `python -X utf8 "${CLAUDE_PROJECT_DIR}/.agents/tools/hooks/hook-paths.py" --guard|--budget`. Both hosts inject `CLAUDE_PROJECT_DIR` (Grok's `GROK_WORKSPACE_ROOT` is an alias, set on every hook) and expand `${VAR}` in `command` themselves before the shell sees it, so the anchored path is independent of the hook `cwd` — which follows a `cd`, a worktree, or a temp directory. The command must **not** use bash's `${VAR:-default}`: Grok does not implement that modifier, the unexpanded text reaches Windows PowerShell, `${CLAUDE_PROJECT_DIR:-.}` there names an undefined PowerShell variable, and the path collapses to `/.agents/...` — which Python on Windows opens as `C:\.agents\...`.
 - **Codex** (`.codex/hooks.json`) runs `python -X utf8 .agents/tools/hooks/hook-paths.py --guard|--budget`. Codex injects no project-root variable and expands nothing, and its PowerShell empties every `$VAR`/`${VAR}` it sees, so the command carries **no `$`** and stays cwd-relative; Codex runs hooks from the project root.
 
-Quoting only a project-root placeholder (`"${ROOT}"/.agents/...`) is valid bash concatenation but splits on Windows, so Python receives the repository directory and fails with `can't find '__main__' module`. Both commands keep `.agents/tools/hooks/hook-paths.py --guard|--budget` contiguous, which is the reconciler identity; the light-profile filter matches `--guard` on that script after stripping quotes. That avoids a Git-alias plus Bash launcher on every Edit/Write. `hook-paths.py` parses the payload, converts `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths in-process, and classifies the checkout from `.git` (a directory is the primary worktree; a `gitdir:` file is a linked worktree). The budget hook returns immediately unless a payload path is `AGENTS.md` or `CLAUDE.md`. The trunk guard skips per-file Git identity probes for edits already inside a linked worktree; `git check-ignore` runs only when a same-repository primary-worktree edit might be blocked. The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. `hook-launcher.sh` and `hook-common.sh` remain installed for project-owned Bash hooks. `hook-common.sh` still exposes `hook_extract_paths` and `cygpath` conversion for format-on-edit. Missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 for `--guard` because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0. The budget hook emits PostToolUse `additionalContext` JSON itself and does not call `jq`.
+Quoting only a project-root placeholder (`"${ROOT}"/.agents/...`) is valid bash concatenation but splits on Windows, so Python receives the repository directory and fails with `can't find '__main__' module`. Both commands keep `.agents/tools/hooks/hook-paths.py --guard|--budget` contiguous, which is the reconciler identity; the light-profile filter matches `--guard` on that script after stripping quotes. That avoids a Git-alias plus Bash launcher on every Edit/Write. `hook-paths.py` parses the payload, converts `C:/…`, backslash, UNC, Git Bash, relative, spaces, and Unicode paths in-process, and classifies the checkout from `.git` (a directory is the primary worktree; a `gitdir:` file is a linked worktree). The budget hook returns immediately unless a payload path is `AGENTS.md` or `CLAUDE.md`. The trunk guard skips per-file Git identity probes for edits already inside a linked worktree; `git check-ignore` runs only when a same-repository primary-worktree edit might be blocked. The parser accepts payloads up to 16 MiB without copying them into an environment variable or process argument. Each hook only acts on files in the **project repo** (same git-common-dir as the resolved project root), so edits to nested/sibling repos pass through; gitignored paths are exempt. `hook-launcher.sh` dispatches only the two managed Bash hooks; `hook-common.sh` remains installed for project-owned hooks that source it. `hook-common.sh` still exposes `hook_extract_paths` and `cygpath` conversion for format-on-edit. Missing compatible Python, malformed/non-UTF-8/oversized input, or another parse failure exits 2 for `--guard` because the guard cannot prove that the requested edit is safe; the advisory PostToolUse budget reports the same failure and exits 0. The budget hook emits PostToolUse `additionalContext` JSON itself and does not call `jq`.
 
 ### trunk_edit_guard.sh — PreToolUse, blocking
 
@@ -35,7 +35,7 @@ Quoting only a project-root placeholder (`"${ROOT}"/.agents/...`) is valid bash 
 
 ## Dual-host wiring
 
-Both hosts invoke the **same** enabled `hook-paths.py` entry under `.agents/tools/hooks/`, but each host's command string is its own: Claude Code and Grok anchor on `${CLAUDE_PROJECT_DIR}`, Codex stays cwd-relative with no `$`. The hot path never looks up `bash` and cannot land on the Windows WSL launcher. Python resolves the repository root inside `hook-paths.py` from its own location and Git, so only *locating the script* depends on the host. Python 3.8+ on `PATH` is a harness prerequisite. `hook-launcher.sh` remains available for project-owned Bash hooks that still need Git for Windows `/usr/bin/bash`; `AGENT_SCAFFOLD_BASH` overrides that Bash only. The PreToolUse examples below describe the default worktree profile; the lightweight profile omits `--guard` while retaining `--budget`.
+Both hosts invoke the **same** enabled `hook-paths.py` entry under `.agents/tools/hooks/`, but each host's command string is its own: Claude Code and Grok anchor on `${CLAUDE_PROJECT_DIR}`, Codex stays cwd-relative with no `$`. The hot path never looks up `bash` and cannot land on the Windows WSL launcher. Python resolves the repository root inside `hook-paths.py` from its own location and Git, so only *locating the script* depends on the host. Python 3.8+ on `PATH` is a harness prerequisite. `hook-launcher.sh` remains available for the managed Bash hooks that still need Git for Windows `/usr/bin/bash` (its `case` accepts `trunk_edit_guard.sh` and `authority_doc_budget.sh` only); `AGENT_SCAFFOLD_BASH` overrides that Bash only. The PreToolUse examples below describe the default worktree profile; the lightweight profile omits `--guard` while retaining `--budget`.
 
 **Claude Code — `.claude/settings.json` shape** (the canonical full command strings live in `assets/host/claude.settings.json`). Grok reads this same project file through Claude compatibility and expands the same anchor:
 
@@ -64,11 +64,20 @@ Both hosts invoke the **same** enabled `hook-paths.py` entry under `.agents/tool
   "statusMessage": "Checking worktree policy" }
 ```
 
-`hook-common.sh` still resolves the project independently from the managed runtime path, using `$CLAUDE_PROJECT_DIR` when supplied and Git/install depth otherwise:
+`hook-common.sh` still resolves the project independently from the managed runtime path: `$CLAUDE_PROJECT_DIR` when the host supplies it, then the managed install depth, and Git's toplevel only as a last resort.
 
 ```bash
-raw="${CLAUDE_PROJECT_DIR:-$(git -C "$hook_dir" rev-parse --show-toplevel 2>/dev/null || (cd "$hook_dir/../../.." && pwd))}"
-proj="$(hook_posix_path "$raw")"
+hook_project_root() {
+    local raw="${CLAUDE_PROJECT_DIR:-}"
+    if [[ -z "$raw" ]]; then
+        raw="$(cd "$hook_dir/../../.." 2>/dev/null && pwd)" || raw=""
+        if [[ -z "$raw" || ! -e "$raw/.git" ]]; then
+            raw="$(git -C "$hook_dir" rev-parse --show-toplevel 2>/dev/null || true)"
+        fi
+    fi
+    [[ -n "$raw" ]] || return 1
+    hook_posix_path "$raw"
+}
 ```
 
 ## Hook configuration reconciliation
@@ -101,7 +110,7 @@ Codex applies two independent gates to this scaffold:
 
 ## Integration troubleshooting
 
-- **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then confirm `python` and the cwd-relative `.agents/tools/hooks/hook-paths.py --guard` command resolve from the project root. Project-owned Bash hooks still use `hook-launcher.sh` and Git for Windows `/usr/bin/bash`. Hook commands do not depend on checkout executable bits.
+- **Hooks don't fire in Codex**: trust the project, open `/hooks`, review/trust the exact current hook definitions, confirm the matcher, then confirm `python` and the cwd-relative `.agents/tools/hooks/hook-paths.py --guard` command resolve from the project root. The managed Bash hooks still use `hook-launcher.sh` and Git for Windows `/usr/bin/bash`. Hook commands do not depend on checkout executable bits.
 - **Grok `pre_tool_use`/`post_tool_use` timeouts on Windows**: Grok observe hooks default to 5 seconds. Scaffold host JSON sets `timeout` to 30. Host JSON invokes Python directly. The guard skips per-file Git probes inside a linked worktree, and the budget hook returns immediately unless the path is `AGENTS.md` or `CLAUDE.md`. `hook-paths.py` accepts both `tool_input` and Grok `toolInput`. Restart the host session after upgrade so it reloads project hooks.
 - **`can't find '__main__' module in '<project root>'`**: Windows PowerShell split a `"${CLAUDE_PROJECT_DIR:-.}"/.agents/...` command so Python received the repository directory as the script. The managed command quotes the entire anchored path. Run `upgrade` and restart the host session.
 - **Hooks don't fire in Claude Code**: validate `.claude/settings.json`, confirm the command path,

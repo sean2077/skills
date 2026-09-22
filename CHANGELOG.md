@@ -12,6 +12,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Check this repository's own managed host hooks against the scaffold assets. Their entries are `merge-json` assets, so the copy-drift gate skipped them and deleting the trunk-guard wiring from `.claude/settings.json` left every check green; the gate now compares the effective managed entries too, and asserts the project-root fallbacks on `hook-paths.py`, the file Codex invokes directly.
+- Describe `hook-launcher.sh` as what it is: a dispatcher for the two managed Bash hooks. Four reference pages offered it to project-owned Bash hooks, which it rejects with exit 2, blocking every edit wired that way; project-owned hooks source `hook-common.sh`.
 - Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
 - Reuse a valid installed scaffold profile when the flag is omitted; mark new installations explicitly and require a choice for ambiguous legacy state. Fresh installs still default to guarded worktrees.
 

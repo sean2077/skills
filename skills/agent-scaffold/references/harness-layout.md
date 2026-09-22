@@ -21,7 +21,7 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/runtime/worktree.sh` | `.agents/tools/worktree.sh` | default profile only: worktree-per-change lifecycle |
 | `assets/runtime/hooks/trunk_edit_guard.sh` | `.agents/tools/hooks/trunk_edit_guard.sh` | default profile only: PreToolUse trunk-edit blocker |
 | `assets/runtime/hooks/authority_doc_budget.sh` | `.agents/tools/hooks/authority_doc_budget.sh` | PostToolUse AGENTS.md line/character-budget advisor |
-| `assets/runtime/hooks/hook-launcher.sh` | `.agents/tools/hooks/hook-launcher.sh` | optional dispatcher for project-owned Bash hooks; scaffold-owned Edit/Write hooks call Python directly |
+| `assets/runtime/hooks/hook-launcher.sh` | `.agents/tools/hooks/hook-launcher.sh` | dispatcher for the two managed Bash hooks; scaffold-owned Edit/Write hooks otherwise call Python directly |
 | `assets/runtime/hooks/hook-common.sh` + `hook-paths.py` | `.agents/tools/hooks/` | stdin parsing, path conversion, trunk guard, and budget advisor; hosts invoke `hook-paths.py --guard|--budget` |
 | `assets/runtime/relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
 | `assets/runtime/symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, sync, and verification |
@@ -44,10 +44,11 @@ code-generation hooks likewise stay outside `.agents/tools/`; see
 The vendored scripts derive their own paths (git-common-dir / `$BASH_SOURCE`), so they are
 layout-independent once they land at the paths above. **They are intentionally tuned for the
 `.agents/tools/` install depth** — e.g. `trunk_edit_guard.sh` resolves `proj` three levels up
-(`.agents/tools/hooks/` → repo root) plus a git-toplevel fallback for Codex. Do not "simplify" that
-resolver to a shallower path: the git-toplevel fallback is what makes the hooks work under Codex
-(which has no `$CLAUDE_PROJECT_DIR`). This repository's CI script
-`scripts/check-agent-scaffold.sh` guards that invariant for the catalog's own vendored harness;
+(`.agents/tools/hooks/` → repo root), and `hook-paths.py`, which both hosts invoke directly, carries
+the same install depth plus a git-toplevel fallback for Codex. Do not "simplify" either resolver to a
+shallower path: the git-toplevel fallback is what makes the hooks work under Codex (which has no
+`$CLAUDE_PROJECT_DIR`). This repository's CI script
+`scripts/check-agent-scaffold.sh` guards both invariants for the catalog's own vendored harness;
 it is not an installed asset.
 
 ### Light profile

@@ -90,6 +90,11 @@ common="$skill/assets/runtime/hooks/hook-common.sh"
 grep -qF '/../../..' "$common" || fail "hook-common.sh lost the 3-level install fallback"
 grep -qF 'rev-parse --show-toplevel' "$common" || fail "hook-common.sh lost the git-root fallback"
 grep -qF 'cygpath -u' "$common" || fail "hook-common.sh lost Windows/MSYS path conversion"
+# Codex invokes hook-paths.py directly and injects no project-root variable, so its own
+# resolver — not the project-owned helper above — carries these fallbacks on that path.
+hook_paths="$skill/assets/runtime/hooks/hook-paths.py"
+grep -qF '"..", "..", ".."' "$hook_paths" || fail "hook-paths.py lost the 3-level install fallback"
+grep -qF '"--show-toplevel"' "$hook_paths" || fail "hook-paths.py lost the git-toplevel fallback"
 
 # Hook commands are host-specific because each host expands the command string
 # differently. Claude Code and Grok both inject CLAUDE_PROJECT_DIR (Grok's
@@ -132,6 +137,25 @@ for config in claude.settings.json codex.hooks.json; do
     fail "$config still performs a bare bash PATH lookup"
   fi
 done
+
+# The managed hook entries are `merge-json` assets, so the copy-drift gate above skips
+# them: without this comparison the repository's own guard wiring could disappear and
+# every check would stay green. Compare the effective managed entries with the asset.
+hooks_tmp="$(mktemp -d "${TMPDIR:-/tmp}/agent-scaffold-hooks.XXXXXX" 2>/dev/null)" || hooks_tmp=""
+if [ ! -d "$hooks_tmp" ]; then
+  fail "cannot create a temporary directory for managed host hook verification"
+else
+  trap 'rm -rf "$hooks_tmp"' EXIT
+  verify_managed_hooks() { # <asset-id> <asset> <installed>
+    local id="$1" asset="$2" installed="$3"
+    python "$core" hooks prepare --source "$asset" --profile default --output "$hooks_tmp/expected.json" \
+      || { fail "$id: cannot prepare the expected managed hooks from $asset"; return; }
+    python "$core" hooks verify --existing "$installed" --expected "$hooks_tmp/expected.json" --target "$installed" \
+      || fail "$id: managed host hooks drifted from $asset (run agent-scaffold upgrade)"
+  }
+  verify_managed_hooks host.claude-hooks "$claude_config" "$repo/.claude/settings.json"
+  verify_managed_hooks host.codex-hooks "$codex_config" "$repo/.codex/hooks.json"
+fi
 harness_template="$skill/assets/scaffold/AGENTS.harness.md"
 # Structure only: the profile boundary plus the resident section anchors that hosts
 # and nested contracts navigate by. Resident wording stays review-owned, so it is
