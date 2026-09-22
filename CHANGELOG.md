@@ -13,7 +13,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Reject ambiguous previous-stable tag identities when deriving promotion release notes; same-commit build-metadata aliases remain valid and use a deterministic label.
+- Reject ambiguous previous-stable tag identities when deriving promotion release notes; same-commit build-metadata aliases remain valid and use a deterministic label, while disagreement reports `release-notes-base` attention and leaves the notes base unset.
 - Respect up-to-three-space ATX heading indentation in changelog extraction, including target/duplicate detection and section boundaries, while preserving code examples and atomic failure behavior.
 - Reject duplicate JSON keys and non-finite constants in task answers and captured records, sharing the runner's decoder so contradictory Lark counts cannot pass by last-key-wins parsing.
 - Remove Bash from the project `skill-verifier` Claude tool allowlist and make the role review source and captured evidence without command execution. The parent supplies pinned diffs and runs proposed checks in an authorized disposable environment; configured capabilities are not a claim of verified live-host isolation.
@@ -30,7 +30,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Remove inventory validator dependencies on fixture captions, local variable names, and exact syntax-check prose. Keep payload/retirement checks and require the inventory suite in executable CI steps; the unchanged shell suite owns behavior verification.
+- Remove inventory validator dependencies on fixture captions, local variable names, and exact syntax-check prose. Keep payload/retirement checks and require the inventory suite in an enabled CI step, so a statically disabled job or step no longer satisfies the gate; the shell suite owns behavior verification and now covers the `PYTHON_BIN` override, an incompatible override, and every conventional directory name of the neutral reverse scan.
 - Replace tag-name/year guessing with explicit local-analysis boundaries in `semver-release`. JSON schema 2 reports `analyzed` rather than `ready`, inventories out-of-model tags without assigning meaning, declines to infer an initial target from unmatched history, and checks a release branch only when supplied from repository policy. Consumers of schema 1 must update their success-status handling.
 - Make the Lark syntax fixture check its requested count as well as mock argument validity. Keep the task-only prompt neutral, reject help-only and single-message evidence, cover invalid flags/identities/IDs, and remove catalog checks that merely matched oracle wording and test names. Writable mock logs remain bounded evidence, not tamper-proof execution records or model-performance measurements.
 - Replace the Python hook resolver's source-string assertions with behavior tests for host-root precedence, primary and linked-worktree install layouts, real Git fallback, and resolution failures. Managed host-hook parity remains checked by the scaffold gate.

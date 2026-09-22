@@ -716,20 +716,29 @@ class ToolingContractEditorialTests(unittest.TestCase):
     def test_inventory_ci_checks_a_run_step_not_names_comments_or_examples(self) -> None:
         from contracts import tooling_conventions as tooling
         good = "jobs:\n  check:\n    steps:\n      - name: Arbitrary title\n        run: |\n          # A harmless comment\n          bash 'scripts/tests/test-tooling-inventory.sh'\n"
+        enabled = (
+            "jobs:\n  check:\n    steps:\n      - if: ${{ !cancelled() }}\n        run: bash scripts/tests/test-tooling-inventory.sh\n"
+        )
         bad = (
             "jobs:\n  check:\n    steps:\n      - name: bash scripts/tests/test-tooling-inventory.sh\n        run: echo skipped\n",
             "jobs:\n  check:\n    steps:\n      - run: |\n          # bash scripts/tests/test-tooling-inventory.sh\n          echo skipped\n",
             "jobs:\n  check:\n    steps:\n      - run: |\n          cat <<'EXAMPLE'\n          bash scripts/tests/test-tooling-inventory.sh\n          EXAMPLE\n",
             "jobs: [invalid\n",
+            # A statically disabled step never runs the suite, whatever its `run` says.
+            "jobs:\n  check:\n    steps:\n      - if: false\n        run: bash scripts/tests/test-tooling-inventory.sh\n",
+            "jobs:\n  check:\n    steps:\n      - if: ${{ false }}\n        run: bash scripts/tests/test-tooling-inventory.sh\n",
+            "jobs:\n  check:\n    if: false\n    steps:\n      - run: bash scripts/tests/test-tooling-inventory.sh\n",
         )
         for text in bad:
             with self.subTest(text=text):
                 validator.errors.clear()
                 tooling.validate_inventory_ci(text)
                 self.assertTrue(validator.errors)
-        validator.errors.clear()
-        tooling.validate_inventory_ci(good)
-        self.assertEqual([], list(validator.errors))
+        for text in (good, enabled):
+            with self.subTest(text=text):
+                validator.errors.clear()
+                tooling.validate_inventory_ci(text)
+                self.assertEqual([], list(validator.errors))
 
 
 class PublicSummaryContractTests(unittest.TestCase):

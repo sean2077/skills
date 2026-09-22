@@ -13,6 +13,22 @@ from catalog_core import README, REPO, SKILLS_DIR, dirty_load, errors, readme_sk
 SKILL = "tooling-conventions"
 
 
+def _literal_false(value: object) -> bool:
+    """Report a condition that statically disables a job or step.
+
+    A condition is caller-owned policy, so only a literal `false` is read; an
+    expression such as `!cancelled()` stays enabled.
+    """
+    if value is False:
+        return True
+    if isinstance(value, str):
+        condition = value.strip()
+        if condition.startswith("${{") and condition.endswith("}}"):
+            condition = condition[3:-2].strip()
+        return condition.lower() == "false"
+    return False
+
+
 def validate_inventory_ci(workflow_text: str) -> None:
     """Require the dedicated suite invocation, not its name, comment, or example."""
     try:
@@ -26,7 +42,11 @@ def validate_inventory_ci(workflow_text: str) -> None:
         return
     try:
         for job in workflow.get("jobs", {}).values():
+            if _literal_false(job.get("if")):
+                continue
             for step in job.get("steps", []):
+                if _literal_false(step.get("if")):
+                    continue
                 run = step.get("run")
                 if not isinstance(run, str):
                     continue
@@ -39,7 +59,10 @@ def validate_inventory_ci(workflow_text: str) -> None:
                     return
     except (AttributeError, TypeError):
         pass
-    errors.append("tooling-conventions: CI does not run the focused inventory-check suite")
+    errors.append(
+        "tooling-conventions: CI must run 'bash scripts/tests/test-tooling-inventory.sh' "
+        "as its own enabled step"
+    )
 
 
 def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> None:
