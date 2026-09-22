@@ -57,6 +57,8 @@ This is a documentation review of the two host formats, not certification of a l
 
 Sources checked 2026-09-22: [Claude Code subagents](https://code.claude.com/docs/en/sub-agents) and [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents).
 
+The project `skill-verifier` now declares the explicit Claude tool allowlist Read/Grep/Glob and delegates command execution to its parent. Source/projection checks establish the configured allowlist, not that an already running host has reloaded it. No authenticated host run has verified this revision's effective tool availability or Codex permission overrides; the no-execution instruction alone is not a sandbox. A linked worktree is not one either: it shares the repository's Git configuration, objects, and refs, and stays writable through absolute paths from a process that started elsewhere.
+
 ## Codex facts
 
 Official Codex documentation reviewed on 2026-08-25 establishes that:

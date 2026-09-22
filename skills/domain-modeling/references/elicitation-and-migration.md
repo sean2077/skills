@@ -62,7 +62,7 @@ When authority or costly-to-reverse consequences remain unresolved, present viab
 4. Create only context files that immediately receive real content.
 5. Move complete entries, including all language equivalents and avoided names.
 6. Create or update root `CONTEXT-MAP.md` with scopes and relationships.
-7. Update project-owned `AGENTS.md`, nested routes, and active documentation links.
+7. Update project-owned `AGENTS.md`, nested routes, and active documentation links. A route inside a scaffold- or tool-managed block belongs to its generator: refresh it through the owning command instead of editing the block.
 8. Remove superseded entries and headings after all routes resolve.
 9. Search for duplicate definitions, stale paths, and names that now cross the wrong boundary.
 10. Review the final diff for accidental semantic edits introduced during movement.
