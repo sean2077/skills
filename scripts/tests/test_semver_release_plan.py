@@ -483,6 +483,16 @@ class ReleasePlanTests(unittest.TestCase):
                 self.assertEqual(completed.returncode, 2)
                 self.assertIn("cannot be combined", completed.stderr)
 
+    def test_analysis_error_preserves_scope_and_policy_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            status, report = self.plan_repo(Path(directory))
+        self.assertEqual(status, 2)
+        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["status"], "error")
+        self.assertEqual(report["analysis_scope"], "local-v-prefixed-semver")
+        self.assertEqual(report["release_policy"], "not_verified")
+        self.assertTrue(report["error"])
+
     def test_pure_planner_help_succeeds(self) -> None:
         completed = self.planner_cli("--help")
 

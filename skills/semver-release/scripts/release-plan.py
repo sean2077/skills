@@ -536,6 +536,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         plan = {
             "schema_version": 2,
             "status": "error",
+            "analysis_scope": "local-v-prefixed-semver",
+            "release_policy": "not_verified",
             "error": str(exc),
             "repo": str(Path(args.repo).resolve()),
             "checks": [],
