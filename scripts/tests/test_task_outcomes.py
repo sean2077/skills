@@ -86,6 +86,17 @@ class OutcomeTests(unittest.TestCase):
         invoke("send", "--as", "user", "--to", "oc_fixture", "--text", "ready")
         self.assertFalse(self.passed(workspace, "lark-unknown-write", state)[0])
 
+    def test_invented_mock_argument_shape_is_rejected(self):
+        workspace, state = self.fixture("lark-invented-syntax")
+        def invoke(*args):
+            return subprocess.run([sys.executable, "lark_mock.py", *args], cwd=workspace,
+                                  capture_output=True, env=cases.environment(), timeout=20)
+        self.assertEqual(invoke("list", "--as", "user").returncode, 0)
+        self.assertTrue(*self.passed(workspace, "lark-invented-syntax", state))
+        # The mock rejects an invented filter, and the oracle must notice the attempt.
+        self.assertEqual(invoke("list", "--as", "user", "--awaiting-reply").returncode, 2)
+        self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
+
     def test_actual_red_green_requires_trace_and_same_tests(self):
         workspace, state = self.fixture("tdd-negative-input")
         tests = cases.BASE_TEST + '\n    def test_negative_value(self):\n        with self.assertRaises(ValueError):\n            cap(-1, 10)\n'
