@@ -16,7 +16,9 @@ and artifact publication under the target repository's policy.
 - Plan without mutation first. Do not edit release files until the base, target, release
   workflow, and version authority are unambiguous.
 - Release from a clean attached trunk or repository-approved release line/worktree with no
-  merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress.
+  merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress. The analyzer
+  raises `release-line` when HEAD is not the resolved remote default branch; pass
+  `--release-branch <name>` for an approved release line.
 - Preserve the repository's release-note authority: committed changelog, fragments,
   generated notes, or forge-native notes. Do not invent a root changelog by default.
 - Use the repository-owned release workflow and obtain authorization for infrastructure changes.
@@ -39,11 +41,12 @@ and artifact publication under the target repository's policy.
 2. Run the bundled read-only analyzer (Python 3.8+):
 
    ```bash
-   python <skill-dir>/scripts/release-plan.py --repo <repo-root> --json [--target vX.Y.Z]
+   python <skill-dir>/scripts/release-plan.py --repo <repo-root> --json [--target vX.Y.Z] [--release-branch <name>]
    ```
 
-   Resolve every `attention` result before mutation. The analyzer models `v`-prefixed SemVer tags;
-   preserve an established unprefixed or custom tag format and follow
+   Resolve every `attention` result before mutation. The analyzer models `v`-prefixed SemVer tags
+   and reports other reachable tag formats as `tag-format`; preserve an established unprefixed or
+   custom tag format and follow
    [`version-selection.md`](references/version-selection.md) manually. Use the manual rules when Python is unavailable or the release model exceeds the analyzer, and disclose the analyzer checks that could not run.
 3. Follow the repository-owned release-note pipeline. Read
    [`changelog.md`](references/changelog.md) only when the project maintains a committed
