@@ -22,6 +22,7 @@ CANONICAL_HEADING_RE = re.compile(
     r"^ — (?P<date>\d{4}-\d{2}-\d{2})[ \t]*$"
 )
 H2_RE = re.compile(r"^##(?:[ \t]+|$)")
+H1_RE = re.compile(r"^#(?:[ \t]+|$)")
 FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
 
 
@@ -101,7 +102,9 @@ def extract_notes(text: str, exact_tag: str) -> str:
 
     body_end = len(text)
     for start, _, line, outside_fence in records[target_index + 1 :]:
-        if outside_fence and H2_RE.match(line):
+        # Stop at any top-level heading: a level-one separator between sections would
+        # otherwise be pulled into the notes along with the next section's content.
+        if outside_fence and (H1_RE.match(line) or H2_RE.match(line)):
             body_end = start
             break
 

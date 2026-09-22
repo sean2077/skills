@@ -63,6 +63,8 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
         "python3 fallback did not complete the inventory check",
         "py -3 fallback did not complete the inventory check",
         "expected missing Python preflight to exit 2",
+        "expected a glob-metacharacter executable Python CLI to exit 1",
+        "glob-metacharacter file name borrowed another tracked file's mode",
     )
     missing_fixture = [value for value in fixture_contract if value not in fixture_text]
     if missing_fixture:
@@ -81,6 +83,7 @@ def validate_tooling_conventions_contract(*, readme_text: str | None = None) -> 
         "elif python_compatible py -3; then",
         'PYTHONUTF8=1 "${PYTHON_CMD[@]}" -c',
         'echo "python 3.8+ interpreter unavailable for syntax check: $path',
+        ':(literal)$pathspec',
     )
     missing_checker_contract = [
         value for value in checker_contract if value not in texts["scripts/inventory-check.sh"]

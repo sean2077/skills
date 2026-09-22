@@ -13,12 +13,25 @@ strict-SemVer tags, equal-precedence build-metadata ambiguity, conventional-comm
 target availability, and prerelease decisions. Resolve its `attention` entries before mutation.
 The manual rules below are the fallback and the review contract for the analyzer.
 
-The analyzer deliberately models `v`-prefixed SemVer tags. If repository policy instead owns an
-unprefixed or custom mapping such as `1.2.3` or `release-1.2.3`, report that analyzer boundary and
-preserve the repository's complete tag format. Use its documented mapping to validate and compare
-the embedded SemVer value manually; if the mapping is absent, mixed, or ambiguous, ask the owner
-instead of inferring a format from a few historical tags. Changelog extraction and CI publication
-still use the complete tag as an opaque exact identity.
+The analyzer deliberately models `v`-prefixed SemVer tags, and it now reports that boundary itself: a
+reachable tag outside the model that still carries a SemVer value — `1.2.3` or `release-2.0.0`,
+alongside a `v`-prefixed history or without one — raises a `tag-format` attention instead of
+returning a confident plan, and unrelated tags such as `nightly` do so only when no `v`-prefixed
+SemVer tag is reachable. The embedded-value test is a heuristic, and its limits are the agent's
+responsibility: it keeps date-like tags such as `docs-2026.10.22` quiet, which means a custom format
+whose version is itself year-sized (`release-2026.10.22`) is not reported either. Step 1's inspection
+of the complete tag format, plus repository policy, is what covers that case; do not read a `ready`
+plan as proof that no other version-bearing format exists. If repository policy instead owns an
+unprefixed or custom mapping such as `1.2.3` or `release-1.2.3`, preserve the repository's complete
+tag format. Use its documented mapping to validate and compare the embedded SemVer value manually; if
+the mapping is absent, mixed, or ambiguous, ask the owner instead of inferring a format from a few
+historical tags. Changelog extraction and CI publication still use the complete tag as an opaque exact
+identity.
+
+The release line is checked the same way: HEAD on a branch other than the locally resolved remote
+default branch raises a `release-line` attention, and `--release-branch <name>` records an approved
+release line. When the default branch cannot be resolved locally, the analyzer warns instead of
+asserting one.
 
 For a manual fallback, an attached branch and empty `git status --porcelain` are not sufficient:
 run `git status --long --branch` and stop if it reports a merge, rebase/am, cherry-pick, revert,

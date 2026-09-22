@@ -25,3 +25,5 @@ Report changed concepts, supporting evidence, and remaining ambiguity.
 
 - [Context topology](references/context-topology.md): flat, grouped, and mapped organization; context splits.
 - [Elicitation and migration](references/elicitation-and-migration.md): scenario-driven clarification and movement between owners.
+
+See [NOTICE.md](NOTICE.md) for upstream attribution.

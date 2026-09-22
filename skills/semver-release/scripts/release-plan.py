@@ -26,6 +26,13 @@ SEMVER_RE = re.compile(
     r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
 CREATED_PRERELEASE_RE = re.compile(r"^[a-z][a-z0-9-]*\.[1-9][0-9]*$")
+# A leading version component at or above this reads as a calendar year rather than a
+# release number when it is embedded in another tag shape.
+YEAR_LIKE_MAJOR = 2000
+# A SemVer value embedded in another tag format, such as `release-2.0.0`.
+EMBEDDED_SEMVER_RE = re.compile(
+    r"(?:^|[^0-9A-Za-z.])v?(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$"
+)
 CONVENTIONAL_RE = re.compile(r"^([A-Za-z]+)(?:\([^)]+\))?(!)?:\s+\S")
 BREAKING_FOOTER_RE = re.compile(r"(?m)^BREAKING(?: CHANGE|-CHANGE):")
 PATCH_TYPES = {
@@ -163,6 +170,36 @@ def peel_tag(repo: Path, tag: str) -> str:
     return run_git(repo, "rev-parse", f"{tag}^{{commit}}").stdout.strip()
 
 
+def carries_version(tag: str) -> bool:
+    """True when a tag outside the modeled shape still looks like a release version.
+
+    A tag that is SemVer on its own always counts. An embedded value counts only when
+    its leading component is below `YEAR_LIKE_MAJOR`, so `release-2.0.0` is reported
+    while date-like tags such as `docs-2026.10.22` stay quiet. This is a heuristic
+    with a known blind spot: a custom format whose version is itself year-sized
+    (`release-2026.10.22`) is not reported, and covering that is the agent's job
+    (inspect the complete tag format) rather than this check's.
+    """
+    if parse_semver("v" + tag) is not None:
+        return True
+    match = EMBEDDED_SEMVER_RE.search(tag)
+    if match is None:
+        return False
+    version = parse_semver("v" + match.group("version"))
+    return version is not None and version.major < YEAR_LIKE_MAJOR
+
+
+def default_branch(repo: Path) -> Optional[str]:
+    """Resolve the remote default branch from local refs; never fetches."""
+    result = run_git(
+        repo, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD", check=False
+    )
+    value = result.stdout.strip() if result.returncode == 0 else ""
+    if not value:
+        return None
+    return value[len("origin/") :] if value.startswith("origin/") else value
+
+
 def read_commit(repo: Path, commit: str) -> dict[str, str]:
     output = run_git(repo, "show", "-s", "--format=%h%x00%P%x00%s%x00%b", commit).stdout
     short_hash, parents, subject, body = output.split("\x00", 3)
@@ -236,7 +273,7 @@ def active_git_operations(repo: Path) -> list[str]:
     ]
 
 
-def build_plan(repo_arg: str, target: Optional[str]) -> dict[str, Any]:
+def build_plan(repo_arg: str, target: Optional[str], release_branch: Optional[str] = None) -> dict[str, Any]:
     repo = resolve_repo(repo_arg)
     checks: list[dict[str, Any]] = []
     attention: list[dict[str, str]] = []
@@ -257,6 +294,31 @@ def build_plan(repo_arg: str, target: Optional[str]) -> dict[str, Any]:
     else:
         add_check("attached-head", "attention", "HEAD is detached")
         require_attention("attached-head", "Release work requires an attached branch before mutation.")
+
+    if branch:
+        approved = (release_branch or "").strip()
+        trunk = default_branch(repo)
+        if approved and branch == approved:
+            add_check("release-line", "ok", f"HEAD is on the approved release branch {branch}")
+        elif trunk and branch == trunk:
+            add_check("release-line", "ok", f"HEAD is on the repository default branch {branch}")
+        elif trunk:
+            add_check(
+                "release-line",
+                "attention",
+                f"HEAD is on {branch}, not the repository default branch {trunk}",
+                branch=branch,
+                default_branch=trunk,
+            )
+            require_attention(
+                "release-line",
+                f"Release from {trunk} or the approved release line, or pass "
+                f"--release-branch {branch} to confirm this branch.",
+            )
+        else:
+            warnings.append(
+                f"Could not resolve the repository default branch; confirm that {branch} is the release line."
+            )
 
     operations = active_git_operations(repo)
     if operations:
@@ -318,6 +380,7 @@ def build_plan(repo_arg: str, target: Optional[str]) -> dict[str, Any]:
         "base": None,
         "release_notes_base": None,
         "ignored_invalid_tags": [],
+        "other_format_tags": [],
         "commits": [],
         "checks": checks,
         "attention": attention,
@@ -329,13 +392,45 @@ def build_plan(repo_arg: str, target: Optional[str]) -> dict[str, Any]:
 
     candidates: list[tuple[str, SemVer]] = []
     invalid_tags: list[str] = []
-    for tag in run_git(repo, "tag", "--merged", "HEAD", "--list", "v[0-9]*").stdout.splitlines():
-        version = parse_semver(tag)
-        if version is None:
-            invalid_tags.append(tag)
+    other_format_tags: list[str] = []
+    for tag in run_git(repo, "tag", "--merged", "HEAD").stdout.splitlines():
+        # Keep the modeled format as `v` plus a leading digit, so `v01.2.3` still
+        # reports as an ignored invalid tag rather than as an unrelated tag.
+        if tag.startswith("v") and len(tag) > 1 and tag[1].isdigit():
+            version = parse_semver(tag)
+            if version is None:
+                invalid_tags.append(tag)
+            else:
+                candidates.append((tag, version))
         else:
-            candidates.append((tag, version))
+            other_format_tags.append(tag)
     result["ignored_invalid_tags"] = sorted(invalid_tags)
+    result["other_format_tags"] = sorted(other_format_tags)
+    version_like = sorted(tag for tag in other_format_tags if carries_version(tag))
+    if version_like:
+        add_check(
+            "tag-format",
+            "attention",
+            "Tags outside the modeled v-prefixed format carry a SemVer version",
+            tags=version_like[:20],
+        )
+        require_attention(
+            "tag-format",
+            "Confirm the repository's complete tag format: the analyzer models v-prefixed SemVer tags, "
+            "so its base selection may not match this repository's history.",
+        )
+    elif not candidates and other_format_tags:
+        add_check(
+            "tag-format",
+            "attention",
+            "No v-prefixed SemVer tag is reachable but other tags exist",
+            tags=sorted(other_format_tags)[:20],
+            total=len(other_format_tags),
+        )
+        require_attention(
+            "tag-format",
+            "Confirm the repository's complete tag format before treating this history as a first release.",
+        )
 
     base_tag: Optional[str] = None
     base_version: Optional[SemVer] = None
@@ -487,6 +582,10 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="repository path (default: current directory)")
     parser.add_argument("--target", help="exact target tag, e.g. v1.2.0 or v2.0.0-rc.1")
+    parser.add_argument(
+        "--release-branch",
+        help="branch this repository releases from when it is not the remote default branch",
+    )
     parser.add_argument("--json", action="store_true", help="emit the stable JSON report")
     raw = list(sys.argv[1:] if argv is None else argv)
     if any(value in ("-h", "--help") for value in raw) and raw not in (["-h"], ["--help"]):
@@ -497,7 +596,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     try:
-        plan = build_plan(args.repo, args.target)
+        plan = build_plan(args.repo, args.target, args.release_branch)
     except (GitError, OSError, ValueError) as exc:
         plan = {
             "schema_version": 1,

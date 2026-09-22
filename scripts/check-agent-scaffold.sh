@@ -61,7 +61,7 @@ fi
 
 file="$skill/agent-scaffold.sh"
 relative="${file#"$repo"/}"
-mode="$(git -C "$repo" ls-files -s -- "$relative" | awk 'NR==1{print $1}')"
+mode="$(git -C "$repo" ls-files -s -- ":(literal)$relative" | awk 'NR==1{print $1}')"
 [ "$mode" = 100755 ] || fail "git mode is ${mode:-untracked}, expected 100755: $relative"
 [ ! -e "$skill/harness-init.sh" ] || fail "retired public entry remains: skills/agent-scaffold/harness-init.sh"
 
@@ -70,7 +70,7 @@ while IFS=$'\t' read -r id source target strategy executable; do
   [ "$strategy" = copy ] || continue
   [ "$executable" = 1 ] || continue
   relative="skills/agent-scaffold/$source"
-  mode="$(git -C "$repo" ls-files -s -- "$relative" | awk 'NR==1{print $1}')"
+  mode="$(git -C "$repo" ls-files -s -- ":(literal)$relative" | awk 'NR==1{print $1}')"
   [ "$mode" = 100755 ] || fail "git mode is ${mode:-untracked}, expected 100755: $relative ($id)"
 done < <(python "$core" --manifest "$manifest" assets list --profile default --strategy copy)
 

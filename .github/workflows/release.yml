@@ -39,7 +39,16 @@ jobs:
             printf 'unsupported release tag: %s\n' "$GITHUB_REF_NAME" >&2
             exit 1
           fi
+          # Derived from the checkout: on a tag push this is true by construction, and it
+          # still catches a future explicit `ref:` that would check out something else.
           test "$(git rev-parse HEAD)" = "$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
+          # `publishing.md` requires the release commit to be reachable from the trunk, which
+          # the checkout alone does not establish: any branch can push a tag.
+          git fetch --no-tags --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_REF_NAME^{commit}" refs/remotes/origin/main; then
+            printf 'release tag %s is not reachable from main\n' "$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
           python skills/semver-release/scripts/extract-changelog.py \
             --changelog CHANGELOG.md \
             --tag "$GITHUB_REF_NAME" \

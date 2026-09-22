@@ -66,10 +66,14 @@ class ReleasePlanTests(unittest.TestCase):
         path = Path(self.git("rev-parse", "--git-path", name).stdout.strip())
         return path if path.is_absolute() else self.repo / path
 
-    def plan_repo(self, repo: Path, target: Optional[str] = None) -> tuple[int, dict[str, object]]:
+    def plan_repo(
+        self, repo: Path, target: Optional[str] = None, release_branch: Optional[str] = None
+    ) -> tuple[int, dict[str, object]]:
         command = [sys.executable, str(PLANNER), "--repo", str(repo), "--json"]
         if target is not None:
             command.extend(["--target", target])
+        if release_branch is not None:
+            command.extend(["--release-branch", release_branch])
         completed = subprocess.run(
             command,
             stdout=subprocess.PIPE,
@@ -83,8 +87,15 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertTrue(completed.stdout, completed.stderr)
         return completed.returncode, json.loads(completed.stdout)
 
-    def plan(self, target: Optional[str] = None) -> tuple[int, dict[str, object]]:
-        return self.plan_repo(self.repo, target)
+    def plan(
+        self, target: Optional[str] = None, release_branch: Optional[str] = None
+    ) -> tuple[int, dict[str, object]]:
+        return self.plan_repo(self.repo, target, release_branch)
+
+    def use_default_branch(self, name: str) -> None:
+        """Record a remote default branch locally, without a remote."""
+        self.git("update-ref", f"refs/remotes/origin/{name}", "HEAD")
+        self.git("symbolic-ref", "refs/remotes/origin/HEAD", f"refs/remotes/origin/{name}")
 
     def attention_ids(self, report: dict[str, object]) -> set[str]:
         return {item["id"] for item in report["attention"]}  # type: ignore[index,union-attr]
@@ -267,6 +278,75 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(report["selected_tag"], "v0.1.0")
         self.assertEqual(report["ignored_invalid_tags"], ["v01.2.3"])
+
+    def test_unprefixed_semver_history_reports_the_tag_format_boundary(self) -> None:
+        self.tag("1.0.0")
+        self.tag("2.3.4")
+        self.commit("fix: patch after a released history")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 1)
+        self.assertIn("tag-format", self.attention_ids(report))
+        self.assertEqual(report["other_format_tags"], ["1.0.0", "2.3.4"])
+        self.assertIsNone(report["base"])
+
+    def test_mixed_custom_format_history_reports_the_tag_format_boundary(self) -> None:
+        self.tag("v1.0.0")
+        self.commit("feat: another release line")
+        self.tag("release-2.0.0")
+        self.commit("fix: patch after the custom tag")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 1)
+        self.assertIn("tag-format", self.attention_ids(report))
+        self.assertEqual(report["other_format_tags"], ["release-2.0.0"])
+
+    def test_unrelated_tags_do_not_look_like_versions(self) -> None:
+        self.tag("v1.0.0")
+        self.tag("nightly")
+        self.tag("build]2026.07")
+        self.tag("docs-2026.10.22")
+        self.commit("fix: ordinary patch")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 0)
+        self.assertNotIn("tag-format", self.attention_ids(report))
+        self.assertEqual(report["selected_tag"], "v1.0.1")
+
+    def test_unrelated_tags_block_a_first_release_claim(self) -> None:
+        self.tag("nightly")
+        self.commit("feat: first modeled release content")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 1)
+        self.assertIn("tag-format", self.attention_ids(report))
+
+    def test_release_line_is_checked_against_the_default_branch(self) -> None:
+        self.tag("v1.0.0")
+        self.use_default_branch("main")
+        self.git("checkout", "-q", "-b", "feature/experiment")
+        self.commit("fix: work in progress")
+
+        status, report = self.plan()
+        self.assertEqual(status, 1)
+        self.assertIn("release-line", self.attention_ids(report))
+
+        status, report = self.plan(release_branch="feature/experiment")
+        self.assertEqual(status, 0)
+        self.assertNotIn("release-line", self.attention_ids(report))
+
+    def test_unresolvable_default_branch_is_a_warning_not_an_attention(self) -> None:
+        self.tag("v1.0.0")
+        self.commit("fix: ordinary patch")
+
+        status, report = self.plan()
+
+        self.assertEqual(status, 0)
+        self.assertTrue(any("default branch" in item for item in report["warnings"]))
 
     def test_first_release_defaults_to_v0_1_0(self) -> None:
         status, report = self.plan()
