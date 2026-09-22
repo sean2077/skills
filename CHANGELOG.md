@@ -12,6 +12,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Let `ralph` `abort` end a run that has an opened round. The unrecorded attempt is now discarded instead of leaving `round` ahead of the recorded history, so the recovery path `resume-and-recovery.md` names no longer fails with `corrupt_state`.
 - Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
 - Reuse a valid installed scaffold profile when the flag is omitted; mark new installations explicitly and require a choice for ambiguous legacy state. Fresh installs still default to guarded worktrees.
 
