@@ -12,6 +12,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Verify that a release tag's commit is reachable from the trunk before publishing. The tag workflow's identity assertion is true by construction on a tag push, so any branch could push a tag and publish a GitHub Release; `publishing.md` already lists trunk reachability as required completion evidence.
+- End an extracted release-notes section at a level-one heading as well as a level-two one, so a separator such as `# Older releases` is no longer pulled into the notes with the next section's content.
+- Match a candidate tag to the repository workflow's accepted tag pattern before pushing it: a valid SemVer prerelease label can still be unsupported by that workflow, and a pushed tag cannot be moved.
 - Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
 - Reuse a valid installed scaffold profile when the flag is omitted; mark new installations explicitly and require a choice for ambiguous legacy state. Fresh installs still default to guarded worktrees.
 
