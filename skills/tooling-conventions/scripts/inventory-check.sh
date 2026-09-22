@@ -194,7 +194,9 @@ done < "$INVENTORY"
 is_python_cli() {
     local file="$1" mode pathspec="${1#"$SCAN_DIR"/}"
     if command -v git >/dev/null 2>&1 && git -C "$SCAN_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        mode="$(git -C "$SCAN_DIR" ls-files -s -- "$pathspec" 2>/dev/null | awk 'NR==1{print $1}')"
+        # `:(literal)` stops a file name containing glob metacharacters from also
+        # matching a different tracked path, whose mode NR==1 would otherwise report.
+        mode="$(git -C "$SCAN_DIR" ls-files -s -- ":(literal)$pathspec" 2>/dev/null | awk 'NR==1{print $1}')"
         [[ -n "$mode" ]] && { [[ "$mode" == 100755 ]]; return; }
     fi
     [[ -x "$file" ]]
