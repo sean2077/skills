@@ -307,6 +307,7 @@ class ReleasePlanTests(unittest.TestCase):
         self.tag("v1.0.0")
         self.tag("nightly")
         self.tag("build]2026.07")
+        self.tag("docs-2026.10.22")
         self.commit("fix: ordinary patch")
 
         status, report = self.plan()

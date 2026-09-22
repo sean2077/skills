@@ -26,8 +26,10 @@ SEMVER_RE = re.compile(
     r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
 CREATED_PRERELEASE_RE = re.compile(r"^[a-z][a-z0-9-]*\.[1-9][0-9]*$")
-# A SemVer value embedded in another tag format, such as `release-2.0.0`. The leading
-# guard keeps `docs-2026.09.22`-style tags from matching on their date-like prefix.
+# A leading version component at or above this reads as a calendar year rather than a
+# release number when it is embedded in another tag shape.
+YEAR_LIKE_MAJOR = 2000
+# A SemVer value embedded in another tag format, such as `release-2.0.0`.
 EMBEDDED_SEMVER_RE = re.compile(
     r"(?:^|[^0-9A-Za-z.])v?(?P<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$"
 )
@@ -169,11 +171,21 @@ def peel_tag(repo: Path, tag: str) -> str:
 
 
 def carries_version(tag: str) -> bool:
-    """True when a tag outside the modeled shape still embeds a SemVer value."""
-    if parse_semver(tag) is not None or parse_semver("v" + tag) is not None:
+    """True when a tag outside the modeled shape still looks like a release version.
+
+    A tag that is SemVer on its own always counts. An embedded value counts only when
+    its leading component is below `YEAR_LIKE_MAJOR`, so `release-2.0.0` is reported
+    while date-like tags such as `docs-2026.10.22` stay quiet. This is a heuristic, not
+    a format decision: a reported tag is confirmed with the repository owner, and a
+    repository that really versions with four-digit majors is asked about too.
+    """
+    if parse_semver("v" + tag) is not None:
         return True
     match = EMBEDDED_SEMVER_RE.search(tag)
-    return bool(match) and parse_semver("v" + match.group("version")) is not None
+    if match is None:
+        return False
+    version = parse_semver("v" + match.group("version"))
+    return version is not None and version.major < YEAR_LIKE_MAJOR
 
 
 def default_branch(repo: Path) -> Optional[str]:
