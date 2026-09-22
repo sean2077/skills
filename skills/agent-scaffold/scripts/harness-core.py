@@ -577,7 +577,7 @@ def select_profile(target: Path, source: Path) -> str:
     if not contract.is_file() or contract.is_symlink():
         raise CoreError("AGENTS.md must be a regular file before selecting a profile")
     if marker_state(contract) == "invalid":
-        raise CoreError("AGENTS.md managed markers are invalid")
+        raise CoreError("AGENTS.md has malformed agent-scaffold markers (expected one ordered pair)")
     block = extract_managed_block(contract.read_text(encoding="utf-8"))
     if block is None:
         return "default"
@@ -1500,7 +1500,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.command == "profile":
             manifest = load_manifest(Path(args.manifest))
             source = SKILL_DIR / asset_by_id(manifest, "contract.agents")["source"]
-            print(select_profile(Path(args.target), source))
+            sys.stdout.buffer.write((select_profile(Path(args.target), source) + "\n").encode("utf-8"))
             return 0
         if args.command == "assets":
             return command_assets(args)

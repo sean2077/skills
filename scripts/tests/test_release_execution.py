@@ -18,6 +18,8 @@ from cases import environment, git, write
 
 MOCK_GH = r'''import json, os, sys
 from pathlib import Path
+# Match the CLI's LF output rather than Python's Windows newline translation.
+sys.stdout.reconfigure(newline="\n")
 args = sys.argv[1:]
 with Path(os.environ["GH_RECORD"]).open("a", encoding="utf-8") as f:
     f.write(json.dumps(args) + "\n")
@@ -40,6 +42,8 @@ raise SystemExit(1)
 
 class ReleaseExecutionTests(unittest.TestCase):
     def setUp(self):
+        self.bash_bin = shutil.which("bash")
+        self.assertIsNotNone(self.bash_bin, "Git Bash/POSIX bash is required for release tests")
         self.temp = tempfile.TemporaryDirectory(prefix="release-check-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -71,7 +75,7 @@ class ReleaseExecutionTests(unittest.TestCase):
 
     def bash(self, script, **env):
         prefix = 'python() { "$TEST_PYTHON" "$@"; }; gh() { "$TEST_PYTHON" "$TEST_GH" "$@"; };\n'
-        return subprocess.run(["bash", "-e", "-c", prefix + script], cwd=self.repo,
+        return subprocess.run([self.bash_bin, "-e", "-c", prefix + script], cwd=self.repo,
                               env={**self.env, **env}, capture_output=True, text=True, timeout=30)
 
     def test_real_scripts_publish_exact_tag_notes_and_check_result(self):
@@ -102,7 +106,7 @@ class ReleaseExecutionTests(unittest.TestCase):
         write(self.repo, "CHANGELOG.md", "# Changelog\n\n## [v1.1.0-rc.1] — 2026-09-22\n\n- Candidate.\n")
         git(self.repo, "tag", "v1.1.0-rc.1")
         cp = self.bash(self.extract + "\n" + self.publish + "\n" + self.verify, GITHUB_REF_NAME="v1.1.0-rc.1")
-        self.assertEqual(cp.returncode, 0, cp.stderr)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
         args = json.loads(self.record.read_text().splitlines()[0])
         self.assertIn("--prerelease", args); self.assertIn("--latest=false", args)
         git(self.repo, "add", "."); git(self.repo, "commit", "-qm", "moved head")
