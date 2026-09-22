@@ -816,6 +816,54 @@ HOOK_PATHS = importlib.util.module_from_spec(HOOK_PATHS_SPEC)
 HOOK_PATHS_SPEC.loader.exec_module(HOOK_PATHS)
 
 
+class HookProjectRootTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="hook root space ")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        environment = mock.patch.dict(os.environ, {**{key: value for key, value in os.environ.items() if not key.startswith("GIT_")}, "CLAUDE_PROJECT_DIR": "", "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull}, clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def test_host_root_takes_precedence_over_install_depth(self):
+        supplied = self.root / "supplied"
+        supplied.mkdir()
+        installed = self.root / "installed"
+        (installed / ".git").mkdir(parents=True)
+        with mock.patch.object(HOOK_PATHS, "HOOK_DIR", str(installed / ".agents/tools/hooks")), mock.patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(supplied)}), mock.patch.object(HOOK_PATHS.subprocess, "run", side_effect=AssertionError("Git fallback must not run")):
+            self.assertEqual(str(supplied), HOOK_PATHS.project_root())
+
+    def test_install_depth_works_without_git_for_directory_and_worktree_marker(self):
+        for linked in (False, True):
+            with self.subTest(linked=linked):
+                repo = self.root / ("linked" if linked else "primary")
+                hook_dir = repo / ".agents/tools/hooks"
+                hook_dir.mkdir(parents=True)
+                if linked:
+                    (repo / ".git").write_text("gitdir: unused-for-root-resolution\n", encoding="utf-8")
+                else:
+                    (repo / ".git").mkdir()
+                with mock.patch.object(HOOK_PATHS, "HOOK_DIR", str(hook_dir)), mock.patch.object(HOOK_PATHS.subprocess, "run", side_effect=AssertionError("Git fallback must not run")):
+                    self.assertEqual(str(repo), HOOK_PATHS.project_root())
+
+    def test_nonstandard_install_depth_uses_real_git_toplevel(self):
+        repo = self.root / "repository"
+        subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+        hook_dir = repo / "custom/hooks"
+        hook_dir.mkdir(parents=True)
+        with mock.patch.object(HOOK_PATHS, "HOOK_DIR", str(hook_dir)):
+            self.assertEqual(str(repo), HOOK_PATHS.project_root())
+
+    def test_missing_repository_or_failed_git_does_not_invent_root(self):
+        hook_dir = self.root / "outside/hooks"
+        hook_dir.mkdir(parents=True)
+        with mock.patch.object(HOOK_PATHS, "HOOK_DIR", str(hook_dir)):
+            self.assertIsNone(HOOK_PATHS.project_root())
+            for failure in (OSError("Git unavailable"), subprocess.TimeoutExpired("git", 5)):
+                with self.subTest(failure=type(failure).__name__), mock.patch.object(HOOK_PATHS.subprocess, "run", side_effect=failure):
+                    self.assertIsNone(HOOK_PATHS.project_root())
+
+
 class HookPathTests(unittest.TestCase):
     def test_claude_tool_input_and_grok_tool_input_are_equivalent(self) -> None:
         claude = {"tool_input": {"file_path": r"C:\repo\AGENTS.md"}}
