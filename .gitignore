@@ -17,3 +17,4 @@ uv.lock
 
 # Skill-local deterministic workflow state
 .agent-workflows/
+.pairroom/
