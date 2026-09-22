@@ -29,6 +29,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Make the Lark syntax fixture check its requested count as well as mock argument validity. Keep the task-only prompt neutral, reject help-only and single-message evidence, cover invalid flags/identities/IDs, and remove catalog checks that merely matched oracle wording and test names. Writable mock logs remain bounded evidence, not tamper-proof execution records or model-performance measurements.
 - Replace the Python hook resolver's source-string assertions with behavior tests for host-root precedence, primary and linked-worktree install layouts, real Git fallback, and resolution failures. Managed host-hook parity remains checked by the scaffold gate.
 - Name the `round_pending` stage in the `ralph` result list, state that the `project-docs-organizer` metadata convention does not apply to a format that owns its frontmatter (such as `SKILL.md`), and point a route inside a managed block at its generator in `domain-modeling`'s migration steps.
 - Replace wording/heading-based skill checks with payload inventories and actual Git/mock-release outcome tests. Workflow display names and comments no longer determine publication or installer validation.
