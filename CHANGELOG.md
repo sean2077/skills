@@ -13,6 +13,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Route and protect skill attribution notices. A shipped `NOTICE.md` must now be linked from `SKILL.md` (otherwise it is an orphan reference) and a linked one must exist, so `domain-modeling`'s upstream MIT notice can no longer be dropped, left unreachable, or hollowed out while every catalog check stayed green. A targeted contract holds its provenance lines and the complete license text, as `tdd`'s attribution contract already did for its own notice.
 - Treat an inventory candidate path as a literal Git pathspec. A file name containing `[`, `*`, or `?` previously matched other tracked files, so the checker could read a different file's mode and pass over an unregistered executable Python command. The scaffold gate reads its own asset modes the same way now.
 - Let `ralph` `abort` end a run that has an opened round. The unrecorded attempt is now discarded instead of leaving `round` ahead of the recorded history, so the recovery path `resume-and-recovery.md` names no longer fails with `corrupt_state`.
 - Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
