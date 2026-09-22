@@ -139,7 +139,7 @@ The optional [task outcome fixtures](../evals/tasks/README.md) inspect actual ar
 
 ### Optional skill-verifier
 
-Use the project `skill-verifier` subagent for substantive skill changes, task-artifact review, or uncertain evaluation claims. Routine wording fixes need no extra reviewer. Pass the absolute task checkout, revision (and dirty changes when relevant), scope, acceptance, and existing result paths. For example:
+Use the project-owned `skill-verifier` subagent for substantive skill changes, task-artifact review, or uncertain evaluation claims. Routine wording fixes need no extra reviewer. Pass the absolute task checkout, revision (and dirty changes when relevant), scope, acceptance, and existing result paths. For example:
 
 > Use skill-verifier to inspect the spec-writing change at <revision> in <absolute-task-checkout> and the supplied results. Look for regressions and assertions that could pass a wrong output. Return findings and evidence; do not modify the reviewed files.
 
@@ -149,7 +149,7 @@ Models and reasoning effort are left to the host. Claude exposes Read/Grep/Glob/
 
 A cold-reader/anonymous A/B judgment needs a fresh instance with only the task, acceptance, and anonymized artifacts. Do not reuse the source-review instance or give it version identities; inherited project context may prevent a truly blind claim. Keep baseline/treatment execution separate from this evaluator, and follow the [task outcome guide](../evals/tasks/README.md) for measured comparisons. The parent evaluates the findings rather than treating the subagent's verdict as approval.
 
-These are configured boundaries, not live-host certification. Host discovery, actual permissions and inherited context need an observed run. Documentation checked 2026-09-22: [Claude subagents](https://code.claude.com/docs/en/sub-agents) and [Codex subagents](https://developers.openai.com/codex/subagents).
+These are configured boundaries, not live-host certification. Host discovery, actual permissions and inherited context need an observed run; the [compatibility matrix](compatibility.md) records the dated host documentation for subagent definitions and what it does not prove.
 
 ## Generated files
 

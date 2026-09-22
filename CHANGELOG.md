@@ -8,7 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Add an opt-in project `skill-verifier` subagent with generated Claude Code/Codex projections. It reviews skill changes, artifacts and evaluation evidence using existing checks, returns findings without editing reviewed sources, and adds no catalog skill or automatic approval gate.
+- Add an opt-in, project-owned `skill-verifier` subagent with generated Claude Code/Codex projections. It reviews skill changes, artifacts and evaluation evidence using existing checks, returns findings without editing reviewed sources, and adds no catalog skill or automatic approval gate.
 
 ### Fixed
 
