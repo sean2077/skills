@@ -8,6 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add a `lark-invented-syntax` task fixture whose oracle reads the mock's call log: an undocumented argument shape fails it, and the run must observe the data through a documented command. The `lark-cli` ban on inventing flags, methods, enums, IDs, URLs, or parameter shapes had no executable or fixture coverage, and its contract deferred to a live-eval suite that contains no such case.
 - Add an opt-in, project-owned `skill-verifier` subagent with generated Claude Code/Codex projections. It reviews skill changes, artifacts and evaluation evidence using existing checks, returns findings without editing reviewed sources, and adds no catalog skill or automatic approval gate.
 
 ### Fixed
