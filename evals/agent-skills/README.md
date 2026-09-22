@@ -40,6 +40,8 @@ Wall time is measured with a monotonic clock around the adapter invocation, not 
 
 Failed envelopes preserve available host usage and elapsed time. `metadata.usage_available=false` identifies unknown usage: the numeric zero fields are required v1 placeholders, **not proof of free execution**. Do not aggregate such runs into spend comparisons. `error_type`, `error_stage`, and `host_exit_code` aid diagnosis without copying raw output, credentials, or request text into results. Even available failure usage may be incomplete after a host crash.
 
+For actual edits, mock calls, test sequences and a brief-request control, use the optional [task outcome fixtures](../tasks/README.md). They do not replace or relabel these routing probes.
+
 ## What these probes do not prove
 
 The host receives the candidate entry-point text, a vocabulary of routes/observations, and a request, but not the verifier's expected answers. It does not load on-demand references, execute the requested implementation, or reproduce the host's native skill discovery. Baseline has no candidate instructions; it is a diagnostic comparison, not an old-version/new-version randomized trial. Selection binding also means the reported treatment route is not an independent free-choice route measurement.

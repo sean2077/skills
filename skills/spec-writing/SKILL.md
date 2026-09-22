@@ -19,4 +19,8 @@ Compare unresolved material choices or choices the user has asked to reconsider.
 
 Split documents when audiences, ownership, approval, or lifecycles differ. Keep working transcripts and verification logs in their owning records rather than the reader narrative.
 
+For consequential documents, try a cold read: give a fresh reader only the draft and realistic implementation or acceptance questions. Missing answers reveal context that belongs in the document, not another mandatory approval round. Distinguish this content check from approval of the exact file.
+
+For a cross-file change, make important acceptance conditions traceable to the relevant behavior and verification. Use the project’s existing format; a small change may need only a sentence.
+
 Before handoff, reconcile terms, links, diagrams, constraints, main flow, and acceptance. Distinguish evidence, assumptions, and open questions, and preserve the document's actual approval status.

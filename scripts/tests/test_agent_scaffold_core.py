@@ -223,6 +223,50 @@ class TargetInspectionTests(unittest.TestCase):
             self.assertFalse(data["ok"])
 
 
+class ProfileSelectionTests(unittest.TestCase):
+    def test_new_install_defaults_and_both_installed_profiles_are_reused(self):
+        source = CORE.SKILL_DIR / "assets/scaffold/AGENTS.harness.md"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(CORE.select_profile(root, source), "default")
+            for profile in ("default", "light"):
+                rendered = CORE.render_agents_template(source, profile)
+                for block in (rendered, rendered.replace("<!-- agent-scaffold:profile=" + profile + " -->\n", "")):
+                    with self.subTest(profile=profile, legacy="profile=" not in block):
+                        (root / "AGENTS.md").write_text("# Project instructions\n" + block + "\nOwner prose.\n", encoding="utf-8")
+                        self.assertEqual(CORE.select_profile(root, source), profile)
+
+    def test_ambiguous_or_invalid_installed_profile_requires_a_choice(self):
+        source = CORE.SKILL_DIR / "assets/scaffold/AGENTS.harness.md"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            template = CORE.render_agents_template(source, "light")
+            for block in (
+                template.replace("profile=light", "profile=unknown"),
+                template.replace("profile=light -->", "profile=light -->\n<!-- agent-scaffold:profile=default -->"),
+                template.replace("<!-- agent-scaffold:profile=light -->\n", "").replace("### Sources and projections", "### Locally altered block"),
+            ):
+                (root / "AGENTS.md").write_text(block, encoding="utf-8")
+                before = (root / "AGENTS.md").read_bytes()
+                with self.assertRaises(CORE.CoreError):
+                    CORE.select_profile(root, source)
+                self.assertEqual((root / "AGENTS.md").read_bytes(), before)
+
+    def test_cli_plan_reuses_light_and_explicit_default_overrides(self):
+        if not shutil.which("bash"):
+            self.skipTest("Bash required for installer entry")
+        source = CORE.SKILL_DIR / "assets/scaffold/AGENTS.harness.md"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / "AGENTS.md").write_text(CORE.render_agents_template(source, "light"), encoding="utf-8")
+            for extra, expected in (([], "light"), (["--profile", "default"], "default")):
+                result = subprocess.run(["bash", str(CORE.SKILL_DIR / "agent-scaffold.sh"), "plan", "--json", *extra],
+                    cwd=str(root), capture_output=True, text=True, encoding="utf-8", timeout=60)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)["profile"], expected)
+
+
 class HookReconciliationTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -751,6 +795,12 @@ class HookPathTests(unittest.TestCase):
         }
         self.assertEqual(HOOK_PATHS.paths(claude), [r"C:\repo\AGENTS.md"])
         self.assertEqual(HOOK_PATHS.paths(grok), [r"C:\repo\AGENTS.md"])
+
+    def test_patch_paths_include_move_targets_in_windows_and_posix_forms(self):
+        for source, target in ((r"C:\task\old.txt", r"C:\main\AGENTS.md"),
+                               ("src/old.txt", "../main/CLAUDE.md")):
+            patch = "*** Update File: %s\n*** Move to: %s\n+*** Move to: content-not-path\n" % (source, target)
+            self.assertEqual(HOOK_PATHS.paths({"tool_input": {"patch": patch}}), [source, target])
 
     def test_join_cwd_keeps_absolute_and_joins_relative(self) -> None:
         cwd = os.path.abspath(os.path.join("repo", "root"))

@@ -88,6 +88,8 @@ jobs:
           python scripts/tests/test_tdd_contract.py
           python scripts/tests/test_private_skill_eval_contract.py
           python scripts/tests/test_live_skill_eval_adapter.py
+          python scripts/tests/test_task_outcomes.py
+          python scripts/tests/test_release_execution.py
 
       - name: Validate deterministic workflow and P0 runtimes
         run: |

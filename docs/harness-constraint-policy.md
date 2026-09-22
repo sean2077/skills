@@ -2,6 +2,16 @@
 
 Design each skill around a useful outcome, the reasoning or tools that help achieve it, and the boundaries that protect the user's work. Keep instructions that change decisions; let the Agent adapt question order, investigation depth, delegation, and presentation to the task.
 
+## Authoring a useful skill
+
+Start from an outcome and a concrete request that benefits from this catalog. Keep project knowledge, consequential choices, and useful tools; remove explanations the target Agent can already supply. Explain a boundary’s reason when that helps it generalize, and prefer a short contrasting example to another blanket rule. Let specificity follow risk: flexible prose for judgment, exact interfaces for fragile operations.
+
+Keep discovery descriptions focused on intent and close alternatives. Load domain details through relevant references rather than enlarging every session’s AGENTS instructions. Add a helper when repeated real tasks reveal the same reliable operation, not to satisfy a template. Stable project conventions can justify a prose-only skill.
+
+Evaluate changes on outcomes and traces, including failures and a brief-request control. Separate routing, execution, and cost evidence; preserve a held-out example when tuning. Small edits do not require a fixed evaluation ceremony. See [task outcomes](../evals/tasks/README.md) for opt-in fixtures and the existing routing probes for selection checks.
+
+These are selected principles from [OpenAI skill-creator](https://github.com/openai/skills/blob/main/skills/.system/skill-creator/SKILL.md) and [Anthropic skill-creator](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md), reviewed 2026-09-22. The optional cold-reader method is adapted from [Anthropic doc-coauthoring](https://github.com/anthropics/skills/blob/main/skills/doc-coauthoring/SKILL.md).
+
 ## Choosing guidance and machinery
 
 Use prose for judgment and scripts for observable state or repeatable operations. A deterministic check is valuable when it catches a consequential failure directly and earns its implementation and maintenance cost.

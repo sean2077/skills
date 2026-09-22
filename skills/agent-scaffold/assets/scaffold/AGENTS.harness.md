@@ -1,4 +1,5 @@
 <!-- agent-scaffold:start — managed; keep project prose outside; upgrade refreshes this block. -->
+<!-- agent-scaffold:profile=default -->
 ## Agent Harness
 
 `.agents/` is the harness source; `.claude/` and `.codex/` hold generated projections. `CLAUDE.md` links to this contract.

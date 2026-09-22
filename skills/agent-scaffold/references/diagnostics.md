@@ -78,3 +78,7 @@ stages or converts files. Use the [line-ending guide](line-endings.md), not a re
 
 Human-readable output and JSON are rendered from the same checks; a difference
 between them is a defect in the scaffold, not a separate interpretation layer.
+
+## Profile selection
+
+An explicit `--profile` wins. Otherwise the installer reads the profile marker in its managed AGENTS block. An unmarked block is recognized only when it exactly matches a known default/light rendering; an ambiguous block requires an explicit choice before any project write. A fresh installation uses `default`. This keeps routine plan, verify, and upgrade calls aligned with the installed policy without another settings file.

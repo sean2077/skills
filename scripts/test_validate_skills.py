@@ -7,6 +7,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -285,131 +286,23 @@ class NpxPayloadContractTests(unittest.TestCase):
         self.assertTrue(any("every installed skill payload" in error for error in errors))
 
 
-class SemverPublicationContractTests(unittest.TestCase):
-    SKILL = """
-repository-owned completion boundary
-Stop at a verified pushed tag only when policy makes it terminal.
-Create a direct forge release only when the forge is the established release surface.
-Verify every applicable downstream publisher identity.
-Report the URLs or identities that the selected boundary actually exposes.
-"""
-    PUBLISHING = """
-Tag-only or external handoff
-Tag-triggered release workflow
-Project-owned direct publisher
-Direct forge release
-absence of a tag workflow does not authorize a new forge release
-gh release create <exact-tag> --verify-tag
-local and remote tags exist and peel to that release commit
-Only the evidence for the selected boundary is mandatory.
-The release states are distinct states.
-"""
-    PUBLIC = "policy-derived publication verification"
-
-    def validate(self, *, skill: str | None = None, publishing: str | None = None) -> list[str]:
-        validator.errors.clear()
-        validator.validate_semver_publication_boundary(
-            skill if skill is not None else self.SKILL,
-            publishing if publishing is not None else self.PUBLISHING,
-            self.PUBLIC,
-        )
-        return list(validator.errors)
-
-    def test_policy_derived_completion_contract_is_accepted(self) -> None:
-        self.assertEqual([], self.validate())
-
-    def test_tag_only_boundary_cannot_be_dropped(self) -> None:
-        errors = self.validate(
-            publishing=self.PUBLISHING.replace("Tag-only or external handoff", "Forge only")
-        )
-        self.assertTrue(any("repository-owned publication boundary" in error for error in errors))
-
-    def test_unconditional_forge_fallback_is_rejected(self) -> None:
-        errors = self.validate(skill=self.SKILL + "\notherwise create the forge release\n")
-        self.assertTrue(any("universal forge surface" in error for error in errors))
-
-
-class SemverAutomationContractTests(unittest.TestCase):
-    ROOT = Path(__file__).resolve().parents[1]
-    SKILL_DIR = ROOT / "skills" / "semver-release"
-
-    def files(self) -> dict[str, str]:
-        paths = {
-            "skill": self.SKILL_DIR / "SKILL.md",
-            "automation": self.SKILL_DIR / "references" / "automated-release-flow.md",
-            "changelog": self.SKILL_DIR / "references" / "changelog.md",
-            "publishing": self.SKILL_DIR / "references" / "publishing.md",
-            "extractor": self.SKILL_DIR / "scripts" / "extract-changelog.py",
-        }
-        return {label: path.read_text(encoding="utf-8") for label, path in paths.items()}
-
-    def validate(self, **overrides: str) -> list[str]:
-        files = self.files()
-        files.update(overrides)
-        validator.errors.clear()
-        validator.validate_semver_automation_contract(
-            files["skill"],
-            files["automation"],
-            files["changelog"],
-            files["publishing"],
-            files["extractor"],
-            "preferred changelog-backed tag workflow",
-        )
-        return list(validator.errors)
-
-    def test_preferred_automation_contract_is_accepted(self) -> None:
-        self.assertEqual([], self.validate())
-
-    def test_migration_discussion_prose_is_not_a_mechanical_gate(self) -> None:
-        original = self.files()["skill"]
-        changed = original.replace(
-            "use that established release flow", "retain the established release path"
-        )
-        self.assertNotEqual(original, changed)
-        self.assertEqual([], self.validate(skill=changed))
-
-    def test_release_commit_subject_follows_project_convention(self) -> None:
-        original = self.files()["skill"]
-        changed = original.replace("`release: <exact-tag>`", "`chore(release): <exact-tag>`")
-        self.assertNotEqual(original, changed)
-        self.assertEqual([], self.validate(skill=changed))
-
-    def test_generated_notes_fallback_is_rejected(self) -> None:
-        automation = self.files()["automation"] + "\nFallback: --generate-notes\n"
-        errors = self.validate(automation=automation)
-        self.assertTrue(any("generated-notes fallback" in error for error in errors))
-
-    def test_existing_flow_can_be_kept_without_an_adoption_offer(self) -> None:
-        original = self.files()["automation"]
-        changed = original.replace(
-            "Existing release requests follow the established project flow.",
-            "Follow the project release process for an existing release.",
-        )
-        self.assertNotEqual(original, changed)
-        self.assertEqual([], self.validate(automation=changed))
-
-    def test_notes_validation_must_precede_publication(self) -> None:
-        automation = "gh release create too-early\n" + self.files()["automation"]
-        errors = self.validate(automation=automation)
-        self.assertTrue(any("notes validation must precede publication" in error for error in errors))
-
-    def test_tag_examples_are_not_a_substitute_for_extractor_tests(self) -> None:
-        original = self.files()["automation"]
-        changed = original.replace("`release-1.2.3`", "`package-1.2.3`")
-        self.assertNotEqual(original, changed)
-        self.assertEqual([], self.validate(automation=changed))
-
-    def test_extractor_cannot_assume_a_v_prefix(self) -> None:
-        extractor = self.files()["extractor"] + '\nvalue.startswith("v")\n'
-        errors = self.validate(extractor=extractor)
-        self.assertTrue(any("tag-prefix assumption" in error for error in errors))
-
-    def test_workflow_owned_generated_notes_boundary_is_required(self) -> None:
-        publishing = self.files()["publishing"].replace(
-            "#### Workflow-owned generated notes", "#### Changelog only"
-        )
-        errors = self.validate(publishing=publishing)
-        self.assertTrue(any("preferred automation contract" in error for error in errors))
+class PayloadContractTests(unittest.TestCase):
+    def test_heading_and_equivalent_prose_are_not_machine_interfaces(self):
+        from contracts import conventional_commit, semver_release, agent_scaffold
+        for module in (conventional_commit, semver_release, agent_scaffold):
+            with self.subTest(skill=module.SKILL), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                for relative in module.REQUIRED_PATHS:
+                    path = root / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("# Alternate heading\nEquivalent task guidance.\n", encoding="utf-8")
+                validator.errors.clear()
+                function = getattr(module, "validate_" + module.SKILL.replace("-", "_") + "_contract")
+                function(root)
+                self.assertEqual([], validator.errors)
+                (root / module.REQUIRED_PATHS[-1]).unlink()
+                function(root)
+                self.assertTrue(any("missing required payload" in item for item in validator.errors))
 
 
 class SemverChangelogExtractionTests(unittest.TestCase):
@@ -638,9 +531,16 @@ class RepositoryReleaseAutomationContractTests(unittest.TestCase):
         errors = self.validate(release_text=release_text.replace("    needs: validate\n", ""))
         self.assertTrue(any("required fixtures" in error for error in errors))
 
+    def test_workflow_display_names_and_comments_do_not_define_policy(self) -> None:
+        validate_text, release_text = self.files()
+        validate_text = re.sub(r"(?m)(^\s*-?\s*name:).+$", r"\1 Example heading", validate_text)
+        release_text = re.sub(r"(?m)(^\s*-?\s*name:).+$", r"\1 Other heading", release_text)
+        self.assertEqual([], self.validate(validate_text=validate_text,
+                                          release_text=release_text + "\n# --generate-notes is not used\n"))
+
     def test_generated_notes_fallback_is_rejected(self) -> None:
         _, release_text = self.files()
-        errors = self.validate(release_text=release_text + "\n# --generate-notes\n")
+        errors = self.validate(release_text=release_text.replace("--verify-tag", "--generate-notes"))
         self.assertTrue(any("changelog-backed" in error for error in errors))
 
     def test_existing_release_is_not_replaced(self) -> None:
@@ -655,104 +555,16 @@ class RepositoryReleaseAutomationContractTests(unittest.TestCase):
     def test_publication_cannot_precede_extraction(self) -> None:
         _, release_text = self.files()
         errors = self.validate(
-            release_text='release create "$GITHUB_REF_NAME"\n' + release_text
+            release_text=release_text.replace("      - name: Validate tag identity", '      - run: release create "$GITHUB_REF_NAME"\n      - name: Validate tag identity')
         )
         self.assertTrue(any("extract notes before publishing" in error for error in errors))
 
     def test_post_publication_verification_is_required(self) -> None:
         _, release_text = self.files()
         errors = self.validate(
-            release_text=release_text.replace("      - name: Verify GitHub Release", "")
+            release_text=release_text.replace("--json body", "--json other")
         )
-        self.assertTrue(any("required fixtures" in error for error in errors))
-
-
-class ConventionalCommitContractTests(unittest.TestCase):
-    def valid_files(self) -> dict[str, str]:
-        return {
-            "SKILL.md": (
-                "## Workflow\n"
-                "git rev-parse --show-toplevel\n"
-                "git -C <repo-root> symbolic-ref --quiet --short HEAD\n"
-                "Exit status 1 means detached HEAD; any other nonzero status is a Git preflight "
-                "error. Run git -C <repo-root> status --long --branch and stop for an "
-                "in-progress merge. Then stage the exact intended changes.\n"
-            ),
-            "references/staging-safety.md": (
-                "git -C <repo-root> status --short\n"
-                "git -C <repo-root> add -A -- .\n"
-                "Exit status 1 means HEAD is detached. Any other nonzero status is a Git error.\n"
-                "git diff --cached --name-only\n"
-                "git diff --cached --check\n"
-                "Stop when unrelated paths are already staged.\n"
-                "A named path does not authorize every hunk. Inspect "
-                "git -C <repo-root> diff --cached -- <paths> and "
-                "git -C <repo-root> diff -- <paths>. If a path mixes intended and unrelated "
-                "hunks, select only the authorized patch without modifying the working tree or "
-                "unrelated pre-existing index state. Inspect the actual cached patch.\n"
-                "An attached HEAD proves only that a branch is named. Run "
-                "git -C <repo-root> status --long --branch and stop for an in-progress merge, "
-                "rebase, cherry-pick, revert, bisect, or unresolved conflict. Ordinary commit "
-                "mode never continues or completes those operations.\n"
-                "Immediately before committing, record the reviewed index with "
-                "git -C <repo-root> rev-parse --verify --quiet HEAD and "
-                "git -C <repo-root> write-tree. After commit, run "
-                "git -C <repo-root> rev-parse 'HEAD^{tree}' and "
-                "git -C <repo-root> rev-list --parents -n 1 HEAD. Require the new tree to "
-                "equal `<expected-tree>` and exactly `<base>` as its sole parent; on an "
-                "unborn branch it must have no parent. Report failure without attempting "
-                "history rewriting.\n"
-            ),
-        }
-
-    def validate(self, *, staging_text: str | None = None) -> list[str]:
-        files = self.valid_files()
-        if staging_text is not None:
-            files["references/staging-safety.md"] = staging_text
-        with tempfile.TemporaryDirectory() as temporary:
-            skill_dir = Path(temporary) / "conventional-commit"
-            for relative, content in files.items():
-                path = skill_dir / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(content, encoding="utf-8")
-            validator.errors.clear()
-            validator.validate_conventional_commit_contract(skill_dir)
-            return list(validator.errors)
-
-    def test_valid_path_and_hunk_scope_contract(self) -> None:
-        self.assertEqual(self.validate(), [])
-
-    def test_mixed_hunk_boundary_is_required(self) -> None:
-        staging = self.valid_files()["references/staging-safety.md"].replace(
-            "If a path mixes intended and unrelated hunks, ",
-            "If every change in a path is intended, ",
-        )
-        errors = self.validate(staging_text=staging)
-        self.assertTrue(
-            any("path/hunk staging boundary lost fixtures" in error for error in errors)
-        )
-
-    def test_in_progress_operation_boundary_is_required(self) -> None:
-        staging = self.valid_files()["references/staging-safety.md"].replace(
-            "Ordinary commit mode never continues or completes those operations.",
-            "Continue the current operation when the index is clean.",
-        )
-        errors = self.validate(staging_text=staging)
-        self.assertTrue(
-            any("path/hunk staging boundary lost fixtures" in error for error in errors)
-        )
-
-    def test_committed_snapshot_verification_is_required(self) -> None:
-        staging = self.valid_files()["references/staging-safety.md"].replace(
-            "equal `<expected-tree>` and exactly `<base>` as its sole parent",
-            "have a plausible file list",
-        )
-        errors = self.validate(staging_text=staging)
-        self.assertTrue(
-            any("committed-snapshot verification boundary" in error for error in errors)
-        )
-
-
+        self.assertTrue(any("verify afterward" in error for error in errors))
 
 
 class PublicSummaryContractTests(unittest.TestCase):

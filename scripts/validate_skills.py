@@ -47,6 +47,7 @@ from catalog_core import (
     SKILLS_DIR,
     VALIDATE_WORKFLOW,
     errors,
+    dirty_load,
     parse_frontmatter,
     readme_skill_rows,
     warnings,
@@ -56,11 +57,7 @@ from catalog_core import (
 # regression suite and for any external caller pinned to the flat module API.
 from contracts.agent_scaffold import validate_agent_scaffold_contract
 from contracts.conventional_commit import validate_conventional_commit_contract
-from contracts.semver_release import (
-    validate_semver_automation_contract,
-    validate_semver_publication_boundary,
-    validate_semver_release_contract,
-)
+from contracts.semver_release import validate_semver_release_contract
 from contracts.tooling_conventions import (
     validate_tooling_conventions_contract,
 )
@@ -81,8 +78,6 @@ __all__ = [
     "validate_readme_catalog_count",
     "validate_repository_release_automation_contract",
     "validate_resident_contract",
-    "validate_semver_automation_contract",
-    "validate_semver_publication_boundary",
     "validate_semver_release_contract",
     "validate_targeted_contract_coverage",
     "validate_tooling_conventions_contract",
@@ -250,69 +245,73 @@ def validate_repository_release_automation_contract(
     if release_text is None:
         release_text = RELEASE_WORKFLOW.read_text(encoding="utf-8")
 
-    normalized_validate = " ".join(validate_text.split())
-    normalized_release = " ".join(release_text.split())
-    required_validate = (
-        # Trunk-only push + pull_request: every origin ref stays covered exactly
-        # once. Matching "**" here would double-run the full matrix per PR branch.
-        "push: branches: [main]",
-        "pull_request:",
-        "workflow_call:",
-        "permissions: contents: read",
-    )
-    if 'branches: ["**"]' in normalized_validate:
-        errors.append(
-            "validate.yml must not run the full matrix on every branch push: "
-            'pull_request already covers PR branches, so `branches: ["**"]` doubles each PR run'
-        )
-    validate_concurrency_isolation(normalized_validate, normalized_release)
-    required_release = (
-        'push: tags: ["v*"]',
-        "permissions: contents: read",
-        "uses: ./.github/workflows/validate.yml",
-        "needs: validate",
-        "contents: write",
-        "tag_pattern=",
-        'git rev-parse "$GITHUB_REF_NAME^{commit}"',
-        "skills/semver-release/scripts/extract-changelog.py",
-        '--tag "$GITHUB_REF_NAME"',
-        '--output "$RUNNER_TEMP/release-notes.md"',
-        "Inspect existing release",
-        "id: release_state",
-        "exists=true",
-        "if: steps.release_state.outputs.exists != 'true'",
-        'release create "$GITHUB_REF_NAME"',
-        "--verify-tag",
-        '--notes-file "$RUNNER_TEMP/release-notes.md"',
-        'gh "${args[@]}"',
-        "--prerelease --latest=false",
-        "Verify GitHub Release",
-        "expected_notes=",
-        "actual_notes=",
-    )
-    missing = {
-        "validate.yml": [value for value in required_validate if value not in normalized_validate],
-        "release.yml": [value for value in required_release if value not in normalized_release],
-    }
-    missing = {label: values for label, values in missing.items() if values}
-    if missing:
-        errors.append(f"repository release automation lost required fixtures: {missing}")
+    validate = workflow_data(validate_text)
+    release = workflow_data(release_text)
+    if validate is None or release is None:
+        return
+    try:
+        trigger = validate.get("on", {})
+        if trigger.get("push", {}).get("branches") != ["main"]:
+            errors.append("validate.yml branch push policy doubles each PR run or omits main")
+        if not {"pull_request", "workflow_call"} <= trigger.keys() or validate.get("permissions", {}).get("contents") != "read":
+            errors.append("validation workflow lost required fixtures: reusable trigger/read-only permissions")
+        vc, rc = validate.get("concurrency", {}), release.get("concurrency", {})
+        validate_concurrency_isolation(
+            "concurrency: group: %s cancel-in-progress:" % vc.get("group", ""),
+            "concurrency: group: %s cancel-in-progress:" % rc.get("group", ""))
+        jobs = release.get("jobs", {})
+        publisher = jobs.get("release", {})
+        needs = publisher.get("needs", [])
+        if isinstance(needs, str):
+            needs = [needs]
+        if (release.get("on", {}).get("push", {}).get("tags") != ["v*"]
+                or jobs.get("validate", {}).get("uses") != "./.github/workflows/validate.yml"
+                or "validate" not in needs
+                or release.get("permissions", {}).get("contents") != "read"
+                or publisher.get("permissions", {}).get("contents") != "write"):
+            errors.append("release workflow lost required fixtures: tag trigger, validation dependency or permissions")
+        steps = publisher.get("steps", [])
+        runs = [(i, step, str(step.get("run", ""))) for i, step in enumerate(steps)]
+        extracts = [i for i, _, run in runs if "skills/semver-release/scripts/extract-changelog.py" in run]
+        publishes = [(i, step) for i, step, run in runs if 'release create "$GITHUB_REF_NAME"' in run]
+        verifies = [i for i, _, run in runs if "--json body" in run]
+        if (len(extracts) != 1 or len(publishes) != 1 or len(verifies) != 1
+                or not extracts[0] < publishes[0][0] < verifies[0]):
+            errors.append("release must extract notes before publishing and verify afterward")
+        if (len(publishes) != 1
+                or publishes[0][1].get("if") != "steps.release_state.outputs.exists != 'true'"
+                or not any(step.get("id") == "release_state" for step in steps)):
+            errors.append("release workflow lost required fixtures: existing release guard")
+        if "pull_request_target" in release.get("on", {}) or any("--generate-notes" in run for _, _, run in runs):
+            errors.append("repository release automation must remain changelog-backed and least-privilege")
+    except (AttributeError, TypeError):
+        errors.append("release workflow structure is invalid")
 
-    forbidden = ("--generate-notes", "pull_request_target:")
-    found = [value for value in forbidden if value in normalized_release]
-    if found:
-        errors.append(
-            "repository release automation must remain changelog-backed and least-privilege: "
-            f"{found}"
-        )
 
-    extract = normalized_release.find("skills/semver-release/scripts/extract-changelog.py")
-    publish = normalized_release.find('release create "$GITHUB_REF_NAME"')
-    verify = normalized_release.find("Verify GitHub Release")
-    if extract < 0 or publish < 0 or verify < 0 or not extract < publish < verify:
-        errors.append(
-            "repository release automation must extract notes before publishing and verify afterward"
-        )
+def workflow_data(text: str):
+    """Parse executable workflow structure; names and comments are editorial choices."""
+    if dirty_load is None:
+        errors.append("StrictYAML is required for workflow validation")
+        return None
+    try:
+        value = dirty_load(text, allow_flow_style=True).data
+        if not isinstance(value, (dict, list)):
+            raise ValueError("workflow must be a mapping")
+        return value
+    except Exception as exc:
+        errors.append("invalid workflow YAML: " + str(exc)[:200])
+        return None
+
+
+def workflow_runs(text: str) -> list[str]:
+    value = workflow_data(text)
+    if value is None:
+        return []
+    # A standalone step list is useful in targeted fixtures.
+    if isinstance(value, list):
+        return [step["run"] for step in value if isinstance(step, dict) and isinstance(step.get("run"), str)]
+    return [step["run"] for job in value.get("jobs", {}).values()
+            for step in job.get("steps", []) if isinstance(step.get("run"), str)]
 
 
 def validate_npx_discovery_contract() -> None:
@@ -321,12 +320,8 @@ def validate_npx_discovery_contract() -> None:
     if not workflow.exists():
         return
     workflow_text = workflow.read_text(encoding="utf-8")
-    match = re.search(
-        r"(?ms)^\s*- name: Smoke-test real npx skills discovery\s*$"
-        r"(.*?)(?=^\s*- name:|\Z)",
-        workflow_text,
-    )
-    discovery_step = match.group(1) if match else ""
+    discovery_step = "\n".join(run for run in workflow_runs(workflow_text)
+                               if "npx --yes skills@1.5.17 add . -l" in run)
     required = {
         "capture pinned CLI output": (
             r"output=.*NO_COLOR=1\s+DISABLE_TELEMETRY=1\s+"
@@ -358,12 +353,8 @@ def validate_npx_payload_contract(workflow_text: str | None = None) -> None:
         if not workflow.exists():
             return
         workflow_text = workflow.read_text(encoding="utf-8")
-    match = re.search(
-        r"(?ms)^\s*- name: Smoke-test installed skill payloads\s*$"
-        r"(.*?)(?=^\s*- name:|\Z)",
-        workflow_text,
-    )
-    payload_step = match.group(1) if match else ""
+    payload_step = "\n".join(run for run in workflow_runs(workflow_text)
+                             if "installed_skill=" in run)
     required = {
         "iterate every catalog skill": r'for source_skill in "\$repo"/skills/\*; do',
         "derive installed skill path": (

@@ -14,3 +14,5 @@ Use the project's Python 3.8+ launcher. The compile check does not execute the s
 Exercise help, preview, and other CLI interfaces that the command actually provides. Verify that a claimed dry run suppresses the relevant effects. Use focused behavior checks and required project gates alongside syntax validation.
 
 Hardware, device GUI, flashing, and loader behavior needs appropriate target evidence. Report host-only checks separately from real-target validation and identify unavailable checks.
+
+For a changed command, pair one expected success with a consequential failure case: for example, a dry run selects the intended devices yet leaves them untouched, or a failed publication prerequisite never calls the publisher. Prefer observations of files, calls, or exit status to assertions about how guidance is phrased.

@@ -115,3 +115,5 @@ Codex applies two independent gates to this scaffold:
 - **The trunk guard blocks every edit**: start a worktree with
   `bash .agents/tools/worktree.sh new <name>`. Use the two-hour escape hatch only with explicit
   authorization, or select `apply --profile light` when the project does not use this governance.
+
+Patch payload checks include both `Update File` and `Move to` paths, so a rename cannot hide its destination from the primary-worktree guard or authority-document budget. Repository checks remain subject to the existing foreign-repository and ignored-file boundaries; this hook is not an OS sandbox.

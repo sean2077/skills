@@ -84,6 +84,8 @@ python scripts/tests/test_semver_release_plan.py
 python scripts/tests/test_tdd_contract.py
 python scripts/tests/test_private_skill_eval_contract.py
 python scripts/tests/test_live_skill_eval_adapter.py
+python scripts/tests/test_task_outcomes.py
+python scripts/tests/test_release_execution.py
 
 python scripts/generate_workflow_runtimes.py --check
 python scripts/generate_p0_runtimes.py --check
@@ -132,6 +134,8 @@ Do not report those platform, installer-fidelity, or Python-floor results unless
 ## Evaluation evidence
 
 The [live routing guide](../evals/agent-skills/README.md) owns measurement semantics and probe limitations. `test_live_skill_eval_adapter.py` covers host exits, strict JSON, cache-inclusive usage, revision-contained candidate files, and typed verifier comparisons. `test_tdd_contract.py` protects distribution and attribution; it deliberately does not enforce English sentence fixtures as a substitute for behavior evaluation. Commit changed suite manifests before validating them because evaluation pins inputs to Git.
+
+The optional [task outcome fixtures](../evals/tasks/README.md) inspect actual artifacts and captured tool results under no-skill, brief-request, and pinned-skill conditions. Their CI reference actions validate the oracles, not model effectiveness. The release execution fixture runs repository-owned shell scripts against local Git and a mock publisher; it never publishes.
 
 ## Generated files
 

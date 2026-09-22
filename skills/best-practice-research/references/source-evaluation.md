@@ -15,3 +15,7 @@ For evolving tools, verify the latest stable documentation and release notes. A 
 ## Adoption evidence
 
 Repository stars, search frequency, and anecdotes are weak proxies. Prefer maintained integrations, compatibility matrices, issue resolution, migration support, and evidence from comparable production constraints.
+
+## Decision example
+
+For a dependency choice, distinguish “upstream documents Windows support” from “the pinned version passes this project’s Windows smoke test.” If both candidates meet the constraint, compare the actual migration or operation cost instead of accumulating more general citations. Keep a material unknown visible and design the smallest local observation that can resolve it.

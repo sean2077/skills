@@ -19,3 +19,7 @@ For a material reorganization, weigh retrieval benefits against migration cost a
 A root README should explain the project and offer a useful start. A documentation landing page should expose the available routes and distinguish guidance from proposals, generated copies, and history. Link to authoritative setup, architecture, command, and operational pages.
 
 Use [local numbering](numbering-patterns.md) where display order helps readers; preserve established ordering and generator-owned navigation unless changing them solves the actual problem. Complete moves through [migration and links](migration-and-links.md).
+
+## Cold-reader example
+
+After moving installation and authentication pages, ask a fresh reader: “Starting at README, how do I authenticate, and which page owns that requirement?” Give only the resulting documents and links. A correct answer should cite the owning page; guessing from common practice does not establish discoverability. Repair the route or missing explanation, preserving project-specific facts. This is an optional retrieval check, not a fixed reviewer count or new document lifecycle.

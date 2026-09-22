@@ -13,6 +13,8 @@ Honor the user's up-front or incremental modeling choice. Evolve incrementally o
 
 Give each concept one owning definition and keep its equally valid canonical language equivalents together. Choose a flat glossary, subject groups, or mapped local glossaries according to semantic and ownership boundaries.
 
+Use recurring scenarios to distinguish durable concepts from local implementation names; concrete decision examples are in [elicitation and migration](references/elicitation-and-migration.md).
+
 Capture resolved terminology during authorized work and keep unresolved boundaries visible. Keep behavioral and architectural detail in its owning project documents.
 
 For topology changes, migrate entries and active routes together, including `CONTEXT-MAP.md` and `AGENTS.md`. Verify links, ownership, and attached language equivalents. An assessment-only request calls for findings rather than edits.

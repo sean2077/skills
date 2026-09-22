@@ -564,7 +564,34 @@ def render_agents_template(source: Path, profile: str) -> str:
             continue
         if not skip:
             output.append(re.sub(r"[ \t]*" + re.escape(WORKTREE_ONLY), "", line))
-    return "".join(output)
+    return "".join(output).replace("agent-scaffold:profile=default", "agent-scaffold:profile=" + profile)
+
+
+def select_profile(target: Path, source: Path) -> str:
+    """Reuse explicit installed ownership; recognize only exact unmarked legacy blocks."""
+    contract = target / "AGENTS.md"
+    if not contract.exists():
+        if contract.is_symlink():
+            raise CoreError("AGENTS.md is a dangling link; resolve it before selecting a profile")
+        return "default"
+    if not contract.is_file() or contract.is_symlink():
+        raise CoreError("AGENTS.md must be a regular file before selecting a profile")
+    if marker_state(contract) == "invalid":
+        raise CoreError("AGENTS.md managed markers are invalid")
+    block = extract_managed_block(contract.read_text(encoding="utf-8"))
+    if block is None:
+        return "default"
+    marks = re.findall(r"^<!-- agent-scaffold:profile=([^\n]+) -->$", block, re.MULTILINE)
+    if "agent-scaffold:profile=" in block:
+        if len(marks) != 1 or block.count("agent-scaffold:profile=") != 1 or marks[0] not in PROFILES:
+            raise CoreError("invalid installed profile marker; specify --profile after resolving it")
+        return marks[0]
+    for candidate in sorted(PROFILES):
+        legacy = re.sub(r"^<!-- agent-scaffold:profile=[^\n]+ -->\n", "",
+                        render_agents_template(source, candidate), flags=re.MULTILINE)
+        if block == extract_managed_block(legacy):
+            return candidate
+    raise CoreError("existing managed block has no unambiguous profile; specify --profile default|light")
 
 
 def extract_managed_block(text: str) -> Optional[str]:
@@ -1399,6 +1426,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    profile = subparsers.add_parser("profile")
+    profile.add_argument("--target", required=True)
+
     assets = subparsers.add_parser("assets")
     assets_sub = assets.add_subparsers(dest="assets_command", required=True)
     assets_sub.add_parser("validate")
@@ -1467,6 +1497,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
+        if args.command == "profile":
+            manifest = load_manifest(Path(args.manifest))
+            source = SKILL_DIR / asset_by_id(manifest, "contract.agents")["source"]
+            print(select_profile(Path(args.target), source))
+            return 0
         if args.command == "assets":
             return command_assets(args)
         if args.command == "lines":

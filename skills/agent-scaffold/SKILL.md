@@ -45,7 +45,7 @@ and runs the subagent generator in every mutating mode.
 | `upgrade` | Refresh current managed runtime files, then reconcile the contract |
 
 Use `--profile default` for worktree/trunk-guard governance or `--profile light`
-to omit it. Use `--json` with `plan`, `doctor`, or `verify` when another tool
+to omit it. Without `--profile`, reuse an identifiable installed choice; fresh installations use `default`. An ambiguous older installation requires an explicit choice. Use `--json` with `plan`, `doctor`, or `verify` when another tool
 needs stable check IDs and statuses.
 
 ## Workflow

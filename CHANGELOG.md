@@ -6,6 +6,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
+- Reuse a valid installed scaffold profile when the flag is omitted; mark new installations explicitly and require a choice for ambiguous legacy state. Fresh installs still default to guarded worktrees.
+
+### Changed
+
+- Replace wording/heading-based skill checks with payload inventories and actual Git/mock-release outcome tests. Workflow display names and comments no longer determine publication or installer validation.
+- Add opt-in task fixtures for mixed-index commits, specification preservation, document moves, ambiguous mock writes and actual RED/GREEN traces, with no-skill/brief/pinned-skill controls and honest unknown-cost reporting.
+- Apply selected Anthropic/OpenAI authoring principles: task-specific reasons and examples, risk-proportionate freedom, optional cold-reader checks, and concrete terminology boundaries. Keep all 13 routes and existing approval/authorization semantics.
+- Track installer, host, Lark and evaluation evidence independently; distinguish documentation, simulated payload, actual-host and task-outcome claims without introducing new orchestration or game workflows.
+
+
 ## [v7.0.0] — 2026-09-21
 
 ### Breaking

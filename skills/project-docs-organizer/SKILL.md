@@ -19,6 +19,8 @@ Preserve established numbering; introduce ordering where stable sibling order he
 
 Reconcile navigation, backlinks, configuration, authority references, and command examples during moves or deletions. Verify changed routes and applicable checks. Date or version external claims that depend on a changing product.
 
+For a material reorganization, test a reader journey using only the resulting entry points, not the editing conversation. Repair missing context or dead ends; a small wording fix needs no separate reader exercise.
+
 Report resulting entry points, significant moves/deletions, checks, and unresolved external links or risks.
 
 ## References
