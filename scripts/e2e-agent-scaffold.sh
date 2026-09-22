@@ -1359,13 +1359,18 @@ check "light-profile keeps the real-link contract" test "$(readlink "$L/CLAUDE.m
 ( cd "$L" && bash "$H" verify --profile light ) >/dev/null 2>&1; rc=$?
 check "light-profile verify accepts light profile" test "$rc" = 0
 ( cd "$L" && bash "$H" verify ) >/dev/null 2>&1; rc=$?
-check "default verify detects omitted workflow"  test "$rc" != 0
+check "omitted profile verifies installed light policy" test "$rc" = 0
+( cd "$L" && bash "$H" verify --profile default ) >/dev/null 2>&1; rc=$?
+check "explicit default verify detects omitted workflow" test "$rc" != 0
 git -C "$L" add -A && git -C "$L" commit -q -m "light harness"
-( cd "$L" && bash "$H" apply --profile light ) >/dev/null 2>&1; rc=$?
-check "light-profile apply re-run exits 0"       test "$rc" = 0
+( cd "$L" && bash "$H" apply ) >/dev/null 2>&1; rc=$?
+check "omitted-profile apply reuses light"       test "$rc" = 0
 check "light-profile apply is idempotent"        test -z "$(git -C "$L" status --porcelain)"
 ( cd "$L" && bash "$H" upgrade ) >/dev/null 2>&1; rc=$?
-check "default upgrade re-enables worktree flow" test "$rc" = 0
+check "omitted-profile upgrade reuses light" test "$rc" = 0
+check "omitted-profile upgrade preserves light files and policy" test -z "$(git -C "$L" status --porcelain)"
+( cd "$L" && bash "$H" upgrade --profile default ) >/dev/null 2>&1; rc=$?
+check "explicit default upgrade re-enables worktree flow" test "$rc" = 0
 check "re-enabled worktree.sh is installed"      test -f "$L/.agents/tools/worktree.sh"
 check "re-enabled Claude guard is wired once"    jcommand_count "$L/.claude/settings.json" "hook-paths.py --guard" 1
 check "re-enabled AGENTS block has hard rule"    grep -qF "Worktree-per-change (hard rule)" "$L/AGENTS.md"
