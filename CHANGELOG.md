@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v8.0.0] — 2026-09-23
+
 ### Added
 
 - Add a `lark-invented-syntax` task fixture whose oracle reads the mock's call log: an undocumented argument shape fails it, and the run must observe the data through a documented command. The `lark-cli` ban on inventing flags, methods, enums, IDs, URLs, or parameter shapes had no executable or fixture coverage, and its contract deferred to a live-eval suite that contains no such case.
@@ -572,7 +574,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v7.0.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v8.0.0...HEAD
+[v8.0.0]: https://github.com/sean2077/skills/compare/v7.0.0...v8.0.0
 [v7.0.0]: https://github.com/sean2077/skills/compare/v6.2.0...v7.0.0
 [v6.2.0]: https://github.com/sean2077/skills/compare/v6.1.0...v6.2.0
 [v6.1.0]: https://github.com/sean2077/skills/compare/v6.0.0...v6.1.0
