@@ -18,13 +18,22 @@ REQUIRED_PATHS = (
     "references/context-topology.md",
     "references/elicitation-and-migration.md",
 )
-NOTICE_MARKERS = (
+# Provenance, the license name, and the copyright holder: a rewrite must keep these.
+PROVENANCE_MARKERS = (
     "mattpocock/skills",
     "skills/engineering/domain-modeling/",
     "MIT License",
     "Copyright (c) 2026 Matt Pocock",
     "The above copyright notice and this permission notice shall be included",
 )
+# The license body itself. Provenance lines alone are not the MIT text, so a notice
+# reduced to them must fail rather than count as preserved attribution.
+LICENSE_TEXT_MARKERS = (
+    "Permission is hereby granted, free of charge, to any person obtaining a copy",
+    'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND',
+    "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER",
+)
+NOTICE_MARKERS = PROVENANCE_MARKERS + LICENSE_TEXT_MARKERS
 
 
 def validate_domain_modeling_contract(

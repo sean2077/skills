@@ -314,25 +314,36 @@ class PayloadContractTests(unittest.TestCase):
 
 
 class DomainModelingAttributionTests(unittest.TestCase):
-    def test_upstream_provenance_markers_and_payload_files_are_required(self) -> None:
+    def test_upstream_provenance_and_license_text_are_required(self) -> None:
         from contracts import domain_modeling
 
+        real_notice = (
+            Path(__file__).resolve().parents[1] / "skills" / "domain-modeling" / "NOTICE.md"
+        ).read_text(encoding="utf-8")
         with tempfile.TemporaryDirectory() as directory:
             skill_dir = Path(directory) / "domain-modeling"
             for relative in domain_modeling.REQUIRED_PATHS:
                 path = skill_dir / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("# Attribution notice\n\nMIT License\n", encoding="utf-8")
+                path.write_text("# Placeholder\n", encoding="utf-8")
             validator.errors.clear()
             domain_modeling.validate_domain_modeling_contract(skill_dir)
             self.assertTrue(any("upstream provenance" in item for item in validator.errors))
 
-            (skill_dir / "NOTICE.md").write_text(
-                "\n".join(domain_modeling.NOTICE_MARKERS) + "\n", encoding="utf-8"
-            )
+            (skill_dir / "NOTICE.md").write_text(real_notice, encoding="utf-8")
             validator.errors.clear()
             domain_modeling.validate_domain_modeling_contract(skill_dir)
             self.assertEqual([], list(validator.errors))
+
+            # Provenance lines alone are not the MIT text: a notice reduced to them,
+            # with the grant and the disclaimer gone, must fail.
+            (skill_dir / "NOTICE.md").write_text(
+                "# Attribution notice\n\n" + "\n".join(domain_modeling.PROVENANCE_MARKERS) + "\n",
+                encoding="utf-8",
+            )
+            validator.errors.clear()
+            domain_modeling.validate_domain_modeling_contract(skill_dir)
+            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
 
             (skill_dir / "NOTICE.md").unlink()
             validator.errors.clear()
