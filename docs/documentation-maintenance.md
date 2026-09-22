@@ -1,38 +1,42 @@
 # Documentation maintenance
 
-Documentation serves consumers, repository Agents, maintainers, and installed skill users. Keep facts in their authoritative home and maintain the routes readers use to find them.
+Keep durable facts in their authoritative home and maintain the routes readers use to find them. This page owns documentation practice, not a mandatory review workflow.
 
 ## Ownership
 
 | Source | Responsibility |
 |---|---|
-| `README.md` | Consumer orientation, catalog, installation, and navigation |
-| `AGENTS.md` / linked `CLAUDE.md` | Frequently needed repository instructions |
-| `docs/skill-composition.md` | Choosing and combining catalog routes |
+| `README.md` | Consumer orientation, concise catalog, installation entry point, and navigation |
+| `AGENTS.md` / linked `CLAUDE.md` | Frequently needed repository instructions; preserve scaffold ownership of its managed block |
+| `docs/skill-composition.md` | Selecting and combining catalog routes; retired-installation cleanup |
 | `docs/architecture.md` | Product surfaces and source/generated ownership |
-| `docs/development.md` | Maintainer commands, checks, generation, and releases |
-| `docs/compatibility.md` | Dated installer, host, platform, and verification claims |
-| `docs/harness-constraint-policy.md` | Design and validation principles |
-| `docs/audits/*.md` | Historical review evidence and decisions |
+| `docs/development.md` | Maintainer commands, checks, generation, and this repository's release procedure |
+| `docs/compatibility.md` | Dated installer/host claims and their evidence limits |
+| `docs/harness-constraint-policy.md` | Skill design and validation principles |
 | `CONTEXT.md` | Repository terminology |
-| `CHANGELOG.md` | Pending changes and release history |
-| `skills/<name>/SKILL.md` and references | Installed skill guidance and operational detail |
-| Scaffold assets and runtime source | Generated/installed content; ownership map in architecture |
+| `CHANGELOG.md` and `docs/audits/*.md` | Pending changes, release history, and dated review evidence |
+| `skills/<name>/SKILL.md` and references | Self-contained installed skill guidance |
+| `evals/agent-skills/README.md` / `evals/tasks/README.md` | Routing-probe / task-outcome procedures and measurement limits |
+| Scaffold assets and shared runtime source | Generated/installed content; see the [ownership map](architecture.md#source-and-generated-ownership) |
 
 ## Editing and reorganization
 
-Choose organization from reader tasks and existing conventions. Keep authoritative facts together and use navigation for additional views. Scale inventories and planning to the change; preserve useful unique content when consolidating or removing pages.
+Choose organization from reader tasks and existing conventions. Entry points summarize and route; do not copy full skill descriptions, command manuals, or test inventories into every page. Preserve useful unique content when merging or removing material. A source-backed paragraph that remains accurate needs no rewrite just to refresh its date.
 
-Update changed guidance and its readers together: links, backlinks, templates, generated projections, manifests, and command examples. Run the affected catalog, link, generation, and behavior checks from the [development guide](development.md). Record user- or maintainer-visible changes under Unreleased.
+Update changed guidance and its consumers together: links, backlinks, templates, generated projections, manifests, and command examples. Keep catalog-skill references inside their installable payload; repository-level manuals can link across the repository. Edit a generated document's source and regenerate rather than patching its projection.
 
-## Evidence and freshness
+Use metadata only when it helps interpret status or freshness. Follow the project's convention; flat `status` and `updated` are useful starting fields, not a required schema or approval gate. Formats that own their frontmatter, including `SKILL.md`, keep that contract. See [document metadata](../skills/project-docs-organizer/references/document-metadata.md).
 
-Derive repository facts from the inspected revision, especially paths, generators, pins, counts, and commands. Cite first-party sources for external product contracts and bind changing claims to a review date or tested version. A pinned CI dependency is a tested pin, not a claim to be upstream latest.
+## Evidence and verification
 
-Distinguish format validation, installer tests, host wiring, and observed host behavior. Keep historical findings tied to their date; record corrections in current guidance and Unreleased rather than rewriting past release history.
+Derive repository facts from the inspected revision: paths, flags, generators, pins, counts, schemas, and commands. For external product contracts, retain first-party sources and the actual review date or tested version. Editing surrounding prose is not a new host test or source review; a reproducibility pin is not an upstream-latest claim.
 
-Use metadata when status or freshness helps readers interpret a document. Follow the project's convention; flat `status` and `updated` are useful starting fields. Interpret them alongside content, repository evidence, and user intent. See [document metadata](../skills/project-docs-organizer/references/document-metadata.md).
+Use the [changed-surface checks](development.md#select-checks-by-changed-surface). Catalog reference validation checks contained Markdown file targets and reachability; it does not validate every repository document or heading fragment. Review those links and anchors separately, including incoming links after a move. Verify working directory, scope, quoting, identity, effects, confirmation, and expected result for changed commands. Distinguish commands inspected from commands executed.
 
-## Executable examples
+For a material reorganization, walk a realistic reader task from the resulting entry point without relying on the editing conversation. Record material gaps in the PR rather than adding a permanent audit page for routine maintenance. Add user- or maintainer-visible changes under Unreleased.
 
-Check working directory, scope, quoting, identity, effects, confirmation, and expected result. Quote shell globs such as `'*'`; prefix local installer paths with `./`. Keep preview, authorization, mutation, and verification clear for consequential writes.
+## Historical records
+
+The [2026-09-20 native-first audit](audits/2026-09-20-native-first.md) and [2026-09-06 harness audit](audits/2026-09-06-harness.md) retain review-time evidence and rationale. Their catalog counts, paths, recommendations, and host observations may have been superseded. Use current architecture, compatibility, and skill guidance for new work.
+
+Preserve released changelog sections and useful audit evidence. Put corrections in the owning current document and Unreleased; do not rewrite history to look like current-main behavior. Keep old paths only when they still serve a reader or compatibility need, not as parallel current manuals.

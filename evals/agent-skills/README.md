@@ -1,49 +1,66 @@
 # Live Agent Skill evaluations
 
-These suites measure routing and decision behavior for changed skills through the existing `skill-eval` runtime. Their adapter is the repository-local `evals/agent-skills/host_adapter.py`; CI validates every manifest but does not claim a behavioral pass without a configured model host.
+These are opt-in **routing and decision probes**, not task execution or native skill-discovery tests. The repository-local `host_adapter.py` uses the project `skill-eval` runtime and a configured Claude CLI. CI validates manifests and deterministic regressions; it does not run an authenticated model or establish effectiveness.
 
-The adapter implements `agent-skill-eval/v1`, invokes the local `claude` CLI once per baseline or treatment request as a read-only decision probe, reports usage metrics, and returns the observation under `metadata.behavior`. It derives catalog routes from the checked-out `skills/` tree, binds a selected treatment to its loaded candidate and normalizes route/workflow vocabulary and behavior-key spelling, and never manufactures task-specific decision fields from prompt heuristics or `case.metadata.expected_behavior`. Set `CLAUDE_BIN` when `claude` is not on `PATH`; Claude Code must be installed and authenticated before a live run.
+## Validate or execute
 
-The shared verifier checks adapter completion and selection separately from behavior: baseline is never selected, a positive treatment must select its candidate, and negative/confusable treatments must reject it. Expected objects remain recursive subsets; expected array members must occur as complete JSON values (order and extra members are allowed). Booleans are distinct from numbers, including inside arrays. Adapters may report additional observations without coupling suites to one host's prose. A fake or rule-based adapter can exercise protocol plumbing but is not evidence that a skill improves model behavior.
-
-Routes name shipped catalog skills or `none` for host/project work; workflow labels describe the task independently. Candidate metadata and suite route references are checked against the shipped catalog.
-
-Behavior keys use `snake_case`. Workflow values come from the adapter's canonical vocabulary; adjacent suites should use the same label for the same user intent rather than defining candidate-local synonyms.
-
-Run a configured suite from a committed revision:
+Run from the intended committed task checkout. Commit changed candidate/manifests first: evaluation pins inputs to Git, not an uncommitted editing session.
 
 ```bash
+# Offline manifest validation; no model invocation
 python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/agent-skills/tdd/suite.json
-python .agents/skills/skill-eval/scripts/skill_eval.py run evals/agent-skills/tdd/suite.json --output /tmp/tdd-skill-eval.json
-python .agents/skills/skill-eval/scripts/skill_eval.py validate-result /tmp/tdd-skill-eval.json
 ```
 
-On Windows, use a temporary output path and the same commands from PowerShell. The adapter is not a public package and is not installed into a user-level bin directory.
+Live execution is separate and may incur model usage. Configure and authenticate Claude Code, authorize the experiment, and set `CLAUDE_BIN` when it is not on `PATH`. From Bash/Git Bash:
 
-Review treatment selection, verifier results, scope, and cost together. Both executions must complete with valid selection/trigger and scope boundaries; an invalid baseline cannot yield a passing comparison. A completed, correctly isolated baseline may still fail the task oracle. Do not accept a routing change merely because the manifest validates or an offline adapter can reproduce the expected JSON.
+```bash
+(
+  set -e
+  result_dir="$(mktemp -d)"
+  printf 'Retained evaluation output: %s\n' "$result_dir"
+  python .agents/skills/skill-eval/scripts/skill_eval.py run \
+    evals/agent-skills/tdd/suite.json --output "$result_dir/tdd-skill-eval.json"
+  python .agents/skills/skill-eval/scripts/skill_eval.py validate-result \
+    "$result_dir/tdd-skill-eval.json"
+)
+```
+
+Keep the result even on failure. `validate-result` is a contract check, not a replacement for inspecting selection, task oracle, scope, completion, and cost together. A fake/rule-based adapter can test plumbing but cannot show that a skill improves model behavior.
+
+## Adapter and comparison contract
+
+The adapter implements `agent-skill-eval/v1`, invokes `claude` once per baseline/treatment request, and returns observations under `metadata.behavior`. It derives routes from the checked-out catalog, binds a selected treatment to its loaded candidate, and normalizes route/workflow vocabulary and behavior-key spelling. It does not manufacture decision fields from request heuristics or verifier expectations.
+
+| Execution | Required selection behavior |
+|---|---|
+| Baseline | Never selects a candidate; receives no candidate instructions |
+| Positive treatment | Selects its candidate |
+| Negative/confusable treatment | Rejects its candidate |
+
+Both executions must complete with valid selection/trigger and scope boundaries. An invalid baseline cannot produce a passing comparison; a valid isolated baseline that fails the task oracle can still be useful evidence.
+
+Routes name shipped skills or `none` for host/project work; workflow labels describe intent independently. Candidate metadata and suite references must match the shipped catalog. Behavior keys use `snake_case`; share canonical workflow labels across adjacent suites. Expected objects are recursive subsets; expected array members must appear as complete JSON values, with order and extra members allowed. Booleans and numbers remain distinct, including in arrays.
 
 ## Decision and safety coverage
 
-The suites cover approval of a whole specification, formal digest approval, explicit test-first work, documentation/tooling decisions, selected Lark CLI use, and release publication boundaries. Expected observations assert task outcomes rather than incidental wording or optional record formats. Explicit project-required records retain their own expectations.
+Current manifests are the case inventory. They cover whole-specification and digest approval, explicit test-first work, documentation/tooling decisions, selected Lark CLI use, and release boundaries. Observations target decision outcomes rather than incidental wording; explicit project-required records retain exact expectations.
 
-Lark cases cover identity, ambiguous or contradictory results, fresh confirmation, CLI confirmation gates, untrusted instructions, and file containment. Deterministic tests exercise the verifier with missing, unsafe, or wrong-typed observations. They validate the oracle and protocol; live model compliance and real CLI operation require separate execution.
-
-Historical changes to probe coverage are recorded in the [September 20 audit](../../docs/audits/2026-09-20-native-first.md). Current suite manifests are the case inventory.
+Lark probes cover identity, ambiguous/contradictory results, fresh confirmation, CLI confirmation gates, untrusted instructions, and file containment. Negative fixtures test missing, unsafe, and wrong-typed observations. They verify the oracle/protocol, not real CLI operation or live model compliance. Historical coverage changes remain in the [September 20 audit](../../docs/audits/2026-09-20-native-first.md).
 
 ## Measurement and failure boundaries
 
-The adapter requires exactly one finite JSON object from both the CLI and its decision response. Duplicate JSON keys, colliding normalized behavior keys, nonzero host exit, host-reported failure, missing usage, and malformed/non-integral usage cannot become a completed run. A candidate directory's final `SKILL.md` target must remain inside the pinned repository even through a symlink.
+Both the CLI response and decision response must be exactly one finite JSON object. Duplicate keys, normalized-key collisions, nonzero host exits, host-reported failures, missing usage, or malformed/non-integral usage cannot become completed runs. The candidate's final `SKILL.md` target must stay inside the pinned repository, including through symlinks.
 
-`input_tokens` counts uncached input plus cache reads and cache creation. Prefer whole-call `modelUsage` when available, otherwise require complete `usage`; never add both overlapping reports. This is token volume, not a dollar-cost estimate. The meanings follow the [Claude cache usage contract](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [whole-call usage guidance](https://code.claude.com/docs/en/agent-sdk/cost-tracking), checked 2026-09-06. Historical results produced before this correction are not directly comparable: rerun both baseline and treatment rather than loosening budgets to hide the changed measurement.
+`input_tokens` includes uncached input, cache reads, and cache creation. Prefer whole-call `modelUsage`, otherwise require complete `usage`; never add overlapping reports. This is token volume, not dollars. The interpretation follows [Claude cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [whole-call usage](https://code.claude.com/docs/en/agent-sdk/cost-tracking), reviewed 2026-09-06. Results predating that correction require matched baseline/treatment reruns, not relaxed budgets.
 
-Wall time is measured with a monotonic clock around the adapter invocation, not copied from API duration; the outer runner also enforces its independently measured lower bound. Local tools are disabled for this routing probe; reported server-tool counts are overlapping observations, not a general tool-usage audit.
+Wall time uses a monotonic clock around adapter invocation; the outer runner enforces its own measured lower bound. Local tools are disabled for the probe. Reported server-tool counts are overlapping observations, not a complete tool audit.
 
-Failed envelopes preserve available host usage and elapsed time. `metadata.usage_available=false` identifies unknown usage: the numeric zero fields are required v1 placeholders, **not proof of free execution**. Do not aggregate such runs into spend comparisons. `error_type`, `error_stage`, and `host_exit_code` aid diagnosis without copying raw output, credentials, or request text into results. Even available failure usage may be incomplete after a host crash.
-
-For actual edits, mock calls, test sequences and a brief-request control, use the optional [task outcome fixtures](../tasks/README.md). They do not replace or relabel these routing probes.
+Failures retain available usage/time. `metadata.usage_available=false` means unknown usage: v1's numeric zero placeholders are **not free execution** and must not enter spend comparisons. Even reported failure usage may be incomplete after a crash. Error type/stage/host-exit fields support diagnosis without retaining raw output, credentials, or request text in results.
 
 ## What these probes do not prove
 
-The host receives the candidate entry-point text, a vocabulary of routes/observations, and a request, but not the verifier's expected answers. It does not load on-demand references, execute the requested implementation, or reproduce the host's native skill discovery. Baseline has no candidate instructions; it is a diagnostic comparison, not an old-version/new-version randomized trial. Selection binding also means the reported treatment route is not an independent free-choice route measurement.
+The model sees the candidate entry point, route/observation vocabulary, and request, but not the verifier's answers. It does not load on-demand references or execute the requested work. Selection binding means a treatment route is not an independent free-choice measurement. The baseline is not an old-version/new-version randomized trial.
 
-TDD cases include project policy and non-trigger boundaries. Experiments still classify as the `prototype` workflow, but their route is `none` because there is no dedicated catalog skill. Candidate-specific composition and generic review suites were retired with their skills; the retained feedback/delivery guidance is not measured by these probes. These are structured intention probes. A model can state the right intention and still fail actual work. Establish delivery or token-efficiency gains separately with fixed old/new revisions, matched host/model/configuration, repeated representative tasks, observed edits/verifiers, and comparable cache conditions. CI validates manifests and deterministic regressions only; no live-host efficacy claim follows from that pass.
+TDD includes project-policy and non-trigger cases. Experiments retain the `prototype` workflow label but route to `none`; the catalog has no such skill. Retired composition/review suites do not measure the feedback/delivery guidance retained in the composition guide.
+
+For observed edits, mock calls, test sequences, and a brief-request control, use [task outcomes](../tasks/README.md). Establish quality or efficiency gains with fixed old/new revisions, matched host/model/configuration/cache conditions, repeated representative tasks, and captured artifacts/verifiers. Correct stated intentions or green CI alone do not establish those gains.
