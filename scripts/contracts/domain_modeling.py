@@ -26,14 +26,23 @@ PROVENANCE_MARKERS = (
     "Copyright (c) 2026 Matt Pocock",
     "The above copyright notice and this permission notice shall be included",
 )
-# The license body itself. Provenance lines alone are not the MIT text, so a notice
-# reduced to them must fail rather than count as preserved attribution.
-LICENSE_TEXT_MARKERS = (
-    "Permission is hereby granted, free of charge, to any person obtaining a copy",
-    'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND',
-    "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER",
+# The complete upstream MIT text, whitespace-normalized. Anchors would pass a notice
+# with sentences deleted between them, so the license body is pinned as one string.
+MIT_LICENSE_TEXT = (
+    'Permission is hereby granted, free of charge, to any person obtaining a copy of this software '
+    'and associated documentation files (the "Software"), to deal in the Software without '
+    "restriction, including without limitation the rights to use, copy, modify, merge, publish, "
+    "distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the "
+    "Software is furnished to do so, subject to the following conditions: The above copyright "
+    "notice and this permission notice shall be included in all copies or substantial portions of "
+    'the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR '
+    "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A "
+    "PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE "
+    "LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR "
+    "OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER "
+    "DEALINGS IN THE SOFTWARE."
 )
-NOTICE_MARKERS = PROVENANCE_MARKERS + LICENSE_TEXT_MARKERS
+NOTICE_MARKERS = PROVENANCE_MARKERS
 
 
 def validate_domain_modeling_contract(
@@ -47,6 +56,8 @@ def validate_domain_modeling_contract(
         return
     notice = " ".join((skill_dir / "NOTICE.md").read_text(encoding="utf-8").split())
     missing_notice = [marker for marker in NOTICE_MARKERS if marker not in notice]
+    if MIT_LICENSE_TEXT not in notice:
+        missing_notice.append("the complete MIT license text")
     if missing_notice:
         errors.append(
             f"{SKILL}/NOTICE.md: upstream provenance and MIT notice missing: {missing_notice}"

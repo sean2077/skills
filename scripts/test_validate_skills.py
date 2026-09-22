@@ -335,8 +335,28 @@ class DomainModelingAttributionTests(unittest.TestCase):
             domain_modeling.validate_domain_modeling_contract(skill_dir)
             self.assertEqual([], list(validator.errors))
 
-            # Provenance lines alone are not the MIT text: a notice reduced to them,
-            # with the grant and the disclaimer gone, must fail.
+            # Keeping the start of the grant while deleting its middle sentences must
+            # fail: anchored fragments cannot stand in for the license text.
+            lines = real_notice.splitlines(True)
+            start = next(
+                index
+                for index, line in enumerate(lines)
+                if line.startswith("of this software and associated documentation files")
+            )
+            end = next(
+                index
+                for index, line in enumerate(lines)
+                if line.startswith("furnished to do so, subject to the following conditions:")
+            )
+            hollowed = "".join(lines[:start] + lines[end + 1 :])
+            self.assertIn("Permission is hereby granted", hollowed)
+            self.assertNotIn("subject to the following conditions:", hollowed)
+            (skill_dir / "NOTICE.md").write_text(hollowed, encoding="utf-8")
+            validator.errors.clear()
+            domain_modeling.validate_domain_modeling_contract(skill_dir)
+            self.assertTrue(any("MIT license text" in item for item in validator.errors))
+
+            # Provenance lines alone are not the MIT text either.
             (skill_dir / "NOTICE.md").write_text(
                 "# Attribution notice\n\n" + "\n".join(domain_modeling.PROVENANCE_MARKERS) + "\n",
                 encoding="utf-8",
