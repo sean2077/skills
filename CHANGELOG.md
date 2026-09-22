@@ -13,7 +13,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Check this repository's own managed host hooks against the scaffold assets. Their entries are `merge-json` assets, so the copy-drift gate skipped them and deleting the trunk-guard wiring from `.claude/settings.json` left every check green; the gate now compares the effective managed entries too, and asserts the project-root fallbacks on `hook-paths.py`, the file Codex invokes directly.
+- Check this repository's own managed host hooks against the scaffold assets. Their entries are `merge-json` assets, so the copy-drift gate skipped them and deleting the trunk-guard wiring from `.claude/settings.json` left every check green; the gate now compares the effective managed entries too.
 - Describe `hook-launcher.sh` as what it is: a dispatcher for the two managed Bash hooks. Four reference pages offered it to project-owned Bash hooks, which it rejects with exit 2, blocking every edit wired that way; project-owned hooks source `hook-common.sh`.
 - Verify that a release tag's commit is reachable from the trunk before publishing. The tag workflow's identity assertion is true by construction on a tag push, so any branch could push a tag and publish a GitHub Release; `publishing.md` already lists trunk reachability as required completion evidence.
 - End an extracted release-notes section at a level-one heading as well as a level-two one, so a separator such as `# Older releases` is no longer pulled into the notes with the next section's content.
