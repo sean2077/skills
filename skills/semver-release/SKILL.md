@@ -15,10 +15,7 @@ and artifact publication under the target repository's policy.
   did not choose one. Surface conflicts, but do not reopen an explicit release choice.
 - Plan without mutation first. Do not edit release files until the base, target, release
   workflow, and version authority are unambiguous.
-- Release from a clean attached trunk or repository-approved release line/worktree with no
-  merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress. The analyzer
-  raises `release-line` when HEAD is not the resolved remote default branch; pass
-  `--release-branch <name>` for an approved release line.
+- Release from a clean attached trunk or repository-approved release line/worktree with no merge, rebase/am, cherry-pick, revert, bisect, or sequencer operation in progress. Supply the expected branch from repository policy with `--release-branch <name>`; the analyzer does not infer it from the remote default branch.
 - Preserve the repository's release-note authority: committed changelog, fragments,
   generated notes, or forge-native notes. Do not invent a root changelog by default.
 - Use the repository-owned release workflow and obtain authorization for infrastructure changes.
@@ -44,10 +41,7 @@ and artifact publication under the target repository's policy.
    python <skill-dir>/scripts/release-plan.py --repo <repo-root> --json [--target vX.Y.Z] [--release-branch <name>]
    ```
 
-   Resolve every `attention` result before mutation. The analyzer models `v`-prefixed SemVer tags
-   and reports other reachable tag formats as `tag-format`; preserve an established unprefixed or
-   custom tag format and follow
-   [`version-selection.md`](references/version-selection.md) manually. Use the manual rules when Python is unavailable or the release model exceeds the analyzer, and disclose the analyzer checks that could not run.
+   Resolve every `attention` result before mutation. Schema 2's `analyzed` status means only that local `v`-prefixed SemVer analysis completed; repository release policy remains unverified. Inspect `other_format_tags` against that policy instead of treating a candidate as publication approval. Preserve unprefixed or custom tag formats and use [`version-selection.md`](references/version-selection.md) manually when the model does not apply or Python is unavailable; disclose checks that could not run.
 3. Follow the repository-owned release-note pipeline. Read
    [`changelog.md`](references/changelog.md) only when the project maintains a committed
    changelog or needs a prepared notes file. Synchronize only authoritative project version
