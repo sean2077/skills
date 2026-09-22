@@ -132,6 +132,22 @@ class OutcomeTests(unittest.TestCase):
         cases.write(workspace, "lark_mock.py", "print('modified mock')\n")
         self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
 
+    def test_mock_count_rejects_ambiguous_json_results(self):
+        workspace, state = self.fixture("lark-invented-syntax")
+        subprocess.run([sys.executable, "lark_mock.py", "list", "--as", "user"],
+                       cwd=workspace, capture_output=True, env=cases.environment(), check=True, timeout=20)
+        for answer in (
+            '{"awaiting_reply_count":999,"awaiting_reply_count":2}',
+            '{"awaiting_reply_count":2,"extra":{"value":1,"value":2}}',
+            '{"awaiting_reply_count":2,"extra":NaN}',
+            '{"awaiting_reply_count":2,"extra":Infinity}',
+        ):
+            with self.subTest(answer=answer):
+                cases.write(workspace, "answer.json", answer)
+                self.assertFalse(self.passed(workspace, "lark-invented-syntax", state)[0])
+        cases.write(workspace, "answer.json", '{"awaiting_reply_count":2}')
+        self.assertTrue(*self.passed(workspace, "lark-invented-syntax", state))
+
     def test_actual_red_green_requires_trace_and_same_tests(self):
         workspace, state = self.fixture("tdd-negative-input")
         tests = cases.BASE_TEST + '\n    def test_negative_value(self):\n        with self.assertRaises(ValueError):\n            cap(-1, 10)\n'

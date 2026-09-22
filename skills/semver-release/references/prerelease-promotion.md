@@ -11,6 +11,10 @@ When tagging a **stable** `vX.Y.Z` and same-`X.Y.Z` prerelease tags already exis
 - **release-notes base** = the previous HEAD-reachable stable release, or repo root if none exists (skip all same-`X.Y.Z` prereleases), so final notes cover the whole span once regardless of their storage or publication owner.
 - rewrite prerelease-aware manifests from their prerelease value to the final value (for example `1.2.0-rc.2` / `1.2.0rc2` → `1.2.0`); CMake clears its separate suffix while retaining numeric `X.Y.Z`.
 
+Equal-precedence previous-stable tags (including build-metadata variants) must resolve to one
+commit before deriving the notes range. Same-commit aliases are valid; different commits require
+an explicit resolution rather than selecting whichever tag sorts last.
+
 When the project maintains a committed changelog with one section per prerelease, use a
 replace-style update: delete the same-`X.Y.Z` prerelease sections and insert one final section
 covering the previous-stable-to-HEAD range. Preserve the project's existing heading and category

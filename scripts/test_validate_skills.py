@@ -483,6 +483,43 @@ class SemverChangelogExtractionTests(unittest.TestCase):
         self.assertEqual(0, completed.returncode, completed.stderr)
         self.assertEqual("- released\n", output)
 
+    def test_indented_atx_boundaries_do_not_leak_other_sections(self) -> None:
+        for indent in (" ", "  ", "   "):
+            for marker in ("#", "##"):
+                with self.subTest(indent=repr(indent), marker=marker):
+                    text = ("## [v1.2.3] — 2026-09-22\n\n- released\n\n"
+                            + indent + marker + " Older releases\n\n- not part of this release\n")
+                    completed, output = self.run_extract(text, "v1.2.3")
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    self.assertEqual(output, "- released\n")
+
+    def test_indented_release_heading_and_duplicate_detection(self) -> None:
+        canonical = "## [v1.2.3] — 2026-09-22\n\n- released\n"
+        for indent in (" ", "  ", "   "):
+            with self.subTest(indent=repr(indent)):
+                completed, output = self.run_extract(indent + canonical, "v1.2.3")
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual(output, "- released\n")
+                completed, output = self.run_extract(
+                    canonical + "\n" + indent + canonical, "v1.2.3", existing_output="preserve me\n")
+                self.assertEqual(completed.returncode, 1)
+                self.assertIn("multiple", completed.stderr)
+                self.assertEqual(output, "preserve me\n")
+
+    def test_indented_boundary_cannot_supply_an_empty_release_body(self) -> None:
+        completed, output = self.run_extract(
+            "## [v1.2.3] — 2026-09-22\n\n   # Other section\n\n- unrelated\n",
+            "v1.2.3", existing_output="preserve me\n")
+        self.assertEqual(completed.returncode, 1)
+        self.assertEqual(output, "preserve me\n")
+
+    def test_code_and_nested_headings_remain_in_release_notes(self) -> None:
+        body = ("- released\n\n    # Indented code\n\n   ### Details\n\n"
+                "~~~markdown\n  ## [v1.2.3] — 2026-09-22\n~~~\n")
+        completed, output = self.run_extract("## [v1.2.3] — 2026-09-22\n\n" + body, "v1.2.3")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(output, body)
+
     def test_invalid_sections_fail_without_replacing_existing_output(self) -> None:
         cases = {
             "missing": "## [other] — 2026-07-21\n\n- notes\n",
@@ -650,6 +687,49 @@ class RepositoryReleaseAutomationContractTests(unittest.TestCase):
             release_text=release_text.replace("--json body", "--json other")
         )
         self.assertTrue(any("verify afterward" in error for error in errors))
+
+
+class ToolingContractEditorialTests(unittest.TestCase):
+    def test_checker_and_fixture_prose_is_not_a_catalog_interface(self) -> None:
+        from contracts import tooling_conventions as tooling
+        from unittest import mock
+        original_read = Path.read_text
+        # Synthetic bodies isolate the validator's contract; the real shell suite
+        # separately exercises the shipped checker. Do not anchor this regression
+        # to current diagnostic captions, variable names, or documentation prose.
+        alternatives = {
+            Path(__file__).resolve().parent / "tests/test-tooling-inventory.sh":
+                "#!/usr/bin/env bash\n# Different fixture diagnostics.\nexit 0\n",
+            tooling.SKILLS_DIR / "tooling-conventions/scripts/inventory-check.sh":
+                "#!/usr/bin/env bash\ncandidate=':(literal)name'\nprintf '%s\\n' \"$candidate\"\n",
+            tooling.SKILLS_DIR / "tooling-conventions/references/verification.md":
+                "# Project verification\nUse the applicable syntax and behavior checks.\n",
+        }
+        for target, revised in alternatives.items():
+            def read(path, *args, **kwargs):
+                return revised if path == target else original_read(path, *args, **kwargs)
+            with self.subTest(path=target.name), mock.patch.object(Path, "read_text", read):
+                validator.errors.clear()
+                tooling.validate()
+                self.assertEqual([], list(validator.errors))
+
+    def test_inventory_ci_checks_a_run_step_not_names_comments_or_examples(self) -> None:
+        from contracts import tooling_conventions as tooling
+        good = "jobs:\n  check:\n    steps:\n      - name: Arbitrary title\n        run: |\n          # A harmless comment\n          bash 'scripts/tests/test-tooling-inventory.sh'\n"
+        bad = (
+            "jobs:\n  check:\n    steps:\n      - name: bash scripts/tests/test-tooling-inventory.sh\n        run: echo skipped\n",
+            "jobs:\n  check:\n    steps:\n      - run: |\n          # bash scripts/tests/test-tooling-inventory.sh\n          echo skipped\n",
+            "jobs:\n  check:\n    steps:\n      - run: |\n          cat <<'EXAMPLE'\n          bash scripts/tests/test-tooling-inventory.sh\n          EXAMPLE\n",
+            "jobs: [invalid\n",
+        )
+        for text in bad:
+            with self.subTest(text=text):
+                validator.errors.clear()
+                tooling.validate_inventory_ci(text)
+                self.assertTrue(validator.errors)
+        validator.errors.clear()
+        tooling.validate_inventory_ci(good)
+        self.assertEqual([], list(validator.errors))
 
 
 class PublicSummaryContractTests(unittest.TestCase):
