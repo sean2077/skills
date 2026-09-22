@@ -2,7 +2,7 @@
 
 ## Windows / Git Bash: enable and repair real symlinks
 
-Windows is supported through **Git Bash only**. Install Python 3.8+ and Git for Windows, then use this sequence before running a mutating installer mode. Scaffold-owned Edit/Write hooks invoke `hook-paths.py` through Python. Project-owned Bash hooks can use `hook-launcher.sh`, which selects Git for Windows `/usr/bin/bash` rather than a native `bash` that may resolve to WSL. `AGENT_SCAFFOLD_BASH` overrides that launcher selection; see [host integration](host-integration.md).
+Windows is supported through **Git Bash only**. Install Python 3.8+ and Git for Windows, then use this sequence before running a mutating installer mode. Scaffold-owned Edit/Write hooks invoke `hook-paths.py` through Python. The managed Bash hooks run through `hook-launcher.sh`, which selects Git for Windows `/usr/bin/bash` rather than a native `bash` that may resolve to WSL. `AGENT_SCAFFOLD_BASH` overrides that launcher selection; see [host integration](host-integration.md).
 
 1. Enable Windows **Developer Mode** so non-elevated processes can create native symlinks. Open
    Settings and search for `Developer Mode`; on Windows 11 25H2 and newer the path is
