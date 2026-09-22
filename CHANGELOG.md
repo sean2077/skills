@@ -12,6 +12,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Route and protect skill attribution notices. A shipped `NOTICE.md` must now be linked from `SKILL.md` (otherwise it is an orphan reference) and a linked one must exist, so `domain-modeling`'s upstream MIT notice can no longer be dropped or left unreachable with every catalog check still green. Its provenance markers are held by a targeted contract, as `tdd`'s already were.
 - Check both source and `Move to` destination paths in patch hooks, including cross-worktree moves and authority-document budget notifications. Refresh the installed hook from its canonical scaffold asset.
 - Reuse a valid installed scaffold profile when the flag is omitted; mark new installations explicitly and require a choice for ambiguous legacy state. Fresh installs still default to guarded worktrees.
 

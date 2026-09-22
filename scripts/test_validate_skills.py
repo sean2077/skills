@@ -79,6 +79,14 @@ class CategoryReferenceTests(unittest.TestCase):
         errors = self.validate("[Missing](reference.md)", {})
         self.assertTrue(any("does not exist" in error for error in errors))
 
+    def test_unrouted_attribution_notice_is_rejected(self) -> None:
+        errors = self.validate("# Router\n", {"NOTICE.md": "# Attribution notice\n"})
+        self.assertTrue(any("orphan reference" in error for error in errors))
+
+    def test_routed_attribution_notice_must_exist(self) -> None:
+        errors = self.validate("See [NOTICE.md](NOTICE.md) for upstream attribution.\n", {})
+        self.assertTrue(any("does not exist" in error for error in errors))
+
     def test_indirect_reference_routes_are_reachable(self) -> None:
         self.assertEqual(self.validate("[Overview](references/overview.md)", {
             "references/overview.md": "[Details](topic/details.md#result)",
@@ -303,6 +311,35 @@ class PayloadContractTests(unittest.TestCase):
                 (root / module.REQUIRED_PATHS[-1]).unlink()
                 function(root)
                 self.assertTrue(any("missing required payload" in item for item in validator.errors))
+
+
+class DomainModelingAttributionTests(unittest.TestCase):
+    def test_upstream_provenance_markers_and_payload_files_are_required(self) -> None:
+        from contracts import domain_modeling
+
+        with tempfile.TemporaryDirectory() as directory:
+            skill_dir = Path(directory) / "domain-modeling"
+            for relative in domain_modeling.REQUIRED_PATHS:
+                path = skill_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("# Attribution notice\n\nMIT License\n", encoding="utf-8")
+            validator.errors.clear()
+            domain_modeling.validate_domain_modeling_contract(skill_dir)
+            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
+
+            (skill_dir / "NOTICE.md").write_text(
+                "\n".join(domain_modeling.NOTICE_MARKERS) + "\n", encoding="utf-8"
+            )
+            validator.errors.clear()
+            domain_modeling.validate_domain_modeling_contract(skill_dir)
+            self.assertEqual([], list(validator.errors))
+
+            (skill_dir / "NOTICE.md").unlink()
+            validator.errors.clear()
+            domain_modeling.validate_domain_modeling_contract(skill_dir)
+            self.assertTrue(
+                any("missing required skill payload" in item for item in validator.errors)
+            )
 
 
 class SemverChangelogExtractionTests(unittest.TestCase):
