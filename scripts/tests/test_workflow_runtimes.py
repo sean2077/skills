@@ -290,6 +290,32 @@ class RuntimeTests(unittest.TestCase):
         invalid, _ = self.run_cli(RALPH, "unlock", "--id", "locked", "--stale-after", "-1", expected=2)
         self.assertEqual(invalid["error"], "invalid_bounds")
 
+    def test_abort_after_an_opened_round_keeps_the_state_consistent(self) -> None:
+        # resume-and-recovery.md names `abort` as a way out of a pending round, and the
+        # unrecorded attempt must not leave `round` ahead of the recorded history.
+        self.run_cli(RALPH, "start", "--id", "interrupted", "--goal", "bounded goal")
+        self.run_cli(RALPH, "next", "--id", "interrupted", "--expected-revision", "1")
+        pending, _ = self.run_cli(RALPH, "status", "--id", "interrupted")
+        self.assertEqual(pending["stage"], "round_pending")
+        aborted, _ = self.run_cli(
+            RALPH,
+            "abort",
+            "--id", "interrupted",
+            "--expected-revision", "2",
+            "--reason", "user interrupted",
+        )
+        self.assertEqual(aborted["stage"], "aborted")
+        self.assertTrue(aborted["terminal"])
+        state = json.loads(self.state_path("ralph", "interrupted").read_text(encoding="utf-8"))
+        self.assertEqual([], state["history"])
+        self.assertEqual(0, state["round"])
+        self.assertIsNone(state["pending_round"])
+        # Reading the saved state must succeed instead of reporting corruption.
+        resumed, _ = self.run_cli(RALPH, "status", "--id", "interrupted")
+        self.assertEqual(0, resumed["metrics"]["round"])
+        healthy, _ = self.run_cli(RALPH, "doctor", "--id", "interrupted")
+        self.assertTrue(healthy["ok"])
+
     def test_sessions_list_latest_and_non_git_root(self) -> None:
         self.run_cli(RALPH, "start", "--id", "same", "--session", "alpha", "--goal", "alpha goal")
         self.run_cli(RALPH, "start", "--id", "same", "--session", "beta", "--goal", "beta goal")
