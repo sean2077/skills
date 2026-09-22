@@ -10,8 +10,10 @@ Use these opt-in fixtures to test what an Agent actually changes, separately fro
 | `spec-preservation` | Source-owned clauses, exact values, draft status, unresolved question, revised overview | Mechanical checks do not establish all semantic accuracy or reader comprehension |
 | `docs-move` | Unique content and incoming/outgoing relative links and anchors | The fixture's Markdown subset, not a general Markdown validator |
 | `lark-unknown-write` | Local mock calls: one send followed by same-identity readback | No network, no live CLI syntax or service certification; local logs are not tamper-proof |
-| `lark-invented-syntax` | Captured mock calls: no undocumented argument shape, at least one documented observation | The mock's vocabulary, not the real CLI's; it cannot show what an agent would invent against a live service |
+| `lark-invented-syntax` | Local mock invocation log, collection observation, and correct awaiting-reply count in `answer.json`; rejects unsupported flags, identities, and IDs | Logs are writable and not tamper-proof. This bounded mock oracle does not certify live CLI syntax or model effectiveness |
 | `tdd-negative-input` | Captured test tool results: missing-behavior RED at original source, then GREEN with the same tests and final hashes; independent behavior check | A final answer or an Agent-authored log cannot supply missing sequence evidence |
+
+The invented-syntax task-only prompt states the task and points to command documentation; the brief condition adds syntax guidance separately. Correct mock use must also produce the requested result: reading help or one message is insufficient. Its local log is suitable for cooperative reference actions, not adversarial proof of execution; any model-benefit claim still needs matched observed runs and trace review.
 
 CI runs `scripts/tests/test_task_outcomes.py` with deliberate good/bad reference actions. These are tests of the fixtures and their oracles, **not model-performance measurements**. `scripts/tests/test_release_execution.py` separately executes this repository's release shell steps with real Git and a mock publisher, including negative cases.
 

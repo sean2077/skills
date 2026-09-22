@@ -27,6 +27,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Make the Lark syntax fixture check its requested count as well as mock argument validity. Keep the task-only prompt neutral, reject help-only and single-message evidence, cover invalid flags/identities/IDs, and remove catalog checks that merely matched oracle wording and test names. Writable mock logs remain bounded evidence, not tamper-proof execution records or model-performance measurements.
 - Replace wording/heading-based skill checks with payload inventories and actual Git/mock-release outcome tests. Workflow display names and comments no longer determine publication or installer validation.
 - Add opt-in task fixtures for mixed-index commits, specification preservation, document moves, ambiguous mock writes and actual RED/GREEN traces, with no-skill/brief/pinned-skill controls and honest unknown-cost reporting.
 - Apply selected Anthropic/OpenAI authoring principles: task-specific reasons and examples, risk-proportionate freedom, optional cold-reader checks, and concrete terminology boundaries. Keep all 13 routes and existing approval/authorization semantics.
