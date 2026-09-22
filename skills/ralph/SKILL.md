@@ -35,6 +35,7 @@ Use `--keep-policy score-improvement --plateau-window <n>` with `--score 0..1` o
 3. Submit the observed result with `check --round <n> --verifier-exit <code> --signature <stable-failure>`. A failing verifier requires a non-empty, noise-free root-cause signature. Score-improvement loops also require `--score <0..1>`.
 4. Obey the compact result:
    - `active`: another round is allowed;
+   - `round_pending`: an attempt is open and only its result can be submitted;
    - `passed`: verifier exited zero;
    - `stalled`: one failure mechanism filled the stall window;
    - `plateaued`: score failed to improve through the plateau window;
