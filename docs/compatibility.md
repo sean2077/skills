@@ -2,110 +2,99 @@
 
 ## Evidence baselines
 
-Track each interface independently. A new repository commit does not invalidate every host observation, and a recent documentation edit is not a new runtime certification.
+Track each interface independently. A repository change does not invalidate every host observation, and an editorial update is not a new runtime certification. The dates below are the original evidence/review dates, not the last edit date of this page. A static configuration file, a simulated payload, an actual host invocation, and a task outcome are different levels of evidence.
 
-| Surface | Pinned or reviewed basis | Evidence and unverified boundary |
+| Surface | Basis | Evidence and limit |
 |---|---|---|
-| Installer | CI uses `skills@1.5.17`; original review 2026-08-25 | Real discovery, install, regular-file inventory and byte comparison in [validation CI](../.github/workflows/validate.yml). This is a reproducibility pin, not a claim to be latest. |
-| Claude / Codex scaffold | Project layouts; documentation review 2026-08-25, subagent-definition review 2026-09-22, overlap notes 2026-09-20 | [Core tests](../scripts/tests/test_agent_scaffold_core.py), [workspace tests](../scripts/tests/test_workspace_entry.py) and installer E2E cover source/projection ownership and hook payloads. Real authenticated discovery, trust and hook execution are separate observations. |
-| Grok-compatible payloads | Explicit compatibility branches in the shared hook parser | Simulated payload/expansion tests only. No independent Grok installation or live-host certification is inferred from Claude compatibility. |
-| Lark CLI | Command recipes reviewed against v1.0.93 on 2026-09-04 | Domain references and [mock outcome case](../evals/tasks/README.md) are not live service/API certification. Preserve recipe-specific evidence when updating CLI syntax. |
-| Task evaluation capture | Claude CLI/stream documentation reviewed 2026-09-22 | Importer and negative-fixture tests; actual host runs require a configured CLI and retained results. Unknown usage stays unknown. |
+| Installer | CI pin `skills@1.5.17`; initial review 2026-08-25 | [CI](../.github/workflows/validate.yml) checks real discovery, installation, regular-file inventory, and byte fidelity. The pin is not a latest-version claim. |
+| Claude / Codex scaffold | Layout review 2026-08-25; overlap review 2026-09-20; subagent review 2026-09-22 | Core/workspace/E2E tests cover source/projection ownership and simulated hook payloads. Authenticated discovery, trust, and effective permissions need actual host observations. |
+| Grok-compatible payloads | Explicit branches in the shared hook parser | Simulated payload/expansion tests, not independent Grok installation or live-host certification. |
+| Lark CLI | Recipes reviewed against v1.0.93 on 2026-09-04 | Domain references and mock task cases are not live CLI/service certification. Preserve recipe-specific evidence when changing syntax. |
+| Task capture | Claude CLI/stream documentation reviewed 2026-09-22 | Importer/negative-fixture tests; actual host runs require a configured CLI and retained results. Unknown usage stays unknown. |
 
-For a new observation, retain the host/tool version, platform, relevant configuration, exact operation, source revision, command/result, and the claim it supports in the existing test result or review record. Recheck the affected interface when it changes; do not impose a universal recurring approval process. A static configuration file, simulated payload, actual host invocation, and task outcome are different levels of evidence.
+For a new observation retain version, platform, relevant configuration, operation, source revision, command/result, and the supported claim in its existing result or review record. Recheck the changed interface, not every interface on a recurring schedule.
 
-The initial installer review used repository revision `8fa013752416a7aa082d023489e8141a0764f8b6` and observed upstream `v1.5.23`. Those are historical facts, not current-main or latest-release labels. Upgrading the tested pin is a separate change with discovery/install/payload checks.
+The initial installer review used revision `8fa013752416a7aa082d023489e8141a0764f8b6` and observed upstream `v1.5.23`. These are historical facts, not current-main or latest-release labels. An installer upgrade needs its own discovery/install/payload evidence.
 
 ## Support layers
 
-| Layer | Repository evidence | Bounded claim | Does not prove |
-|---|---|---|---|
-| Agent Skills format | `requirements-validation.txt`, `scripts/validate_skills.py`, `scripts/catalog_health.py`, and the pinned official `skills-ref` validation in `.github/workflows/validate.yml` | Published skill payloads are checked for repository rules and the pinned Agent Skills specification. | Identical discovery, optional-field support, or executable-language support in every client. |
-| Installer discovery | CI runs `skills@1.5.17` against the catalog root, compares the discovered names, installs the catalog, rejects special entries, and byte-diffs installed payloads. | The audited CLI pin discovers and copies this catalog as tested by the workflow. | Runtime support for every target listed by any installer version. |
-| Host wiring | `agent-scaffold` static, core, and throwaway-repository E2E checks cover `.agents/`, Claude Code symlink projections, Codex project paths, hooks, and generated subagents. | The repository can create and verify its project-owned Claude Code + Codex harness shape. | User trust, hook approval, organization policy, cloud variants, or untested hosts. |
-| Harness behavior | Runtime generators, P0 behavior/hardening tests, skill-eval contracts, and coordination primitive tests exercise owned state and safety boundaries. | The checked repository behavior is bounded by those executable tests. | Universal task effectiveness or host behavior outside the tested permissions and fixtures. |
+| Layer | Repository evidence | Does not establish |
+|---|---|---|
+| Agent Skills format | Catalog validators and pinned official `skills-ref` | Identical discovery, optional fields, or executable-language support across clients |
+| Installer discovery/copying | Pinned catalog-root discovery and byte-compared install smoke tests | Runtime support for every installer target |
+| Host wiring | Scaffold core/workspace/static/E2E checks | Trust, hook approval, organization policy, cloud variants, or effective live-host permissions |
+| Owned runtime behavior | Workflow/P0/hardening, protocol, and adapter/oracle tests | Universal task effectiveness, model compliance, or token savings |
 
-The public catalog is exactly the set of skills published under `skills/`. `.agents/skills/skill-eval` is project-private: its `metadata.internal: true` marker, manifest exclusion, README exclusion, and normal discovery exclusion keep it outside public catalog claims unless internal skills are explicitly enabled.
+The catalog is the set under `skills/`. Project `skill-eval` under `.agents/skills/` is excluded by its internal metadata, manifest/README boundary, and normal discovery filtering; explicitly enabling internal discovery is a different operation. The [architecture](architecture.md) owns source and generated-file details. Routing probes and task outcomes have separate [measurement guides](../evals/agent-skills/README.md).
 
 ## Native overlap and visibility (2026-09-20)
 
-This is a documentation review, not certification of locally authenticated host runs. It does
-not update the older installer pin, hook tests, or Lark command-version evidence above/below.
+This dated documentation review does not certify authenticated runs or refresh the installer, hook, or Lark evidence.
 
-| Current documented native capability | Catalog decision |
+| Documented capability at review | Catalog decision |
 |---|---|
-| Codex discovers skill names/descriptions before loading selected instructions; discovery has a context budget | Shorten and front-load routing descriptions; install only routes needed. Do not turn every skill into an always-loaded prompt. |
-| Native planning, continuation/resume, and subagents can own ordinary delivery | Use the host/project workflow for ordinary delivery. Keep formal runtimes only for the required repository-owned semantics. |
-| Claude Code bundles review, debugging, looping, and app run/verify skills | Do not repeat an adequate native workflow just to run a catalog route. Native app verification is useful evidence but does not replace unrelated project-required tests. |
-| A local Claude `code-review` shadows bundled `/code-review`, not the bundled `/review` alias | This catalog no longer publishes `code-review`; inspect and remove any old installation from this catalog to undo its local override. Preserve unrelated same-name skills. |
-| Claude exposes `/skills` visibility controls and `/skill-doctor` usage/cost inspection | Prefer host-local visibility choices over editing shared SKILL frontmatter or adding a custom always-on routing layer. |
+| Codex discovers names/descriptions before selected instructions, with a discovery-context budget | Keep routing descriptions focused and install needed routes rather than loading every workflow. |
+| Native planning, continuation, and subagents support ordinary delivery | Use the host/project workflow; keep formal runtimes for their required owned semantics. |
+| Claude Code bundles review, debugging, looping, and app run/verify skills | Do not repeat adequate native work; app verification does not replace unrelated project tests. |
+| A local Claude `code-review` shadows bundled `/code-review`, not `/review` | The catalog no longer ships it; remove only obsolete copies from this catalog, not unrelated same-name skills. |
+| Claude exposes `/skills` visibility and `/skill-doctor` usage/cost controls | Prefer available host-local controls over shared-frontmatter edits or a custom always-on router. |
 
-Check the installed host's actual command/menu availability and organization policy before
-using a host-specific control. Plugin namespace behavior is separate from this repository's
-installer grouping manifest; these notes do not claim the catalog is a native plugin bundle.
-No host's native tool availability expands user authorization, bypasses worktree ownership,
-or proves that a remote deliverable exists.
+Check the installed host's actual menus and organization policy. Plugin namespaces are separate from this catalog's installer grouping metadata. Native tools do not expand user authorization, bypass worktree ownership, or prove a remote deliverable exists.
 
-Sources checked 2026-09-20: [OpenAI skills](https://learn.chatgpt.com/docs/build-skills),
-[OpenAI prompt/skill adaptation](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra),
-[Claude skills and visibility](https://code.claude.com/docs/en/skills), and
-[Claude best practices](https://code.claude.com/docs/en/best-practices).
+Sources reviewed 2026-09-20: [OpenAI skills](https://learn.chatgpt.com/docs/build-skills), [OpenAI prompt/skill adaptation](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra), [Claude skills](https://code.claude.com/docs/en/skills), and [Claude best practices](https://code.claude.com/docs/en/best-practices).
 
 ## Project subagent definitions (2026-09-22)
 
-This is a documentation review of the two host formats, not certification of a locally authenticated host run. Claude Code project subagents are Markdown files in `.claude/agents/<name>.md` with required `name` and `description`; optional `tools` is a comma-separated list, and omitting it inherits every subagent tool. Codex project subagents are one TOML file per `.codex/agents/<name>.toml` with required `name`, `description`, and `developer_instructions`, where `sandbox_mode` narrows that agent's permission level. Both hosts load these only from a trusted project layer, and Codex reapplies the parent turn's live sandbox and approval overrides when it spawns a child, so a configured `read-only` value is not evidence of the effective sandbox. This repository's `.agents/subagents/skill-verifier/` source and its two projections are covered by the [private-harness contract test](../scripts/tests/test_private_skill_eval_contract.py) and the generator `--check`; discovery, real permissions, and inherited context remain unverified.
+The documentation review recorded Claude project definitions at `.claude/agents/<name>.md` with `name`, `description`, and an optional comma-separated `tools` allowlist; omitting `tools` inherits all subagent tools. Codex project definitions are `.codex/agents/<name>.toml` with `name`, `description`, and `developer_instructions`; `sandbox_mode` requests an agent permission level. Both use trusted project layers. Codex parent-turn overrides can affect the effective child sandbox, so configured `read-only` is not enforcement evidence.
 
-Sources checked 2026-09-22: [Claude Code subagents](https://code.claude.com/docs/en/sub-agents) and [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents).
+The project `skill-verifier` declares Claude Read/Grep/Glob and Codex `read-only`, and instructs both not to execute commands. [Private-harness tests](../scripts/tests/test_private_skill_eval_contract.py) and generator parity check the definitions, not host reload, inherited context, or actual permissions. No authenticated run certifies this revision's effective boundaries. See [invocation and execution ownership](development.md#optional-skill-verifier); the parent runs checks in an authorized environment, and a worktree/clone is not a process sandbox.
 
-The project `skill-verifier` now declares the explicit Claude tool allowlist Read/Grep/Glob and delegates command execution to its parent. Source/projection checks establish the configured allowlist, not that an already running host has reloaded it. No authenticated host run has verified this revision's effective tool availability or Codex permission overrides; the no-execution instruction alone is not a sandbox. A linked worktree is not one either: it shares the repository's Git configuration, objects, and refs, and stays writable through absolute paths from a process that started elsewhere.
+Sources reviewed 2026-09-22: [Claude subagents](https://code.claude.com/docs/en/sub-agents) and [Codex subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents).
 
 ## Codex facts
 
-Official Codex documentation reviewed on 2026-08-25 establishes that:
+Documentation reviewed 2026-08-25 recorded these contracts:
 
 - Codex scans `.agents/skills` from the working directory through the repository root and follows symlinked skill directories.
-- Native Codex plugins use `.codex-plugin/plugin.json` and may bundle skills, an MCP server, or both. This is a separate distribution boundary from this repository's installer-oriented `.claude-plugin/plugin.json` grouping manifest.
-- Project `.codex/` configuration, hooks, and rules load only from a trusted project layer.
-- Scaffold command hooks are non-managed hooks. Project trust and hook-definition review are independent gates; Codex records approval against the exact definition hash and skips an unreviewed or changed hook until it is reviewed again in `/hooks`.
+- Native plugins use `.codex-plugin/plugin.json`; this is not the catalog's `.claude-plugin/plugin.json` installer grouping format.
+- Project configuration, hooks, and rules require a trusted project layer. Scaffold command hooks are non-managed hooks: trust and hook-definition approval are independent. Approval is recorded against the exact definition hash, so an unreviewed or changed hook stays skipped until it is reviewed again in `/hooks`.
 
-References: [skills](https://developers.openai.com/codex/build-skills), [plugins](https://developers.openai.com/codex/build-plugins), [hooks](https://developers.openai.com/codex/hooks), and [configuration](https://developers.openai.com/codex/config-reference).
+Sources: [skills](https://developers.openai.com/codex/build-skills), [plugins](https://developers.openai.com/codex/build-plugins), [hooks](https://developers.openai.com/codex/hooks), and [configuration](https://developers.openai.com/codex/config-reference).
 
 ## Claude Code facts
 
-Official Claude Code documentation reviewed on 2026-08-25 establishes that:
+Documentation reviewed 2026-08-25 recorded these contracts:
 
-- Project skills live in `.claude/skills/<name>/SKILL.md`; Claude Code follows a symlinked skill directory to its target.
-- Shared project settings sit below managed settings, command-line overrides, and project-local settings in the documented precedence. Trust-gated keys such as `permissions.allow`, `permissions.additionalDirectories`, `extraKnownMarketplaces`, and most `env` values apply only after folder trust; `deny` and `ask` rules apply immediately.
-- Checkpoint restore does not rewind symlinked or hard-linked files. A successful `/rewind` can therefore leave changes in real targets reached through `CLAUDE.md` or `.claude/skills/*`; inspect and restore the target with Git or an explicit reverse edit.
+- Project skills use `.claude/skills/<name>/SKILL.md`; symlinked directories are followed.
+- Managed settings, command-line overrides, and project-local settings take precedence over shared project settings. Trust-gated keys such as `permissions.allow`, `permissions.additionalDirectories`, `extraKnownMarketplaces`, and most `env` values require folder trust; `deny` and `ask` rules apply immediately.
+- Checkpoints do not rewind symlinked or hard-linked targets. After `/rewind`, inspect actual `AGENTS.md` and project skill sources reached through projections; restore with Git or an explicit reverse edit when needed.
 
-References: [skills](https://code.claude.com/docs/en/skills), [settings](https://code.claude.com/docs/en/settings), and [checkpointing](https://code.claude.com/docs/en/checkpointing).
+Sources: [skills](https://code.claude.com/docs/en/skills), [settings](https://code.claude.com/docs/en/settings), and [checkpointing](https://code.claude.com/docs/en/checkpointing).
 
 ## Installer semantics
 
-The upstream `skills` CLI target list is discovery metadata, not this repository's certification matrix.
+The source supplies the catalog; the command's working directory determines the project installation destination. Keep the **catalog checkout** and **consumer project** distinct.
 
 ```bash
-# Selected skills to selected targets; repeat --skill and -a as needed
-npx skills add sean2077/skills --skill tdd -a claude-code -a codex
+# Discovery only, from the catalog checkout; no consumer installation
+NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add . -l
 
-# Every catalog skill to only these two targets
-npx skills add sean2077/skills --skill '*' -a claude-code -a codex
-
-# Use root catalog metadata from a local checkout
-npx skills add . --skill agent-scaffold -a codex
-
-# Direct directory install; the explicit ./ prevents repository-name parsing
-npx skills add ./skills/agent-scaffold -a codex
+# Installation from a separate consumer project
+# Replace both absolute paths before running.
+(
+  cd /absolute/path/to/consumer || exit 1
+  npx --yes skills@1.5.17 add /absolute/path/to/skills --skill agent-scaffold -a codex
+)
 ```
 
-- Omitting `--skill` opens selection in the audited CLI flow.
-- Quote `'*'` so the shell does not expand it. `--all` is broader: all discovered skills to all supported agents without prompts.
-- Root installation uses `.claude-plugin/plugin.json` as installer catalog-grouping metadata. It is not a native Codex `.codex-plugin/plugin.json` package manifest; direct skill-directory installation bypasses root metadata.
-- With the current audited pin, inspect global options with `npx skills --help`; `npx skills add <source> --help` may execute the add flow.
-- A reproducibility pin and the current upstream release answer different questions. Upgrade the pin only as an explicit dependency change with discovery, install, payload, and platform smoke tests.
+The [README](../README.md#install) owns remote-source examples. Keep the catalog root as the local source to use `.claude-plugin/plugin.json` grouping. A direct skill-directory source bypasses that metadata: use an explicit `./` or `../` prefix for relative paths (for example `./skills/agent-scaffold`), or an absolute path, rather than `skills/agent-scaffold`. Do not install into this repository merely because it holds the source.
 
-Official installer reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
+Repeat `--skill` and `-a` to select skills and targets. Omitting `--skill` opens selection in the audited flow. Quote `'*'`; `--all` is broader, selecting all discovered skills and all supported agents without prompts. `npx --yes` approves obtaining the CLI; it is distinct from the CLI's own selection/confirmation options.
+
+Inspect options with `npx --yes skills@1.5.17 --help`. With this pin, `add <source> --help` may execute the add flow. Choose global scope explicitly using the CLI's documented option and inspect intended targets; changing source paths does not select global scope. Remove retired installations only from the consumer project or intended global scope, preserving unrelated entries and local modifications. **Project-scope removal from the catalog root can delete `skills/*` product files.** See [retired-installation guidance](skill-composition.md#installation-and-evidence).
+
+Installer target lists are discovery metadata, not certification. Upgrading the pin is an explicit dependency change with discovery, installation, payload, and platform checks. Official installer reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
 
 ## Maintenance trigger
 
-Reverify this page when a host path, trust model, hook schema, installer flag, compatibility claim, audited pin, or public/private catalog boundary changes. Prefer dated, bounded language over “universal,” “all hosts,” or unqualified “latest.” Follow the [documentation maintenance](documentation-maintenance.md) policy for source selection and duplication rules.
+Reverify the affected claim when host paths, trust, hook schemas, installer semantics, pins, or catalog boundaries change. Preserve older evidence dates unless the underlying observation was actually repeated. Follow [documentation maintenance](documentation-maintenance.md); prefer bounded claims to “universal,” “all hosts,” or unqualified “latest.”

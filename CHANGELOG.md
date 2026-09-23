@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Refresh repository documentation against v8: distinguish catalog sources from consumer installation destinations, clarify canonical/generated ownership, preserve dated evidence, and align release guidance with main reachability, supported tags, and schema-2 local analysis.
+- Make maintainer and evaluation examples fail safely, retain failure output, and require an explicit observed cache condition instead of assuming cold-cache execution. Keep all catalog routes, runtime behavior, historical records, and optional-review boundaries unchanged.
+
 ## [v8.0.0] — 2026-09-23
 
 ### Added

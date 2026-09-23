@@ -1,16 +1,12 @@
 # Development guide
 
-This page owns contributor workflow, local verification, generation, platform checks, and release procedure. `.github/workflows/validate.yml` remains the normative definition of CI; update this summary when that workflow changes.
+This page owns contributor commands, verification, generation, and this repository's release procedure. [Validation CI](../.github/workflows/validate.yml) is the executable definition of the full suite; [architecture](architecture.md) identifies which sources to edit.
 
 ## Prerequisites
 
-- Git with real symlink support for harness validation.
-- Python 3.11 for the primary local/CI suite; generated workflow runtimes also have a separately exercised Python 3.8 floor.
-- Bash on Linux/macOS or Git Bash on Windows.
-- Node.js and `npx` for installer discovery and payload smoke tests.
-- ShellCheck for bundled shell scripts.
+Use Git with real symlink support, Python 3.11 for the primary suite, Bash on Linux/macOS or Git Bash on Windows, Node.js/`npx` for installer checks, and ShellCheck for shell validation. Generated runtimes have a separately exercised Python 3.8 floor; do not confuse that with the maintainer environment or certify all scripts at that floor.
 
-Use UTF-8 and suppress Python bytecode during payload-sensitive checks:
+Install pinned validation dependencies with `python -m pip install -r requirements-validation.txt`. Use UTF-8 and avoid bytecode files contaminating installable payloads:
 
 ```bash
 export PYTHONUTF8=1
@@ -19,168 +15,145 @@ export PYTHONDONTWRITEBYTECODE=1
 
 ## Worktree flow
 
-Prefer starting a new implementation/review session in its task worktree. A session may
-remain in the primary checkout for planning or coordination, provided every task read,
-edit, test, and review targets the exact task checkout. Reuse a worktree already assigned
-by the user or an external workbench; never create another just to satisfy the scaffold.
-The [managed rule](../AGENTS.md#worktree-per-change-hard-rule) still prohibits primary
-worktree edits. See [workspace context](../skills/agent-scaffold/references/workspace-context.md)
-for persistent user preferences, branch-local harness files, and host permission limits.
-
-For an existing task checkout, inspect it without changing session ownership:
+Prefer a task-local implementation/review session, but honor the user's session entry. Resolve the actual task checkout and its authority chain before reads, edits, tests, or review. Reuse a user/workbench-assigned worktree; the [managed rule](../AGENTS.md#worktree-per-change-hard-rule) prohibits primary-worktree edits, not primary-checkout planning.
 
 ```bash
-# Replace with the assigned absolute path, not the session's presumed repository root.
+# Use the assigned absolute path, not the session's presumed repository root.
 task="/absolute/path/to/task-checkout"
 git -C "$task" rev-parse --show-toplevel
 git -C "$task" status --short --branch
 git -C "$task" rev-parse HEAD
-# Run each project check with cwd set to "$task" (or its documented subdirectory).
+# Run subsequent checks with cwd set to "$task" (or its documented subdirectory).
 ```
 
-Only if no task checkout is assigned and the scaffold owns creation, run from the primary:
+Only when no task checkout is assigned and the scaffold owns creation, run `bash .agents/tools/worktree.sh new <name>` from the primary checkout. Record the intended base and actual task revision; the helper's resolved local trunk is not proof of the latest remote base. A shell `cd` does not reload host instructions or permissions. See [workspace context](../skills/agent-scaffold/references/workspace-context.md).
 
-```bash
-bash .agents/tools/worktree.sh new docs-example
-# Use the printed path for a new session or explicit per-tool working directories.
-```
-
-Record the intended base and actual task revision. The helper records its resolved local
-trunk; a workbench may use a different base. Follow the project's delivery policy and
-compare with the intended remote base before publication. For a PR/MR, publish the task
-branch and open the change request; do not call `done` as an implicit merge or cleanup.
-
-`done --dir <absolute-wt>` is only for an authorized scaffold-owned local-trunk lifecycle:
-it merges, pushes, and removes the worktree. External owners keep control of their own
-integration/archive operations. Leave the target before removal; on Windows a live Agent,
-terminal, or server can keep it locked even after a command shell changes directory.
+For a PR/MR, publish the task branch and verify the created change request; do **not** call `done` as an implicit merge or cleanup. `done --dir <absolute-wt>` merges, pushes, and removes a scaffold-owned worktree only with explicit authorization. External workbench owners retain lifecycle control. Leave a worktree before removal; Windows processes can keep it locked.
 
 ## Select checks by changed surface
 
-| Changed surface | Minimum focused evidence before the full applicable suite |
+| Changed surface | Focused evidence |
 |---|---|
-| README or documentation only | `git diff --check`, local Markdown link/anchor review, `python scripts/validate_skills.py`, and verification of every changed command or external claim |
-| Skill frontmatter, name, route, references, manifest, or layout | Catalog health, catalog validation, their regression fixtures, official `skills-ref`, and audited `npx skills` discovery/install smoke tests |
-| Shared or generated runtimes | Both generator `--check` commands plus migration, P0 behavior, hardening, private-skill, and relevant skill-contract tests |
-| `agent-scaffold` source or managed projections | Core Python test, static shell gate, full throwaway-repository E2E, real-symlink checks, and platform matrix |
-| Shell scripts | Targeted behavior tests plus ShellCheck |
-| Evaluation suites or adapters | Suite validation, representative execution, `validate-result`, cost/scope gates, and repository-isolation checks |
-| Release or version logic | SemVer planner fixtures, changelog validation, reusable validation workflow, and tagged release dry review |
+| Repository documentation only | Unstaged and staged whitespace checks; changed local links/anchors and reader routes; `python scripts/validate_skills.py`; inspect or execute changed commands and identify unverified external claims |
+| Skill entry point, references, frontmatter, route, manifest, or layout | Catalog health/validation and fixtures; official `skills-ref`; applicable payload/contract checks; installer smoke tests when distribution changes |
+| Shared/generated runtimes | Both generator `--check` commands and affected workflow, P0, hardening, private-skill, and protocol tests |
+| Scaffold source or managed projections | Core/workspace tests, static shell gate, full throwaway E2E, real-symlink checks, and platform matrix |
+| Shell scripts | Targeted behavior tests and ShellCheck |
+| Evaluation manifests/adapters | Suite/result validation, adapter/oracle regressions, scope/cost/isolation checks; live execution only when separately configured and authorized |
+| Release/version logic | Planner/extractor fixtures, release execution tests, and review of the exact tagged snapshot/workflow |
 
-Changes to shared routing, frontmatter, validators, generators, installer behavior, scaffold logic, contracts, or CI require the complete repository suite—not only a targeted test.
+Shared routing, frontmatter, validator, generator, installer, scaffold, contract, or CI changes require the complete applicable repository suite. For a wording-only change, do not turn optional evaluation or independent review into a new gate. See [documentation verification](documentation-maintenance.md#evidence-and-verification) for what catalog link validation does not cover.
 
 ## Core local verification
 
-Install the pinned validation dependencies, then run the repository-owned checks:
+Run from the task checkout in Bash. The subshell stops on failure without replacing the caller's traps or shell settings. The commands mirror CI's core checks; platform-specific and installer-fidelity coverage is described below.
 
 ```bash
-python -m pip install -r requirements-validation.txt
+(
+  set -eo pipefail
+  export PYTHONUTF8=1 PYTHONDONTWRITEBYTECODE=1
+  python -m pip install -r requirements-validation.txt
 
-python scripts/catalog_health.py
-python scripts/test_catalog_health.py
-python scripts/validate_skills.py
-python scripts/test_validate_skills.py
-python scripts/tests/test_semver_release_plan.py
-python scripts/tests/test_tdd_contract.py
-python scripts/tests/test_private_skill_eval_contract.py
-python scripts/tests/test_live_skill_eval_adapter.py
-python scripts/tests/test_task_outcomes.py
-python scripts/tests/test_release_execution.py
+  python scripts/catalog_health.py
+  python scripts/test_catalog_health.py
+  python scripts/validate_skills.py
+  python scripts/test_validate_skills.py
+  python scripts/tests/test_semver_release_plan.py
+  python scripts/tests/test_tdd_contract.py
+  python scripts/tests/test_private_skill_eval_contract.py
+  python scripts/tests/test_live_skill_eval_adapter.py
+  python scripts/tests/test_task_outcomes.py
+  python scripts/tests/test_release_execution.py
 
-python scripts/generate_workflow_runtimes.py --check
-python scripts/generate_p0_runtimes.py --check
-python scripts/tests/test_workflow_runtimes.py
-python -m unittest -v scripts.tests.test_p0_agent_workflows
-python -m unittest -v scripts.tests.test_p0_hardening
-python scripts/tests/test_protocol_primitives.py
+  python scripts/generate_workflow_runtimes.py --check
+  python scripts/generate_p0_runtimes.py --check
+  python scripts/tests/test_workflow_runtimes.py
+  python -m unittest -v scripts.tests.test_p0_agent_workflows
+  python -m unittest -v scripts.tests.test_p0_hardening
+  python scripts/tests/test_protocol_primitives.py
 
-python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
-for suite in evals/agent-skills/*/suite.json; do
-  python .agents/skills/skill-eval/scripts/skill_eval.py validate "$suite"
-done
-result="$(mktemp)"
-trap 'rm -f "$result"' EXIT
-python .agents/skills/skill-eval/scripts/skill_eval.py run \
-  evals/examples/tdd/suite.json --output "$result"
-python .agents/skills/skill-eval/scripts/skill_eval.py validate-result "$result"
-rm -f "$result"
-trap - EXIT
+  python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
+  for suite in evals/agent-skills/*/suite.json; do
+    python .agents/skills/skill-eval/scripts/skill_eval.py validate "$suite"
+  done
+  result="$(mktemp)"
+  trap 'rm -f "$result"' EXIT
+  python .agents/skills/skill-eval/scripts/skill_eval.py run \
+    evals/examples/tdd/suite.json --output "$result"
+  python .agents/skills/skill-eval/scripts/skill_eval.py validate-result "$result"
 
-for skill in skills/*; do
-  [[ -d "$skill" ]] && python -m skills_ref.cli validate "$skill"
-done
-python -m skills_ref.cli validate .agents/skills/skill-eval
+  for skill in skills/*; do
+    if [[ -d "$skill" ]]; then
+      python -m skills_ref.cli validate "$skill"
+    fi
+  done
+  python -m skills_ref.cli validate .agents/skills/skill-eval
 
-python scripts/tests/test_agent_scaffold_core.py
-python scripts/tests/test_workspace_entry.py
-bash scripts/check-agent-scaffold.sh
-bash scripts/tests/test-tooling-inventory.sh
-AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS=1 bash scripts/e2e-agent-scaffold.sh
+  python scripts/tests/test_agent_scaffold_core.py
+  python scripts/tests/test_workspace_entry.py
+  bash scripts/check-agent-scaffold.sh
+  bash scripts/tests/test-tooling-inventory.sh
+  AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS=1 bash scripts/e2e-agent-scaffold.sh
 
-NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add . -l
-find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
-git diff --check
+  NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add . -l
+  find scripts skills -type f -name '*.sh' -print0 | xargs -0 shellcheck
+  git diff --check
+  git diff --cached --check
+)
 ```
 
-The CI workflow additionally:
-
-- runs the primary suite on Ubuntu, macOS, and Windows;
-- asserts Bash/platform expectations and real `CLAUDE.md` symlink behavior;
-- installs every skill into a throwaway repository, rejects symlink/special entries in public payloads, and byte-compares source with installed files;
-- reruns generated-runtime and behavior checks under an actual Python 3.8 interpreter.
-
-Do not report those platform, installer-fidelity, or Python-floor results unless those exact environments/checks ran.
+CI also runs on Ubuntu, macOS, and Windows; asserts platform shell/real-symlink behavior; installs every catalog skill into a throwaway repository and byte-compares regular-file payloads; and exercises the runtime floor under Python 3.8. A local run on one platform does not establish those other results; do not report platform, installer-fidelity, or Python-floor results unless those exact environments or checks ran. The offline example above exercises evaluation plumbing, not a live model.
 
 ## Evaluation evidence
 
-The [live routing guide](../evals/agent-skills/README.md) owns measurement semantics and probe limitations. `test_live_skill_eval_adapter.py` covers host exits, strict JSON, cache-inclusive usage, revision-contained candidate files, and typed verifier comparisons. `test_tdd_contract.py` protects distribution and attribution; it deliberately does not enforce English sentence fixtures as a substitute for behavior evaluation. Commit changed suite manifests before validating them because evaluation pins inputs to Git.
+Choose the matching guide rather than treating every check as the same evidence:
 
-The optional [task outcome fixtures](../evals/tasks/README.md) inspect actual artifacts and captured tool results under no-skill, brief-request, and pinned-skill conditions. Their CI reference actions validate the oracles, not model effectiveness. The release execution fixture runs repository-owned shell scripts against local Git and a mock publisher; it never publishes.
+| Question | Procedure and limit |
+|---|---|
+| Are manifests, adapter envelopes, and deterministic oracles sound? | Core regression tests and suite/result validation; no model-effectiveness claim |
+| Does a configured model report the intended route/decision? | [Live routing probes](../evals/agent-skills/README.md); not native discovery or actual task execution |
+| Does the Agent preserve/change the right artifacts? | [Task outcomes](../evals/tasks/README.md); compare matched no-skill, brief-request, and pinned-skill runs |
+| Are meaning and reader navigation intact? | Source review and an optional cold read; not exact-file approval or an automatic gate |
+
+Commit intended candidate/manifests before revision-pinned evaluation; uncommitted skill edits are not the treatment. Preserve unknown usage as unknown. Reference actions and mocked release publication test oracles and owned behavior, not live-host effectiveness or real publication.
 
 ### Optional skill-verifier
 
-Use the project-owned `skill-verifier` subagent for substantive skill changes, task-artifact review, or uncertain evaluation claims. Routine wording fixes need no extra reviewer. Pass the absolute task checkout, revision, diff (including dirty changes when relevant), scope, acceptance, and existing result paths. The parent captures revision and diff evidence before dispatch because the reviewer does not run shell commands. For example:
+For substantive skill changes or uncertain evidence, pass the project `skill-verifier` the absolute task checkout, pinned revision, diff/dirty snapshot, scope, acceptance, and existing result paths. The parent captures those artifacts because the reviewer does not run shell commands. For example:
 
-> Use skill-verifier to inspect the spec-writing change at <revision> in <absolute-task-checkout> and the supplied results. Look for regressions and assertions that could pass a wrong output. Return findings and evidence; do not modify the reviewed files.
+> Review this spec-writing change at <revision> in <absolute-task-checkout> and the supplied results. Find regressions or assertions that accept a wrong output; return findings and proposed checks without modifying sources or executing commands.
 
-The source is `.agents/subagents/skill-verifier/{metadata.json,instructions.md}`. Generate the Claude/Codex projections with `python .agents/tools/generate-subagents.py`; `--check` verifies drift. The existing private-harness test and static scaffold gate cover this wiring. It is not installed by catalog/scaffold consumers, and neither the project `skill-eval` nor its manuals are duplicated in the role.
+[Instructions](../.agents/subagents/skill-verifier/instructions.md) and [metadata](../.agents/subagents/skill-verifier/metadata.json) are the role's source. Generate projections using `python .agents/tools/generate-subagents.py`; use `--check` for drift. The role is opt-in and project-owned, not a catalog/scaffold-consumer install or approval authority. Model and effort remain host-selected.
 
-Models and reasoning effort are left to the host. Claude explicitly exposes only Read/Grep/Glob, excluding shell, editing, and delegation tools. The role reviews source and captured evidence and returns proposed checks to the parent instead of executing them. Codex requests `read-only`, but parent runtime overrides can change effective permissions; the role's no-execution instruction is not evidence of an enforced Codex tool restriction. Inspect the actual host policy. The parent runs checks in a separately authorized disposable environment and returns the captured results for review. A linked worktree shares Git metadata, and a separate clone owns its own — but neither confines a process that can still reach the original checkout, and a temporary directory alone prevents nothing; use effective filesystem isolation when that guarantee is required.
+Claude's configured allowlist is Read/Grep/Glob; Codex requests `read-only`, but effective parent overrides must be checked. Neither configuration nor the no-execution instruction establishes live-host enforcement. The parent runs proposed checks in a separately authorized environment. Linked worktrees, separate clones, and temporary directories are not process sandboxes; filesystem/network/credential isolation must be effective when required. See [dated host evidence](compatibility.md#project-subagent-definitions-2026-09-22).
 
-A cold-reader/anonymous A/B judgment needs a fresh instance with only the task, acceptance, and anonymized artifacts. Do not reuse the source-review instance or give it version identities; inherited project context may prevent a truly blind claim. Keep baseline/treatment execution separate from this evaluator, and follow the [task outcome guide](../evals/tasks/README.md) for measured comparisons. The parent evaluates the findings rather than treating the subagent's verdict as approval.
-
-These are configured boundaries, not live-host certification. Host discovery, actual permissions and inherited context need an observed run; the [compatibility matrix](compatibility.md) records the dated host documentation for subagent definitions and what it does not prove.
+Use a fresh instance with only task, acceptance, and anonymized artifacts for an explicitly blind/cold-reader comparison. Do not reuse a source-review instance or claim blindness when project context leaks identities. Keep baseline/treatment execution separate from this evaluator. The parent evaluates findings and owns fixes and delivery.
 
 ## Generated files
 
-```bash
-# After editing scripts/workflow_runtime/
-python scripts/generate_workflow_runtimes.py
+Edit the [canonical source](architecture.md#source-and-generated-ownership), then run the owning generator:
 
-# After editing scripts/p0_runtime/
+```bash
+python scripts/generate_workflow_runtimes.py
 python scripts/generate_p0_runtimes.py
 ```
 
-Review the generated diff, then rerun the corresponding `--check` command and behavior tests. For scaffold runtime under `.agents/tools/`, edit the `agent-scaffold` catalog skill source and use `agent-scaffold upgrade`; for project skills and subagents, use the relink/generator commands documented in the managed `AGENTS.md` block.
+Run only the affected generator, review its diff, and rerun `--check` plus relevant behavior tests. For scaffold-owned runtime and contract updates, use the catalog `agent-scaffold` installer in `upgrade` mode, then `verify`. Project skill links and subagents use the relink/generator commands in the managed `AGENTS.md` block. Do not patch installed/generated files to hide drift.
 
 ## Installer checks
 
-The audited reproducibility pin is `skills@1.5.17`; the current upstream release is tracked separately in [compatibility.md](compatibility.md). After changing catalog skill names, frontmatter, catalog metadata, or layout:
+`skills@1.5.17` is the audited reproducibility pin, not an upstream-latest label. `add . -l` is a discovery-only check from the catalog task checkout. Actual install smoke tests run from a fresh consumer Git repository with the catalog path as their source; CI checks each installed file against source and rejects non-regular payload entries. Repeat against the remote source after publishing an intended discovery fix. Evaluate a newer CLI as an explicit dependency change rather than silently replacing the pin.
 
-1. Run local root discovery with the audited pin.
-2. Install into a fresh temporary Git repository for the intended target.
-3. Compare every installed file with the source and reject non-regular payload entries.
-4. After pushing an intended discovery fix, repeat the smoke test against the remote repository path.
-5. Evaluate a newer CLI version only as an explicit dependency change; do not silently substitute it for the pin.
-
-Use top-level `npx skills --help` to inspect options. With the audited pin, `npx skills add <source> --help` can execute the add flow. Never run project-scope `skills remove` from this catalog root because it can delete product `skills/*`.
+[Installer semantics](compatibility.md#installer-semantics) owns option scope and destructive-command warnings. In particular, inspect top-level `--help`; `add <source> --help` can execute an add flow. Never run project-scope removal from the catalog checkout.
 
 ## Release flow
 
-1. Keep release-facing changes under `CHANGELOG.md` Unreleased and use Conventional Commits without `Co-Authored-By`.
-2. Merge only after the required local checks and `main` CI succeed.
-3. Create and push an annotated `vX.Y.Z` or numbered `-alpha.N`, `-beta.N`, or `-rc.N` tag from the validated snapshot.
-4. Let `.github/workflows/release.yml` call the complete validation workflow, extract the matching changelog section, and create the GitHub Release.
-5. Do not create a competing manual release while the repository workflow owns publication.
+This repository's completion boundary is a verified GitHub Release created by [release CI](../.github/workflows/release.yml), not a planner status or tag push.
 
-See [repository architecture](architecture.md) for source ownership and [compatibility.md](compatibility.md) before changing platform or host-support language.
+1. Accumulate changes under Unreleased. Choose the exact supported tag and move its notes into one matching dated changelog section. The installer grouping manifest `.claude-plugin/plugin.json` has no release-version field; do not invent one for a release. Use Conventional Commits without `Co-Authored-By`.
+2. Validate and merge the release snapshot, then verify main CI. Resolve the intended remote main and exact release commit; the workflow rejects tags whose commits are not reachable from `origin/main`.
+3. With release authorization, create and push an annotated `vX.Y.Z` or numbered `-alpha.N`, `-beta.N`, or `-rc.N` tag. Prerelease numbers start at 1. The workflow does not accept build metadata or arbitrary SemVer prerelease labels. Never move or recreate an existing tag.
+4. Observe reusable validation, tag/commit checks, exact changelog extraction, and workflow-owned publication. Do not race it with a manual publisher.
+5. Verify the release URL, tag/peeled commit, non-draft state, prerelease state, and body matching the tagged changelog. Report failed or unavailable evidence rather than declaring completion at push.
+
+The catalog [semver-release](../skills/semver-release/SKILL.md) remains repository-neutral. Its schema 2 `analyzed` status establishes only local supported-format analysis, not branch policy, publishability, or authorization. Pass `--release-branch` only from explicit repository policy and resolve attention before mutation. Documentation-only PRs do not bump the version, create tags, or publish releases.
