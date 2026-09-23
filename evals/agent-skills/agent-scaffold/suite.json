@@ -280,6 +280,105 @@
           }
         }
       }
+    },
+    {
+      "id": "positive-project-test-quality",
+      "kind": "positive",
+      "prompt": "Initialize this project harness and fill missing test-quality guidance in its existing development guide. Existing tests are colocated, CI enforces 82% coverage, and test-first is optional. Preserve those choices; do not add frameworks or require an installed TDD skill.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "fill_testing_guidance": true,
+            "preserve_layout": true,
+            "test_policy_changed": false,
+            "test_harness_added": false,
+            "requires_sibling_skill": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-preserve-scoped-tdd",
+      "kind": "positive",
+      "prompt": "Upgrade the harness and reconcile test guidance. The payments module already mandates test-first and uses real storage integration tests; other modules use optional TDD. Keep both policies, test locations and coverage gates. No framework change is authorized.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "test_policy_changed": false,
+            "preserve_layout": true,
+            "test_harness_added": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-no-test-harness",
+      "kind": "positive",
+      "prompt": "Initialize essential project guidance. There is no supported test harness yet; permission to add dependencies or tools is not granted. Explain the missing coverage and a minimal option without installing anything or fabricating tests.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "fill_testing_guidance": true,
+            "test_policy_changed": false,
+            "test_harness_added": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-testing-preview",
+      "kind": "positive",
+      "prompt": "Preview an upgrade that would establish testing conventions. Identify gaps in oracles and real/fake boundary guidance without writing files, applying the harness, changing coverage gates or making TDD mandatory.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "project_guidance_writes": false,
+            "test_policy_changed": false,
+            "test_harness_added": false
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-ordinary-tests",
+      "kind": "negative",
+      "prompt": "Add tests for an existing parser following our current testing guide. No harness or convention setup and no test-first policy are requested.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "implementation"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "implementation"
+          }
+        }
+      }
     }
   ]
 }

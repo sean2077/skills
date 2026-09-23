@@ -76,7 +76,10 @@ class ProjectConventionPreservationTests(unittest.TestCase):
 
     def seed(self, docs="doc", tools="scripts"):
         self.write("AGENTS.md", "# 工程约定\n\n[开发入口](%s/开发.md)\n" % docs)
-        self.write(docs + "/开发.md", "# 开发\n沿用当前布局。\n")
+        self.write(docs + "/开发.md", "# 开发\n沿用当前布局。\n"
+                   + ("TDD is required in payments.\n" if tools else "TDD is optional.\n"))
+        self.write("spec/check_spec.py", "# Existing colocated test contract; keep it.\n")
+        self.write(".coveragerc", "[report]\nfail_under = 82\n")
         self.write("docs/generated/api.md", "generated from schema; do not edit\n")
         self.write("website/config.json", json.dumps({"content": docs}, ensure_ascii=False) + "\n")
         self.write(".editorconfig", "[*]\nindent_size = 3\n")

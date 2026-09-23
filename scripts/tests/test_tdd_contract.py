@@ -14,6 +14,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from catalog_core import errors  # noqa: E402
 from contracts.tdd import NOTICE_MARKERS, REFERENCE_FILES, validate_tdd_contract  # noqa: E402
+from contracts.agent_scaffold import validate_agent_scaffold_contract  # noqa: E402
+from validate_skills import validate_category_references  # noqa: E402
 
 
 class TddContractTests(unittest.TestCase):
@@ -64,6 +66,38 @@ class TddContractTests(unittest.TestCase):
         self.assertIn(reworded, path.read_text(encoding="utf-8"))
         validate_tdd_contract(self.skill, readme_text="A reworded catalog summary.")
         self.assertEqual([], errors)
+
+
+class TestingPayloadTests(unittest.TestCase):
+    def test_each_testing_payload_is_independently_installable(self):
+        for name in ("agent-scaffold", "tdd"):
+            with self.subTest(skill=name), tempfile.TemporaryDirectory() as temporary:
+                skill = Path(temporary) / name
+                shutil.copytree(ROOT / "skills" / name, skill)
+                errors.clear()
+                self.addCleanup(errors.clear)
+                validate_category_references(skill, (skill / "SKILL.md").read_text(encoding="utf-8"))
+                self.assertEqual([], errors)
+                # No sibling checkout or installed skill exists to resolve escaped links.
+                self.assertEqual([name], [p.name for p in Path(temporary).iterdir()])
+                if name == "agent-scaffold":
+                    validate_agent_scaffold_contract(skill)
+                    self.assertEqual([], errors)
+                    for relative in ("NOTICE.md", "references/testing-conventions.md"):
+                        path = skill / relative
+                        original = path.read_bytes()
+                        path.unlink()
+                        errors.clear()
+                        validate_agent_scaffold_contract(skill)
+                        self.assertTrue(errors)
+                        path.write_bytes(original)
+
+    def test_testing_adaptation_carries_complete_upstream_notice(self):
+        upstream = (ROOT / "skills/tdd/NOTICE.md").read_text(encoding="utf-8")
+        notice = (ROOT / "skills/agent-scaffold/NOTICE.md").read_text(encoding="utf-8")
+        self.assertIn("mattpocock/skills", notice)
+        self.assertIn("skills/engineering/tdd/", notice)
+        self.assertEqual(upstream[upstream.index("MIT License"):], notice[notice.index("MIT License"):])
 
 
 if __name__ == "__main__":

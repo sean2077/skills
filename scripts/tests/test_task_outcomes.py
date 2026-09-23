@@ -112,6 +112,57 @@ class OutcomeTests(unittest.TestCase):
             result = runner.prepare_run("docs-move", self.root / condition, condition)
             self.assertIsNone(result["skill_digest"])
 
+    def test_testing_guidance_preserves_policy_sources_and_discovery(self):
+        workspace, state = self.fixture("scaffold-testing-guidance")
+        def result():
+            return self.passed(workspace, "scaffold-testing-guidance", state)
+        self.assertFalse(result()[0])
+        entry = (workspace / "AGENTS.md").read_text() + "\n[Testing](handbook/development.md)\n"
+        cases.write(workspace, "AGENTS.md", entry)
+        self.assertFalse(result()[0])  # A new link alone is not completed guidance.
+        guide = ("# 开发与测试\nSubmit through a PR; never auto-merge.\n\n"
+                 + "\n\n".join(cases.TESTING_CLAUSES)
+                 + "\nRun `python -m unittest discover -s spec -p '*_spec.py'`.\n"
+                 + "[Contract](../protocol.md) · [Example](../spec/encoder_spec.py)\n")
+        cases.write(workspace, "handbook/development.md", guide)
+        self.assertTrue(*result())
+        # Each owner-defined requirement has its own falsifying example.
+        for clause in cases.TESTING_CLAUSES:
+            with self.subTest(clause=clause):
+                cases.write(workspace, "handbook/development.md", guide.replace(clause, ""))
+                self.assertFalse(result()[0])
+        for old, new in (("-s spec", "-s tests"), ("*_spec.py", "test_*.py"),
+                         ("../protocol.md", "../protocol.md#missing"),
+                         ("../spec/encoder_spec.py", "../missing.py"),
+                         ("never auto-merge", "auto-merge")):
+            with self.subTest(old=old):
+                cases.write(workspace, "handbook/development.md", guide.replace(old, new))
+                self.assertFalse(result()[0])
+        # Equivalent headings/quote style are not the test contract.
+        cases.write(workspace, "handbook/development.md", guide.replace("# 开发与测试", "# Test guide").replace("'*_spec.py'", '\"*_spec.py\"'))
+        self.assertTrue(*result())
+        for relative in ("TESTING.md", "tests/placeholder.py", "tools/test.sh"):
+            with self.subTest(added=relative):
+                cases.write(workspace, relative, "unrequested content\n")
+                self.assertFalse(result()[0])
+                (workspace / relative).unlink()
+                parent = (workspace / relative).parent
+                if parent != workspace:
+                    parent.rmdir()
+        (workspace / "tests").mkdir()
+        self.assertFalse(result()[0])
+        (workspace / "tests").rmdir()
+        # Unrelated inline code is not another malformed test command.
+        cases.write(workspace, "handbook/development.md", "A lone quote is `\"`.\n" + guide)
+        self.assertTrue(*result())
+        path = workspace / ".coveragerc"
+        original = path.read_bytes()
+        cases.write(workspace, ".coveragerc", "[report]\nfail_under = 1\n")
+        self.assertFalse(result()[0])
+        path.write_bytes(original)
+        cases.write(workspace, "spec/encoder_spec.py", "# silently removed existing tests\n")
+        self.assertFalse(result()[0])
+
     def test_mock_unknown_write_is_observed_without_blind_retry(self):
         workspace, state = self.fixture("lark-unknown-write")
         def invoke(*args):

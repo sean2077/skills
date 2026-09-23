@@ -17,6 +17,15 @@ Use the host/project workflow for ordinary repository investigation, disposable 
 | Define or evolve project language | [domain-modeling](../skills/domain-modeling/SKILL.md) | Active terminology changes, not a mandatory pass before ordinary work |
 | Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Service-specific identity, permissions, and side-effect checks |
 
+## Testing quality and test-first execution
+
+During full setup, `agent-scaffold` adopts and fills project-owned testing conventions alongside
+commands and verification boundaries. It preserves existing layouts, coverage gates and scoped
+TDD choices; it does not introduce a test framework or require test-first for ordinary work.
+Later testing follows the project guide. Select `tdd` only for explicit user/project-required
+RED–GREEN–REFACTOR; it reuses that guide and retains self-contained fallback references when
+none exists. Neither catalog skill requires the other to be installed.
+
 ## Combining routes
 
 Combine routes only when the task crosses their boundaries. A documentation move uses ordinary host/project work; select `spec-writing` when the reader narrative also needs revision, or `domain-modeling` when terminology itself changes. A settled specification does not require another interview. An implementation may need research for an uncertain dependency without restarting its whole workflow.

@@ -43,6 +43,7 @@ row below. Prefer facts that a new Agent cannot infer reliably over generic advi
 | Document entry and ownership | Where current development/design/operations material lives, what each location owns, and where a new document belongs. Preserve unique content and update actual readers/callers when material moves. |
 | Status and evidence | How this project distinguishes drafts, current decisions, implemented behavior, and history. Approval and recent edits are not proof of implementation. Preserve established conventions; optional flat `status`/`updated` are hints, not a mandatory schema. Formats owning their frontmatter keep it. |
 | Task commands | Real build/test/diagnostic/generation entries, cwd, necessary environment, and consequential effects. Keep internal helpers private and established CLI/installed/service-bound interfaces stable. |
+| Test quality and policy | Adopt test locations, discovery/runner configuration, fixtures, coverage gates, and scoped test-first choices. Fill useful design/oracle, dependency and failure-evidence guidance using [testing conventions](testing-conventions.md), without imposing a framework or TDD. |
 | Verification and delivery | Which checks cover the change, what is mock/offline versus real integration, unavailable environments, and the project's commit/PR/MR/release boundary. Link CI rather than duplicate its entire inventory. |
 | Source and generated ownership | Important generator/source/output relations, vendor boundaries, attribution, and how to regenerate. Never patch a projection as a durable fix. |
 | Environment and collaboration | Existing package manager/lockfile/setup, credential-free examples, shared-resource limits, exact checkout/review revision, and worktree lifecycle owner. No new lease/state controller. |
@@ -90,7 +91,8 @@ restore it. If intent cannot be established, preserve the ambiguous part and rep
 
 Run installer `verify` for assets, then inspect the actual project reader routes and affected
 commands. A new Agent should find valid current docs, command cwd/effects, source ownership,
-verification coverage, and the delivery boundary using the resulting entry points alone.
+test-quality guidance, verification coverage, and the delivery boundary using the resulting
+entry points alone.
 Do not treat a count of files, an inventory entry, or fixed English headings as acceptance.
 
 Distinguish observed checks from inspected commands and from unknown external/host behavior.

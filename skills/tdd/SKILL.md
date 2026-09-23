@@ -7,6 +7,14 @@ description: "Use when the user or project explicitly requires test-first/TDD, R
 
 Demonstrate a missing behavior, implement it, and improve the design while green.
 
+## Project contract first
+
+Read the applicable project testing guidance before selecting commands, seams, fixtures, or
+oracles. Reuse established quality rules, layouts and gates; this skill adds test-first
+execution, not another project policy. It works without `agent-scaffold` or any sibling skill:
+when guidance is absent, derive the needed facts from the repository and use the local
+references below. Do not initialize a harness as a prerequisite to TDD.
+
 ## RED–GREEN–REFACTOR
 
 Choose an observable behavior, stable seam, independent oracle, test level, and expected missing-behavior failure. Resolve choices that materially affect the contract, cost, safety, or confidence.

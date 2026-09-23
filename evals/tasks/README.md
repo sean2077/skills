@@ -11,6 +11,7 @@ These opt-in fixtures inspect what an Agent actually changes, separately from [r
 | `docs-move` (none/brief only) | Unique content and incoming/outgoing relative links/anchors | The fixture's Markdown subset, not a general repository link validator |
 | `scaffold-guidance` | Reader routes to project commands, source owners and draft docs; preserved user/generated files | Bounded Markdown and command-presence oracle, not complete semantic quality or live asset/host validation |
 | `scaffold-upgrade-guidance` | Redirect to the current guide without restoring deliberately removed templates | Asset upgrades are covered separately by installer tests |
+| `scaffold-testing-guidance` | Existing-guide routing, verbatim owner test-quality/TDD/coverage clauses, actual discovery argv, source/example links and unchanged tests/config | Bounded source-preservation oracle; does not grade all prose semantics or execute a model |
 | `lark-unknown-write` | Local mock: one send and same-identity readback | No network or live CLI/service certification; writable logs are not tamper-proof |
 | `lark-invented-syntax` | Mock calls, collection observation, and correct awaiting-reply count in `answer.json`; rejects unsupported flags/identities/IDs | Cooperative mock evidence, not adversarial execution proof or model effectiveness |
 | `tdd-negative-input` | Captured missing-behavior RED at original source, then GREEN with unchanged tests/final hashes and an independent behavior check | Final answers and Agent-authored logs cannot replace missing sequence evidence |

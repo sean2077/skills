@@ -1,6 +1,6 @@
 ---
 name: agent-scaffold
-description: "Use to initialize, inspect, or upgrade a Claude Code + Codex project harness and its document, command, verification, and source-ownership guidance. Preserve existing layouts. Not for routine research, docs reorganization, scripting, delivery, or third-party skill installation."
+description: "Use to initialize, inspect, or upgrade a Claude Code + Codex project harness and its document, command, testing, and source-ownership guidance. Preserve existing layouts. Not for routine research, docs reorganization, scripting, delivery, or third-party skill installation."
 ---
 
 # Agent Scaffold
@@ -52,8 +52,9 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
    owner; do not infer them from session cwd or create a second worktree manager.
 2. For initialization or upgrade, read [project conventions](references/project-conventions.md).
    Inspect relevant entry points and actual configurations/callers before expanding the scan.
-   Reuse existing answers; identify missing document, command, verification, source, and safety
-   guidance. This assessment also applies to previews, without writing or running setup commands.
+   Reuse existing answers; identify missing document, command, test-quality, verification,
+   source, and safety guidance. Follow [testing conventions](references/testing-conventions.md)
+   for test-policy discovery and project-specific quality guidance; do not impose TDD. This assessment also applies to previews, without writing or running setup commands.
 3. Run `plan` for assets; combine its `apply_mode` and profile with the needed project-guidance
    changes. Resolve material scope/ownership conflicts. Follow existing authorization instead
    of demanding a new approval round for every routine, already authorized step.
@@ -63,7 +64,8 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
    this skill's manual into the target; choose the minimum useful project-specific additions.
 5. Verify harness assets with the same profile. Separately walk a new-Agent reader task using
    only the resulting entry points: find the applicable docs, real commands/cwd/effects,
-   generated-source owners, verification limits, and delivery boundary. Check changed links and
+   test-design and dependency boundaries, generated-source owners, verification limits, and
+   delivery boundary. Check changed links and
    affected commands safely; preserve unavailable evidence as a gap rather than inventing it.
 6. Report adopted locations, material additions/repairs, observed checks, and unresolved gaps.
    Distinguish asset installation, project-guidance coverage, and actual host trust/discovery.
@@ -75,6 +77,7 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
 | Need | Reference |
 |---|---|
 | First-use project guidance, layout adoption, docs/tools, and incremental maintenance | [Project conventions](references/project-conventions.md) |
+| Project test design, dependency boundaries, existing gates, and TDD policy | [Testing conventions](references/testing-conventions.md) |
 | Session entry, task paths, external worktrees, and lifecycle handoff | [Workspace context](references/workspace-context.md) |
 | EOL defaults, exceptions, and authorized migration | [Line endings](references/line-endings.md) |
 | Installed assets, profiles, SSOT, and third-party coexistence | [Harness layout](references/harness-layout.md) |
@@ -86,3 +89,5 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
 | Adopting existing authority documents or host agents | [Retrofit](references/retrofit.md) |
 | Platforms, symlink repair, and checkpoint limitations | [Platform support](references/platform-support.md) |
 | Structured reports and troubleshooting | [Diagnostics](references/diagnostics.md) |
+
+See [NOTICE.md](NOTICE.md) for attribution of the adapted testing guidance.

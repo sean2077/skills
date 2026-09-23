@@ -128,6 +128,15 @@ Claude's configured allowlist is Read/Grep/Glob; Codex requests `read-only`, but
 
 Use a fresh instance with only task, acceptance, and anonymized artifacts for an explicitly blind/cold-reader comparison. Do not reuse a source-review instance or claim blindness when project context leaks identities. Keep baseline/treatment execution separate from this evaluator. The parent evaluates findings and owns fixes and delivery.
 
+## Scaffold testing conventions
+
+Testing-quality guidance is established by the full scaffold skill and owned by the consumer
+project. `tdd` retains explicit test-first execution and independent fallback references.
+The testing-guidance fixture checks source-owned clauses, runner discovery arguments, links
+and preservation of tests/coverage configuration. It does not infer prose quality from keywords
+or prove live model effectiveness. Installer preservation and TDD RED/GREEN traces remain
+separate checks; isolated payload/reference tests protect independent skill installation.
+
 ## Scaffold project-guidance changes
 
 The full skill must adopt and fill real project guidance during an authorized initialization

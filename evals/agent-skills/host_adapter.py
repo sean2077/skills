@@ -80,7 +80,7 @@ WORKFLOW_ALIASES = {
 # Keep the vocabulary candidate-local rather than taxing every probe with every key.
 BOUNDARY_OBSERVATIONS = {'deep-interview': ('approval_accepted', 'implementation_authorized', 'reapproval_required'),
  'domain-modeling': ('topology_redesign',),
- 'tdd': ('separate_behavior_card',),
+ 'tdd': ('separate_behavior_card', 'read_project_testing_guidance', 'requires_sibling_skill'),
  'lark-cli': ('routine_preflight',
               'identity_switch',
               'identity_check_before_write',
@@ -107,6 +107,10 @@ BOUNDARY_OBSERVATIONS = {'deep-interview': ('approval_accepted', 'implementation
                     'project_guidance_writes',
                     'restore_deleted_guidance',
                     'introduce_controller',
+                    'fill_testing_guidance',
+                    'test_policy_changed',
+                    'test_harness_added',
+                    'requires_sibling_skill',
                     'decision_artifact')}
 OBSERVATION_GUIDANCE = {'tdd': 'When selected, report workflow and test_first. Report preserve_parent_contract when a '
         'delivery owner is active.',

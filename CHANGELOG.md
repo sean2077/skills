@@ -14,11 +14,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Make full `agent-scaffold` setup adopt and fill project-specific test-quality guidance: independent oracles, contractual observations, risk-based levels, real/double boundaries, sensitivity and honest baselines. Preserve existing runners/layouts, coverage gates and scoped TDD policy; no framework, mandatory test-first or managed AGENTS expansion is introduced.
 - Expand `agent-scaffold` full initialization/upgrade to adopt and fill project-owned documentation, command, verification, source, and environment guidance. Respect existing layouts and project customizations; use current successors instead of recreating deleted/merged templates, without growing the managed AGENTS block or adding a layout registry.
 - Add explicit installer-report scope (`harness-assets`, project guidance `not-assessed`), real installer layout/read-only/idempotence preservation tests, scaffold decision probes, and bounded task-outcome fixtures. These checks distinguish runtime installation from Agent-authored guidance and do not claim live-host/model effectiveness.
 
 ### Changed
 
+- Separate reusable project testing conventions from explicit TDD execution. `tdd` reads project guidance first and keeps compact, independently installable fallback material plus RED/GREEN evidence requirements. The scaffold testing adaptation ships its own upstream attribution notice; neither skill depends on the other.
 - Preserve shared state-safety coverage by moving lock, concurrency, binding, session, strict-JSON, and compact-history regressions from the retired loop to `deep-interview`; remove loop-only tests and the now-unused score helper, then regenerate the approval payload. Keep `work-protocol` ownership semantics and historical release/audit records unchanged.
 
 - Refresh repository documentation against v8: distinguish catalog sources from consumer installation destinations, clarify canonical/generated ownership, preserve dated evidence, and align release guidance with main reachability, supported tags, and schema-2 local analysis.

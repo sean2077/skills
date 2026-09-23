@@ -1,60 +1,36 @@
-# Test Design and Oracles
+# Test Design for a TDD Slice
 
-## Define the behavior
+Use the project's applicable test-quality guidance first. The following is a self-contained
+fallback for choosing the next slice, not a second project-wide policy or a dependency on
+another installed skill.
 
-Choose the behavior and test boundary before the first test:
+## Choose an observable missing behavior
 
-- **Behavior:** the capability or invariant being added, in domain language.
-- **Observation seam:** where an external observer can distinguish success from failure.
-- **Independent oracle:** why the expected result is correct without repeating the implementation.
-- **Test level:** the cheapest level that can expose the material risk.
-- **Effects and fixtures:** state, clocks, randomness, processes, services, data, or hardware involved.
-- **Expected RED:** the exact assertion, diagnostic, exit status, compile error, diff, or signal that should prove the behavior is absent.
+Identify the capability, stable observation seam, independent expected result, smallest test
+level that exposes its risk, necessary fixtures/effects and the predicted RED reason. Resolve
+material uncertainty before asserting an invented contract; no separate behavior form is needed.
+A seam may be an API, CLI exit/output, persisted state, wire interaction, compiled interface,
+rendered artifact or device signal, not necessarily a language-level exported function.
 
-A public seam is contractually observable, not necessarily a language-level exported function. It may be a library API, command and exit status, process protocol, HTTP or message boundary, rendered artifact, persisted state, schema, compiler/type interface, device signal, or domain service. Prefer the cheapest stable seam: close enough to diagnose, broad enough to survive internal refactoring.
+Use acceptance criteria, a specification, a hand-verifiable literal, independently calculated
+model or invariant for the oracle. Do not call or duplicate the production algorithm to compute
+its own expected result. Several assertions can jointly establish one behavior. Internal calls,
+incidental order and wording matter only when they are themselves part of the contract.
 
-Clarify choices that materially affect compatibility, ownership, cost, safety, or the promised behavior.
+For pure rules, start near the function/module. For wiring, packaging, configuration or storage
+semantics, exercise the real boundary; add a broader tracer when lower-level tests cannot expose
+the risk. Test-first does not mandate unit-only or E2E-only testing, nor changing the framework.
 
-## Choose level by risk, not fashion
+## Prove sensitivity, then keep the contract stable
 
-No level is universally superior:
+Run the selected example on unimplemented behavior and verify that it actually executes and
+fails for the predicted reason. Zero tests, stale artifacts and unrelated setup errors are not
+RED. With a double or fault injection, check the real production path reaches that boundary.
+Keep that example unchanged through GREEN unless evidence proves its contract is wrong.
 
-| Material risk | Usually useful evidence |
-|---|---|
-| Pure rule, parser, transform, state transition | Focused function/module/component test |
-| Collaborator contract or storage behavior | Component/integration test with a real or faithful boundary |
-| Public API, CLI, protocol, packaging, deployment wiring | Process/contract/system test |
-| User journey across owned components | A small end-to-end tracer plus lower-level diagnostics |
-| Compile-time API, type safety, linker or schema contract | Compile-fail/pass, type, link, or schema fixture |
-| Generated artifact, plan, migration, or infrastructure policy | Golden/plan/schema/policy diff plus semantic checks |
-
-Use the narrowest test that can fail for the risk being changed. Add a broader tracer when wiring, packaging, configuration, or compatibility is itself the risk. Avoid duplicating the same assertion at every layer.
-
-## Build an independent oracle
-
-Good sources include an acceptance criterion, protocol or language specification, worked example, known literal, prior released behavior, trusted reference implementation, approved golden artifact, metamorphic relation, model, invariant, or independently calculated result.
-
-Avoid tautologies: do not compute the expected value with the same algorithm, constants, parser, query builder, serializer, or generated output used by production code. For complex calculations, use a small hand-verifiable case, a distinct model, or a property that must hold across cases.
-
-Several assertions are appropriate when they jointly prove one behavior, such as value plus emitted effect, exit status plus stderr, or response plus persisted state. Keep assertions focused on the same coherent behavior.
-
-## Prefer durable observations
-
-- Assert outcomes and contractually meaningful effects, not private calls, field layout, incidental ordering, allocation count, or internal helper names.
-- Interaction assertions are valid when the interaction itself is the contract: for example, a protocol frame, audit event, idempotency key, transaction boundary, or forbidden external call.
-- Direct database, filesystem, queue, or wire inspection can be correct when that adapter or stored representation is the subject of the test. It is a side channel when the promised behavior should instead be observed through another public interface.
-- Avoid production-only test hooks. Prefer dependency boundaries already justified by design; a small behavior-preserving seam extraction is acceptable while green.
-
-## Examples, tables, properties, and generated cases
-
-Begin with one representative example that reveals the next design decision. Add boundary cases as separate slices when they represent distinct behavior. Parameterize only after examples share one contract and diagnostics remain clear.
-
-Use property-, model-, fuzz-, or metamorphic tests when a few examples cannot cover a large input space. Keep a minimized regression example for any discovered defect, preserve deterministic seeds or replay data, and make shrinking/reproduction part of the evidence.
-
-## Snapshots, goldens, and baselines
-
-Snapshots and golden files are useful when the artifact is itself the contract and a reviewer can understand the diff. Keep them focused, deterministic, normalized only by documented rules, and review the initial baseline independently. Never create or update a baseline from the new production output without inspecting it against another source of truth.
-
-## Coverage and mutation
-
-Coverage is a diagnostic for unexercised paths, not the behavior or the stopping rule. A coverage increase can still assert nothing useful. Mutation testing can reveal insensitive tests, but surviving mutants are investigation signals rather than an instruction to couple tests to implementation.
+Use the project's snapshots/goldens only for meaningful artifacts with an independently
+reviewed baseline; generated production output is not its own approval. Keep property/fuzz
+failures as minimized examples with seeds/replay data. Coverage and mutation tools may expose
+gaps, but do not replace RED evidence or justify weakening gates/coupling to private details.
+See [effects](test-doubles-and-effects.md) and [hard cases](legacy-and-hard-cases.md) only when
+those risks arise; specialized methods are not required for every slice.
