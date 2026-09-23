@@ -15,7 +15,7 @@ Keep durable facts in their authoritative home and maintain the routes readers u
 | `docs/harness-constraint-policy.md` | Skill design and validation principles |
 | `CONTEXT.md` | Repository terminology |
 | `CHANGELOG.md` and `docs/audits/*.md` | Pending changes, release history, and dated review evidence |
-| `skills/<name>/SKILL.md` and references | Self-contained installed skill guidance |
+| `skills/<name>/SKILL.md` and references | Self-contained installed skill guidance; with its tests, the skill's behavior specification (there is no separate spec tree; rationale lives in PRs, `CHANGELOG.md` and dated audits) |
 | `evals/agent-skills/README.md` / `evals/tasks/README.md` | Routing-probe / task-outcome procedures and measurement limits |
 | Scaffold assets and shared runtime source | Generated/installed content; see the [ownership map](architecture.md#source-and-generated-ownership) |
 
