@@ -15,9 +15,13 @@ These opt-in fixtures inspect what an Agent actually changes, separately from [r
 | `scaffold-testing-guidance` | Existing-guide routing, verbatim owner test-quality/TDD/coverage clauses, actual discovery argv, source/example links and unchanged tests/config | Bounded source-preservation oracle; does not grade all prose semantics or execute a model |
 | `lark-unknown-write` | Local mock: one send and same-identity readback | No network or live CLI/service certification; writable logs are not tamper-proof |
 | `lark-invented-syntax` | Mock calls, collection observation, and correct awaiting-reply count in `answer.json`; rejects unsupported flags/identities/IDs | Cooperative mock evidence, not adversarial execution proof or model effectiveness |
+| `lark-stateful-update` | Read before a dependent whole-object replacement, preserved unrelated fields/types and existing text, actual stored result | Cooperative local mock; no live command syntax, concurrent-change, or tamper-proof execution claim |
+| `lark-stateful-update-cached` | Same preservation checks with an explicitly complete/current supplied observation; direct safe write can pass without a redundant read | Controlled no-external-change fixture, not proof of cache freshness in a live service |
 | `tdd-negative-input` | Captured missing-behavior RED at original source, then GREEN with unchanged tests/final hashes and an independent behavior check | Final answers and Agent-authored logs cannot replace missing sequence evidence |
 
 The syntax task-only prompt states the task and points to command documentation; the brief condition adds syntax guidance separately. Reading help or one message is insufficient: valid mock use must also produce the requested count.
+
+The stateful pair appends one line to an existing task description while retaining the rest of its object. The mock deliberately accepts whole-object replacements that omit fields: an `ok` response alone cannot pass. The oracle checks every replacement, command identity/target, read-before-write ordering when state is missing, and the actual stored object; a read-only command-list call is tolerated but never counts as observing state. A later repair cannot excuse an earlier destructive write. The cached variant permits reuse of a supplied complete/current observation; neither case imposes a call-count ceiling or mandatory post-write read. Mock, help and supplied observation are protected inputs, but writable local state/logs are still cooperative evidence, not an adversarial sandbox.
 
 CI's `scripts/tests/test_task_outcomes.py` exercises good/bad reference actions to test the fixtures and oracles, **not model performance**. `scripts/tests/test_release_execution.py` separately runs repository-owned release shell steps with real Git and a mock publisher; it never publishes. Task answers and captured JSON records reject duplicate keys and non-finite constants, as control files do.
 
@@ -30,6 +34,8 @@ python evals/tasks/runner.py prepare scaffold-testing-guidance /absolute/eval/te
 python evals/tasks/runner.py prepare scaffold-testing-guidance /absolute/eval/testing-brief --condition brief
 python evals/tasks/runner.py prepare scaffold-testing-guidance /absolute/eval/testing-skill --condition skill --skill-revision HEAD
 ```
+
+The same `none`/`brief`/`skill` conditions apply to both stateful Lark cases. Keep the fixture/evaluator fixed when comparing skill revisions, and evaluate unknown-state and cached-state runs separately rather than treating the cached task as an easier baseline for the other task.
 
 Run these commands from the evaluator's checkout. Commit intended skill changes before using `HEAD`: payloads come from Git, not dirty files. For old/new comparisons, use two full skill commit IDs with the same fixture/evaluator; the evaluator hash is recorded separately. Match run order, model, effort, permissions, plugin/memory configuration, cache conditions, and interventions, recording deviations. A brief request is a legitimate control. Repeated held-out tasks are needed for a stable-advantage claim.
 

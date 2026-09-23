@@ -95,6 +95,38 @@ for message in messages:
 print(json.dumps({"status":"invalid_arguments"}))
 sys.exit(2)
 '''
+# This whole-object replacement surface is intentionally fixture-only, not live CLI syntax.
+LARK_TASK = {
+    "description": "Ship the patch.",
+    "assignee": "ou_owner",
+    "due": "2026-10-01",
+    "settings": {"notify": True, "labels": ["release", "review"]},
+}
+MOCK_LARK_STATEFUL = '''import json, sys
+from pathlib import Path
+args = sys.argv[1:]
+with Path("lark-events.jsonl").open("a", encoding="utf-8") as f:
+    f.write(json.dumps(args) + "\\n")
+state = Path("task-state.json")
+if args in (["--help"], ["help"]):
+    print(json.dumps({"ok": True, "commands": ["read --as user --id task_fixture",
+                                               "replace --as user --id task_fixture --json '<object>'"]}))
+    sys.exit(0)
+if args == ["read", "--as", "user", "--id", "task_fixture"]:
+    print(json.dumps({"ok": True, "identity": "user", "data": json.loads(state.read_text(encoding="utf-8"))}))
+    sys.exit(0)
+if len(args) == 7 and args[:6] == ["replace", "--as", "user", "--id", "task_fixture", "--json"]:
+    try:
+        payload = json.loads(args[6])
+    except ValueError:
+        payload = None
+    if isinstance(payload, dict):
+        state.write_text(json.dumps(payload), encoding="utf-8")
+        print(json.dumps({"ok": True, "identity": "user", "id": "task_fixture", "data": payload}))
+        sys.exit(0)
+print(json.dumps({"ok": False, "error": "invalid_arguments"}))
+sys.exit(2)
+'''
 BASE_TEST = '''import unittest
 from cap import cap
 class CapTests(unittest.TestCase):
@@ -177,6 +209,16 @@ CASES = {
         "prompt": "Use the local mock to count messages in oc_fixture that are waiting for a reply. Write answer.json containing {\"awaiting_reply_count\": <integer>}. Command documentation is in mock-help.md. Work offline and leave the mock unchanged.",
         "brief": "Read the fixture contract before invoking it; an unsupported argument shape is a gap to report, not permission to guess another one.",
     },
+    "lark-stateful-update": {
+        "skill": "lark-cli",
+        "prompt": "Through the local mock, append a new line containing Reviewed. to task_fixture's current description as the user identity. Preserve every other field and existing description text. Command documentation is in mock-help.md. Use only the mock to observe or change task-state.json; leave the mock, help and logs unchanged except through its commands. Work offline and report the observed result.",
+        "brief": "Read the affected state before building a dependent replacement; preserve unrelated fields and distinguish write acceptance from the requested outcome.",
+    },
+    "lark-stateful-update-cached": {
+        "skill": "lark-cli",
+        "prompt": "Through the local mock, append a new line containing Reviewed. to task_fixture's current description as the user identity. Preserve every other field and existing description text. cached-state.json is a complete, current user-identity observation supplied for this task; no external changes occur in this fixture. Command documentation is in mock-help.md. Use only the mock to observe or change task-state.json; leave the mock, help, cached observation and logs unchanged except through its commands. Work offline and report the observed result.",
+        "brief": "Reuse the complete current observation to build the replacement; do not require a redundant read, and preserve unrelated fields.",
+    },
     "tdd-negative-input": {
         "skill": None,
         "prompt": "Use test-first development to make cap(value, limit) reject a negative value with ValueError. Preserve existing tests. Run python check.py after adding the regression and again after the fix; do not modify check.py. It reports hashes and outcomes needed to verify RED then GREEN.",
@@ -242,6 +284,15 @@ def prepare(root: Path, case_id: str) -> dict:
     elif case_id == "lark-invented-syntax":
         write(root, "lark_mock.py", MOCK_LARK_SYNTAX)
         write(root, "mock-help.md", "# Local mock command contract\n\nThe mock implements exactly two data commands:\n\n- `python lark_mock.py list --as user` lists messages with an `awaiting_reply` flag.\n- `python lark_mock.py get --as user --id <message_id>` reads one message.\n\n`python lark_mock.py --help` prints this command list. Any other argument shape reports `invalid_arguments` and exits 2. These fixture commands are not live lark-cli syntax.\n")
+    elif case_id in ("lark-stateful-update", "lark-stateful-update-cached"):
+        write(root, "lark_mock.py", MOCK_LARK_STATEFUL)
+        write(root, "task-state.json", json.dumps(LARK_TASK) + "\n")
+        write(root, "mock-help.md", "# Local mock command contract\n\nThe mock implements exactly two data commands:\n\n"
+              "- `python lark_mock.py read --as user --id task_fixture` returns the current complete task object in data.\n"
+              "- `python lark_mock.py replace --as user --id task_fixture --json '<object>'` replaces the WHOLE task; omitted fields are removed. Its data response is the complete stored object.\n\n"
+              "`python lark_mock.py --help` prints this command list. Any other argument shape reports `invalid_arguments` and exits 2. These fixture commands are not live lark-cli syntax.\n")
+        if case_id.endswith("-cached"):
+            write(root, "cached-state.json", json.dumps(LARK_TASK) + "\n")
     elif case_id == "tdd-negative-input":
         write(root, "cap.py", "def cap(value, limit):\n    return min(value, limit)\n")
         write(root, "test_cap.py", BASE_TEST); write(root, "check.py", CHECK_TDD)
@@ -258,6 +309,12 @@ def prepare(root: Path, case_id: str) -> dict:
         state["source"] = digest((root / "cap.py").read_bytes())
         state["test"] = digest((root / "test_cap.py").read_bytes())
     state["protected"] = {p.name: digest(p.read_bytes()) for p in root.iterdir() if p.name in ("check.py", "lark_mock.py")}
+    if case_id in ("lark-stateful-update", "lark-stateful-update-cached"):
+        state["initial_task"] = decode_json(read(root, "task-state.json"))
+        state["cached"] = case_id.endswith("-cached")
+        for name in ("mock-help.md", "cached-state.json"):
+            if (root / name).is_file():
+                state["protected"][name] = digest(read(root, name))
     scaffold_editable = {
         "scaffold-guidance": {"AGENTS.md", "doc/development.md"},
         "scaffold-upgrade-guidance": {"AGENTS.md"},
@@ -501,6 +558,35 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             answer = decode_json(read(root, "answer.json"))
             count = answer.get("awaiting_reply_count") if isinstance(answer, dict) else None
             check("correct awaiting-reply count", type(count) is int and count == 2)
+        elif case_id in ("lark-stateful-update", "lark-stateful-update-cached"):
+            events_path = root / "lark-events.jsonl"
+            events = [decode_json(line) for line in read(root, "lark-events.jsonl").decode().splitlines()] if events_path.is_file() else []
+            expected = {**state["initial_task"], "description": state["initial_task"]["description"] + "\nReviewed."}
+            expected_json = json.dumps(expected, sort_keys=True, allow_nan=False)
+            observed = state["cached"]
+            writes = []
+            for index, args in enumerate(events):
+                if args == ["read", "--as", "user", "--id", "task_fixture"]:
+                    observed = True
+                elif args in (["--help"], ["help"]):
+                    # Read-only command-list discovery, as in the sibling syntax fixture. It
+                    # neither establishes state nor violates identity/target, so it must not
+                    # fail a run that otherwise reads, preserves, and writes correctly.
+                    pass
+                elif (isinstance(args, list) and len(args) == 7
+                      and args[:6] == ["replace", "--as", "user", "--id", "task_fixture", "--json"]):
+                    check("state known before write " + str(index), observed)
+                    payload = decode_json(args[6])
+                    # Compare every replacement, not just the final file: a destructive
+                    # intermediate write cannot be excused by a later repair.
+                    check("authorized full replacement " + str(index), json.dumps(payload, sort_keys=True, allow_nan=False) == expected_json)
+                    writes.append(payload)
+                else:
+                    check("documented identity and target " + str(index), False)
+            check("observed a replacement command", bool(writes))
+            current = decode_json(read(root, "task-state.json"))
+            check("requested change and unrelated state preserved", json.dumps(current, sort_keys=True, allow_nan=False) == expected_json)
+            check("stored state matches last write", bool(writes) and current == writes[-1])
         elif case_id == "tdd-negative-input":
             tests = read(root, "test_cap.py").decode("utf-8")
             original = ast.parse(BASE_TEST).body[2].body[0]
