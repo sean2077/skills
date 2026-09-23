@@ -141,6 +141,15 @@ class OutcomeTests(unittest.TestCase):
         # Equivalent headings/quote style are not the test contract.
         cases.write(workspace, "handbook/development.md", guide.replace("# 开发与测试", "# Test guide").replace("'*_spec.py'", '\"*_spec.py\"'))
         self.assertTrue(*result())
+        for fence in ("```bash", "~~~sh"):
+            with self.subTest(command_format=fence):
+                command = "python -m unittest discover -s spec -p '*_spec.py'"
+                formatted = guide.replace("`" + command + "`", "\n" + fence + "\n" + command + "\n" + fence[:3] + "\n")
+                cases.write(workspace, "handbook/development.md", formatted)
+                self.assertTrue(*result())
+                cases.write(workspace, "handbook/development.md", formatted.replace("-s spec", "-s tests"))
+                self.assertFalse(result()[0])
+        cases.write(workspace, "handbook/development.md", guide)
         for relative in ("TESTING.md", "tests/placeholder.py", "tools/test.sh"):
             with self.subTest(added=relative):
                 cases.write(workspace, relative, "unrequested content\n")

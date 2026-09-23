@@ -372,6 +372,9 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             for clause in TESTING_CLAUSES:
                 check("source-owned testing clause: " + clause, clause in guide)
             commands = re.findall(r"`([^`\n]+)`", guide)
+            # Accept standalone command lines (including fenced/indented blocks),
+            # not only inline code. Formatting is not part of this project contract.
+            commands.extend(guide.splitlines())
             argv_matches = []
             for command in commands:
                 try:
