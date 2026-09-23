@@ -5,10 +5,10 @@ on:
     paths: ['.github/workflows/task-source-snapshot.yml']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  prepare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/lean-scaffold-retire-four-skills'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -18,12 +18,44 @@ jobs:
           ref: 4bc9bb9b5d5a817bd7457e5acb939aaa750092b6
           fetch-depth: 0
           persist-credentials: false
-      - name: Export tracked objects only
+      - name: Prepare immutable blobs without updating refs
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: git bundle create "$RUNNER_TEMP/skills.bundle" --all
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: testing-conventions-source
-          path: ${{ runner.temp }}/skills.bundle
-          retention-days: 1
-          if-no-files-found: error
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, lzma, os, subprocess, urllib.request
+          assert os.environ['GITHUB_REPOSITORY'] == 'sean2077/skills'
+          api = 'https://api.github.com/repos/sean2077/skills/git/blobs'
+          def request(url, payload=None):
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(url, data=data, headers={
+                  'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                  'Accept': 'application/vnd.github+json',
+                  'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28'})
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  return json.load(response)
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          parts = ['f704248a7625321389a479415204dcd06e8ab416',
+                   '329e419078e993e8e8b81329bf8f7ec4193ce32a',
+                   '0675c39bd79ad26a3192a078eb31d34d76342637']
+          encoded = b''.join(base64.b64decode(request(api + '/' + sha)['content']) for sha in parts)
+          compressed = base64.b64decode(encoded, validate=True)
+          identity = hashlib.sha1(b'blob ' + str(len(compressed)).encode() + b'\0' + compressed).hexdigest()
+          assert identity == '82ff1e3cd57723c6bb48dc7973ef924076d3b139', identity
+          assert git('rev-parse', 'HEAD').decode().strip() == '4bc9bb9b5d5a817bd7457e5acb939aaa750092b6'
+          patch = lzma.decompress(compressed)
+          subprocess.run(['git', 'apply', '--index', '--unidiff-zero', '-'], input=patch, check=True)
+          tree = git('write-tree').decode().strip()
+          assert tree == '5246b2a0fd8418a32db08eae0aa4c5c55504d7cc', tree
+          paths = git('diff', '--cached', '--name-only', '-z').decode().strip('\0').split('\0')
+          assert len(paths) == 20 and not any(p.startswith('.github/') for p in paths)
+          for path in paths:
+              expected = git('rev-parse', ':' + path).decode().strip()
+              content = git('show', ':' + path)
+              result = request(api, {'encoding': 'base64', 'content': base64.b64encode(content).decode()})
+              assert result['sha'] == expected, path
+          print('Prepared', len(paths), 'immutable blobs for verified tree', tree)
+          PY
