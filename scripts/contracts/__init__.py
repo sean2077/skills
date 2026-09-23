@@ -25,7 +25,6 @@ REQUIRED_SKILLS = frozenset(
         "deep-interview",
         "domain-modeling",
         "lark-cli",
-        "ralph",
         "semver-release",
         "tdd",
         "tooling-conventions",

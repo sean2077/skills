@@ -211,7 +211,7 @@ jobs:
           python scripts/generate_p0_runtimes.py --check
           python -m compileall -q \
             scripts/workflow_runtime scripts/p0_runtime \
-            skills/deep-interview/scripts skills/ralph/scripts \
+            skills/deep-interview/scripts \
             .agents/skills/skill-eval/scripts skills/work-protocol/scripts \
             evals/agent-skills evals/tasks
           python -m unittest -v \

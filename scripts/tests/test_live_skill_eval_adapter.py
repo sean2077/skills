@@ -49,6 +49,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         retired = {
             "autopilot": "delivery", "analyze": "analysis", "prototype": "prototype",
             "ai-slop-cleaner": "implementation", "code-review": "code-review",
+            "ralph": "iteration", "bounded-iteration": "iteration",
         }
         for route, workflow in retired.items():
             with self.subTest(route=route):
@@ -71,7 +72,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         self.assertFalse(set(self.adapter.WORKFLOW_ALIASES.values())
                          - set(self.adapter.WORKFLOWS))
         for reported, expected in (("analyze", "analysis"), ("experiment", "prototype"),
-                                   ("review", "code-review")):
+                                   ("review", "code-review"), ("bounded-iteration", "iteration")):
             with self.subTest(workflow=reported):
                 self.assertEqual(expected, self.adapter.normalize_workflow(reported))
 

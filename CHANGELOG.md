@@ -6,7 +6,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking
+
+- Retire `ralph` from the catalog (13 → 12 skills), including its loop runtime, references, source, contract, generator target, and route alias. Use native goals or the host/project workflow for new continuation tasks; exact attempt/stall/plateau semantics remain project-owned, not claimed as native-goal parity. Finish or explicitly abort active runs with the original installed runtime before removing it; preserve existing state and evidence, with no automatic migration or consumer uninstall.
+
 ### Changed
+
+- Preserve shared state-safety coverage by moving lock, concurrency, binding, session, strict-JSON, and compact-history regressions from the retired loop to `deep-interview`; remove loop-only tests and the now-unused score helper, then regenerate the approval payload. Keep `work-protocol` ownership semantics and historical release/audit records unchanged.
 
 - Refresh repository documentation against v8: distinguish catalog sources from consumer installation destinations, clarify canonical/generated ownership, preserve dated evidence, and align release guidance with main reachability, supported tags, and schema-2 local analysis.
 - Make maintainer and evaluation examples fail safely, retain failure output, and require an explicit observed cache condition instead of assuming cold-cache execution. Keep all catalog routes, runtime behavior, historical records, and optional-review boundaries unchanged.

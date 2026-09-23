@@ -9,7 +9,6 @@
     "./skills/domain-modeling",
     "./skills/lark-cli",
     "./skills/project-docs-organizer",
-    "./skills/ralph",
     "./skills/semver-release",
     "./skills/spec-writing",
     "./skills/tdd",

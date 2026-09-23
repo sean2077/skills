@@ -26,7 +26,7 @@ Choose delegation and persistence according to separate needs. Isolation or para
 
 Keep one integration owner and one active writer per mutable surface. Pass workers the relevant objective, authority, input revision, and acceptance. Return findings and verification that the owner needs to integrate the work.
 
-Choose the state owner whose semantics fit the task. Native continuation may suffice; repository-owned runtimes provide explicit phases, revisions, bindings, receipts, bounded attempts, and leases. Once selected, follow that runtime's transitions and recovery rules. Coordinate ownership when composing runtimes rather than letting competing controllers mutate the same state.
+Choose the state owner whose semantics fit the task. Native continuation may suffice; repository-owned runtimes provide explicit phases, revisions, bindings, receipts, and leases. Once selected, follow that runtime's transitions and recovery rules. Coordinate ownership when composing runtimes rather than letting competing controllers mutate the same state.
 
 ## Catalog validation
 
