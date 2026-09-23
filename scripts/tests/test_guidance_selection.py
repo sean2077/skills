@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("selection_core", ROOT / "skills/agent-scaffold/scripts/harness-core.py")
 CORE = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(CORE)
+RELEASE_ASSETS = ("runtime.release-guide", "runtime.release-plan", "runtime.release-changelog")
 
 
 class GuidanceSelectionTests(unittest.TestCase):
@@ -147,9 +148,47 @@ class GuidanceSelectionTests(unittest.TestCase):
         fixture.invoke("upgrade")
         self.assertEqual(after, fixture.snapshot())
         self.assertEqual(saved, (fixture.root / CORE.GUIDANCE_FILE).read_bytes())
+        release = fixture.root / ".agents/tools/release"
+        self.assertFalse(release.exists())
         fixture.invoke("upgrade", extra=("--domains", "all"))
-        self.assertIn("### Project terminology", (fixture.root / "AGENTS.md").read_text())
+        contract = (fixture.root / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("### Project terminology", contract)
+        # Release conventions are installed on demand, never added to the resident contract.
+        self.assertNotIn(".agents/tools/release", contract)
+        for item in RELEASE_ASSETS:
+            asset = CORE.asset_by_id(CORE.load_manifest(), item)
+            self.assertEqual((CORE.SKILL_DIR / asset["source"]).read_bytes(),
+                             (fixture.root / asset["target"]).read_bytes())
         self.assertTrue(fixture.invoke("verify")["ok"])
+        # Deselecting stops maintenance; dormant copies stay project files, as with light profile.
+        fixture.invoke("upgrade", extra=("--domains", "docs"))
+        self.assertEqual(sorted(p.name for p in release.iterdir()),
+                         ["README.md", "extract-changelog.py", "release-plan.py"])
+        verified = fixture.invoke("verify")
+        self.assertTrue(verified["ok"])
+        self.assertFalse([c for c in verified["checks"] if c["id"] in RELEASE_ASSETS])
+
+    def test_release_runtime_is_scoped_to_the_release_domain(self):
+        manifest = CORE.load_manifest()
+        for domains, active in ((None, False), ([], False), (["docs", "git"], False), (["release"], True)):
+            with self.subTest(domains=domains):
+                ids = {item["id"] for item in CORE.active_assets(manifest, "default", domains)}
+                lines = {item["id"] for item in CORE.active_line_invariants(manifest, "light", domains)}
+                self.assertEqual(active, set(RELEASE_ASSETS) <= ids)
+                self.assertFalse(not active and set(RELEASE_ASSETS) & ids)
+                self.assertEqual(active, "contract.gitattributes-release" in lines)
+                self.assertIn("runtime.subagent-generator", ids)
+
+    def test_manifest_rejects_invalid_domain_scope(self):
+        data = json.loads(CORE.DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+        for value in ([], ["unknown"], ["release", "release"], "release"):
+            with self.subTest(value=value):
+                broken = json.loads(json.dumps(data))
+                next(a for a in broken["assets"] if a["id"] == "runtime.release-plan")["domains"] = value
+                path = self.root / "manifest.json"
+                path.write_text(json.dumps(broken), encoding="utf-8")
+                with self.assertRaises(CORE.CoreError):
+                    CORE.load_manifest(path)
 
     def test_asset_only_legacy_update_does_not_accept_defaults(self):
         fixture = preservation.ProjectConventionPreservationTests("runTest")
@@ -160,6 +199,7 @@ class GuidanceSelectionTests(unittest.TestCase):
         result = fixture.invoke("plan")["guidance_selection"]
         self.assertEqual("pending", result["status"])
         self.assertFalse((fixture.root / CORE.GUIDANCE_FILE).exists())
+        self.assertFalse((fixture.root / ".agents/tools/release").exists())
 
     def test_invalid_argument_is_a_usage_error_not_a_damaged_record(self):
         fixture = preservation.ProjectConventionPreservationTests("runTest")

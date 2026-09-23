@@ -14,7 +14,7 @@ from typing import Optional
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PLANNER = REPO_ROOT / "scripts" / "release" / "release-plan.py"
+PLANNER = REPO_ROOT / "skills" / "agent-scaffold" / "assets" / "runtime" / "release" / "release-plan.py"
 
 
 class ReleasePlanTests(unittest.TestCase):

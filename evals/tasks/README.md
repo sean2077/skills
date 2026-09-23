@@ -121,7 +121,7 @@ fixtures** with `none` and `brief` conditions; their retired skills are not inst
 fixtures still compare task-only/brief/pinned-skill conditions. Do not redirect ordinary task
 fixtures to scaffold merely because it now establishes their project conventions.
 
-Release planning/extraction and real-Git/mock-publisher tests remain repository tooling checks
-under `scripts/release/`, not automatic release side effects or catalog-skill certification.
+Release planning/extraction and real-Git/mock-publisher tests cover the scaffold release runtime
+(`skills/agent-scaffold/assets/runtime/release/`), not automatic release side effects or catalog-skill certification.
 No source deletion proves that native models have equal effectiveness; retain the bounded
 fixtures and measure actual tasks when that question matters.

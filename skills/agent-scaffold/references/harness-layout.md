@@ -26,6 +26,7 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/runtime/relink-skills.sh` | `.agents/relink-skills.sh` | idempotent skill symlink rebuild |
 | `assets/runtime/symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, sync, and verification |
 | `assets/runtime/generate-subagents.py` | `.agents/tools/generate-subagents.py` | subagent projection + `--check` drift mode |
+| `assets/runtime/release/` | `.agents/tools/release/` | only while `release` is selected: task-time release conventions, read-only analyzer and changelog extractor |
 | `assets/host/claude.settings.json` | merged into `.claude/settings.json` | Claude Code scaffold-owned hook source |
 | `assets/host/codex.hooks.json` | merged into `.codex/hooks.json` | Codex scaffold-owned hook source |
 | `assets/scaffold/AGENTS.harness.md` | managed block in `AGENTS.md` | only the marker-bounded block is scaffold-owned |
@@ -36,7 +37,10 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 
 Accepted convention coverage lives in project-owned `.agents/scaffold.json`, written only for
 an explicit `--domains` answer and preserved on later asset updates. It is not a layout registry
-or automatically generated project guidance. See [one-time selection](onboarding-selection.md).
+or automatically generated project guidance. Only domain-scoped assets follow it: the managed
+terminology section and the release runtime. A pending selection installs neither domain-scoped
+asset; deselection leaves dormant copies, as a default-to-light change does. See
+[one-time selection](onboarding-selection.md).
 
 Project prose, terminology files, nested authority-document structure, subagent examples,
 Codex settings, package scripts, and CI/hook-manager integration are reference recipes rather than

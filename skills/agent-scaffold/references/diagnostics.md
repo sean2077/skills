@@ -66,7 +66,8 @@ All reports include `guidance_selection` with `status`, `path`, `domains` and `d
 for exclusions from the default-all list. `recorded` means reuse the saved array (including
 empty) without asking again. `plan --domains ...` reports `proposed` without writing; the printed
 apply/upgrade command retains that proposed choice. Malformed/aliased records are `invalid`
-and add an attention/failure check; do not reset or re-onboard them.
+and add an attention/failure check; do not reset or re-onboard them. The `runtime.release-*` and
+`contract.gitattributes-release` checks appear only while `release` is selected (or proposed).
 
 The record `.agents/scaffold.json` is a project-owned coverage preference, not a layout schema
 or completion assertion. `project_guidance` remains `not-assessed`, even with a valid selection.

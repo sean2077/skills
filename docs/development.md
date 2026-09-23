@@ -171,20 +171,24 @@ Run only the affected generator, review its diff, and rerun `--check` plus relev
 
 This repository's completion boundary is a verified GitHub Release created by [release CI](../.github/workflows/release.yml), not a planner status or tag push.
 
+Before any version bump, tag or publication, read the installed [release conventions](../.agents/tools/release/README.md). The repository-specific rules below win over their generic defaults.
+
 1. Accumulate changes under Unreleased. Choose the exact supported tag and move its notes into one matching dated changelog section. The installer grouping manifest `.claude-plugin/plugin.json` has no release-version field; do not invent one for a release. Use Conventional Commits without `Co-Authored-By`.
 2. Validate and merge the release snapshot, then verify main CI. Resolve the intended remote main and exact release commit; the workflow rejects tags whose commits are not reachable from `origin/main`.
 3. With release authorization, create and push an annotated `vX.Y.Z` or numbered `-alpha.N`, `-beta.N`, or `-rc.N` tag. Prerelease numbers start at 1. The workflow does not accept build metadata or arbitrary SemVer prerelease labels. Never move or recreate an existing tag.
 4. Observe reusable validation, tag/commit checks, exact changelog extraction, and workflow-owned publication. Do not race it with a manual publisher.
 5. Verify the release URL, tag/peeled commit, non-draft state, prerelease state, and body matching the tagged changelog. Report failed or unavailable evidence rather than declaring completion at push.
 
-The maintainer [release analyzer](../scripts/release/release-plan.py) remains a read-only tool, not a catalog skill or installed scaffold asset. Its schema 2 `analyzed` status establishes only local supported-format analysis, not branch policy, publishability, or authorization. Pass `--release-branch` only from explicit repository policy and resolve attention before mutation. Documentation-only PRs do not bump the version, create tags, or publish releases.
+The [release analyzer](../.agents/tools/release/release-plan.py) is read-only scaffold runtime installed for the selected `release` domain. Its schema 2 `analyzed` status establishes only local supported-format analysis, not branch policy, publishability, or authorization. Pass `--release-branch` only from explicit repository policy and resolve attention before mutation. Documentation-only PRs do not bump the version, create tags, or publish releases.
 
-The [changelog extractor](../scripts/release/extract-changelog.py) is owned by this repository's
-release CI. Both release helpers moved from the retired skill without compatibility wrappers;
-the planner and real-Git/mock-publisher regressions still cover them. Local analysis:
+Release CI calls the committed [changelog extractor](../.agents/tools/release/extract-changelog.py).
+Edit the canonical sources under `skills/agent-scaffold/assets/runtime/release/`, then refresh
+these copies with `agent-scaffold upgrade`; the scaffold gate rejects drift. Both helpers moved
+from the retired skill without compatibility wrappers, and the planner and real-Git/mock-publisher
+regressions still cover them. Local analysis:
 
 ```bash
-python scripts/release/release-plan.py --repo . --release-branch main --json
+python .agents/tools/release/release-plan.py --repo . --release-branch main --json
 ```
 
 ## Convention selection coverage

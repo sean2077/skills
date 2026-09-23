@@ -29,6 +29,15 @@ merely while adopting conventions. Keep credentials and shell-sensitive message 
 
 ## Release
 
+When `release` is selected, the installer maintains `.agents/tools/release/`: the complete
+release conventions (`README.md`: version selection, version files, notes, prerelease promotion,
+publication and completion evidence) plus the read-only analyzer and changelog extractor. That
+page is the task-time reference, not setup reading. Do not load it in full during setup, copy it
+into project docs, or route to it from resident `AGENTS.md` content. Instead, give the project's
+own release documentation one direct route, for example “before any version bump, tag or
+publication, read `.agents/tools/release/README.md`”, next to the project-specific facts below.
+Those facts win over the page's generic defaults.
+
 Identify stable relationships: version authorities (including per-package/release-line scope),
 complete tag format, release-notes authority, signing requirements, supported release branch,
 producer commands/CI, destinations and the project's completion evidence. Do not freeze today's
@@ -52,6 +61,7 @@ selected domain with no release flow, write the known boundary (for example “n
 is defined; publication requires a project decision”) and a minimal proposal where useful; do
 not manufacture a release merely to fill coverage. Required tooling changes need their own scope.
 
-Tools retained by this catalog repository are **maintainer tools**, not installed scaffold assets.
-A consumer must keep or explicitly migrate any direct dependency on retired skill paths before
-uninstalling. Project guidance must remain useful after the installed scaffold skill is removed.
+The installed copies are committed scaffold runtime, so the route keeps working without the
+catalog skill; CI may call the committed extractor directly. Deselecting `release` stops their
+maintenance but does not delete them. A consumer must keep or explicitly migrate any direct
+dependency on retired `semver-release` skill paths before uninstalling that skill.

@@ -209,6 +209,7 @@ jobs:
           python -m compileall -q \
             scripts/workflow_runtime scripts/p0_runtime \
             skills/deep-interview/scripts \
+            skills/agent-scaffold/assets/runtime/release \
             .agents/skills/skill-eval/scripts \
             evals/agent-skills evals/tasks
           python -m unittest -v \
@@ -217,3 +218,5 @@ jobs:
             scripts.tests.test_workflow_runtimes.RuntimeTests.test_approval_requires_unchanged_original_bytes_including_eol
           python -m unittest -v scripts.tests.test_p0_agent_workflows
           python -m unittest -v scripts.tests.test_p0_hardening
+          # The release runtime is an installed scaffold asset, so it must run on the scaffold floor.
+          python scripts/tests/test_semver_release_plan.py

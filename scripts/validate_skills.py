@@ -267,7 +267,7 @@ def validate_repository_release_automation_contract(
             errors.append("release workflow lost required fixtures: tag trigger, validation dependency or permissions")
         steps = publisher.get("steps", [])
         runs = [(i, step, str(step.get("run", ""))) for i, step in enumerate(steps)]
-        extracts = [i for i, _, run in runs if "scripts/release/extract-changelog.py" in run]
+        extracts = [i for i, _, run in runs if ".agents/tools/release/extract-changelog.py" in run]
         publishes = [(i, step) for i, step, run in runs if 'release create "$GITHUB_REF_NAME"' in run]
         verifies = [i for i, _, run in runs if "--json body" in run]
         if (len(extracts) != 1 or len(publishes) != 1 or len(verifies) != 1

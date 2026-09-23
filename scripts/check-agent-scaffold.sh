@@ -261,7 +261,7 @@ if grep -Eq '<init\|retrofit|\b(init|retrofit)\b.*Mode|Modes:.*(init|retrofit)' 
 fi
 
 # Dogfood copies in this repository must match every active default-profile
-# runtime asset. The same manifest drives install, verify, and this drift gate.
+# runtime asset for its recorded convention selection. The same manifest drives install, verify, and this drift gate.
 if [ -d "$repo/.agents/tools" ]; then
   while IFS=$'\t' read -r id source target strategy executable; do
     executable="${executable%$'\r'}"
@@ -273,7 +273,7 @@ if [ -d "$repo/.agents/tools" ]; then
     elif ! cmp -s "$bundled" "$installed"; then
       fail "dogfood drift: $target differs from $source"
     fi
-  done < <(python "$core" --manifest "$manifest" assets list --profile default --strategy copy)
+  done < <(python "$core" --manifest "$manifest" assets list --profile default --target "$repo" --strategy copy)
 fi
 
 if [ -f "$repo/.agents/tools/generate-subagents.py" ]; then

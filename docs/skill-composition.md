@@ -54,9 +54,10 @@ Finish or explicitly terminate old durable runs with their original pinned runti
 native goals or prose do not adopt them. Inventory-checker consumers must preserve or deliberately
 migrate their executable entry before uninstalling. No automatic state/worktree cleanup occurs.
 
-Direct callers of the old release scripts must migrate or pin first. This repository retains
-its tested analyzer and changelog extractor in `scripts/release/`, used/documented by its own
-[release flow](development.md#release-flow); they are not installed scaffold assets. Preserve
+Direct callers of the old release scripts must migrate or pin first. The complete release
+conventions, tested analyzer and changelog extractor now ship as scaffold runtime installed to
+`.agents/tools/release/` when a project selects `release`; project release docs route to them
+at task time, as this repository's [release flow](development.md#release-flow) does. Preserve
 licensing for retained adapted material. Existing TDD, terminology and release policies still
 apply after their catalog routes disappear.
 

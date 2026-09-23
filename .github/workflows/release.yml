@@ -49,7 +49,7 @@ jobs:
             printf 'release tag %s is not reachable from main\n' "$GITHUB_REF_NAME" >&2
             exit 1
           fi
-          python scripts/release/extract-changelog.py \
+          python .agents/tools/release/extract-changelog.py \
             --changelog CHANGELOG.md \
             --tag "$GITHUB_REF_NAME" \
             --output "$RUNNER_TEMP/release-notes.md"

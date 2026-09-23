@@ -360,8 +360,7 @@ class AgentScaffoldAttributionTests(unittest.TestCase):
 class SemverChangelogExtractionTests(unittest.TestCase):
     EXTRACTOR = (
         Path(__file__).resolve().parents[1]
-        / "scripts"
-        / "release"
+        / "skills/agent-scaffold/assets/runtime/release"
         / "extract-changelog.py"
     )
 

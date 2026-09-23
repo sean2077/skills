@@ -27,7 +27,7 @@ continue, but do not implicitly accept all or introduce the conventions.
 | `specs` | Specification meaning, status, source ownership and observable acceptance |
 | `terminology` | Project language, context ownership and incremental glossary maintenance |
 | `git` | Commit conventions, change/index scope and the requested delivery boundary |
-| `release` | Version/notes authorities, existing publication flow and completion evidence |
+| `release` | Version/notes authorities, existing publication flow and completion evidence; installs `.agents/tools/release/` for task-time use |
 | `environment` | Setup, shared resources, supported platforms and collaboration handoff |
 
 After an accepted answer, pass it to the same planned mutating command:
@@ -58,8 +58,8 @@ Track this file with the project so later sessions/worktrees inherit the decisio
 list is a completed choice, not missing data. Excluded domains are not newly authored or
 expanded by scaffold, and existing project rules/files remain in force and are not deleted.
 Core authority, safe mutation, source/projection, and permission boundaries are not optional.
-The optional managed terminology section follows the selection; other project-owned glossary
-content is untouched. Existing unselected legacy installations retain their old managed
+The optional managed terminology section and the `.agents/tools/release/` runtime follow the
+selection; other project-owned glossary and release content is untouched. Existing unselected legacy installations retain their old managed
 contract until a full setup records a choice.
 
 Selection persists before guidance authorship so an interrupted setup can resume **without
@@ -72,7 +72,8 @@ For `recorded`, reuse the saved list and omit `--domains`. **Do not repeat the o
 question**, append newly offered domains, or infer exclusions from missing directories.
 A new upstream domain remains outside an existing explicit list until the user adds it.
 A user can explicitly change scope with `--domains`; removing a domain stops future scaffold
-maintenance of it, not the project's existing policy. No recurring prompt or reset mode.
+maintenance of it, not the project's existing policy or already installed release copies.
+No recurring prompt or reset mode.
 
 Malformed, conflicting, unknown-schema or symlinked records are errors, not first-use
 signals. Preserve them and recover the accepted scope from the project/history; do not reset

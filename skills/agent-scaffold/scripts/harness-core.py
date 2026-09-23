@@ -54,6 +54,9 @@ REQUIRED_ASSETS = {
     "host.codex-hooks": ("merge-json", ".codex/hooks.json"),
     "runtime.symlink-manager": ("copy", ".agents/symlink-manager.py"),
     "runtime.subagent-generator": ("copy", ".agents/tools/generate-subagents.py"),
+    "runtime.release-guide": ("copy", ".agents/tools/release/README.md"),
+    "runtime.release-plan": ("copy", ".agents/tools/release/release-plan.py"),
+    "runtime.release-changelog": ("copy", ".agents/tools/release/extract-changelog.py"),
 }
 EOL_START = b"# agent-scaffold:line-endings:start"
 EOL_END = b"# agent-scaffold:line-endings:end"
@@ -66,6 +69,7 @@ MANAGED_DIRECTORY_BOUNDARIES = (
     ".agents/subagents",
     ".agents/tools",
     ".agents/tools/hooks",
+    ".agents/tools/release",
     ".claude",
     ".claude/agents",
     ".claude/skills",
@@ -264,6 +268,19 @@ def _validate_profiles(value: Any, item_id: str) -> List[str]:
     return value
 
 
+def _validate_domains(value: Any, item_id: str) -> None:
+    """Optional convention scope; an absent key means the item is not domain-scoped."""
+    if value is None:
+        return
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(domain not in GUIDANCE_DOMAINS for domain in value)
+        or len(set(value)) != len(value)
+    ):
+        raise CoreError("{0}: invalid domains".format(item_id))
+
+
 def _validate_stable_id(value: Any, kind: str) -> str:
     if not isinstance(value, str) or not re.fullmatch(r"[a-z][a-z0-9.-]*", value):
         raise CoreError("{0} id must be stable lowercase dotted text".format(kind))
@@ -295,6 +312,7 @@ def load_manifest(path: Path = DEFAULT_MANIFEST) -> Dict[str, Any]:
         if strategy not in STRATEGIES:
             raise CoreError("asset {0}: unknown strategy {1}".format(asset_id, strategy))
         _validate_profiles(item.get("profiles"), "asset {0}".format(asset_id))
+        _validate_domains(item.get("domains"), "asset {0}".format(asset_id))
         if not isinstance(item.get("executable"), bool):
             raise CoreError("asset {0}: executable must be boolean".format(asset_id))
         if not (SKILL_DIR / source).is_file():
@@ -324,6 +342,7 @@ def load_manifest(path: Path = DEFAULT_MANIFEST) -> Dict[str, Any]:
         seen_ids.add(invariant_id)
         _safe_relative(item.get("target"), "target", invariant_id)
         _validate_profiles(item.get("profiles"), "line invariant {0}".format(invariant_id))
+        _validate_domains(item.get("domains"), "line invariant {0}".format(invariant_id))
         lines = item.get("lines")
         if (
             not isinstance(lines, list)
@@ -342,15 +361,25 @@ def load_manifest(path: Path = DEFAULT_MANIFEST) -> Dict[str, Any]:
     return data
 
 
-def active_assets(manifest: Dict[str, Any], profile: str) -> Iterable[Dict[str, Any]]:
-    return (item for item in manifest["assets"] if profile in item["profiles"])
+def _domain_active(item: Dict[str, Any], domains: Optional[Sequence[str]]) -> bool:
+    # A pending selection (None) activates no domain-scoped item.
+    required = item.get("domains")
+    return not required or (domains is not None and any(domain in domains for domain in required))
+
+
+def active_assets(
+    manifest: Dict[str, Any], profile: str, domains: Optional[Sequence[str]] = None
+) -> Iterable[Dict[str, Any]]:
+    return (item for item in manifest["assets"]
+            if profile in item["profiles"] and _domain_active(item, domains))
 
 
 def active_line_invariants(
-    manifest: Dict[str, Any], profile: str
+    manifest: Dict[str, Any], profile: str, domains: Optional[Sequence[str]] = None
 ) -> Iterable[Dict[str, Any]]:
     return (
-        item for item in manifest["line_invariants"] if profile in item["profiles"]
+        item for item in manifest["line_invariants"]
+        if profile in item["profiles"] and _domain_active(item, domains)
     )
 
 
@@ -736,10 +765,11 @@ def line_endings_candidate(path: Path, source: Path) -> bytes:
     return bom + block + body
 
 
-def line_endings_checks(target: Path, profile: str, manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
+def line_endings_checks(target: Path, profile: str, manifest: Dict[str, Any],
+                        domains: Optional[Sequence[str]] = None) -> List[Dict[str, Any]]:
     """Read Git's effective attributes and actual tracked bytes, never stage/convert."""
     checks: List[Dict[str, Any]] = []
-    paths = [item["target"] for item in active_assets(manifest, profile)
+    paths = [item["target"] for item in active_assets(manifest, profile, domains)
              if item["strategy"] == "copy"]
     try:
         attrs = subprocess.run(
@@ -1036,7 +1066,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
         checks.append(check_record("contract.claude-link", "create", "CLAUDE.md", None))
 
     apply_mode = "apply"
-    for item in active_assets(manifest, profile):
+    for item in active_assets(manifest, profile, selected):
         if item["strategy"] != "copy":
             continue
         source = SKILL_DIR / item["source"]
@@ -1056,7 +1086,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
             apply_mode = "upgrade"
         checks.append(check_record(item["id"], status, item["target"], fix))
 
-    for item in active_assets(manifest, profile):
+    for item in active_assets(manifest, profile, selected):
         if item["strategy"] != "prepend-block" and item["id"] != "seed.editorconfig":
             continue
         installed = target / item["target"]
@@ -1076,7 +1106,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
             checks.append(check_record(item["id"], "attention", item["target"],
                                        "resolve the file/marker conflict before installation", str(exc)))
 
-    for item in active_assets(manifest, profile):
+    for item in active_assets(manifest, profile, selected):
         if item["strategy"] != "merge-json":
             continue
         existing = target / item["target"]
@@ -1117,7 +1147,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
             else:
                 checks.append(check_record(item["id"], "merge", item["target"], None))
 
-    for item in active_line_invariants(manifest, profile):
+    for item in active_line_invariants(manifest, profile, selected):
         installed = target / item["target"]
         if os.path.lexists(str(installed)) and (installed.is_symlink() or not installed.is_file()):
             checks.append(
@@ -1253,10 +1283,10 @@ def build_verify(
     if checks:
         return report("verify", target, profile, checks, None)
     try:
-        load_guidance_selection(target)
+        selected = load_guidance_selection(target)
     except CoreError:
         return report("verify", target, profile, checks, None)
-    for item in active_assets(manifest, profile):
+    for item in active_assets(manifest, profile, selected):
         if item["strategy"] != "copy":
             continue
         installed = target / item["target"]
@@ -1268,7 +1298,7 @@ def build_verify(
         else:
             checks.append(check_record(item["id"], "pass", item["target"], None))
 
-    for item in active_assets(manifest, profile):
+    for item in active_assets(manifest, profile, selected):
         if item["strategy"] != "merge-json":
             continue
         existing_path = target / item["target"]
@@ -1351,7 +1381,7 @@ def build_verify(
         )
     )
 
-    for item in active_line_invariants(manifest, profile):
+    for item in active_line_invariants(manifest, profile, selected):
         missing = missing_required_lines(target / item["target"], item["lines"])
         checks.append(
             check_record(
@@ -1381,7 +1411,7 @@ def build_verify(
         None if editor_ok else "run agent-scaffold apply after resolving the file conflict",
         "project-owned editor settings are preserved, not interpreted; align them with effective Git exceptions",
     ))
-    checks.extend(line_endings_checks(target, profile, manifest))
+    checks.extend(line_endings_checks(target, profile, manifest, selected))
 
     generator_item = asset_by_id(manifest, "runtime.subagent-generator")
     generator = target / generator_item["target"]
@@ -1403,6 +1433,11 @@ def build_verify(
     return report("verify", target, profile, checks, None)
 
 
+def selected_domains_for(target: Optional[str]) -> Optional[Sequence[str]]:
+    # Without a target, list the catalog view (every domain); installs pass their target.
+    return load_guidance_selection(Path(target).resolve()) if target else GUIDANCE_DOMAINS
+
+
 def command_assets(args: argparse.Namespace) -> int:
     manifest = load_manifest(Path(args.manifest))
     if args.assets_command == "validate":
@@ -1416,7 +1451,8 @@ def command_assets(args: argparse.Namespace) -> int:
             print(value)
         return 0
     strategies = set(args.strategy or STRATEGIES)
-    for item in active_assets(manifest, args.profile):
+    domains = selected_domains_for(args.target)
+    for item in active_assets(manifest, args.profile, domains):
         if item["strategy"] not in strategies:
             continue
         print(
@@ -1435,7 +1471,8 @@ def command_assets(args: argparse.Namespace) -> int:
 
 def command_lines(args: argparse.Namespace) -> int:
     manifest = load_manifest(Path(args.manifest))
-    for item in active_line_invariants(manifest, args.profile):
+    domains = selected_domains_for(args.target)
+    for item in active_line_invariants(manifest, args.profile, domains):
         for line in item["lines"]:
             print("\t".join([item["id"], item["target"], line]))
     return 0
@@ -1539,12 +1576,14 @@ def build_parser() -> argparse.ArgumentParser:
     assets_list = assets_sub.add_parser("list")
     assets_list.add_argument("--profile", choices=sorted(PROFILES), required=True)
     assets_list.add_argument("--strategy", action="append", choices=sorted(STRATEGIES))
+    assets_list.add_argument("--target")
     assets_get = assets_sub.add_parser("get")
     assets_get.add_argument("--id", required=True)
     assets_get.add_argument("--field", choices=["source", "target", "strategy", "executable"], required=True)
 
     lines = subparsers.add_parser("lines")
     lines.add_argument("--profile", choices=sorted(PROFILES), required=True)
+    lines.add_argument("--target")
 
     hooks = subparsers.add_parser("hooks")
     hooks_sub = hooks.add_subparsers(dest="hooks_command", required=True)

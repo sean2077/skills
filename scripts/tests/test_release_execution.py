@@ -53,8 +53,8 @@ class ReleaseExecutionTests(unittest.TestCase):
         git(self.repo, "config", "user.name", "Release Fixture")
         git(self.repo, "config", "user.email", "release@example.invalid")
         git(self.repo, "config", "commit.gpgsign", "false")
-        self.source = ROOT / "scripts/release/extract-changelog.py"
-        target = self.repo / "scripts/release/extract-changelog.py"
+        self.source = ROOT / "skills/agent-scaffold/assets/runtime/release/extract-changelog.py"
+        target = self.repo / ".agents/tools/release/extract-changelog.py"
         target.parent.mkdir(parents=True); shutil.copyfile(self.source, target)
         write(self.repo, "CHANGELOG.md", "# Changelog\n\n## [v1.0.0] — 2026-09-22\n\n### Changed\n\n- Verified release.\n")
         git(self.repo, "add", "."); git(self.repo, "commit", "-qm", "fixture")

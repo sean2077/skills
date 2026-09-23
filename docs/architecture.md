@@ -9,7 +9,7 @@ This page owns the map of product surfaces, source/generated ownership, and vali
 | Published skill catalog | `skills/<name>/` | Installers consume independently installable payloads containing only regular files and directories. |
 | Catalog metadata | `.claude-plugin/plugin.json` and README catalog rows | Installer grouping and human navigation, not universal host certification or a native Codex plugin package. |
 | Project Agent harness | `.agents/` | This repository's Claude Code and Codex project layers; `.claude/` and `.codex/` hold projections or host configuration. |
-| Release helpers | `scripts/release/` | Read-only version analysis and CI changelog extraction; not installed into consumers. |
+| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time release conventions, read-only version analysis and changelog extraction; installed only for the selected `release` domain, never resident. |
 | Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer smoke tests, and release automation. |
 
 `skills/` is the product and is consumed directly: catalog skills have no generated `.claude/skills` or `.codex/skills` projections, and `.claude/skills/` carries only project skills. `.agents/skills/` holds those project skills, including `skill-eval`, and is not a second catalog copy. The opt-in project subagent `skill-verifier` reviews source and captured evidence. The parent owns execution, fixes, and delivery; see [its use and limits](development.md#optional-skill-verifier). Neither project component is installed for catalog/scaffold consumers.
@@ -46,8 +46,8 @@ First full setup or legacy migration offers all convention domains and asks once
 exclusions. `.agents/scaffold.json` stores the accepted explicit list; it is not a layout
 registry or a semantic-completion record. Later updates reuse it without re-asking and do not
 silently enable new domains. Runtime-only calls without a selection keep it pending. The
-optional managed terminology section follows the choice; core safety and existing project
-rules remain in force. See [selection](../skills/agent-scaffold/references/onboarding-selection.md).
+optional managed terminology section and the task-time release runtime follow the choice; core
+safety and existing project rules remain in force. See [selection](../skills/agent-scaffold/references/onboarding-selection.md).
 
 A full `agent-scaffold` initialization or upgrade has two responsibilities: deterministic
 asset reconciliation, and Agent-authored project guidance. The latter adopts actual entry

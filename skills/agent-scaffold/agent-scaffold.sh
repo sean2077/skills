@@ -278,7 +278,7 @@ install_assets() {
       seed) copy_if_missing "$SKILL_DIR/$source" "$TARGET/$target" ;;
       *) die "internal manifest error: unsupported install strategy $strategy" ;;
     esac
-  done < <(run_core assets list --profile "$PROFILE" --strategy copy --strategy seed)
+  done < <(run_core assets list --profile "$PROFILE" --target "$TARGET" --strategy copy --strategy seed)
 }
 
 do_install() {
@@ -324,7 +324,7 @@ do_install() {
   while IFS=$'\t' read -r _line_id line_target line; do
     line="${line%$'\r'}"
     ensure_line "$TARGET/$line_target" "$line"
-  done < <(run_core lines --profile "$PROFILE")
+  done < <(run_core lines --profile "$PROFILE" --target "$TARGET")
   if [[ "$WORKTREE_FLOW" != 1 ]]; then
     log "light profile selected — existing worktree-specific ignore entries remain project-owned"
   fi
