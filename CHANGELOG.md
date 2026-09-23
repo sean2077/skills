@@ -17,6 +17,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Consolidate README, architecture, contributor, composition, and routing-evaluation guidance around their owning sources. Keep CI as the single executable full-test inventory instead of requiring a second manual checklist, group scaffold coverage, and preserve installation/state-migration safety, release authority, and measurement limits without changing skill payloads or runtime behavior.
 - Allow one resident route to the release conventions in the managed block; the procedure itself stays task-time only.
 
 ## [v9.0.0] — 2026-09-23

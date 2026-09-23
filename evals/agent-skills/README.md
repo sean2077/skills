@@ -1,17 +1,17 @@
 # Live Agent Skill evaluations
 
-These are opt-in **routing and decision probes**, not task execution or native skill-discovery tests. The repository-local `host_adapter.py` uses the project `skill-eval` runtime and a configured Claude CLI. CI validates manifests and deterministic regressions; it does not run an authenticated model or establish effectiveness.
+These opt-in **routing and decision probes** do not execute tasks or test native skill discovery. Repository-local `host_adapter.py` uses project `skill-eval` and a configured Claude CLI. CI validates manifests and deterministic regressions, not authenticated model effectiveness. For observed edits and tool calls, use [task outcomes](../tasks/README.md).
 
 ## Validate or execute
 
-Run from the intended committed task checkout. Commit changed candidate/manifests first: evaluation pins inputs to Git, not an uncommitted editing session.
+Run from the intended committed task checkout. Commit candidate/manifests first: evaluation pins inputs to Git, not dirty files.
 
 ```bash
-# Offline manifest validation; no model invocation
+# Offline validation; no model invocation
 python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/agent-skills/agent-scaffold/suite.json
 ```
 
-Live execution is separate and may incur model usage. Configure and authenticate Claude Code, authorize the experiment, and set `CLAUDE_BIN` when it is not on `PATH`. From Bash/Git Bash:
+Live execution may incur model usage. Configure/authenticate Claude Code, authorize the experiment, and set `CLAUDE_BIN` when it is not on `PATH`. From Bash/Git Bash:
 
 ```bash
 (
@@ -25,53 +25,42 @@ Live execution is separate and may incur model usage. Configure and authenticate
 )
 ```
 
-Keep the result even on failure. `validate-result` is a contract check, not a replacement for inspecting selection, task oracle, scope, completion, and cost together. A fake/rule-based adapter can test plumbing but cannot show that a skill improves model behavior.
+Keep failure output. `validate-result` checks the contract; inspect selection, task oracle, scope, completion, and cost together. Fake/rule-based adapters validate plumbing, not model improvement.
 
 ## Adapter and comparison contract
 
-The adapter implements `agent-skill-eval/v1`, invokes `claude` once per baseline/treatment request, and returns observations under `metadata.behavior`. It derives routes from the checked-out catalog, binds a selected treatment to its loaded candidate, and normalizes route/workflow vocabulary and behavior-key spelling. It does not manufacture decision fields from request heuristics or verifier expectations; adapters may report additional observations without coupling suites to one host's prose. It is a repository-local script, not a public package or an installed CLI.
+The adapter implements `agent-skill-eval/v1`, invokes `claude` once per baseline/treatment request, and returns `metadata.behavior` observations. It derives routes from the checked-out catalog, binds a selected treatment to its loaded candidate, and normalizes route/workflow vocabulary and behavior keys. It does not manufacture decisions from request heuristics or verifier expectations; additional observations are allowed. It is not an installed CLI or public package.
 
-| Execution | Required selection behavior |
+| Execution | Selection requirement |
 |---|---|
-| Baseline | Never selects a candidate; receives no candidate instructions |
+| Baseline | No candidate instructions; never selects a candidate |
 | Positive treatment | Selects its candidate |
 | Negative/confusable treatment | Rejects its candidate |
 
-Both executions must complete with valid selection/trigger and scope boundaries. An invalid baseline cannot produce a passing comparison; a valid isolated baseline that fails the task oracle can still be useful evidence.
+Both runs must complete with valid selection/trigger and scope. An invalid baseline cannot pass a comparison; a valid isolated baseline that fails the task oracle remains useful evidence.
 
-Routes name shipped skills or `none` for host/project work; workflow labels describe intent independently. Candidate metadata and suite references must match the shipped catalog. Behavior keys use `snake_case`; share canonical workflow labels across adjacent suites. Expected objects are recursive subsets; expected array members must appear as complete JSON values, with order and extra members allowed. Booleans and numbers remain distinct, including in arrays.
+Routes name shipped skills or `none` for host/project work. Workflow labels describe intent independently, including labels retained after route retirement. Candidate metadata and suite references must match the catalog. Behavior keys use `snake_case`; adjacent suites share canonical workflow labels. Expected objects are recursive subsets; expected array members must appear as complete JSON values (order and extra members are allowed). Booleans and numbers remain distinct, including in arrays.
 
 ## Decision and safety coverage
 
-Current manifests are the case inventory. They cover whole-specification and digest approval, scaffold convention selection/adoption, and selected Lark CLI use. Routine testing, spec writing, terminology, commit and release requests route to host/project work. Observations target decision outcomes rather than incidental wording; explicit project-required records retain exact expectations.
+The committed `*/suite.json` files own the case inventory. Scaffold probes cover convention selection/adoption, project testing policy, customized upgrades, read-only/runtime-only requests, and ordinary-task non-triggers; retired research/docs/tool vocabulary keeps its workflow label but routes to `none`. Deep-interview probes cover whole-specification and digest approval. Lark probes cover identity, ambiguous/contradictory results, fresh confirmation, CLI gates, untrusted instructions, and file containment.
 
-Lark probes cover identity, ambiguous/contradictory results, fresh confirmation, CLI confirmation gates, untrusted instructions, and file containment. Negative fixtures test missing, unsafe, and wrong-typed observations. They verify the oracle/protocol, not real CLI operation or live model compliance. Historical coverage changes remain in the [September 20 audit](../../docs/audits/2026-09-20-native-first.md).
-
-Scaffold cases distinguish full first-use setup, layout/source adoption, customized upgrades,
-read-only first calls, runtime-only work, and standalone research/docs/script tasks that must
-not select scaffold. They are intention probes, not proof that guidance was actually written.
-Retired research/docs/tool routes are no longer candidates; task vocabulary remains usable
-with route `none` so ordinary host work is not redirected into scaffold.
+Negative fixtures reject missing, unsafe, or wrong-typed observations. These checks verify the oracle/protocol and stated decisions, not completed onboarding, actual CLI operations, or live compliance. Ordinary testing, spec writing, terminology, commits, and releases remain host/project routes, not new scaffold triggers.
 
 ## Measurement and failure boundaries
 
-Both the CLI response and decision response must be exactly one finite JSON object. Duplicate keys, normalized-key collisions, nonzero host exits, host-reported failures, missing usage, or malformed/non-integral usage cannot become completed runs. The candidate's final `SKILL.md` target must stay inside the pinned repository, including through symlinks.
+CLI and decision responses must each be exactly one finite JSON object. Duplicate keys, normalized-key collisions, nonzero exits, host failures, missing usage, and malformed/non-integral usage cannot become completed runs. The candidate's final `SKILL.md` target must remain inside the pinned repository, including through symlinks.
 
-`input_tokens` includes uncached input, cache reads, and cache creation. Prefer whole-call `modelUsage`, otherwise require complete `usage`; never add overlapping reports. This is token volume, not dollars. The interpretation follows [Claude cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [whole-call usage](https://code.claude.com/docs/en/agent-sdk/cost-tracking), reviewed 2026-09-06. Results predating that correction require matched baseline/treatment reruns, not relaxed budgets.
+`input_tokens` includes uncached input, cache reads, and cache creation. Prefer whole-call `modelUsage`, otherwise require complete `usage`; never add overlapping reports. This is token volume, not dollars. Sources reviewed 2026-09-06: [Claude cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [whole-call usage](https://code.claude.com/docs/en/agent-sdk/cost-tracking). Results predating that correction need matched reruns, not relaxed budgets.
 
-Wall time uses a monotonic clock around adapter invocation; the outer runner enforces its own measured lower bound. Local tools are disabled for the probe. Reported server-tool counts are overlapping observations, not a complete tool audit.
+Wall time is measured monotonically around adapter invocation; the outer runner enforces its own lower bound. Local tools are disabled. Reported server-tool counts overlap and are not a complete tool audit.
 
-Failures retain available usage/time. `metadata.usage_available=false` means unknown usage: v1's numeric zero placeholders are **not free execution** and must not enter spend comparisons. Even reported failure usage may be incomplete after a crash. Error type/stage/host-exit fields support diagnosis without retaining raw output, credentials, or request text in results.
+Failures retain available usage/time. `metadata.usage_available=false` means unknown: v1's numeric zero placeholders are **not free execution** and must not enter spend comparisons. Crash-time usage may be incomplete. Error type/stage/host-exit fields support diagnosis without retaining raw output, credentials, or request text in results.
 
 ## What these probes do not prove
 
-The model sees the candidate entry point, route/observation vocabulary, and request, but not the verifier's answers. It does not load on-demand references or execute the requested work. Selection binding means a treatment route is not an independent free-choice measurement. The baseline is not an old-version/new-version randomized trial.
+The model sees the candidate entry point, request, and route/observation vocabulary, not verifier answers. It neither loads on-demand references nor executes the requested work. Bound treatment selection is not independent free choice; the baseline is not an old/new randomized trial. These suites also do not measure all collaboration/delivery guidance retained in the [composition guide](../../docs/skill-composition.md).
 
-Scaffold cases include project testing policy and ordinary-task non-triggers. Experiments retain the `prototype` workflow label but route to `none`; the catalog has no such skill. Retired composition/review suites do not measure the feedback/delivery guidance retained in the composition guide.
+Measure actual outcomes with fixed revisions, matched host/model/configuration/cache conditions, repeated representative tasks, captured artifacts, and verifiers. [Task outcomes](../tasks/README.md) also supplies a brief-request control. Correct intentions or green CI alone do not establish quality or efficiency gains.
 
-For observed edits, mock calls, test sequences, and a brief-request control, use [task outcomes](../tasks/README.md). Establish quality or efficiency gains with fixed old/new revisions, matched host/model/configuration/cache conditions, repeated representative tasks, and captured artifacts/verifiers. Correct stated intentions or green CI alone do not establish those gains.
-
-The offline sample under `evals/examples/offline/` is a synthetic protocol exercise. Its
-fake adapter applies a fixed arithmetic edit to test comparison, scope, accounting and failure
-plumbing; it does not implement the candidate skill or demonstrate model effectiveness.
-This sample remains separate from live decision suites and real task artifact checks.
+The separate `evals/examples/offline/` sample uses a fixed arithmetic edit to exercise comparison, scope, accounting, and failure plumbing. It does not implement the candidate skill or demonstrate effectiveness.

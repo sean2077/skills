@@ -1,19 +1,19 @@
 # Repository architecture
 
-This page owns the map of product surfaces, source/generated ownership, and validation responsibility. Contributor commands live in [development](development.md); host and installer claims live in [compatibility](compatibility.md).
+This page maps product surfaces, source/generated ownership, and validation ownership. [Development](development.md) owns contributor procedures; [compatibility](compatibility.md) owns installer and host evidence.
 
 ## Product surfaces
 
-| Surface | Source | Consumer and boundary |
+| Surface | Source | Boundary |
 |---|---|---|
-| Published skill catalog | `skills/<name>/` | Installers consume independently installable payloads containing only regular files and directories. |
-| Catalog metadata | `.claude-plugin/plugin.json` and README catalog rows | Installer grouping and human navigation, not universal host certification or a native Codex plugin package. |
-| Project Agent harness | `.agents/` | This repository's Claude Code and Codex project layers; `.claude/` and `.codex/` hold projections or host configuration. |
-| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time release conventions, read-only version analysis and changelog extraction; installed only for the selected `release` domain. Only its one-line managed route is resident. |
+| Published skill catalog | `skills/<name>/` | Independently installable payloads containing regular files and directories only. |
+| Catalog metadata | `.claude-plugin/plugin.json` and README catalog rows | Installer grouping and navigation, not universal host certification or a native Codex plugin package. |
+| Project Agent harness | `.agents/` | This repository's project skills, subagents, and scaffold runtime; `.claude/` and `.codex/` contain host projections/configuration. |
+| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time conventions, read-only version analysis, and changelog extraction, installed only for the selected `release` domain. Only its one-line managed route is resident; the procedure is read at task time. |
 | Convention guides | `skills/agent-scaffold/assets/conventions/` → `.agents/conventions/` | Generic daily guidance per selected domain, routed from the managed `AGENTS.md` block and byte-checked by verify; project docs hold project facts. |
-| Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer smoke tests, and release automation. |
+| Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer tests, and release automation. |
 
-`skills/` is the product and is consumed directly: catalog skills have no generated `.claude/skills` or `.codex/skills` projections, and `.claude/skills/` carries only project skills. `.agents/skills/` holds those project skills, including `skill-eval`, and is not a second catalog copy. The opt-in project subagent `skill-verifier` reviews source and captured evidence. The parent owns execution, fixes, and delivery; see [its use and limits](development.md#optional-skill-verifier). Neither project component is installed for catalog/scaffold consumers.
+The catalog is consumed directly; it has no generated `.claude/skills` or `.codex/skills` copies. `.agents/skills/` holds project skills, including `skill-eval`; `.claude/skills/` projects only those project skills. Project subagent `skill-verifier` reviews source and captured evidence, with [execution and delivery owned by its parent](development.md#optional-skill-verifier). Neither evaluator is installed for catalog/scaffold consumers.
 
 ## Published skill layout
 
@@ -25,73 +25,43 @@ skills/<name>/
 └── assets/                  # optional installed templates/resources
 ```
 
-Discovery metadata contributes routing context; selected instructions and resources are loaded as needed by the host. Keep entry points focused and references reachable from `SKILL.md`, directly or through another reference. Shipped attribution notices must remain reachable and intact. Links inside a catalog skill must not depend on repository manuals absent from its installed payload.
+Keep entry points focused and references reachable from `SKILL.md`, directly or through another reference. Attribution notices must remain reachable and intact. Catalog links cannot depend on repository manuals absent from the installed payload.
 
 ## Source and generated ownership
 
 | Edit here | Produces or reconciles | Update path |
 |---|---|---|
-| `skills/<name>/SKILL.md`, references, and non-generated scripts/assets | Catalog skill payload | Edit directly, except for the generated payloads listed below. Reconcile routes, manifests, tests, and notices when affected. |
+| `skills/<name>/SKILL.md`, references, and non-generated scripts/assets | Catalog payload | Edit directly, except for the generated content below; reconcile affected routes, manifests, tests, and notices. |
 | `scripts/workflow_runtime/{common,deep_interview}.py` | Exact-file approval runtime shipped by `deep-interview` | `python scripts/generate_workflow_runtimes.py` |
 | `scripts/p0_runtime/{common,skill_eval}.py` | Project `skill-eval` runtime package | `python scripts/generate_p0_runtimes.py` |
-| `.agents/skills/<name>/` | `.claude/skills/<name>` symlink projections; Codex uses the project skill source | `bash .agents/relink-skills.sh`; preserve unrelated entries and reject ownership conflicts |
+| `.agents/skills/<name>/` | `.claude/skills/<name>` symlinks; Codex uses the project source | `bash .agents/relink-skills.sh`; preserve unrelated entries and reject ownership conflicts |
 | `.agents/subagents/<name>/` | `.claude/agents/*.md` and `.codex/agents/*.toml` | `python .agents/tools/generate-subagents.py` |
-| `agent-scaffold` catalog assets | Scaffold runtime under `.agents/tools/`, relinking tools, managed contract, and owned hook entries | Use the catalog skill's `upgrade`, then `verify`; do not edit installed runtime or generated projections directly |
-| `agent-scaffold` EOL assets | Prepended `.gitattributes` defaults and a missing-only `.editorconfig` seed | Preserve project exceptions and existing editor settings; normalization is a separate authorized operation |
+| `agent-scaffold` catalog assets | `.agents/tools/`, relinking tools, managed contract, and owned hook entries | Catalog skill `upgrade`, then `verify`; do not patch installed runtime or projections |
+| `agent-scaffold` EOL assets | Prepended `.gitattributes` defaults and missing-only `.editorconfig` seed | Preserve project exceptions/settings; normalization requires separate authorization |
 
-`CLAUDE.md` is a tracked symlink to `AGENTS.md`; only the marker-bounded scaffold block is managed, not the entire authority document. Real symlinks are required for this harness even though catalog payloads themselves cannot contain symlinks. Windows CI enables native symlink checkout and verifies the materialized link before testing.
+`CLAUDE.md` is a tracked symlink to `AGENTS.md`. Only its marker-bounded scaffold block is managed; surrounding prose is project-owned. This harness requires real symlinks even though catalog payloads cannot contain them. Windows CI enables native symlink checkout and verifies the materialized link.
 
 ## Project-convention ownership
 
-First full setup or legacy migration offers all convention domains and asks once for
-exclusions. A domains marker in the managed `AGENTS.md` block stores the accepted explicit list
-(upgrade migrates a legacy `.agents/scaffold.json` into it); it is not a layout registry or a
-semantic-completion record. Later updates reuse it without re-asking and do not silently enable
-new domains. Runtime-only calls without a selection keep it pending. The convention guides and
-their managed routes, the optional managed terminology section and the task-time release runtime
-follow the choice; core safety and existing project rules remain in force. See [selection](../skills/agent-scaffold/references/onboarding-selection.md).
+A full scaffold setup combines deterministic asset reconciliation with Agent-authored guidance in the project's existing locations. A domains marker in the managed `AGENTS.md` block records the accepted convention domains (upgrade migrates a legacy `.agents/scaffold.json` into it), not layout or completed guidance. [Onboarding selection](../skills/agent-scaffold/references/onboarding-selection.md) owns first-use defaults, exclusions, pending state, and reuse; [project conventions](../skills/agent-scaffold/references/project-conventions.md) owns guidance adoption and maintenance.
 
-A full `agent-scaffold` initialization or upgrade has two responsibilities: deterministic
-asset reconciliation, and Agent-authored project guidance. The latter adopts actual entry
-points, layouts, commands, test/specification quality, terminology, Git/release rules and source ownership before filling selected gaps.
-Generic daily rules ship as the installed convention guides, so later Agents find them without
-the catalog; the Agent adds only the project facts they defer to. New project guidance is
-project-owned, not managed-template content. Later runs preserve renamed, merged or deliberately
-removed guides and repair confirmed drift in their current homes. The managed AGENTS block grows
-only by one route per selected domain, and no layout registry or new controller is added.
-
-Installer reports explicitly scope `ok` to `harness-assets` with `project_guidance` set to
-`not-assessed`. Semantic coverage is evaluated separately; see the installed
-[project-conventions guide](../skills/agent-scaffold/references/project-conventions.md).
-The repository dogfoods that separation through this ownership map, the development guide,
-and documentation maintenance rather than generating parallel documents.
+Generic daily rules for each selected domain ship as installed convention guides with one managed route each, so later Agents find them without the catalog. Agent-authored guidance adds only the project facts they defer to and remains project-owned, outside the managed AGENTS block. Preserve existing policies and deliberate guide renames, merges, or removals; repair confirmed drift in their current homes. The installer reports `scope: harness-assets` and `project_guidance: not-assessed`. A successful installation or saved selection does not establish semantic coverage. This repository uses its existing manuals rather than a parallel scaffold-generated documentation tree.
 
 ## Runtime boundaries
 
 | Component | Owned semantics |
 |---|---|
-| `deep-interview` | Optional approval bound to the exact specification bytes and revision; conversation and document structure remain caller-owned. |
-| Project `skill-eval` | Comparable evaluation execution and repository-isolated evidence; isolation is not an OS sandbox. |
+| `deep-interview` | Optional approval bound to exact specification bytes and revision; conversation and document structure remain caller-owned. |
+| Project `skill-eval` | Comparable evaluation execution and repository-isolated evidence; not an OS sandbox. |
 
-Generated workflow runtimes reject non-standard JSON numbers and attempt best-effort parent-directory sync after atomic state replacement on POSIX hosts. Use one state owner for each mutable surface; combining skills does not imply running every controller. The [design principles](harness-constraint-policy.md) explain when extra machinery earns its cost.
+Generated workflow runtimes reject non-standard JSON numbers and attempt best-effort parent-directory sync after atomic state replacement on POSIX. Keep one state owner per mutable surface; combining skills does not require running every controller. See [harness principles](harness-constraint-policy.md).
 
 ## Validation ownership
 
-| Concern | Owning checks |
-|---|---|
-| Route budget, duplicate descriptions, payload entry types | `scripts/catalog_health.py` and fixtures |
-| Frontmatter, names, README coverage, reference targets/reachability, manifests | `scripts/validate_skills.py` and fixtures |
-| High-risk skill-specific interfaces and executable invariants | Registered `scripts/contracts/` modules and targeted tests |
-| Generated runtime parity and behavior | Runtime generators and workflow/evaluation/hardening tests |
-| Official Agent Skills format | Pinned `skills-ref` for every catalog skill and project `skill-eval` |
-| Selection persistence and opt-outs | `scripts/tests/test_guidance_selection.py`, scaffold decision cases and task fixtures |
-| Scaffold shape, drift, managed hooks, symlinks, installation | Core/workspace/layout-preservation tests, static gate, and throwaway-repository E2E |
-| Installer discovery and payload fidelity | Audited CLI discovery and byte-compared installation in CI |
-| Shell/platform behavior and runtime floor | ShellCheck, Linux/macOS/Windows matrix, and Python 3.8 job |
-| Evaluation plumbing and task oracles | Suite/result validation, adapter regressions, and task-outcome fixtures |
+[Validation CI](../.github/workflows/validate.yml) is the executable check inventory. Catalog health/validation own routing, payloads, frontmatter, manifests, and reference reachability; registered `scripts/contracts/` modules own skill-specific interfaces. Generators and targeted tests check runtime/projection parity and behavior. Installer, scaffold, platform, and evaluation checks cover their respective boundaries.
 
-[Validation CI](../.github/workflows/validate.yml) is the executable inventory. These checks do not establish live-host discovery, model effectiveness, or measured savings. Catalog reference checks also do not cover all repository links or heading fragments; see [documentation verification](documentation-maintenance.md#evidence-and-verification).
+Use [changed-surface checks](development.md#select-checks-by-changed-surface) to select local evidence. Green CI does not establish live-host discovery, model effectiveness, or savings. Catalog reference validation does not cover all repository links or heading fragments; see [documentation verification](documentation-maintenance.md#evidence-and-verification).
 
 ## Release boundary
 
-[Release CI](../.github/workflows/release.yml) owns GitHub Release publication after reusable validation, supported-tag checks, main reachability, and exact changelog extraction. See the [release flow](development.md#release-flow) for preparation and completion evidence; a planner result or pushed tag alone is not completion.
+[Release CI](../.github/workflows/release.yml) owns publication after reusable validation, supported-tag checks, main reachability, and exact changelog extraction. The [release flow](development.md#release-flow) defines preparation and completion evidence; a planner result or pushed tag is not a completed release.
