@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of 3 reusable [Agent Skills](https://agentskills.io/specification) for requirements, documentation, repository operations, release, and productivity.
+A curated catalog of 3 reusable [Agent Skills](https://agentskills.io/specification) for Agent harness and project conventions, requirements, and productivity.
 
 Install the skills that add something to your host or project. Ordinary investigation, experiments, cleanup, review, and delivery use the host/project workflow (including native goals where available); there is no mandatory skill chain. The [selection guide](docs/skill-composition.md) explains adjacent routes and retired installations.
 
