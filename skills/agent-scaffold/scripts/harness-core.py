@@ -1014,6 +1014,10 @@ def _same_file(left: Path, right: Path) -> bool:
         return False
 
 
+UNOWNED_CONVENTION_FIX = ("preserve this unowned guide; resolve its location/ownership explicitly "
+                          "before selecting this domain")
+
+
 def convention_asset_owned(item: Dict[str, Any], source: Path, installed: Path) -> bool:
     """Recognize per-file ownership, not ownership of the whole conventions directory."""
     marker = ("<!-- agent-scaffold:convention={0} -->\n".format(
@@ -1206,8 +1210,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
             fix = None
         elif item["id"].startswith("convention.") and not convention_asset_owned(item, source, installed):
             status = "attention"
-            fix = ("preserve this unowned guide; resolve its location/ownership explicitly "
-                   "before selecting this domain")
+            fix = UNOWNED_CONVENTION_FIX
         else:
             status = "refresh"
             fix = None
@@ -1429,7 +1432,9 @@ def build_verify(
         if installed.is_symlink() or not installed.is_file():
             checks.append(check_record(item["id"], "fail", item["target"], "run agent-scaffold apply"))
         elif not _same_file(source, installed):
-            checks.append(check_record(item["id"], "fail", item["target"], "run agent-scaffold upgrade"))
+            unowned = item["id"].startswith("convention.") and not convention_asset_owned(item, source, installed)
+            checks.append(check_record(item["id"], "fail", item["target"], UNOWNED_CONVENTION_FIX if unowned
+                                       else "run agent-scaffold upgrade"))
         else:
             checks.append(check_record(item["id"], "pass", item["target"], None))
 

@@ -247,13 +247,20 @@ PLAN_MEASUREMENT = "Measured 2026-08-01 on the staging ledger: p95 balance read 
 PLAN_STEPS = ("1. Implement the write-through cache in src/cache.py.",
               "2. After deployment, purge all cached balances with `python tools/purge.py --all`.")
 PLAN_STATUS = re.compile(r"\b(implemented|completed|done|superseded|historical|retired|archived|shipped)\b", re.I)
-PLAN_NEGATION = re.compile(r"\b(not|never|pending|unimplemented|incomplete|unfinished)\b|n['’]t\b", re.I)
+# Negation or deferral that precedes a status word in its own clause ("not yet implemented",
+# "to be completed", "pending until done"). A later warning such as "must not be run" does not
+# undo an earlier "Status: completed".
+PLAN_DEFERRAL = re.compile(r"\b(not|never|no|yet|pending|awaiting|will|shall|once|until|unless|before|to\s+be)\b"
+                           r"|n['’]t\b", re.I)
+PLAN_CLAUSE = re.compile(r"[.;:!?()\[\]—–]|\s-\s")
 
 
 def retired_plan_header(text: str) -> bool:
     """Bounded English status oracle, not arbitrary natural-language interpretation."""
     head = [line.strip().replace("**", "").replace("__", "") for line in text.splitlines() if line.strip()][:8]
-    return any(PLAN_STATUS.search(line) and not PLAN_NEGATION.search(line) for line in head)
+    return any(not PLAN_DEFERRAL.search(clause[:status.start()])
+               for line in head for clause in PLAN_CLAUSE.split(line)
+               for status in PLAN_STATUS.finditer(clause))
 
 
 def installed_docs_guide(root: Path, enabled: bool = True) -> None:

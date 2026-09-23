@@ -216,6 +216,22 @@ class OutcomeTests(unittest.TestCase):
                 cases.write(workspace, "src/cache.py", "CACHE = None\n")
                 self.assertFalse(result()[0])
 
+    def test_retirement_status_reads_negation_and_deferral_per_clause(self):
+        retired = ("Status: completed. The steps below are historical and must not be run.",
+                   "Status: implemented and deployed; do not follow the next steps.",
+                   "Implemented in September; this plan no longer needs action and isn't a to-do list.",
+                   "**Status:** Implemented — kept for history, not as instructions.",
+                   "This plan is implemented and must not be followed.",
+                   "Not a to-do list: implemented in September.", "Note: shipped", "status: done")
+        live = ("Status: not implemented", "Status: not yet completed", "Status: isn't done",
+                "Status: to be completed after review", "Status: pending; will be implemented next sprint",
+                "Status: pending until completed", "Once implemented, archive this plan.",
+                "The plan has not been fully implemented.", "Awaiting deployment before it is completed",
+                "Status: implementation pending", "Status: unimplemented", "Status: in progress")
+        for line in retired + live:
+            with self.subTest(line=line):
+                self.assertEqual(line in retired, cases.retired_plan_header("# Plan\n\n" + line + "\n"))
+
     def test_plan_retirement_rejects_negation_paraphrases_and_orphan_history(self):
         for case in ("plan-retirement", "plan-retirement-installed-guide"):
             with self.subTest(case=case):
@@ -226,9 +242,16 @@ class OutcomeTests(unittest.TestCase):
                     plan.write_text(text + "\n[Current owner](../ARCHITECTURE.md)\n", encoding="utf-8")
                     return self.passed(workspace, case, state)[0]
                 for status in ("Status: not implemented", "Status: not yet completed",
-                               "Status: pending until completed", "# This plan is not retired"):
+                               "Status: pending until completed", "# This plan is not retired",
+                               "Status: to be completed after review",
+                               "Status: pending; will be implemented next sprint"):
                     self.assertFalse(passed(original.replace("# Plan: balance cache\n",
                                                             "# Plan: balance cache\n\n" + status + "\n")), status)
+                # A retirement status followed by a warning is the guide's own advice, not a negation.
+                for status in ("Status: completed. The steps below are historical and must not be run.",
+                               "This plan is implemented and must not be followed."):
+                    self.assertTrue(passed(original.replace("# Plan: balance cache\n",
+                                                           "# Plan: balance cache\n\n" + status + "\n")), status)
                 paraphrased = original.replace(cases.PLAN_STEPS[0], "1. Build the balance cache now.").replace(
                     cases.PLAN_STEPS[1], "2. Run `python tools/purge.py --all` after deployment.")
                 self.assertFalse(passed(paraphrased))

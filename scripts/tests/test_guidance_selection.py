@@ -389,6 +389,10 @@ class InstallerSelectionTests(unittest.TestCase):
                 self.assertEqual("attention", next(c["status"] for c in planned["checks"] if c["path"] == path))
                 fixture.invoke("upgrade", expected=2)
                 self.assertEqual(before, fixture.snapshot())
+                # Verify must not send the owner to an upgrade that preflight refuses.
+                failed = {c["path"]: c["fix"] for c in fixture.invoke("verify", expected=1)["checks"]
+                          if c["status"] == "fail"}
+                self.assertEqual(CORE.UNOWNED_CONVENTION_FIX, failed[path])
 
     def test_explicit_scope_update_can_migrate_a_different_legacy_selection(self):
         fixture = self.fixture()

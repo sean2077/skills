@@ -69,7 +69,10 @@ of `.agents/conventions/docs.md`; a pass without that read is not evidence that 
 
 The retirement oracle requires preserved rationale and verbatim measurements in reachable
 reader documentation. It checks English completion cues near the top of a retained plan and
-rejects negated or pending cues; ordinary prose counts without a prescribed label or heading.
+rejects cues negated or deferred earlier in the same clause (`not implemented`, `to be
+completed`); a later warning such as "must not be run" does not cancel an earlier completion
+status, since that warning is what the docs guide asks for. Ordinary prose counts without a
+prescribed label or heading.
 Rewording the plan steps does not bypass that check. This is a bounded oracle, not general
 semantic validation or a mandated project format. One pair is descriptive; repeat on held-out tasks before claiming an improvement.
 
