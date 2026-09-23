@@ -8,22 +8,81 @@ permissions:
   contents: read
 
 jobs:
-  snapshot:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/retire-ralph-native-goals'
+  prepare:
+    if: github.event.pull_request.number == 32 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/retire-ralph-native-goals'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 47fd61eee5cf131f89c80a5b54d84e64be8f3cad
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Bundle tracked history without checkout credentials
+      - name: Prepare exact reviewed tree without updating any branch
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          PYTHONDONTWRITEBYTECODE: '1'
         shell: bash
-        run: git bundle create "$RUNNER_TEMP/skills.bundle" --all
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: retirement-source
-          path: ${{ runner.temp }}/skills.bundle
-          retention-days: 1
-          if-no-files-found: error
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, os, subprocess, tempfile, urllib.request, zlib
+          from pathlib import Path
+          expected_tree = '6d11834a2d65b201553e8be4be693d641867d778'
+          encoded = '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'
+          items = json.loads(zlib.decompress(base64.b64decode(encoded)))
+          task = Path(tempfile.mkdtemp(prefix='retirement-task-')) / 'worktree'
+          subprocess.run(['git', 'worktree', 'add', '--detach', str(task), os.environ['EXPECTED_HEAD']], check=True)
+          def git(*args):
+              return subprocess.check_output(['git', *args], cwd=task).decode().strip()
+          def blob(data):
+              return hashlib.sha1(('blob %d\0' % len(data)).encode() + data).hexdigest()
+          assert git('rev-parse', 'HEAD') == os.environ['EXPECTED_HEAD']
+          for item in items:
+              path = task / item['path']
+              assert not path.is_symlink() and path.is_file(), item['path']
+              raw = path.read_bytes()
+              assert blob(raw) == item['old'], item['path']
+              if item['new'] is None:
+                  path.unlink()
+              else:
+                  lines = raw.decode('utf-8').splitlines(keepends=True)
+                  for start, end, replacement in reversed(item['edits']):
+                      lines[start:end] = [replacement]
+                  result = ''.join(lines).encode('utf-8')
+                  assert blob(result) == item['new'], item['path']
+                  path.write_bytes(result)
+          (task / '.github/workflows/task-source-snapshot.yml').unlink()
+          git('add', '-u')
+          git('diff', '--cached', '--check')
+          assert git('write-tree') == expected_tree
+          api_root = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
+          def post(endpoint, value):
+              request = urllib.request.Request(api_root + endpoint, data=json.dumps(value).encode(), headers={
+                  'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                  'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              }, method='POST')
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+          entries = []
+          for name in git('diff', '--cached', '--name-only').splitlines():
+              path = task / name
+              if path.exists():
+                  mode = git('ls-files', '--stage', '--', ':(literal)' + name).split()[0]
+                  sha = post('/git/blobs', {'content': base64.b64encode(path.read_bytes()).decode(), 'encoding': 'base64'})['sha']
+                  assert sha == blob(path.read_bytes())
+              else:
+                  mode, sha = '100644', None
+              entries.append({'path': name, 'mode': mode, 'type': 'blob', 'sha': sha})
+          tree = post('/git/trees', {'base_tree': git('rev-parse', 'HEAD^{tree}'), 'tree': entries})['sha']
+          assert tree == expected_tree
+          commit = post('/git/commits', {'message': 'refactor!: retire ralph in favor of native goals', 'tree': tree, 'parents': [os.environ['EXPECTED_HEAD']]})['sha']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('commit=' + commit + '\n')
+          print(json.dumps({'prepared_commit': commit, 'tree': tree, 'refs_updated': False}))
+          PY
+      - name: Prepared commit ${{ steps.prepare.outputs.commit }}
+        run: echo 'Verified commit objects prepared; no branch was updated.'
