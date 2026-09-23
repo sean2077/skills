@@ -23,7 +23,7 @@ task="/absolute/path/to/task-checkout"
 git -C "$task" rev-parse --show-toplevel
 git -C "$task" status --short --branch
 git -C "$task" rev-parse HEAD
-# Run subsequent checks with cwd set to "$task".
+# Run subsequent checks with cwd set to "$task" (or its documented subdirectory).
 ```
 
 Only when no task checkout is assigned and the scaffold owns creation, run `bash .agents/tools/worktree.sh new <name>` from the primary checkout. Record the intended base and actual task revision; the helper's resolved local trunk is not proof of the latest remote base. A shell `cd` does not reload host instructions or permissions. See [workspace context](../skills/agent-scaffold/references/workspace-context.md).
@@ -102,7 +102,7 @@ Run from the task checkout in Bash. The subshell stops on failure without replac
 )
 ```
 
-CI also runs on Ubuntu, macOS, and Windows; asserts platform shell/real-symlink behavior; installs every catalog skill into a throwaway repository and byte-compares regular-file payloads; and exercises the runtime floor under Python 3.8. A local run on one platform does not establish those other results. The offline example above exercises evaluation plumbing, not a live model.
+CI also runs on Ubuntu, macOS, and Windows; asserts platform shell/real-symlink behavior; installs every catalog skill into a throwaway repository and byte-compares regular-file payloads; and exercises the runtime floor under Python 3.8. A local run on one platform does not establish those other results; do not report platform, installer-fidelity, or Python-floor results unless those exact environments or checks ran. The offline example above exercises evaluation plumbing, not a live model.
 
 ## Evaluation evidence
 
@@ -127,7 +127,7 @@ For substantive skill changes or uncertain evidence, pass the project `skill-ver
 
 Claude's configured allowlist is Read/Grep/Glob; Codex requests `read-only`, but effective parent overrides must be checked. Neither configuration nor the no-execution instruction establishes live-host enforcement. The parent runs proposed checks in a separately authorized environment. Linked worktrees, separate clones, and temporary directories are not process sandboxes; filesystem/network/credential isolation must be effective when required. See [dated host evidence](compatibility.md#project-subagent-definitions-2026-09-22).
 
-Use a fresh instance with only task, acceptance, and anonymized artifacts for an explicitly blind/cold-reader comparison. Do not reuse a source-review instance or claim blindness when project context leaks identities. The parent evaluates findings and owns fixes and delivery.
+Use a fresh instance with only task, acceptance, and anonymized artifacts for an explicitly blind/cold-reader comparison. Do not reuse a source-review instance or claim blindness when project context leaks identities. Keep baseline/treatment execution separate from this evaluator. The parent evaluates findings and owns fixes and delivery.
 
 ## Generated files
 

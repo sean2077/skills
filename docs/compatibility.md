@@ -2,7 +2,7 @@
 
 ## Evidence baselines
 
-Track each interface independently. A repository change does not invalidate every host observation, and an editorial update is not a new runtime certification. The dates below are the original evidence/review dates, not the last edit date of this page.
+Track each interface independently. A repository change does not invalidate every host observation, and an editorial update is not a new runtime certification. The dates below are the original evidence/review dates, not the last edit date of this page. A static configuration file, a simulated payload, an actual host invocation, and a task outcome are different levels of evidence.
 
 | Surface | Basis | Evidence and limit |
 |---|---|---|
@@ -39,7 +39,7 @@ This dated documentation review does not certify authenticated runs or refresh t
 | A local Claude `code-review` shadows bundled `/code-review`, not `/review` | The catalog no longer ships it; remove only obsolete copies from this catalog, not unrelated same-name skills. |
 | Claude exposes `/skills` visibility and `/skill-doctor` usage/cost controls | Prefer available host-local controls over shared-frontmatter edits or a custom always-on router. |
 
-Check the installed host's actual menus and organization policy. Plugin namespaces are separate from this catalog's installer grouping metadata. Native tools do not expand user authorization or prove a remote deliverable exists.
+Check the installed host's actual menus and organization policy. Plugin namespaces are separate from this catalog's installer grouping metadata. Native tools do not expand user authorization, bypass worktree ownership, or prove a remote deliverable exists.
 
 Sources reviewed 2026-09-20: [OpenAI skills](https://learn.chatgpt.com/docs/build-skills), [OpenAI prompt/skill adaptation](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra), [Claude skills](https://code.claude.com/docs/en/skills), and [Claude best practices](https://code.claude.com/docs/en/best-practices).
 
@@ -57,7 +57,7 @@ Documentation reviewed 2026-08-25 recorded these contracts:
 
 - Codex scans `.agents/skills` from the working directory through the repository root and follows symlinked skill directories.
 - Native plugins use `.codex-plugin/plugin.json`; this is not the catalog's `.claude-plugin/plugin.json` installer grouping format.
-- Project configuration, hooks, and rules require a trusted project layer. Scaffold command hooks are non-managed hooks: trust and hook-definition approval are independent. Changed/unreviewed definitions need review in `/hooks` before they run.
+- Project configuration, hooks, and rules require a trusted project layer. Scaffold command hooks are non-managed hooks: trust and hook-definition approval are independent. Approval is recorded against the exact definition hash, so an unreviewed or changed hook stays skipped until it is reviewed again in `/hooks`.
 
 Sources: [skills](https://developers.openai.com/codex/build-skills), [plugins](https://developers.openai.com/codex/build-plugins), [hooks](https://developers.openai.com/codex/hooks), and [configuration](https://developers.openai.com/codex/config-reference).
 
@@ -66,7 +66,7 @@ Sources: [skills](https://developers.openai.com/codex/build-skills), [plugins](h
 Documentation reviewed 2026-08-25 recorded these contracts:
 
 - Project skills use `.claude/skills/<name>/SKILL.md`; symlinked directories are followed.
-- Managed settings, command-line overrides, and project-local settings take precedence over shared project settings. Trust-gated allow/additional-directory/marketplace/environment settings require folder trust; deny/ask rules apply immediately.
+- Managed settings, command-line overrides, and project-local settings take precedence over shared project settings. Trust-gated keys such as `permissions.allow`, `permissions.additionalDirectories`, `extraKnownMarketplaces`, and most `env` values require folder trust; `deny` and `ask` rules apply immediately.
 - Checkpoints do not rewind symlinked or hard-linked targets. After `/rewind`, inspect actual `AGENTS.md` and project skill sources reached through projections; restore with Git or an explicit reverse edit when needed.
 
 Sources: [skills](https://code.claude.com/docs/en/skills), [settings](https://code.claude.com/docs/en/settings), and [checkpointing](https://code.claude.com/docs/en/checkpointing).

@@ -29,7 +29,7 @@ Keep the result even on failure. `validate-result` is a contract check, not a re
 
 ## Adapter and comparison contract
 
-The adapter implements `agent-skill-eval/v1`, invokes `claude` once per baseline/treatment request, and returns observations under `metadata.behavior`. It derives routes from the checked-out catalog, binds a selected treatment to its loaded candidate, and normalizes route/workflow vocabulary and behavior-key spelling. It does not manufacture decision fields from request heuristics or verifier expectations.
+The adapter implements `agent-skill-eval/v1`, invokes `claude` once per baseline/treatment request, and returns observations under `metadata.behavior`. It derives routes from the checked-out catalog, binds a selected treatment to its loaded candidate, and normalizes route/workflow vocabulary and behavior-key spelling. It does not manufacture decision fields from request heuristics or verifier expectations; adapters may report additional observations without coupling suites to one host's prose. It is a repository-local script, not a public package or an installed CLI.
 
 | Execution | Required selection behavior |
 |---|---|

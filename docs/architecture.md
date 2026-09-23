@@ -11,7 +11,7 @@ This page owns the map of product surfaces, source/generated ownership, and vali
 | Project Agent harness | `.agents/` | This repository's Claude Code and Codex project layers; `.claude/` and `.codex/` hold projections or host configuration. |
 | Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer smoke tests, and release automation. |
 
-`skills/` is the product; `.agents/skills/` holds project skills, including `skill-eval`, not another catalog mirror. The opt-in project subagent `skill-verifier` reviews source and captured evidence. The parent owns execution, fixes, and delivery; see [its use and limits](development.md#optional-skill-verifier). Neither project component is installed for catalog/scaffold consumers.
+`skills/` is the product and is consumed directly: catalog skills have no generated `.claude/skills` or `.codex/skills` projections, and `.claude/skills/` carries only project skills. `.agents/skills/` holds those project skills, including `skill-eval`, and is not a second catalog copy. The opt-in project subagent `skill-verifier` reviews source and captured evidence. The parent owns execution, fixes, and delivery; see [its use and limits](development.md#optional-skill-verifier). Neither project component is installed for catalog/scaffold consumers.
 
 ## Published skill layout
 
