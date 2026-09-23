@@ -108,6 +108,10 @@ args = sys.argv[1:]
 with Path("lark-events.jsonl").open("a", encoding="utf-8") as f:
     f.write(json.dumps(args) + "\\n")
 state = Path("task-state.json")
+if args in (["--help"], ["help"]):
+    print(json.dumps({"ok": True, "commands": ["read --as user --id task_fixture",
+                                               "replace --as user --id task_fixture --json '<object>'"]}))
+    sys.exit(0)
 if args == ["read", "--as", "user", "--id", "task_fixture"]:
     print(json.dumps({"ok": True, "identity": "user", "data": json.loads(state.read_text(encoding="utf-8"))}))
     sys.exit(0)
@@ -263,10 +267,10 @@ def prepare(root: Path, case_id: str) -> dict:
     elif case_id in ("lark-stateful-update", "lark-stateful-update-cached"):
         write(root, "lark_mock.py", MOCK_LARK_STATEFUL)
         write(root, "task-state.json", json.dumps(LARK_TASK) + "\n")
-        write(root, "mock-help.md", "# Local mock command contract\n\n"
-              "`python lark_mock.py read --as user --id task_fixture` returns the current complete task object in data.\n"
-              "`python lark_mock.py replace --as user --id task_fixture --json '<object>'` replaces the WHOLE task; omitted fields are removed. Its data response is the complete stored object.\n"
-              "Any other argument shape exits 2. These fixture commands are not live lark-cli syntax.\n")
+        write(root, "mock-help.md", "# Local mock command contract\n\nThe mock implements exactly two data commands:\n\n"
+              "- `python lark_mock.py read --as user --id task_fixture` returns the current complete task object in data.\n"
+              "- `python lark_mock.py replace --as user --id task_fixture --json '<object>'` replaces the WHOLE task; omitted fields are removed. Its data response is the complete stored object.\n\n"
+              "`python lark_mock.py --help` prints this command list. Any other argument shape reports `invalid_arguments` and exits 2. These fixture commands are not live lark-cli syntax.\n")
         if case_id.endswith("-cached"):
             write(root, "cached-state.json", json.dumps(LARK_TASK) + "\n")
     elif case_id == "tdd-negative-input":
@@ -503,7 +507,8 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             count = answer.get("awaiting_reply_count") if isinstance(answer, dict) else None
             check("correct awaiting-reply count", type(count) is int and count == 2)
         elif case_id in ("lark-stateful-update", "lark-stateful-update-cached"):
-            events = [decode_json(line) for line in read(root, "lark-events.jsonl").decode().splitlines()]
+            events_path = root / "lark-events.jsonl"
+            events = [decode_json(line) for line in read(root, "lark-events.jsonl").decode().splitlines()] if events_path.is_file() else []
             expected = {**state["initial_task"], "description": state["initial_task"]["description"] + "\nReviewed."}
             expected_json = json.dumps(expected, sort_keys=True, allow_nan=False)
             observed = state["cached"]
@@ -511,6 +516,11 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             for index, args in enumerate(events):
                 if args == ["read", "--as", "user", "--id", "task_fixture"]:
                     observed = True
+                elif args in (["--help"], ["help"]):
+                    # Read-only command-list discovery, as in the sibling syntax fixture. It
+                    # neither establishes state nor violates identity/target, so it must not
+                    # fail a run that otherwise reads, preserves, and writes correctly.
+                    pass
                 elif (isinstance(args, list) and len(args) == 7
                       and args[:6] == ["replace", "--as", "user", "--id", "task_fixture", "--json"]):
                     check("state known before write " + str(index), observed)

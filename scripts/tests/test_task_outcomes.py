@@ -324,6 +324,27 @@ class OutcomeTests(unittest.TestCase):
         stored.write_text(json.dumps({**payload, "assignee": "ou_someone_else"}))
         self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
 
+    def test_stateful_update_tolerates_read_only_command_list_discovery(self):
+        workspace, state = self.fixture("lark-stateful-update")
+        for arguments in (("--help",), ("help",)):
+            with self.subTest(arguments=arguments):
+                result = self.invoke_stateful_mock(workspace, *arguments)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIs(json.loads(result.stdout)["ok"], True)
+        payload = json.loads(self.invoke_stateful_mock(
+            workspace, "read", "--as", "user", "--id", "task_fixture").stdout)["data"]
+        payload["description"] += "\nReviewed."
+        self.replace_task(workspace, payload)
+        self.assertTrue(*self.passed(workspace, "lark-stateful-update", state))
+
+    def test_stateful_update_does_not_accept_a_command_list_as_state(self):
+        workspace, state = self.fixture("lark-stateful-update")
+        self.invoke_stateful_mock(workspace, "--help")
+        payload = copy.deepcopy(state["initial_task"])
+        payload["description"] += "\nReviewed."
+        self.replace_task(workspace, payload)
+        self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+
     def test_stateful_update_rejects_blind_write_even_with_later_read(self):
         workspace, state = self.fixture("lark-stateful-update")
         payload = copy.deepcopy(state["initial_task"])
