@@ -1,6 +1,6 @@
 ---
 name: lark-cli
-description: "Use lark-cli for 飞书/Feishu/Lark/Larksuite operations (messages, mail, docs, Sheets/Base/多维表格, calendar/日程, tasks), including cross-service identity and permissions. Not for quoted URLs alone or when the user selected another available interface."
+description: "Use lark-cli for 飞书/Feishu/Lark/Larksuite operations (messages, mail, docs, Sheets/Base/多维表格, calendar/日程, tasks), including cross-service identity and permissions. Not merely because text contains a Feishu/Lark URL, or when the user selected another available interface."
 ---
 
 # Unified Lark CLI
