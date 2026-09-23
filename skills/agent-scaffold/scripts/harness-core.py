@@ -185,6 +185,11 @@ def save_guidance_selection(target: Path, requested: str) -> None:
         write_json(target / GUIDANCE_FILE, {"schema_version": 1, "domains": domains})
 
 
+def json_text(value: Any) -> str:
+    """The exact text write_json produces, so plan can predict a no-op write."""
+    return json.dumps(value, indent=2, ensure_ascii=False) + "\n"
+
+
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -193,8 +198,7 @@ def write_json(path: Path, value: Any) -> None:
     temporary = Path(temporary_name)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as destination:
-            json.dump(value, destination, indent=2, ensure_ascii=False)
-            destination.write("\n")
+            destination.write(json_text(value))
             destination.flush()
             os.fsync(destination.fileno())
         os.replace(str(temporary), str(path))
@@ -1133,7 +1137,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
             )
         else:
             try:
-                validate_hook_config(existing, item["target"])
+                current = validate_hook_config(existing, item["target"])
             except CoreError as exc:
                 checks.append(
                     check_record(
@@ -1145,7 +1149,10 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
                     )
                 )
             else:
-                checks.append(check_record(item["id"], "merge", item["target"], None))
+                # Same merge and serialization as apply; `present` means apply writes nothing.
+                merged = merge_hooks(current, prepare_hooks(SKILL_DIR / item["source"], profile), target)
+                wired = existing.read_bytes() == json_text(merged).encode("utf-8")
+                checks.append(check_record(item["id"], "present" if wired else "merge", item["target"], None))
 
     for item in active_line_invariants(manifest, profile, selected):
         installed = target / item["target"]

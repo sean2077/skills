@@ -210,6 +210,30 @@ class TargetInspectionTests(unittest.TestCase):
             self.assertIn("invalid JSON", check["detail"])
             self.assertFalse(data["ok"])
 
+    def test_plan_reports_wired_hooks_as_present_only_for_a_no_op_merge(self):
+        manifest = CORE.load_manifest()
+        asset = CORE.asset_by_id(manifest, "host.claude-hooks")
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            config = target / asset["target"]
+            addition = CORE.prepare_hooks(CORE.SKILL_DIR / asset["source"], "light")
+            def user_hook():  # merge_hooks updates its input, so build fresh data each time
+                return {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo user"}]}]}}
+
+            def status():
+                data = CORE.build_plan(target, "light", manifest)
+                return next(item for item in data["checks"] if item["id"] == asset["id"])["status"]
+
+            # What apply writes for a config holding one project-owned hook.
+            wired = CORE.merge_hooks(user_hook(), addition, target)
+            CORE.write_json(config, wired)
+            self.assertEqual("present", status())
+            # Equal data in other bytes is still rewritten by apply, so it is not a no-op.
+            config.write_text(json.dumps(wired), encoding="utf-8")
+            self.assertEqual("merge", status())
+            CORE.write_json(config, user_hook())
+            self.assertEqual("merge", status())
+
     def test_plan_reports_non_regular_runtime_as_attention(self):
         manifest = CORE.load_manifest()
         worktree = CORE.asset_by_id(manifest, "runtime.worktree")
