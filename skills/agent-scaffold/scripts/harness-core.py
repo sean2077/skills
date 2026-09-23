@@ -238,14 +238,20 @@ def guidance_selection(target: Path, requested: Optional[str] = None) -> Dict[st
             "defaults": list(GUIDANCE_DOMAINS) if saved is None else None}
 
 
-def retire_legacy_selection(target: Path) -> bool:
+def retire_legacy_selection(target: Path, requested: Optional[str] = None) -> bool:
     """Remove a pre-marker selection file once the managed block records the selection."""
     path = target / LEGACY_GUIDANCE_FILE
-    load_legacy_selection(target)  # validates; a damaged record is preserved for repair
+    legacy = load_legacy_selection(target)  # a damaged record is preserved for repair
     if not os.path.lexists(str(path)):
         return False
-    if load_marker_selection(target) is None:
+    marker = load_marker_selection(target)
+    if marker is None:
         raise CoreError(LEGACY_GUIDANCE_FILE + ": cannot retire before AGENTS.md records the selection")
+    # During an explicit scope update the freshly written marker may legitimately differ
+    # from the old file. Without that answer, never discard a conflicting record.
+    accepted = parse_domains(requested) if requested is not None else legacy
+    if marker != accepted:
+        raise CoreError("AGENTS.md and the selection being migrated disagree; preserve both records")
     path.unlink()
     return True
 
@@ -1008,6 +1014,26 @@ def _same_file(left: Path, right: Path) -> bool:
         return False
 
 
+UNOWNED_CONVENTION_FIX = ("preserve this unowned guide; resolve its location/ownership explicitly "
+                          "before selecting this domain")
+
+
+def convention_asset_owned(item: Dict[str, Any], source: Path, installed: Path) -> bool:
+    """Recognize per-file ownership, not ownership of the whole conventions directory."""
+    marker = ("<!-- agent-scaffold:convention={0} -->\n".format(
+        item["id"].split(".", 1)[1])).encode("utf-8")
+    try:
+        with installed.open("rb") as stream:
+            if stream.read(len(marker)) == marker:
+                return True
+        # Adopt the unmarked pre-release guide only if its complete bytes match. A
+        # similarly named project guide or a locally changed unmarked copy is not ours.
+        canonical = source.read_bytes()
+        return canonical.startswith(marker) and installed.read_bytes() == canonical[len(marker):]
+    except OSError:
+        return False
+
+
 def is_current_generated_projection(path: Path) -> bool:
     name = path.stem
     marker = (
@@ -1182,6 +1208,9 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
         elif _same_file(source, installed):
             status = "present"
             fix = None
+        elif item["id"].startswith("convention.") and not convention_asset_owned(item, source, installed):
+            status = "attention"
+            fix = UNOWNED_CONVENTION_FIX
         else:
             status = "refresh"
             fix = None
@@ -1403,7 +1432,9 @@ def build_verify(
         if installed.is_symlink() or not installed.is_file():
             checks.append(check_record(item["id"], "fail", item["target"], "run agent-scaffold apply"))
         elif not _same_file(source, installed):
-            checks.append(check_record(item["id"], "fail", item["target"], "run agent-scaffold upgrade"))
+            unowned = item["id"].startswith("convention.") and not convention_asset_owned(item, source, installed)
+            checks.append(check_record(item["id"], "fail", item["target"], UNOWNED_CONVENTION_FIX if unowned
+                                       else "run agent-scaffold upgrade"))
         else:
             checks.append(check_record(item["id"], "pass", item["target"], None))
 
@@ -1746,6 +1777,7 @@ def build_parser() -> argparse.ArgumentParser:
     guidance_sub = guidance.add_subparsers(dest="guidance_command", required=True)
     guidance_retire = guidance_sub.add_parser("retire-legacy")
     guidance_retire.add_argument("--target", required=True)
+    guidance_retire.add_argument("--domains")
 
     report_parser = subparsers.add_parser("report")
     report_sub = report_parser.add_subparsers(dest="report_command", required=True)
@@ -1769,7 +1801,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             sys.stdout.buffer.write((select_profile(Path(args.target), source) + "\n").encode("utf-8"))
             return 0
         if args.command == "guidance":
-            if retire_legacy_selection(Path(args.target).resolve()):
+            if retire_legacy_selection(Path(args.target).resolve(), args.domains):
                 print("[harness] selection moved into the AGENTS.md managed block; removed " + LEGACY_GUIDANCE_FILE)
             return 0
         if args.command == "assets":

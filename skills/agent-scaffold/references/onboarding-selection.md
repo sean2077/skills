@@ -72,6 +72,8 @@ records a choice.
 Earlier releases stored the choice in `.agents/scaffold.json`. A valid legacy file still counts
 as the recorded choice; the next apply/upgrade writes the marker and removes the file. A legacy
 file that disagrees with an existing marker is a conflict to resolve, not something to overwrite.
+Retirement rechecks the recorded scope before deleting the old file; an explicit `--domains`
+update is carried through that check so an authorized scope change can migrate safely.
 
 The marker is written with the managed block, before guidance authorship, so an interrupted
 setup can resume **without asking again**. It does not certify that any guide was written or
@@ -91,7 +93,8 @@ Malformed, conflicting, unknown-schema or symlinked records are errors, not firs
 signals. Preserve them and recover the accepted scope from the project/history; do not reset
 to all, quietly replace them, or start a new preference questionnaire. Narrowly clarify an
 unrecoverable conflict rather than re-asking choices already known. A deliberately moved or
-removed guide does not remove the selection record or justify restoring its former template.
+removed project-owned guide does not remove the selection record or justify restoring its former
+template; managed convention files instead follow the [runtime ownership rules](harness-layout.md).
 
 The CLI never asks questions or reads stdin. Raw asset-only calls without `--domains` remain
 noninteractive and do not manufacture a selection; `project_guidance: not-assessed` and the

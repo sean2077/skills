@@ -1,3 +1,4 @@
+<!-- agent-scaffold:convention=notice -->
 # Attribution notice
 
 Testing and terminology guidance is adapted from Matt Pocock's MIT-licensed

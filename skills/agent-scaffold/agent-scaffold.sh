@@ -304,7 +304,9 @@ do_install() {
   # The managed block records the selection; later steps read it back from AGENTS.md.
   ensure_agents_md
   [[ "$contract_linked" == 1 ]] || ensure_claude_md_symlink
-  run_core guidance retire-legacy --target "$TARGET"
+  local guidance_args=(guidance retire-legacy --target "$TARGET")
+  [[ "$DOMAINS_EXPLICIT" == 0 ]] || guidance_args+=(--domains "$DOMAINS")
+  run_core "${guidance_args[@]}"
 
   ensure_line_endings
   install_assets

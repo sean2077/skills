@@ -165,7 +165,14 @@ class OutcomeTests(unittest.TestCase):
         contract = (guided / "AGENTS.md").read_text(encoding="utf-8")
         self.assertEqual(1, contract.count("`.agents/conventions/docs.md`"))
         self.assertIn("<!-- agent-scaffold:domains=docs -->", contract)
-        self.assertTrue(contract.startswith((bare / "AGENTS.md").read_text(encoding="utf-8")))
+        bare_contract = (bare / "AGENTS.md").read_text(encoding="utf-8")
+        route = contract.index("`.agents/conventions/docs.md`")
+        start = contract.rfind("\n### ", 0, route) + 1
+        end = contract.index("\n### ", route) + 1
+        # Only the route section differs, not the rest of the harness/authority rules.
+        self.assertEqual(bare_contract, contract[:start] + contract[end:])
+        self.assertNotIn("`.agents/conventions/docs.md`", bare_contract)
+        self.assertIn("<!-- agent-scaffold:domains=docs -->", bare_contract)
         tracked = lambda root: set(cases.git(root, "ls-files").decode().splitlines())
         self.assertEqual({".agents/conventions/docs.md"}, tracked(guided) - tracked(bare))
         self.assertEqual({"AGENTS.md"}, {p for p in tracked(bare)
@@ -191,7 +198,9 @@ class OutcomeTests(unittest.TestCase):
                     plan.write_text(marked.replace(before, after), encoding="utf-8")
                     self.assertFalse(result()[0], before)
                 plan.write_text(marked.replace("Status: implemented", "Note: shipped"), encoding="utf-8")
-                self.assertFalse(result()[0])  # Steps remain without a recognizable status.
+                self.assertTrue(*result())  # Equivalent explicit completion wording remains valid.
+                plan.write_text(marked.replace("Status: implemented", "This plan is implemented"), encoding="utf-8")
+                self.assertTrue(*result())  # Ordinary prose needs no prescribed field or heading.
                 # Moving the history to the owner and removing the plan is also valid.
                 plan.unlink(); plan.parent.rmdir()
                 self.assertFalse(result()[0])  # Rationale and dated evidence were lost.
@@ -206,6 +215,54 @@ class OutcomeTests(unittest.TestCase):
                 self.assertTrue(*result())
                 cases.write(workspace, "src/cache.py", "CACHE = None\n")
                 self.assertFalse(result()[0])
+
+    def test_retirement_status_reads_negation_and_deferral_per_clause(self):
+        retired = ("Status: completed. The steps below are historical and must not be run.",
+                   "Status: implemented and deployed; do not follow the next steps.",
+                   "Implemented in September; this plan no longer needs action and isn't a to-do list.",
+                   "**Status:** Implemented — kept for history, not as instructions.",
+                   "This plan is implemented and must not be followed.",
+                   "Not a to-do list: implemented in September.", "Note: shipped", "status: done")
+        live = ("Status: not implemented", "Status: not yet completed", "Status: isn't done",
+                "Status: to be completed after review", "Status: pending; will be implemented next sprint",
+                "Status: pending until completed", "Once implemented, archive this plan.",
+                "The plan has not been fully implemented.", "Awaiting deployment before it is completed",
+                "Status: implementation pending", "Status: unimplemented", "Status: in progress")
+        for line in retired + live:
+            with self.subTest(line=line):
+                self.assertEqual(line in retired, cases.retired_plan_header("# Plan\n\n" + line + "\n"))
+
+    def test_plan_retirement_rejects_negation_paraphrases_and_orphan_history(self):
+        for case in ("plan-retirement", "plan-retirement-installed-guide"):
+            with self.subTest(case=case):
+                workspace, state = self.fixture(case)
+                plan = workspace / "docs/plans/balance-cache.md"
+                original = plan.read_text(encoding="utf-8")
+                def passed(text):
+                    plan.write_text(text + "\n[Current owner](../ARCHITECTURE.md)\n", encoding="utf-8")
+                    return self.passed(workspace, case, state)[0]
+                for status in ("Status: not implemented", "Status: not yet completed",
+                               "Status: pending until completed", "# This plan is not retired",
+                               "Status: to be completed after review",
+                               "Status: pending; will be implemented next sprint"):
+                    self.assertFalse(passed(original.replace("# Plan: balance cache\n",
+                                                            "# Plan: balance cache\n\n" + status + "\n")), status)
+                # A retirement status followed by a warning is the guide's own advice, not a negation.
+                for status in ("Status: completed. The steps below are historical and must not be run.",
+                               "This plan is implemented and must not be followed."):
+                    self.assertTrue(passed(original.replace("# Plan: balance cache\n",
+                                                           "# Plan: balance cache\n\n" + status + "\n")), status)
+                paraphrased = original.replace(cases.PLAN_STEPS[0], "1. Build the balance cache now.").replace(
+                    cases.PLAN_STEPS[1], "2. Run `python tools/purge.py --all` after deployment.")
+                self.assertFalse(passed(paraphrased))
+                self.assertTrue(passed(original.replace("# Plan: balance cache\n",
+                                                       "# Plan: balance cache\n\nStatus: shipped\n")))
+                # Keeping the evidence somewhere unlinked must not pass preservation.
+                archived = "# History\n" + cases.PLAN_RATIONALE + "\n" + cases.PLAN_MEASUREMENT + "\n"
+                cases.write(workspace, "docs/orphan.md", archived)
+                stripped = original.replace(cases.PLAN_RATIONALE, "").replace(cases.PLAN_MEASUREMENT, "")
+                self.assertFalse(passed(stripped.replace("# Plan: balance cache\n",
+                                                        "# Plan: balance cache\n\nStatus: completed\n")))
 
     def test_selected_conventions_require_scope_and_real_project_guidance(self):
         workspace, state = self.fixture("scaffold-selected-guidance")

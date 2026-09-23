@@ -47,6 +47,13 @@ dormant copies, as a default-to-light change does. `.agents/conventions/` is sca
 the guides are refreshed on upgrade and byte-checked by verify, so project facts belong in
 project docs. See [one-time selection](onboarding-selection.md).
 
+Each managed convention file carries its own `agent-scaffold:convention=<domain>` comment
+(`notice` for attribution). An existing same-name file without that ownership marker is a
+conflict, not an upgrade target; preserve it and resolve placement/ownership explicitly before
+installation. The exact, unchanged unmarked guide from the pre-release implementation can be
+adopted by byte comparison. This does not claim ownership of unrelated directory entries or
+allow a modified unmarked guide to be overwritten.
+
 Project prose, terminology files, nested authority-document structure, subagent examples,
 Codex settings, package scripts, and CI/hook-manager integration are reference recipes rather than
 installed templates. The installer preserves project-owned content; the Agent must adopt and fill its relevant gaps during a full setup under [project conventions](project-conventions.md). Project choices remain authoritative on later upgrades. Formatter, linter, test, and
