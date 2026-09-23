@@ -56,8 +56,6 @@ from catalog_core import (
 # Re-exported so `import validate_skills` stays the single entry point for the
 # regression suite and for any external caller pinned to the flat module API.
 from contracts.agent_scaffold import validate_agent_scaffold_contract
-from contracts.conventional_commit import validate_conventional_commit_contract
-from contracts.semver_release import validate_semver_release_contract
 
 __all__ = [
     "cli",
@@ -68,14 +66,12 @@ __all__ = [
     "report",
     "validate_agent_scaffold_contract",
     "validate_category_references",
-    "validate_conventional_commit_contract",
     "validate_grouping_manifest",
     "validate_npx_discovery_contract",
     "validate_npx_payload_contract",
     "validate_readme_catalog_count",
     "validate_repository_release_automation_contract",
     "validate_resident_contract",
-    "validate_semver_release_contract",
     "validate_targeted_contract_coverage",
     "warnings",
 ]
@@ -271,7 +267,7 @@ def validate_repository_release_automation_contract(
             errors.append("release workflow lost required fixtures: tag trigger, validation dependency or permissions")
         steps = publisher.get("steps", [])
         runs = [(i, step, str(step.get("run", ""))) for i, step in enumerate(steps)]
-        extracts = [i for i, _, run in runs if "skills/semver-release/scripts/extract-changelog.py" in run]
+        extracts = [i for i, _, run in runs if ".agents/tools/release/extract-changelog.py" in run]
         publishes = [(i, step) for i, step, run in runs if 'release create "$GITHUB_REF_NAME"' in run]
         verifies = [i for i, _, run in runs if "--json body" in run]
         if (len(extracts) != 1 or len(publishes) != 1 or len(verifies) != 1

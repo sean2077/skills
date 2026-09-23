@@ -9,6 +9,7 @@ This page owns the map of product surfaces, source/generated ownership, and vali
 | Published skill catalog | `skills/<name>/` | Installers consume independently installable payloads containing only regular files and directories. |
 | Catalog metadata | `.claude-plugin/plugin.json` and README catalog rows | Installer grouping and human navigation, not universal host certification or a native Codex plugin package. |
 | Project Agent harness | `.agents/` | This repository's Claude Code and Codex project layers; `.claude/` and `.codex/` hold projections or host configuration. |
+| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time release conventions, read-only version analysis and changelog extraction; installed only for the selected `release` domain, never resident. |
 | Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer smoke tests, and release automation. |
 
 `skills/` is the product and is consumed directly: catalog skills have no generated `.claude/skills` or `.codex/skills` projections, and `.claude/skills/` carries only project skills. `.agents/skills/` holds those project skills, including `skill-eval`, and is not a second catalog copy. The opt-in project subagent `skill-verifier` reviews source and captured evidence. The parent owns execution, fixes, and delivery; see [its use and limits](development.md#optional-skill-verifier). Neither project component is installed for catalog/scaffold consumers.
@@ -41,9 +42,16 @@ Discovery metadata contributes routing context; selected instructions and resour
 
 ## Project-convention ownership
 
+First full setup or legacy migration offers all convention domains and asks once for
+exclusions. `.agents/scaffold.json` stores the accepted explicit list; it is not a layout
+registry or a semantic-completion record. Later updates reuse it without re-asking and do not
+silently enable new domains. Runtime-only calls without a selection keep it pending. The
+optional managed terminology section and the task-time release runtime follow the choice; core
+safety and existing project rules remain in force. See [selection](../skills/agent-scaffold/references/onboarding-selection.md).
+
 A full `agent-scaffold` initialization or upgrade has two responsibilities: deterministic
 asset reconciliation, and Agent-authored project guidance. The latter adopts actual entry
-points, layouts, commands, verification limits and source ownership before filling gaps.
+points, layouts, commands, test/specification quality, terminology, Git/release rules and source ownership before filling selected gaps.
 New guidance is project-owned, not managed-template content. Later runs preserve renamed,
 merged or deliberately removed guides and repair confirmed drift in their current homes.
 The managed AGENTS block does not grow, and no layout registry or new controller is added.
@@ -72,6 +80,7 @@ Generated workflow runtimes reject non-standard JSON numbers and attempt best-ef
 | High-risk skill-specific interfaces and executable invariants | Registered `scripts/contracts/` modules and targeted tests |
 | Generated runtime parity and behavior | Runtime generators and workflow/evaluation/hardening tests |
 | Official Agent Skills format | Pinned `skills-ref` for every catalog skill and project `skill-eval` |
+| Selection persistence and opt-outs | `scripts/tests/test_guidance_selection.py`, scaffold decision cases and task fixtures |
 | Scaffold shape, drift, managed hooks, symlinks, installation | Core/workspace/layout-preservation tests, static gate, and throwaway-repository E2E |
 | Installer discovery and payload fidelity | Audited CLI discovery and byte-compared installation in CI |
 | Shell/platform behavior and runtime floor | ShellCheck, Linux/macOS/Windows matrix, and Python 3.8 job |

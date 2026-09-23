@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Focused tests for the semver-release read-only planner."""
+"""Focused tests for the repository-owned read-only release planner."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from typing import Optional
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PLANNER = REPO_ROOT / "skills" / "semver-release" / "scripts" / "release-plan.py"
+PLANNER = REPO_ROOT / "skills" / "agent-scaffold" / "assets" / "runtime" / "release" / "release-plan.py"
 
 
 class ReleasePlanTests(unittest.TestCase):

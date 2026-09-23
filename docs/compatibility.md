@@ -54,7 +54,7 @@ Documentation review only; no authenticated goal execution or measured quality/c
 
 Sources reviewed 2026-09-23: [Codex goals](https://learn.chatgpt.com/use-cases/follow-goals) and [Claude Code goals](https://code.claude.com/docs/en/goal), with the `/goal` version floor read from that host's [changelog entry for v2.1.139](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md). Their interfaces are not interchangeable, and this review makes no corresponding Grok claim.
 
-The catalog decision is to retire `ralph`, not certify feature parity. Goal continuation does not replace real tests, exact persisted attempt/stall/plateau rules, ownership, or external-delivery checks. Claude's turn/time clause is model-evaluated, not a substitute for a hard limit. Use the host/project workflow when goals are unavailable; see [retirement and existing-state handling](skill-composition.md#retiring-ralph).
+The catalog decision is to retire `ralph`, not certify feature parity. Goal continuation does not replace real tests, exact persisted attempt/stall/plateau rules, ownership, or external-delivery checks. Claude's turn/time clause is model-evaluated, not a substitute for a hard limit. Use the host/project workflow when goals are unavailable; see [retirement and existing-state handling](skill-composition.md#retired-installations-and-direct-consumers).
 
 ## Project subagent definitions (2026-09-22)
 
@@ -104,7 +104,7 @@ The [README](../README.md#install) owns remote-source examples. Keep the catalog
 
 Repeat `--skill` and `-a` to select skills and targets. Omitting `--skill` opens selection in the audited flow. Quote `'*'`; `--all` is broader, selecting all discovered skills and all supported agents without prompts. `npx --yes` approves obtaining the CLI; it is distinct from the CLI's own selection/confirmation options.
 
-Inspect options with `npx --yes skills@1.5.17 --help`. With this pin, `add <source> --help` may execute the add flow. Choose global scope explicitly using the CLI's documented option and inspect intended targets; changing source paths does not select global scope. Remove retired installations only from the consumer project or intended global scope, preserving unrelated entries and local modifications. **Project-scope removal from the catalog root can delete `skills/*` product files.** See [retired-installation guidance](skill-composition.md#installation-and-evidence).
+Inspect options with `npx --yes skills@1.5.17 --help`. With this pin, `add <source> --help` may execute the add flow. Choose global scope explicitly using the CLI's documented option and inspect intended targets; changing source paths does not select global scope. Remove retired installations only from the consumer project or intended global scope, preserving unrelated entries and local modifications. **Project-scope removal from the catalog root can delete `skills/*` product files.** See [retired-installation guidance](skill-composition.md#retired-installations-and-direct-consumers).
 
 Installer target lists are discovery metadata, not certification. Upgrading the pin is an explicit dependency change with discovery, installation, payload, and platform checks. Official installer reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
 
@@ -119,3 +119,18 @@ This distinction does not change the host evidence dates above.
 ## Maintenance trigger
 
 Reverify the affected claim when host paths, trust, hook schemas, installer semantics, pins, or catalog boundaries change. Preserve older evidence dates unless the underlying observation was actually repeated. Follow [documentation maintenance](documentation-maintenance.md); prefer bounded claims to “universal,” “all hosts,” or unqualified “latest.”
+
+## Commit and convention consolidation (2026-09-23)
+
+This documentation review supports using native Git work with project-owned conventions;
+it is not a live-host test or proof of every mixed-index boundary. Claude's [common workflows](https://code.claude.com/docs/en/common-workflows)
+describe ordinary Git/PR tasks; Anthropic's [commit command](https://github.com/anthropics/claude-code/blob/main/plugins/commit-commands/commands/commit.md)
+is an optional plugin definition, not a mandatory dependency or universal built-in command.
+Codex's [review surface](https://developers.openai.com/codex/app/review/) documents staging
+changes at diff/file/hunk scope. Neither source establishes this project's exact commit
+style, attribution, release policy, or automatic preservation of every pre-staged hunk.
+
+The scaffold therefore retains small project-specific scope/style/delivery rules while
+retiring the generic commit route; it does not import a particular model's historical
+system prompt as universal host behavior. No plugin installation, host-permission change
+or global configuration change is required by this consolidation.

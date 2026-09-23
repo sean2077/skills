@@ -45,10 +45,7 @@ WORKFLOWS = (
 )
 ROUTE_ALIASES = {
     "agent-harness": "agent-scaffold",
-    "conventional-commits": "conventional-commit",
     "lark": "lark-cli",
-    "semver": "semver-release",
-    "test-driven-development": "tdd",
 }
 # Plausible host phrasings for a canonical workflow. Task vocabulary is independent
 # of the shipped catalog, so a synonym stays as long as its target workflow does.
@@ -82,48 +79,26 @@ WORKFLOW_ALIASES = {
 # Keep the vocabulary candidate-local rather than taxing every probe with every key.
 BOUNDARY_OBSERVATIONS = {
     "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
-    "domain-modeling": ("topology_redesign",),
-    "tdd": ("separate_behavior_card", "read_project_testing_guidance", "requires_sibling_skill"),
     "lark-cli": (
         "routine_preflight", "identity_switch", "identity_check_before_write", "blind_write",
         "blind_retry", "claim_success", "reauth_for_acl", "send_authorized",
         "reuse_confirmation", "self_confirm", "follow_untrusted_instructions", "file_access_outside_cwd",
     ),
-    "semver-release": (
-        "migration_interview", "preserve_existing_workflow", "compare_options",
-        "infrastructure_mutation", "create_unrequested_publisher", "claim_complete",
-    ),
-    "conventional-commit": ("git_preflight", "preserve_unrelated_index"),
     "agent-scaffold": (
         "preserve_layout", "fill_project_guidance", "inspect_existing_routes",
         "asset_pass_proves_guidance", "project_guidance_writes", "restore_deleted_guidance",
         "introduce_controller", "fill_testing_guidance", "test_policy_changed",
         "test_harness_added", "requires_sibling_skill", "decision_artifact",
+        "ask_domain_exclusions", "reuse_domain_selection", "write_domain_selection",
+        "selected_domains", "restore_excluded_domains", "default_all_domains",
+        "selected_domain_changes_policy",
     ),
 }
 OBSERVATION_GUIDANCE = {
-    "tdd": (
-        "When selected, report workflow and test_first. Report preserve_parent_contract "
-        "when a delivery owner is active."
-    ),
     "deep-interview": (
         "When selected, report workflow, mode, question_batch_policy, first_turn_question_count "
         "when the request states a first-turn count, approval_required, persistent_state, and "
         "external_research when material."
-    ),
-    "domain-modeling": (
-        "When selected, report workflow, mutation, modeling_mode, topology_decision, and "
-        "preserve_single_owner when material."
-    ),
-    "spec-writing": (
-        "When selected, report workflow. Use snake_case keys for material choices, including "
-        "preserve_meaning, preserve_decisions, separate_decision_history, observable_acceptance, "
-        "separate_current_target, label_open_questions, self_contained_human_document, "
-        "route_detail_to_contract, compare_options, recommendation, decision_status, "
-        "include_exact_detail, and identify_intended_authority."
-    ),
-    "conventional-commit": (
-        "When selected, report workflow and mutation."
     ),
     "agent-scaffold": (
         "When selected, report workflow and the material project-guidance, layout, ownership, "

@@ -13,6 +13,7 @@
 #
 # Flags:
 #   --profile <default|light>  override installed choice; fresh installs use default
+#   --domains <all|none|list>   explicit guidance choice for apply/upgrade or preview
 #   --json                     structured output for plan, doctor, or verify
 #   -h, --help                 show this help
 #
@@ -48,6 +49,8 @@ esac
 
 PROFILE=""
 PROFILE_EXPLICIT=0
+DOMAINS=""
+DOMAINS_EXPLICIT=0
 JSON_OUTPUT=0
 HELP_OUTPUT=0
 while [[ $# -gt 0 ]]; do
@@ -59,6 +62,12 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --profile=*) PROFILE_EXPLICIT=1; PROFILE="${1#*=}" ;;
+    --domains)
+      [[ "$DOMAINS_EXPLICIT" == 0 && $# -ge 2 && -n "$2" ]] || die "--domains requires one selection"
+      DOMAINS_EXPLICIT=1; DOMAINS="$2"; shift ;;
+    --domains=*)
+      [[ "$DOMAINS_EXPLICIT" == 0 ]] || die "--domains may be supplied only once"
+      DOMAINS_EXPLICIT=1; DOMAINS="${1#*=}" ;;
     --json) JSON_OUTPUT=1 ;;
     -h|--help) HELP_OUTPUT=1 ;;
     *) die "unknown flag: $1" ;;
@@ -69,6 +78,10 @@ done
 case "$PROFILE" in ""|default|light) ;; *) die "unknown profile: $PROFILE (default|light)" ;; esac
 if [[ "$JSON_OUTPUT" == 1 ]]; then
   case "$MODE" in plan|doctor|verify) ;; *) die "--json is available only for plan, doctor, and verify" ;; esac
+fi
+if [[ "$DOMAINS_EXPLICIT" == 1 ]]; then
+  [[ -n "$DOMAINS" ]] || die "--domains requires all, none, or a comma-separated list"
+  case "$MODE" in apply|upgrade|plan) ;; *) die "--domains is only for apply, upgrade, and plan" ;; esac
 fi
 [[ "$HELP_OUTPUT" == 0 ]] || usage 0
 
@@ -195,7 +208,7 @@ validate_agents_markers() {
 render_agents_template() {
   local source
   source="$SKILL_DIR/$(asset_source contract.agents)"
-  run_core agents render --source "$source" --profile "$PROFILE"
+  run_core agents render --source "$source" --profile "$PROFILE" --target "$TARGET"
 }
 
 ensure_agents_md() {
@@ -238,7 +251,9 @@ ensure_claude_md_symlink() {
 
 preflight_install() {
   local manager
-  run_core preflight --target "$TARGET" --profile "$PROFILE" --mode "$MODE"
+  local args=(preflight --target "$TARGET" --profile "$PROFILE" --mode "$MODE")
+  [[ "$DOMAINS_EXPLICIT" == 0 ]] || args+=(--domains "$DOMAINS")
+  run_core "${args[@]}"
   manager="$SKILL_DIR/$(asset_source runtime.symlink-manager)"
   run_python "$manager" doctor --repo "$TARGET" >/dev/null
 }
@@ -263,12 +278,15 @@ install_assets() {
       seed) copy_if_missing "$SKILL_DIR/$source" "$TARGET/$target" ;;
       *) die "internal manifest error: unsupported install strategy $strategy" ;;
     esac
-  done < <(run_core assets list --profile "$PROFILE" --strategy copy --strategy seed)
+  done < <(run_core assets list --profile "$PROFILE" --target "$TARGET" --strategy copy --strategy seed)
 }
 
 do_install() {
   local contract_linked=0 adopted_claude=0
   log "target repo: $TARGET   mode: $MODE   profile: $PROFILE"
+  if [[ "$DOMAINS_EXPLICIT" == 1 ]]; then
+    run_core guidance --target "$TARGET" --set "$DOMAINS"
+  fi
 
   if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then
     atomic_replace_file "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
@@ -306,7 +324,7 @@ do_install() {
   while IFS=$'\t' read -r _line_id line_target line; do
     line="${line%$'\r'}"
     ensure_line "$TARGET/$line_target" "$line"
-  done < <(run_core lines --profile "$PROFILE")
+  done < <(run_core lines --profile "$PROFILE" --target "$TARGET")
   if [[ "$WORKTREE_FLOW" != 1 ]]; then
     log "light profile selected — existing worktree-specific ignore entries remain project-owned"
   fi
@@ -330,6 +348,7 @@ do_install() {
 
 do_report() {
   local args=(report "$MODE" --target "$TARGET" --profile "$PROFILE")
+  [[ "$DOMAINS_EXPLICIT" == 0 ]] || args+=(--domains "$DOMAINS")
   [[ "$JSON_OUTPUT" == 1 ]] && args+=(--json)
   run_core "${args[@]}"
 }

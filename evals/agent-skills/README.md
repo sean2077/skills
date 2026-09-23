@@ -8,7 +8,7 @@ Run from the intended committed task checkout. Commit changed candidate/manifest
 
 ```bash
 # Offline manifest validation; no model invocation
-python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/agent-skills/tdd/suite.json
+python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/agent-skills/agent-scaffold/suite.json
 ```
 
 Live execution is separate and may incur model usage. Configure and authenticate Claude Code, authorize the experiment, and set `CLAUDE_BIN` when it is not on `PATH`. From Bash/Git Bash:
@@ -19,9 +19,9 @@ Live execution is separate and may incur model usage. Configure and authenticate
   result_dir="$(mktemp -d)"
   printf 'Retained evaluation output: %s\n' "$result_dir"
   python .agents/skills/skill-eval/scripts/skill_eval.py run \
-    evals/agent-skills/tdd/suite.json --output "$result_dir/tdd-skill-eval.json"
+    evals/agent-skills/agent-scaffold/suite.json --output "$result_dir/scaffold-skill-eval.json"
   python .agents/skills/skill-eval/scripts/skill_eval.py validate-result \
-    "$result_dir/tdd-skill-eval.json"
+    "$result_dir/scaffold-skill-eval.json"
 )
 ```
 
@@ -43,7 +43,7 @@ Routes name shipped skills or `none` for host/project work; workflow labels desc
 
 ## Decision and safety coverage
 
-Current manifests are the case inventory. They cover whole-specification and digest approval, explicit test-first work, scaffold project-convention decisions, selected Lark CLI use, and release boundaries. Observations target decision outcomes rather than incidental wording; explicit project-required records retain exact expectations.
+Current manifests are the case inventory. They cover whole-specification and digest approval, scaffold convention selection/adoption, and selected Lark CLI use. Routine testing, spec writing, terminology, commit and release requests route to host/project work. Observations target decision outcomes rather than incidental wording; explicit project-required records retain exact expectations.
 
 Lark probes cover identity, ambiguous/contradictory results, fresh confirmation, CLI confirmation gates, untrusted instructions, and file containment. Negative fixtures test missing, unsafe, and wrong-typed observations. They verify the oracle/protocol, not real CLI operation or live model compliance. Historical coverage changes remain in the [September 20 audit](../../docs/audits/2026-09-20-native-first.md).
 
@@ -67,6 +67,11 @@ Failures retain available usage/time. `metadata.usage_available=false` means unk
 
 The model sees the candidate entry point, route/observation vocabulary, and request, but not the verifier's answers. It does not load on-demand references or execute the requested work. Selection binding means a treatment route is not an independent free-choice measurement. The baseline is not an old-version/new-version randomized trial.
 
-TDD includes project-policy and non-trigger cases. Experiments retain the `prototype` workflow label but route to `none`; the catalog has no such skill. Retired composition/review suites do not measure the feedback/delivery guidance retained in the composition guide.
+Scaffold cases include project testing policy and ordinary-task non-triggers. Experiments retain the `prototype` workflow label but route to `none`; the catalog has no such skill. Retired composition/review suites do not measure the feedback/delivery guidance retained in the composition guide.
 
 For observed edits, mock calls, test sequences, and a brief-request control, use [task outcomes](../tasks/README.md). Establish quality or efficiency gains with fixed old/new revisions, matched host/model/configuration/cache conditions, repeated representative tasks, and captured artifacts/verifiers. Correct stated intentions or green CI alone do not establish those gains.
+
+The offline sample under `evals/examples/offline/` is a synthetic protocol exercise. Its
+fake adapter applies a fixed arithmetic edit to test comparison, scope, accounting and failure
+plumbing; it does not implement the candidate skill or demonstrate model effectiveness.
+This sample remains separate from live decision suites and real task artifact checks.

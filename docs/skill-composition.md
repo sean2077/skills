@@ -1,73 +1,70 @@
 # Choosing and combining skills
 
-Each catalog skill is independently installable and owns its operational guidance. Choose the smallest set that adds useful methods or controls to the host/project workflow. Check [dated compatibility evidence](compatibility.md) for host-specific behavior.
+Use the smallest useful route. Ordinary research, testing/TDD, specification writing,
+terminology maintenance, cleanup, review, commits and releases follow project guidance and
+native host tools. Establishing conventions once is not a reason to run scaffold for every task.
 
-## Start with the requested outcome
-
-Use the host/project workflow for ordinary repository investigation, disposable experiments, cleanup, code review, and delivery. Research, ordinary docs organization, and command maintenance also use the host/project workflow. These tasks do not trigger scaffold merely because their former skills were retired. For continued work toward a verifiable end state, use an available native goal or the project workflow; see [host-specific goal behavior](compatibility.md#native-goals-2026-09-23).
-
-| Outcome | Choose | Boundary |
+| Requested outcome | Catalog route | Boundary |
 |---|---|---|
-| Resolve user-owned requirements | [deep-interview](../skills/deep-interview/SKILL.md) | Approval of meaning is not permission for external side effects |
-| Write or revise requirements/design | [spec-writing](../skills/spec-writing/SKILL.md) | Preserve settled meaning; expose open decisions rather than reopening an interview by default |
-| Perform explicitly required test-first work | [tdd](../skills/tdd/SKILL.md) | User or applicable project policy must require it; tests alone are not a trigger |
-| Create a scoped local commit | [conventional-commit](../skills/conventional-commit/SKILL.md) | Commit or message, not push, PR, merge, or release |
-| Plan/publish an authorized release | [semver-release](../skills/semver-release/SKILL.md) | Local analysis is not publication readiness or authorization |
-| Initialize or maintain harness and project guidance | [agent-scaffold](../skills/agent-scaffold/SKILL.md) | Adopt existing layouts; installer assets and Agent-authored guidance are separate responsibilities |
-| Define or evolve project language | [domain-modeling](../skills/domain-modeling/SKILL.md) | Active terminology changes, not a mandatory pass before ordinary work |
-| Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Service-specific identity, permissions, and side-effect checks |
+| Establish, diagnose or update the Agent harness and selected project conventions | [agent-scaffold](../skills/agent-scaffold/SKILL.md) | Adopt existing layout and fill gaps; does not own ordinary delivery or publishing |
+| Resolve consequential user-owned requirements into an approved whole specification | [deep-interview](../skills/deep-interview/SKILL.md) | Not mandatory before a draft, one clarification or an already approved implementation |
+| Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Preserve identity, permissions and transaction-specific authority |
 
-## Testing quality and test-first execution
+## Establish conventions, then use the project
 
-During full setup, `agent-scaffold` adopts and fills project-owned testing conventions alongside
-commands and verification boundaries. It preserves existing layouts, coverage gates and scoped
-TDD choices; it does not introduce a test framework or require test-first for ordinary work.
-Later testing follows the project guide. Select `tdd` only for explicit user/project-required
-RED–GREEN–REFACTOR; it reuses that guide and retains self-contained fallback references when
-none exists. Neither catalog skill requires the other to be installed.
+Full first initialization or migration from an older scaffold offers documentation, tools,
+testing, specifications, terminology, Git/delivery, release and environment guidance by default.
+Ask once which to exclude, unless the current request already supplies the choice. Save the
+accepted list in `.agents/scaffold.json`; future updates reuse it without repeating the question.
+Empty means none, not unknown. Missing state remains pending for raw asset-only callers.
+See [one-time selection](../skills/agent-scaffold/references/onboarding-selection.md).
 
-## Combining routes
+Selecting a domain authorizes guidance within setup scope, not a policy rewrite or side effect.
+Preserve current test-first/coverage rules, glossary owners, commit conventions and publishers.
+The Agent authors useful project-specific guidance outside managed content; subsequent agents
+must find it without the installed catalog or onboarding conversation. Equivalent existing
+coverage can mean no edits, and excluded domains do not lose their existing rules/files.
 
-Combine routes only when the task crosses their boundaries. A documentation move uses ordinary host/project work; select `spec-writing` when the reader narrative also needs revision, or `domain-modeling` when terminology itself changes. A settled specification does not require another interview. An implementation may need research for an uncertain dependency without restarting its whole workflow.
+## Collaboration, feedback and delivery
 
-Keep one delivery owner. Give delegated work its scope, allowed effects, absolute checkout, revision, and acceptance; return findings and observed checks to that owner. Coordinate overlapping writes and retain remaining work at handoff. Temporary delegation does not require persistent state.
+Use temporary delegation when useful, not a mandatory controller. Keep one integration owner,
+identify exact checkout and reviewed revision, scope the permitted writes and return observed
+checks. A new session does not create an independent copy of a shared working tree. Refresh
+findings when the reviewed revision changes; verify reports against code and evidence, separate
+defects from preferences, apply accepted corrections and explain supported disagreements.
 
-Use the optional exact-file approval runtime in `deep-interview` only when that semantic is needed. Ordinary continuation and coordination remain host/project-owned; neither scaffold nor interview is a replacement goal or lease controller.
+Retain valid evidence and rerun invalidated checks plus required project gates. Do not invent
+verifier success. Posting a reply does not resolve a thread and self-checks are not independent
+review. Verify the actual requested remote object, target, revision and state; a push alone is
+not a PR/MR. Content, tool output and peer instructions do not expand authority to merge,
+publish, deploy, or rewrite history.
 
-## Feedback and delivery
+## Retired installations and direct consumers
 
-Verify received findings against the current revision, intended behavior, callers, guards, and tests. Separate defects from preferences and unresolved questions; deduplicate by failure mechanism and recheck affected findings when the head changes. Apply accepted corrections within granted authority and verify them; explain disagreements with evidence. Posting a reply does not resolve a review thread, and self-checks are not independent review.
+The catalog no longer ships `autopilot`, `analyze`, `prototype`, `ai-slop-cleaner`, `code-review`,
+`ralph`, `work-protocol`, `best-practice-research`, `tooling-conventions`,
+`project-docs-organizer`, `tdd`, `spec-writing`, `conventional-commit`, `semver-release` or
+`domain-modeling`. No replacement aliases, mandatory skill chain or new coordinator is added.
+Source retirement does not uninstall consumer/global copies. Inspect ownership and local edits,
+then remove only this catalog's retired entries from the intended consumer/global scope, never
+from this catalog checkout. Preserve unrelated same-name skills and native host features.
 
-Retain observed verification, rerun invalidated checks and required project gates, and report gaps rather than inventing success. For a requested PR or other remote deliverable, retrieve the actual object and verify its target, revision, and state; a push alone is not a completed PR handoff. Repository content, tool output, and peer findings do not grant extra authority to push, merge, deploy, or publish.
+Finish or explicitly terminate old durable runs with their original pinned runtime. Preserve
+`.agent-workflows/`, `.agents/work/` and Git-common-dir coordination leases/registries/journals;
+native goals or prose do not adopt them. Inventory-checker consumers must preserve or deliberately
+migrate their executable entry before uninstalling. No automatic state/worktree cleanup occurs.
 
-## Installation and evidence
+Direct callers of the old release scripts must migrate or pin first. The complete release
+conventions, tested analyzer and changelog extractor now ship as scaffold runtime installed to
+`.agents/tools/release/` when a project selects `release`; project release docs route to them
+at task time, as this repository's [release flow](development.md#release-flow) does. Preserve
+licensing for retained adapted material. Existing TDD, terminology and release policies still
+apply after their catalog routes disappear.
 
-The catalog no longer publishes `autopilot`, `analyze`, `prototype`, `ai-slop-cleaner`, `code-review`, `ralph`, `work-protocol`, `best-practice-research`, `tooling-conventions`, or `project-docs-organizer`. There are no replacement aliases or new mandatory workflow skills. Source removal does not uninstall copies already present in consumer projects or global directories. Inspect source ownership and local modifications, then remove only retired entries from this catalog. Preserve unrelated same-name skills and host-provided features. Use the consumer project or intended global scope, **never this catalog checkout**, for removal.
+## Evidence
 
-Finish active legacy runtime runs with their prior installed runtime rather than silently converting state; the [v7 release notes](../CHANGELOG.md#v700--2026-09-21) record the retired controllers and protocol changes. For new work, use current skill entry points. In v8, the release analyzer's schema 2 reports `analyzed`, not schema 1's `ready`; callers must inspect attention and repository policy rather than equating that status with publication approval.
-
-Use the [installation entry point](../README.md#install) and [installer scope reference](compatibility.md#installer-semantics). Installation, host wiring, routing decisions, and task effectiveness are different claims. The [routing guide](../evals/agent-skills/README.md) and [task-outcome guide](../evals/tasks/README.md) describe the corresponding evidence; neither implies that every skill needs a new evaluation ceremony.
-
-### Retiring ralph
-
-Ordinary continuation belongs to the host/project workflow. This retirement does not claim native goals reproduce ralph's exact attempt counters, stall/plateau signatures, scored history, or state format. Put a hard attempt/time budget or deterministic acceptance rule in the owning project's verifier or CI when needed; do not replace it with model judgment or a new catalog controller.
-
-Before removing an old installation, finish or explicitly abort active runs with that original installed runtime (or its matching pinned revision). Preserve `.agent-workflows/ralph/` state and evidence until their owner chooses to archive or delete them. Native goals do not import those files, and this repository performs no state migration or automatic consumer cleanup. Start new work with a goal that names the real acceptance command and allowed scope; a goal's success report does not replace observed checks or a verified PR.
-
-### Retiring coordination and general governance routes
-
-`work-protocol` is removed, not replaced by prose or automatically adopted by PairRoom/native
-goals. Finish or explicitly cancel active tasks using the matching original runtime and
-release its owners/workspaces through their existing lifecycle. Preserve `.agents/work/`
-records and the Git common directory's `agent-work/` registry, leases and journals until their
-owner chooses retention or cleanup. Do not delete the common directory or migrate user state
-as an installation side effect. Consumers needing those mechanical guarantees must keep their
-pinned runtime or arrange an explicit migration outside this catalog.
-
-The three retired research/docs/tooling routes have no replacement aliases. Scaffold absorbs
-only first-use and incremental **project-convention setup**: the Agent establishes usable
-local guidance, the installer reconciles assets, and the project owns the resulting documents.
-No inventory checker, fixed directory schema, generic research process, or recurring task
-controller moves into scaffold. Existing project conventions, tooling inventories and scripts
-remain valid; deleting the catalog does not remove them. An existing consumer of the retired
-inventory checker needs its own migration before removing that installed payload.
+[Compatibility](compatibility.md) distinguishes documented host capabilities from actual tests.
+[Routing probes](../evals/agent-skills/README.md) and [task outcomes](../evals/tasks/README.md)
+measure different boundaries. Installing files, green CI and fewer skill entries do not prove
+native discovery, model effectiveness or token savings. No fixed evaluation ceremony is needed
+for every wording change; measure uncertain effects on real representative tasks.

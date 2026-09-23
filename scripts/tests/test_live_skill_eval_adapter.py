@@ -54,6 +54,8 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             "best-practice-research": "research", "best-practices-research": "research",
             "tooling-conventions": "tooling-governance", "tooling-governance": "tooling-governance",
             "project-docs-organizer": "documentation-organization", "docs-organizer": "documentation-organization",
+            "tdd": "tdd", "spec-writing": "documentation", "domain-modeling": "domain-modeling",
+            "conventional-commit": "commit", "semver-release": "release",
         }
         for route, workflow in retired.items():
             with self.subTest(route=route):
@@ -157,11 +159,11 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         prompt = self.adapter.make_prompt(
             request,
             "candidate instructions",
-            "spec-writing",
-            ("spec-writing", "tdd"),
+            "agent-scaffold",
+            ("agent-scaffold", "deep-interview"),
         )
-        self.assertIn("spec-writing, tdd", prompt)
-        self.assertIn("preserve_meaning", prompt)
+        self.assertIn("agent-scaffold, deep-interview", prompt)
+        self.assertIn("preserve_layout", prompt)
         self.assertNotIn("decision_depth=compact or full", prompt)
         self.assertNotIn("decision_artifact=none", prompt)
         self.assertNotIn("DO_NOT_LEAK_THIS_SENTINEL", prompt)

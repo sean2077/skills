@@ -114,6 +114,33 @@
       "executable": true
     },
     {
+      "id": "runtime.release-guide",
+      "source": "assets/runtime/release/README.md",
+      "target": ".agents/tools/release/README.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["release"],
+      "executable": false
+    },
+    {
+      "id": "runtime.release-plan",
+      "source": "assets/runtime/release/release-plan.py",
+      "target": ".agents/tools/release/release-plan.py",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["release"],
+      "executable": true
+    },
+    {
+      "id": "runtime.release-changelog",
+      "source": "assets/runtime/release/extract-changelog.py",
+      "target": ".agents/tools/release/extract-changelog.py",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["release"],
+      "executable": false
+    },
+    {
       "id": "seed.skills-readme",
       "source": "assets/scaffold/agents-skills.README.md",
       "target": ".agents/skills/README.md",
@@ -154,6 +181,16 @@
         ".agents/tools/hooks/*.py text eol=lf",
         ".agents/relink-skills.sh text eol=lf",
         ".agents/*.py text eol=lf"
+      ]
+    },
+    {
+      "id": "contract.gitattributes-release",
+      "target": ".gitattributes",
+      "profiles": ["default", "light"],
+      "domains": ["release"],
+      "lines": [
+        ".agents/tools/release/*.py text eol=lf",
+        ".agents/tools/release/*.md text eol=lf"
       ]
     }
   ]

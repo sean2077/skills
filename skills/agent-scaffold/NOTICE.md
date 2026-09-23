@@ -1,15 +1,10 @@
 # Attribution notice
 
-The testing guidance in this `agent-scaffold` skill adapts material from this catalog's
-`tdd` skill, itself based on the TDD skill from `mattpocock/skills`, originally at
-`skills/engineering/tdd/`:
-
-https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd
-
-This adaptation separates project-owned testing quality conventions from explicitly selected
-test-first execution. Other scaffold assets are not derived from that upstream skill.
-
-The upstream work is provided under the following license:
+Testing and terminology guidance is adapted from Matt Pocock's MIT-licensed
+[mattpocock/skills](https://github.com/mattpocock/skills), including
+`skills/engineering/tdd/` and `skills/engineering/domain-modeling/`.
+The catalog entry points were retired; their useful principles are adapted to
+project-owned conventions without imposing a framework or workflow.
 
 MIT License
 

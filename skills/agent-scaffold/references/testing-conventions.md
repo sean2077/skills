@@ -1,6 +1,6 @@
 # Project testing conventions
 
-Use during full project-harness initialization or upgrade, including a read-only preview.
+Use when `testing` is selected for full project-harness initialization or upgrade, including a read-only preview.
 Establish how this project writes trustworthy tests, not just how to launch them. This is
 project guidance work, not a request to implement tests or invoke TDD for every change.
 
@@ -72,3 +72,29 @@ the correct scope/runner, an independent source of expected behavior, the real/d
 the applicable test-first policy and the checks it cannot claim? Inspect or safely execute only
 the affected checks; a command listing, green asset verification or matching headings does not
 prove test effectiveness. Record observed, inspected and unavailable evidence separately.
+
+## Direct observations and design seams
+
+Observe through a public seam. Inspecting a database, filesystem, queue or wire directly is
+correct when that adapter or stored representation is the subject; otherwise it bypasses the
+promised behavior. Avoid production-only test hooks; prefer an existing dependency boundary
+or a small behavior-preserving seam extraction while existing checks stay green.
+
+## Explicit test-first work and difficult boundaries
+
+Preserve the project's selected test-first scopes. When required, observe a failure caused by
+the missing behavior before implementation, rerun the same check after the fix, then refactor
+while green. Compiler/type/schema diagnostics can qualify when they prove the target contract;
+setup errors, zero discovered tests or stale artifacts cannot. No separate TDD installation or
+scaffold invocation is required during ordinary work. Do not manufacture a ceremonial RED for
+a mechanical change whose authoritative verifier is different.
+
+Retain targeted guidance only for risks this project has: coordinate concurrency with clocks,
+barriers or controlled delivery rather than sleeps; preserve minimized regressions and replay
+data for fuzz/property tests; test the supported old/new compatibility window and interrupted
+migrations against relevant engine semantics; inspect security rejection and absence of forbidden
+effects. Characterization records current behavior, not approval of every legacy defect.
+Performance and model-quality thresholds need the project's sampling/baseline policy rather
+than a noisy one-shot assertion. Hardware, ABI, timing and device risks require target evidence;
+host-only tests or simulator results do not certify them. Keep real credentials/production data
+out of fixtures. Use existing test tools; these examples do not authorize installing new ones.
