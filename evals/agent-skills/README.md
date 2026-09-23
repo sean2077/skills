@@ -43,7 +43,7 @@ Routes name shipped skills or `none` for host/project work. Workflow labels desc
 
 ## Decision and safety coverage
 
-The committed `*/suite.json` files own the case inventory. Scaffold probes cover convention selection/adoption, customized upgrades, read-only/runtime-only requests, and ordinary-task non-triggers. Deep-interview probes cover whole-specification and digest approval. Lark probes cover identity, ambiguous/contradictory results, fresh confirmation, CLI gates, untrusted instructions, and file containment.
+The committed `*/suite.json` files own the case inventory. Scaffold probes cover convention selection/adoption, project testing policy, customized upgrades, read-only/runtime-only requests, and ordinary-task non-triggers; retired research/docs/tool vocabulary keeps its workflow label but routes to `none`. Deep-interview probes cover whole-specification and digest approval. Lark probes cover identity, ambiguous/contradictory results, fresh confirmation, CLI gates, untrusted instructions, and file containment.
 
 Negative fixtures reject missing, unsafe, or wrong-typed observations. These checks verify the oracle/protocol and stated decisions, not completed onboarding, actual CLI operations, or live compliance. Ordinary testing, spec writing, terminology, commits, and releases remain host/project routes, not new scaffold triggers.
 

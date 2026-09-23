@@ -1,6 +1,6 @@
 # Repository architecture
 
-This page maps product surfaces and source/generated ownership. [Development](development.md) owns contributor procedures; [compatibility](compatibility.md) owns installer and host evidence.
+This page maps product surfaces, source/generated ownership, and validation ownership. [Development](development.md) owns contributor procedures; [compatibility](compatibility.md) owns installer and host evidence.
 
 ## Product surfaces
 
@@ -12,7 +12,7 @@ This page maps product surfaces and source/generated ownership. [Development](de
 | Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time conventions, read-only version analysis, and changelog extraction, installed for the selected `release` domain. |
 | Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer tests, and release automation. |
 
-The catalog is consumed directly; it has no generated `.claude/skills` or `.codex/skills` copies. `.agents/skills/` holds project skills, including `skill-eval`; `.claude/skills/` projects only those project skills. Project `skill-verifier` reviews source and captured evidence, with [execution and delivery owned by its parent](development.md#optional-skill-verifier). Neither evaluator is installed for catalog/scaffold consumers.
+The catalog is consumed directly; it has no generated `.claude/skills` or `.codex/skills` copies. `.agents/skills/` holds project skills, including `skill-eval`; `.claude/skills/` projects only those project skills. Project subagent `skill-verifier` reviews source and captured evidence, with [execution and delivery owned by its parent](development.md#optional-skill-verifier). Neither evaluator is installed for catalog/scaffold consumers.
 
 ## Published skill layout
 
