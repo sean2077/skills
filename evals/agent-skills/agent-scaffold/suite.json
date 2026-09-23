@@ -383,7 +383,7 @@
     {
       "id": "positive-first-choice",
       "kind": "positive",
-      "prompt": "Initialize the whole Agent scaffold. No .agents/scaffold.json exists, and I have not selected guidance domains.",
+      "prompt": "Initialize the whole Agent scaffold. AGENTS.md has no agent-scaffold domains marker, and I have not selected guidance domains.",
       "metadata": {
         "expected_behavior": {
           "baseline": {
@@ -404,7 +404,7 @@
     {
       "id": "positive-legacy-choice",
       "kind": "positive",
-      "prompt": "Upgrade the older installed scaffold. It has a profile marker and existing docs but no .agents/scaffold.json. No domain choice was supplied.",
+      "prompt": "Upgrade the older installed scaffold. It has a profile marker and existing docs but no domains marker or legacy .agents/scaffold.json. No domain choice was supplied.",
       "metadata": {
         "expected_behavior": {
           "baseline": {
@@ -445,7 +445,7 @@
     {
       "id": "positive-recorded-choice",
       "kind": "positive",
-      "prompt": "Update the scaffold. .agents/scaffold.json contains schema_version 1 and domains [docs,testing,git]; the record is valid. Release and other domains were excluded. Current guides were renamed.",
+      "prompt": "Update the scaffold. The AGENTS.md managed block records agent-scaffold:domains=docs,testing,git; the record is valid. Release and other domains were excluded. Current guides were renamed.",
       "metadata": {
         "expected_behavior": {
           "baseline": {

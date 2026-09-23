@@ -15,8 +15,8 @@ Apply and upgrade manage only `<!-- agent-scaffold:start ... end -->`:
 - An existing file without markers receives an appended block.
 - Unbalanced, duplicated, or reversed markers abort before mutation.
 
-Keep project-authored guidance outside the markers. The optional terminology section follows the saved convention selection; a recorded exclusion
-omits only that scaffold-owned section, not project-authored definitions or policy. The inner worktree boundary belongs to the installer; `--profile light` removes that policy. The managed template uses one paragraph, list item, table row, or command per source line. Project-owned prose is not reflowed.
+Keep project-authored guidance outside the markers. The block records the convention selection in its domains marker. The optional terminology section and the convention-guide routes follow that selection; a recorded exclusion
+omits only those scaffold-owned lines, not project-authored definitions or policy. The inner worktree boundary belongs to the installer; `--profile light` removes that policy. The managed template uses one paragraph, list item, table row, or command per source line. Project-owned prose is not reflowed.
 
 When only a real `CLAUDE.md` exists, apply adopts its prose into `AGENTS.md` and creates the link. See [retrofit](retrofit.md#adopt-an-existing-claudemd) for conflicting sources and other adoption cases.
 

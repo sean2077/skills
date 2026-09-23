@@ -6,37 +6,33 @@ and route from the Agent entry point. Later tasks use that guidance and native t
 
 ## Git and delivery
 
-Inspect project instructions, contributor docs, hook/configuration and relevant history. Record
-whether conventions apply to every commit or the final squash title; retain type/scope language,
-summary language, signing, required trailers and attribution choices. Do not infer a mandatory
-format from a few commits or impose Conventional Commits on every project. Prefer an existing
-host/project setting for attribution rather than repeating a host-specific command recipe.
+The installed [commit and delivery guide](../assets/conventions/git.md)
+(`.agents/conventions/git.md`, routed from the managed block) carries the generic daily rules:
+scoped staging and cached-diff review, hook-changed snapshots, not continuing someone else's Git
+operation, and the commit/push/PR/merge/release boundaries. Do not restate them in project docs.
 
-Use native commit/review tools for ordinary Git work. Preserve the small boundaries not guaranteed
-by a generic “commit” request: a named file does not authorize unrelated hunks; inspect the actual
-cached patch; never silently include or unstage pre-existing unrelated work. Use an established
-safe scoped-index workflow or stop at the ambiguous scope. Existing hooks may change the staged
-snapshot: inspect material post-commit differences instead of assuming the reviewed tree survived.
-Do not impose a universal one-commit count, attached-HEAD ban or fixed branch/worktree location.
-Respect host-managed detached worktrees; establish a durable branch/retention path for delivery.
-Do not continue somebody else's merge/rebase or rewrite history as an ordinary commit side effect.
-
-Record the requested completion boundary: local commit, branch, PR/MR or another established
-handoff. A commit does not authorize push/merge/release, while a PR request is not complete at a
-local commit. Verify the real object, target and reviewed revision; preserve incomplete verification.
-Do not install commit linting, change hooks/branch protection, or mutate global user configuration
-merely while adopting conventions. Keep credentials and shell-sensitive message data out of syntax.
+Setup records the project facts they defer to. Inspect project instructions, contributor docs,
+hook/configuration and relevant history. Record whether conventions apply to every commit or the
+final squash title; retain type/scope language, summary language, signing, required trailers and
+attribution choices. Do not infer a mandatory format from a few commits or impose Conventional
+Commits on every project. Prefer an existing host/project setting for attribution rather than
+repeating a host-specific command recipe. Do not impose a universal one-commit count,
+attached-HEAD ban or fixed branch/worktree location; respect host-managed detached worktrees
+and establish a durable branch/retention path for delivery. Record the project's requested
+completion boundary (local commit, branch, PR/MR or another handoff). Do not install commit
+linting, change hooks/branch protection, or mutate global user configuration merely while
+adopting conventions.
 
 ## Release
 
 When `release` is selected, the installer maintains `.agents/tools/release/`: the complete
 release conventions (`README.md`: version selection, version files, notes, prerelease promotion,
 publication and completion evidence) plus the read-only analyzer and changelog extractor. That
-page is the task-time reference, not setup reading. Do not load it in full during setup, copy it
-into project docs, or route to it from resident `AGENTS.md` content. Instead, give the project's
-own release documentation one direct route, for example “before any version bump, tag or
-publication, read `.agents/tools/release/README.md`”, next to the project-specific facts below.
-Those facts win over the page's generic defaults.
+page is the task-time reference, not setup reading: do not load it in full during setup or copy
+it into project docs. The managed block carries one route to it; the procedure itself never
+becomes resident text. Give the project's own release documentation the same direct route, for
+example “before any version bump, tag or publication, read `.agents/tools/release/README.md`”,
+next to the project-specific facts below. Those facts win over the page's generic defaults.
 
 Identify stable relationships: version authorities (including per-package/release-line scope),
 complete tag format, release-notes authority, signing requirements, supported release branch,

@@ -9,7 +9,8 @@ This page owns the map of product surfaces, source/generated ownership, and vali
 | Published skill catalog | `skills/<name>/` | Installers consume independently installable payloads containing only regular files and directories. |
 | Catalog metadata | `.claude-plugin/plugin.json` and README catalog rows | Installer grouping and human navigation, not universal host certification or a native Codex plugin package. |
 | Project Agent harness | `.agents/` | This repository's Claude Code and Codex project layers; `.claude/` and `.codex/` hold projections or host configuration. |
-| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time release conventions, read-only version analysis and changelog extraction; installed only for the selected `release` domain, never resident. |
+| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time release conventions, read-only version analysis and changelog extraction; installed only for the selected `release` domain. Only its one-line managed route is resident. |
+| Convention guides | `skills/agent-scaffold/assets/conventions/` → `.agents/conventions/` | Generic daily guidance per selected domain, routed from the managed `AGENTS.md` block and byte-checked by verify; project docs hold project facts. |
 | Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer smoke tests, and release automation. |
 
 `skills/` is the product and is consumed directly: catalog skills have no generated `.claude/skills` or `.codex/skills` projections, and `.claude/skills/` carries only project skills. `.agents/skills/` holds those project skills, including `skill-eval`, and is not a second catalog copy. The opt-in project subagent `skill-verifier` reviews source and captured evidence. The parent owns execution, fixes, and delivery; see [its use and limits](development.md#optional-skill-verifier). Neither project component is installed for catalog/scaffold consumers.
@@ -43,18 +44,21 @@ Discovery metadata contributes routing context; selected instructions and resour
 ## Project-convention ownership
 
 First full setup or legacy migration offers all convention domains and asks once for
-exclusions. `.agents/scaffold.json` stores the accepted explicit list; it is not a layout
-registry or a semantic-completion record. Later updates reuse it without re-asking and do not
-silently enable new domains. Runtime-only calls without a selection keep it pending. The
-optional managed terminology section and the task-time release runtime follow the choice; core
-safety and existing project rules remain in force. See [selection](../skills/agent-scaffold/references/onboarding-selection.md).
+exclusions. A domains marker in the managed `AGENTS.md` block stores the accepted explicit list
+(upgrade migrates a legacy `.agents/scaffold.json` into it); it is not a layout registry or a
+semantic-completion record. Later updates reuse it without re-asking and do not silently enable
+new domains. Runtime-only calls without a selection keep it pending. The convention guides and
+their managed routes, the optional managed terminology section and the task-time release runtime
+follow the choice; core safety and existing project rules remain in force. See [selection](../skills/agent-scaffold/references/onboarding-selection.md).
 
 A full `agent-scaffold` initialization or upgrade has two responsibilities: deterministic
 asset reconciliation, and Agent-authored project guidance. The latter adopts actual entry
 points, layouts, commands, test/specification quality, terminology, Git/release rules and source ownership before filling selected gaps.
-New guidance is project-owned, not managed-template content. Later runs preserve renamed,
-merged or deliberately removed guides and repair confirmed drift in their current homes.
-The managed AGENTS block does not grow, and no layout registry or new controller is added.
+Generic daily rules ship as the installed convention guides, so later Agents find them without
+the catalog; the Agent adds only the project facts they defer to. New project guidance is
+project-owned, not managed-template content. Later runs preserve renamed, merged or deliberately
+removed guides and repair confirmed drift in their current homes. The managed AGENTS block grows
+only by one route per selected domain, and no layout registry or new controller is added.
 
 Installer reports explicitly scope `ok` to `harness-assets` with `project_guidance` set to
 `not-assessed`. Semantic coverage is evaluated separately; see the installed

@@ -25,9 +25,16 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = Path(__file__).with_name("managed-assets.json")
 PROFILES = {"default", "light"}
 GUIDANCE_DOMAINS = ("docs", "tools", "testing", "specs", "terminology", "git", "release", "environment")
-GUIDANCE_FILE = ".agents/scaffold.json"
+# The accepted selection lives in the managed AGENTS.md block, beside the profile marker.
+SELECTION_RECORD = "AGENTS.md"
+# Pre-marker releases saved it here; upgrade moves it into the block and removes the file.
+LEGACY_GUIDANCE_FILE = ".agents/scaffold.json"
+DOMAINS_MARKER = "agent-scaffold:domains="
 TERMINOLOGY_START = "<!-- agent-scaffold:terminology:start -->"
 TERMINOLOGY_END = "<!-- agent-scaffold:terminology:end -->"
+CONVENTIONS_START = "<!-- agent-scaffold:conventions:start -->"
+CONVENTIONS_END = "<!-- agent-scaffold:conventions:end -->"
+DOMAIN_LINE = re.compile(r"[ \t]*<!-- agent-scaffold:domain=([a-z]+) -->")
 STRATEGIES = {"copy", "seed", "merge-json", "managed-block", "prepend-block"}
 MANAGED_HOOK_FILES = (
     "trunk_edit_guard.sh",
@@ -57,6 +64,14 @@ REQUIRED_ASSETS = {
     "runtime.release-guide": ("copy", ".agents/tools/release/README.md"),
     "runtime.release-plan": ("copy", ".agents/tools/release/release-plan.py"),
     "runtime.release-changelog": ("copy", ".agents/tools/release/extract-changelog.py"),
+    "convention.docs": ("copy", ".agents/conventions/docs.md"),
+    "convention.tools": ("copy", ".agents/conventions/tools.md"),
+    "convention.testing": ("copy", ".agents/conventions/testing.md"),
+    "convention.specs": ("copy", ".agents/conventions/specs.md"),
+    "convention.terminology": ("copy", ".agents/conventions/terminology.md"),
+    "convention.git": ("copy", ".agents/conventions/git.md"),
+    "convention.environment": ("copy", ".agents/conventions/environment.md"),
+    "convention.notice": ("copy", ".agents/conventions/NOTICE.md"),
 }
 EOL_START = b"# agent-scaffold:line-endings:start"
 EOL_END = b"# agent-scaffold:line-endings:end"
@@ -65,6 +80,7 @@ WORKTREE_END = "<!-- agent-scaffold:worktree:end -->"
 WORKTREE_ONLY = "<!-- agent-scaffold:worktree-only -->"
 MANAGED_DIRECTORY_BOUNDARIES = (
     ".agents",
+    ".agents/conventions",
     ".agents/skills",
     ".agents/subagents",
     ".agents/tools",
@@ -132,16 +148,16 @@ def parse_domains(value: str) -> List[str]:
     return [item for item in GUIDANCE_DOMAINS if item in values]
 
 
-def load_guidance_selection(target: Path) -> Optional[List[str]]:
-    """Read accepted scope without following aliases or treating damage as first use."""
+def load_legacy_selection(target: Path) -> Optional[List[str]]:
+    """Read a pre-marker .agents/scaffold.json without following aliases or treating damage as first use."""
     parent = target / ".agents"
-    path = target / GUIDANCE_FILE
+    path = target / LEGACY_GUIDANCE_FILE
     if os.path.lexists(str(parent)) and (parent.is_symlink() or not parent.is_dir()):
-        raise CoreError(GUIDANCE_FILE + ": .agents must be a real directory")
+        raise CoreError(LEGACY_GUIDANCE_FILE + ": .agents must be a real directory")
     if not os.path.lexists(str(path)):
         return None
     if path.is_symlink() or not path.is_file():
-        raise CoreError(GUIDANCE_FILE + ": selection must be a regular file")
+        raise CoreError(LEGACY_GUIDANCE_FILE + ": selection must be a regular file")
     def unique(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
         value: Dict[str, Any] = {}
         for key, item in pairs:
@@ -165,24 +181,73 @@ def load_guidance_selection(target: Path) -> Optional[List[str]]:
             raise ValueError("domains must be a unique array of known domain names")
         return [item for item in GUIDANCE_DOMAINS if item in values]
     except (OSError, UnicodeError, ValueError, RecursionError) as exc:
-        raise CoreError(GUIDANCE_FILE + ": invalid selection; preserve and repair it, not re-onboard ({0})".format(exc))
+        raise CoreError(LEGACY_GUIDANCE_FILE + ": invalid selection; preserve and repair it, not re-onboard ({0})".format(exc))
+
+
+def load_marker_selection(target: Path) -> Optional[List[str]]:
+    """Read the domains marker from the managed block; an absent marker is no record.
+
+    A missing, unreadable or malformed AGENTS.md is reported by the contract checks, so it
+    yields no record here. A damaged domains marker inside a valid block is an error, never
+    a first-use signal.
+    """
+    agents = target / SELECTION_RECORD
+    if agents.is_symlink() or not agents.is_file() or marker_state(agents) != "valid":
+        return None
+    try:
+        block = extract_managed_block(agents.read_text(encoding="utf-8")) or ""
+    except (OSError, UnicodeError):
+        return None
+    if DOMAINS_MARKER not in block:
+        return None
+    marks = re.findall(r"^<!-- " + re.escape(DOMAINS_MARKER) + r"([^\n]*) -->$", block, re.MULTILINE)
+    error = SELECTION_RECORD + ": invalid domains marker; preserve and repair it, not re-onboard"
+    if len(marks) != 1 or block.count(DOMAINS_MARKER) != 1:
+        raise CoreError(error + " (expected exactly one marker line)")
+    if marks[0] == "none":
+        return []
+    values = marks[0].split(",")
+    # "all" is never written: a later upstream domain must not become selected silently.
+    if (not all(values) or len(values) != len(set(values))
+            or any(item not in GUIDANCE_DOMAINS for item in values)):
+        raise CoreError(error + " (expected none or unique known domain names)")
+    return [item for item in GUIDANCE_DOMAINS if item in values]
+
+
+def selection_record(target: Path) -> Tuple[Optional[List[str]], str]:
+    """The accepted selection and where it is recorded; the marker and a leftover legacy file must agree."""
+    marker = load_marker_selection(target)
+    legacy = load_legacy_selection(target)
+    if marker is not None and legacy is not None and marker != legacy:
+        raise CoreError("{0} and {1} record different selections; preserve both and resolve the intended scope".format(
+            SELECTION_RECORD, LEGACY_GUIDANCE_FILE))
+    if marker is None and legacy is not None:
+        return legacy, LEGACY_GUIDANCE_FILE
+    return marker, SELECTION_RECORD
+
+
+def load_guidance_selection(target: Path) -> Optional[List[str]]:
+    return selection_record(target)[0]
 
 
 def guidance_selection(target: Path, requested: Optional[str] = None) -> Dict[str, Any]:
-    saved = load_guidance_selection(target)
+    saved, path = selection_record(target)
     domains = parse_domains(requested) if requested is not None else saved
     return {"status": "proposed" if requested is not None else ("pending" if saved is None else "recorded"),
-            "path": GUIDANCE_FILE, "domains": domains,
+            "path": path, "domains": domains,
             "defaults": list(GUIDANCE_DOMAINS) if saved is None else None}
 
 
-def save_guidance_selection(target: Path, requested: str) -> None:
-    # Validate existing state even for an explicit replacement; never overwrite a corrupt
-    # or foreign record as if it were a fresh selection. No prompt or stdin read here.
-    saved = load_guidance_selection(target)
-    domains = parse_domains(requested)
-    if saved != domains:
-        write_json(target / GUIDANCE_FILE, {"schema_version": 1, "domains": domains})
+def retire_legacy_selection(target: Path) -> bool:
+    """Remove a pre-marker selection file once the managed block records the selection."""
+    path = target / LEGACY_GUIDANCE_FILE
+    load_legacy_selection(target)  # validates; a damaged record is preserved for repair
+    if not os.path.lexists(str(path)):
+        return False
+    if load_marker_selection(target) is None:
+        raise CoreError(LEGACY_GUIDANCE_FILE + ": cannot retire before AGENTS.md records the selection")
+    path.unlink()
+    return True
 
 
 def json_text(value: Any) -> str:
@@ -649,17 +714,41 @@ def marker_state(path: Path) -> str:
     return "invalid"
 
 
+def _render_conventions(text: str, domains: Optional[Sequence[str]]) -> str:
+    """Keep only the selected domains' guide routes; an unselected or empty section disappears."""
+    pattern = re.escape(CONVENTIONS_START) + r"\n([\s\S]*?)" + re.escape(CONVENTIONS_END) + r"\n?"
+
+    def section(match: "re.Match[str]") -> str:
+        kept: List[str] = []
+        routes = 0
+        for line in match.group(1).splitlines(True):
+            domain = DOMAIN_LINE.search(line)
+            if domain is None:
+                kept.append(line)
+                continue
+            if domain.group(1) not in GUIDANCE_DOMAINS:
+                raise CoreError("managed template routes unknown domain: " + domain.group(1))
+            if domains is not None and domain.group(1) in domains:
+                kept.append(DOMAIN_LINE.sub("", line))
+                routes += 1
+        return "".join(kept) if routes else ""
+
+    return re.sub(pattern, section, text)
+
+
 def render_agents_template(source: Path, profile: str, domains: Optional[Sequence[str]] = None) -> str:
     try:
         text = source.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise CoreError("{0}: cannot read UTF-8 text ({1})".format(source, exc))
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     if domains is not None and "terminology" not in domains:
         text = re.sub(re.escape(TERMINOLOGY_START) + r"[\s\S]*?" + re.escape(TERMINOLOGY_END) + r"\n?", "", text)
     text = text.replace(TERMINOLOGY_START + "\n", "").replace(TERMINOLOGY_END + "\n", "")
+    text = _render_conventions(text, domains)
     output: List[str] = []
     skip = False
-    for line in text.replace("\r\n", "\n").replace("\r", "\n").splitlines(True):
+    for line in text.splitlines(True):
         if WORKTREE_START in line:
             skip = profile == "light"
             continue
@@ -670,7 +759,12 @@ def render_agents_template(source: Path, profile: str, domains: Optional[Sequenc
             continue
         if not skip:
             output.append(re.sub(r"[ \t]*" + re.escape(WORKTREE_ONLY), "", line))
-    return "".join(output).replace("agent-scaffold:profile=default", "agent-scaffold:profile=" + profile)
+    rendered = "".join(output).replace("agent-scaffold:profile=default", "agent-scaffold:profile=" + profile)
+    if domains is not None:
+        profile_line = "<!-- agent-scaffold:profile={0} -->\n".format(profile)
+        record = ",".join(item for item in GUIDANCE_DOMAINS if item in domains) or "none"
+        rendered = rendered.replace(profile_line, profile_line + "<!-- {0}{1} -->\n".format(DOMAINS_MARKER, record), 1)
+    return rendered
 
 
 def select_profile(target: Path, source: Path) -> str:
@@ -860,9 +954,10 @@ def report(mode: str, target: Path, profile: str, checks: List[Dict[str, Any]], 
     try:
         selection = guidance_selection(target, domains)
     except CoreError as exc:
-        selection = {"status": "invalid", "path": GUIDANCE_FILE, "domains": None, "defaults": None}
+        path = LEGACY_GUIDANCE_FILE if str(exc).startswith(LEGACY_GUIDANCE_FILE) else SELECTION_RECORD
+        selection = {"status": "invalid", "path": path, "domains": None, "defaults": None}
         checks = checks + [check_record("guidance.selection", "attention" if mode == "plan" else "fail",
-                                       GUIDANCE_FILE, "repair the saved selection without changing its intent", str(exc))]
+                                       path, "repair the saved selection without changing its intent", str(exc))]
     return {
         "schema_version": SCHEMA_VERSION,
         "scope": "harness-assets",
@@ -979,6 +1074,9 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Op
         selected = guidance_selection(target, domains)["domains"]
     except CoreError:
         return report("plan", target, profile, checks, "apply", domains)
+    if os.path.lexists(str(target / LEGACY_GUIDANCE_FILE)):
+        checks.append(check_record("guidance.legacy-record", "refresh", LEGACY_GUIDANCE_FILE, None,
+                                   "record the selection in the AGENTS.md managed block, then remove this file"))
     contract = asset_by_id(manifest, "contract.agents")
     agents = target / contract["target"]
     contract_source = SKILL_DIR / contract["source"]
@@ -1293,6 +1391,10 @@ def build_verify(
         selected = load_guidance_selection(target)
     except CoreError:
         return report("verify", target, profile, checks, None)
+    if os.path.lexists(str(target / LEGACY_GUIDANCE_FILE)):
+        checks.append(check_record("guidance.legacy-record", "fail", LEGACY_GUIDANCE_FILE,
+                                   "run agent-scaffold upgrade to move the selection into AGENTS.md",
+                                   "a pre-marker selection file remains"))
     for item in active_assets(manifest, profile, selected):
         if item["strategy"] != "copy":
             continue
@@ -1511,7 +1613,11 @@ def command_hooks(args: argparse.Namespace) -> int:
 
 def command_agents(args: argparse.Namespace) -> int:
     if args.agents_command == "render":
+        # Validate the current record even for an explicit replacement; never overwrite a
+        # damaged or conflicting selection as if it were a fresh one. No prompt or stdin read.
         domains = load_guidance_selection(Path(args.target)) if args.target else None
+        if args.domains is not None:
+            domains = parse_domains(args.domains)
         rendered = render_agents_template(Path(args.source), args.profile, domains)
         sys.stdout.buffer.write(rendered.encode("utf-8"))
         return 0
@@ -1619,6 +1725,7 @@ def build_parser() -> argparse.ArgumentParser:
     agents_render.add_argument("--source", required=True)
     agents_render.add_argument("--profile", choices=sorted(PROFILES), required=True)
     agents_render.add_argument("--target")
+    agents_render.add_argument("--domains")
 
     files = subparsers.add_parser("files")
     files_sub = files.add_subparsers(dest="files_command", required=True)
@@ -1636,8 +1743,9 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--domains")
 
     guidance = subparsers.add_parser("guidance")
-    guidance.add_argument("--target", required=True)
-    guidance.add_argument("--set", required=True)
+    guidance_sub = guidance.add_subparsers(dest="guidance_command", required=True)
+    guidance_retire = guidance_sub.add_parser("retire-legacy")
+    guidance_retire.add_argument("--target", required=True)
 
     report_parser = subparsers.add_parser("report")
     report_sub = report_parser.add_subparsers(dest="report_command", required=True)
@@ -1661,7 +1769,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             sys.stdout.buffer.write((select_profile(Path(args.target), source) + "\n").encode("utf-8"))
             return 0
         if args.command == "guidance":
-            save_guidance_selection(Path(args.target).resolve(), args.set)
+            if retire_legacy_selection(Path(args.target).resolve()):
+                print("[harness] selection moved into the AGENTS.md managed block; removed " + LEGACY_GUIDANCE_FILE)
             return 0
         if args.command == "assets":
             return command_assets(args)

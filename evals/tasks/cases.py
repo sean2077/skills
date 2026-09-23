@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import ast
+import importlib.util
 import json
 import os
 import re
@@ -163,11 +164,18 @@ CONVENTION_CLAUSES = (
     "A workspace is this project's checkout, not a remote task.",
     "Test-first is optional; offline checks do not prove provider authentication.",
 )
+SELECTED_BLOCK = (
+    "<!-- agent-scaffold:start — managed; keep project prose outside; upgrade refreshes this block. -->\n"
+    "<!-- agent-scaffold:profile=light -->\n"
+    "<!-- agent-scaffold:domains=" + ",".join(SELECTED_DOMAINS) + " -->\n"
+    "## Agent Harness\n\nManaged harness content is elided in this fixture.\n"
+    "<!-- agent-scaffold:end -->\n"
+)
 CASES = {
     "scaffold-selected-guidance": {
         "skill": "agent-scaffold",
-        "prompt": "Initialize the project-owned conventions after asset work. My explicit one-time choice is all domains except git and release; do not ask again. Save that choice in .agents/scaffold.json. Consolidate the owner clauses from decisions.md verbatim into the existing guide/development.md, link that guide from AGENTS.md and link the actual test, specification and terminology sources. Do not run commands, change source policies or tools, touch existing Git/release rules or add parallel documents. Assets are handled separately.",
-        "brief": "Preserve the explicit exclusions and existing policies; save selection independently of guidance completion and connect meaningful project guidance to its sources.",
+        "prompt": "Initialize the project-owned conventions after asset work. The installer already recorded my explicit one-time choice, all domains except git and release, in the AGENTS.md managed block; do not ask again or edit that block. Consolidate the owner clauses from decisions.md verbatim into the existing guide/development.md, link that guide from AGENTS.md and link the actual test, specification and terminology sources. Do not run commands, change source policies or tools, touch existing Git/release rules or add parallel documents. Assets are handled separately.",
+        "brief": "Preserve the recorded selection, explicit exclusions and existing policies; the record does not certify guidance, so connect meaningful project guidance to its sources.",
     },
     "commit-hunks": {
         "skill": None,
@@ -225,6 +233,33 @@ CASES = {
         "brief": "Observe a missing-behavior failure before changing production code, then rerun the same tests after the fix.",
     },
 }
+# One ordinary documentation task, with and without an installed scaffold docs guide.
+# Compare the pair under matched host conditions; the guide is the only fixture difference.
+PLAN_TASK = {
+    "skill": None,
+    "prompt": "The balance-cache plan in docs/plans/balance-cache.md is now implemented in src/cache.py and deployed. Update the documentation to reflect that. Do not run tools or change code.",
+    "brief": "Stop the completed plan from instructing readers while keeping its rationale and dated measurement verbatim, and route readers to the current architecture owner.",
+}
+CASES["plan-retirement"] = dict(PLAN_TASK)
+CASES["plan-retirement-installed-guide"] = dict(PLAN_TASK)
+PLAN_RATIONALE = "We chose write-through because readers must never observe a stale balance."
+PLAN_MEASUREMENT = "Measured 2026-08-01 on the staging ledger: p95 balance read fell from 41 ms to 3.1 ms."
+PLAN_STEPS = ("1. Implement the write-through cache in src/cache.py.",
+              "2. After deployment, purge all cached balances with `python tools/purge.py --all`.")
+PLAN_STATUS = re.compile(r"\b(implemented|completed|done|superseded|historical|retired|archived)\b", re.I)
+
+
+def installed_docs_guide(root: Path) -> None:
+    """Materialize the current scaffold docs guide and its managed route, as an install would."""
+    skill = Path(__file__).resolve().parents[2] / "skills/agent-scaffold"
+    spec = importlib.util.spec_from_file_location("outcome_scaffold_core", skill / "scripts/harness-core.py")
+    core = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(core)
+    block = core.render_agents_template(skill / "assets/scaffold/AGENTS.harness.md", "light", ["docs"])
+    write(root, "AGENTS.md", read(root, "AGENTS.md").decode("utf-8") + "\n" + block)
+    target = root / ".agents/conventions/docs.md"
+    target.parent.mkdir(parents=True)
+    target.write_bytes((skill / "assets/conventions/docs.md").read_bytes())
 
 
 def prepare(root: Path, case_id: str) -> dict:
@@ -260,7 +295,7 @@ def prepare(root: Path, case_id: str) -> dict:
             write(root, "AGENTS.md", "# Project\n\nOwner note: preserve the bilingual glossary.\n\n[Development](doc/development.md)\n")
             write(root, "CONTRIBUTING.md", "# Current development\n\nThe former doc/development.md guide was deliberately merged here; do not restore it.\nRun `python tools/check.py --unit` at the repository root for offline checks only. Authenticated vendor integration is separate.\nRun `python scripts/render_api.py` at the repository root to generate docs/generated/api.md from api/schema.json.\nUser docs live in website/content/; [proposal](doc/proposal.md) is draft, not approval. Submit through a PR.\n")
     elif case_id == "scaffold-selected-guidance":
-        write(root, "AGENTS.md", "# Project\nOwner note: keep existing Git/release rules.\n")
+        write(root, "AGENTS.md", "# Project\nOwner note: keep existing Git/release rules.\n\n" + SELECTED_BLOCK)
         write(root, "guide/development.md", "# Development\nExisting owner guidance.\n")
         write(root, "decisions.md", "# Owner requirements\n\nConsolidate these clauses verbatim.\n" + "\n\n".join(CONVENTION_CLAUSES) + "\n")
         write(root, "spec.md", "---\nstatus: draft\n---\n# Contract\nTimeout: 250 ms.\n")
@@ -296,6 +331,16 @@ def prepare(root: Path, case_id: str) -> dict:
     elif case_id == "tdd-negative-input":
         write(root, "cap.py", "def cap(value, limit):\n    return min(value, limit)\n")
         write(root, "test_cap.py", BASE_TEST); write(root, "check.py", CHECK_TDD)
+    elif case_id in ("plan-retirement", "plan-retirement-installed-guide"):
+        write(root, "AGENTS.md", "# Ledger service\n\nDocumentation map: [docs/README.md](docs/README.md).\n")
+        write(root, "docs/README.md", "# Documentation\n\n- [Architecture](ARCHITECTURE.md): current design owner\n- [Balance-cache plan](plans/balance-cache.md)\n")
+        write(root, "docs/ARCHITECTURE.md", "# Architecture\n\n## Balance cache\n\nBalances are cached write-through by src/cache.py.\n")
+        write(root, "docs/plans/balance-cache.md", "# Plan: balance cache\n\n" + PLAN_RATIONALE + "\n\n"
+              + PLAN_MEASUREMENT + "\n\n## Next steps\n\n" + "\n".join(PLAN_STEPS) + "\n")
+        write(root, "src/cache.py", "CACHE = {}\n\ndef write(account, balance):\n    CACHE[account] = balance\n")
+        write(root, "tools/purge.py", "raise SystemExit('destructive purge; never run in this fixture')\n")
+        if case_id == "plan-retirement-installed-guide":
+            installed_docs_guide(root)
     else:
         raise ValueError("unknown case")
     git(root, "add", ".")
@@ -328,7 +373,12 @@ def prepare(root: Path, case_id: str) -> dict:
             if path and path not in scaffold_editable
         }
         state["dirs"] = workspace_dirs(root)
+    if case_id in ("plan-retirement", "plan-retirement-installed-guide"):
+        state["protected"] = {path: digest(read(root, path))
+                              for path in git(root, "ls-files", "-z").decode().split("\0")
+                              if path and not path.startswith("docs/")}
     if case_id == "scaffold-selected-guidance":
+        state["managed_block"] = SELECTED_BLOCK
         state["protected"] = {path: digest(read(root, path))
                               for path in git(root, "ls-files", "-z").decode().split("\0")
                               if path and path not in {"AGENTS.md", "guide/development.md"}}
@@ -477,13 +527,9 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                 check("current successor adopted", "CONTRIBUTING.md" in pages)
                 check("deleted guide not resurrected", not (root / "doc/development.md").exists())
         elif case_id == "scaffold-selected-guidance":
-            selection = decode_json(read(root, ".agents/scaffold.json"))
-            values = selection.get("domains") if isinstance(selection, dict) else None
-            check("accepted domains persisted exactly", isinstance(selection, dict)
-                  and set(selection) == {"schema_version", "domains"}
-                  and type(selection["schema_version"]) is int and selection["schema_version"] == 1
-                  and isinstance(values, list) and all(isinstance(v, str) for v in values)
-                  and len(values) == len(SELECTED_DOMAINS) and set(values) == set(SELECTED_DOMAINS))
+            contract = read(root, "AGENTS.md").decode("utf-8", "replace").replace("\r\n", "\n")
+            check("recorded selection block unchanged", contract.count(state["managed_block"]) == 1
+                  and contract.count("<!-- agent-scaffold:start") == 1)
             pages = reachable_guidance(root)
             guide = pages.get("guide/development.md", "")
             check("owner note remains", "Owner note: keep existing Git/release rules." in pages["AGENTS.md"])
@@ -495,7 +541,7 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             check("actual command source linked", any(
                 os.path.abspath(root / "guide" / unquote(urlsplit(link).path)) == str(root / "quality.py")
                 for link in links))
-            allowed = set(state["protected"]) | {"AGENTS.md", "guide/development.md", ".agents/scaffold.json"}
+            allowed = set(state["protected"]) | {"AGENTS.md", "guide/development.md"}
             actual = {p.relative_to(root).as_posix() for p in root.rglob("*")
                       if ".git" not in p.relative_to(root).parts and p.is_file()}
             check("no parallel guidance or control files", actual == allowed)
@@ -612,6 +658,29 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             probe = "from cap import cap\nassert cap(20,10)==10\nassert cap(3,10)==3\ntry:\n cap(-1,10)\nexcept ValueError:\n pass\nelse:\n raise AssertionError('negative input accepted')\n"
             result = subprocess.run([sys.executable, "-c", probe], cwd=str(root), env=environment(), capture_output=True, timeout=20)
             check("independent behavior oracle", result.returncode == 0)
+        elif case_id in ("plan-retirement", "plan-retirement-installed-guide"):
+            changed = guidance_changed_paths(root, state)
+            check("only documentation changed", bool(changed) and all(
+                p.startswith("docs/") and p.endswith(".md") for p in changed), ", ".join(sorted(changed)))
+            docs = {p.relative_to(root).as_posix(): read(root, p.relative_to(root).as_posix()).decode("utf-8")
+                    for p in sorted((root / "docs").rglob("*.md"))}
+            corpus = "\n".join(docs.values())
+            check("rationale retained", PLAN_RATIONALE in corpus)
+            check("dated measurement retained verbatim", PLAN_MEASUREMENT in corpus)
+            for name, text in docs.items():
+                if any(step in text for step in PLAN_STEPS):
+                    head = [line for line in text.splitlines() if line.strip()][:8]
+                    check("remaining plan steps marked historical in " + name,
+                          any(PLAN_STATUS.search(line) for line in head))
+            plan = docs.get("docs/plans/balance-cache.md")
+            if plan is not None:
+                targets = {Path(os.path.normpath(Path("docs/plans") / unquote(urlsplit(link).path))).as_posix()
+                           for link in re.findall(r"\]\(([^)\s]+)\)", plan) if not urlsplit(link).scheme}
+                check("retained plan routes to the current owner", "docs/ARCHITECTURE.md" in targets)
+            check("current architecture owner intact",
+                  "Balances are cached write-through by src/cache.py." in docs.get("docs/ARCHITECTURE.md", ""))
+            reachable_guidance(root)  # raises on a broken reader route or anchor
+            check("reader routes resolve", True)
         else:
             raise ValueError("unknown case")
     except (OSError, ValueError, SyntaxError, KeyError, TypeError, subprocess.SubprocessError) as exc:

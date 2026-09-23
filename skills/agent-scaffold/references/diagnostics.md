@@ -63,14 +63,19 @@ change `ok` or exit-code meanings. The full skill also performs the Agent-owned
 
 All reports include `guidance_selection` with `status`, `path`, `domains` and `defaults`.
 `pending` means no accepted record exists: first full setup or legacy migration must ask once
-for exclusions from the default-all list. `recorded` means reuse the saved array (including
-empty) without asking again. `plan --domains ...` reports `proposed` without writing; the printed
+for exclusions from the default-all list. `recorded` means reuse the saved list (including
+`none`) without asking again; `path` is `AGENTS.md`, or `.agents/scaffold.json` until a legacy
+record is migrated. `plan --domains ...` reports `proposed` without writing; the printed
 apply/upgrade command retains that proposed choice. Malformed/aliased records are `invalid`
 and add an attention/failure check; do not reset or re-onboard them. The `runtime.release-*` and
-`contract.gitattributes-release` checks appear only while `release` is selected (or proposed).
+`contract.gitattributes-release` checks appear only while `release` is selected (or proposed);
+each `convention.<domain>` check, `convention.notice` and `contract.gitattributes-conventions`
+likewise follow their domains. `guidance.legacy-record` reports a leftover `.agents/scaffold.json`:
+`refresh` in plan, `fail` in verify until apply/upgrade moves it into the managed block. A legacy
+file that disagrees with the marker makes the selection `invalid`; preserve both and resolve it.
 
-The record `.agents/scaffold.json` is a project-owned coverage preference, not a layout schema
-or completion assertion. `project_guidance` remains `not-assessed`, even with a valid selection.
+The domains marker in the managed `AGENTS.md` block is a coverage preference, not a layout
+schema or completion assertion. `project_guidance` remains `not-assessed`, even with a valid selection.
 Raw apply/upgrade without a choice stays asset-only until the Agent completes the one-time
 selection and selected guidance. The CLI never blocks on stdin or prompts. See
 [selection](onboarding-selection.md) for explicit updates and interruption behavior.

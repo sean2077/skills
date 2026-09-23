@@ -18,3 +18,4 @@ evals/agent-skills/**/suite.json text eol=lf
 .agents/*.py text eol=lf
 .agents/tools/release/*.py text eol=lf
 .agents/tools/release/*.md text eol=lf
+.agents/conventions/*.md text eol=lf

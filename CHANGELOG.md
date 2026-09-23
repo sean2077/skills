@@ -6,6 +6,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking
+
+- Record the accepted convention selection as a `<!-- agent-scaffold:domains=... -->` marker in the managed `AGENTS.md` block instead of `.agents/scaffold.json`. Apply/upgrade migrates a valid legacy file into the marker and removes it; a legacy file that disagrees with the marker fails closed. Report `guidance_selection.path` is now `AGENTS.md` (or the legacy path until migration), and a leftover legacy file makes verify fail with `guidance.legacy-record` until upgrade.
+
+### Added
+
+- Install each selected domain's generic daily guide as scaffold runtime in `.agents/conventions/` (`docs`, `tools`, `testing`, `specs`, `terminology`, `git`, `environment`), plus the attribution notice for the adapted testing/terminology guidance, and add one managed "Convention guides" route per selected domain, including release. These rules previously lived only in catalog references that later Agents never load, so ordinary tasks lost them unless setup happened to rewrite them into project docs. Verify byte-checks the guides and routes; project docs keep project facts and win where more specific. The setup references now link to the guides instead of repeating them.
+- Add the `plan-retirement` / `plan-retirement-installed-guide` task pair: the same ordinary documentation task with and without the installed docs guide and its route, to measure whether a fresh Agent finds and follows the route. Reference actions test the oracle only.
+
+### Changed
+
+- Allow one resident route to the release conventions in the managed block; the procedure itself stays task-time only.
+
 ## [v9.0.0] — 2026-09-23
 
 ### Breaking

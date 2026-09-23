@@ -15,14 +15,16 @@ native host tools. Establishing conventions once is not a reason to run scaffold
 Full first initialization or migration from an older scaffold offers documentation, tools,
 testing, specifications, terminology, Git/delivery, release and environment guidance by default.
 Ask once which to exclude, unless the current request already supplies the choice. Save the
-accepted list in `.agents/scaffold.json`; future updates reuse it without repeating the question.
+accepted list in the managed `AGENTS.md` block; future updates reuse it without repeating the question.
 Empty means none, not unknown. Missing state remains pending for raw asset-only callers.
 See [one-time selection](../skills/agent-scaffold/references/onboarding-selection.md).
 
 Selecting a domain authorizes guidance within setup scope, not a policy rewrite or side effect.
 Preserve current test-first/coverage rules, glossary owners, commit conventions and publishers.
-The Agent authors useful project-specific guidance outside managed content; subsequent agents
-must find it without the installed catalog or onboarding conversation. Equivalent existing
+Each selected domain's generic daily rules install as `.agents/conventions/<domain>.md` (release:
+`.agents/tools/release/`) with one managed route, so subsequent agents find them without the
+installed catalog or onboarding conversation. The Agent authors only the project-specific
+guidance those guides defer to, outside managed content. Equivalent existing
 coverage can mean no edits, and excluded domains do not lose their existing rules/files.
 
 ## Collaboration, feedback and delivery

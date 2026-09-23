@@ -141,6 +141,78 @@
       "executable": false
     },
     {
+      "id": "convention.docs",
+      "source": "assets/conventions/docs.md",
+      "target": ".agents/conventions/docs.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["docs"],
+      "executable": false
+    },
+    {
+      "id": "convention.tools",
+      "source": "assets/conventions/tools.md",
+      "target": ".agents/conventions/tools.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["tools"],
+      "executable": false
+    },
+    {
+      "id": "convention.testing",
+      "source": "assets/conventions/testing.md",
+      "target": ".agents/conventions/testing.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["testing"],
+      "executable": false
+    },
+    {
+      "id": "convention.specs",
+      "source": "assets/conventions/specs.md",
+      "target": ".agents/conventions/specs.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["specs"],
+      "executable": false
+    },
+    {
+      "id": "convention.terminology",
+      "source": "assets/conventions/terminology.md",
+      "target": ".agents/conventions/terminology.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["terminology"],
+      "executable": false
+    },
+    {
+      "id": "convention.git",
+      "source": "assets/conventions/git.md",
+      "target": ".agents/conventions/git.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["git"],
+      "executable": false
+    },
+    {
+      "id": "convention.environment",
+      "source": "assets/conventions/environment.md",
+      "target": ".agents/conventions/environment.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["environment"],
+      "executable": false
+    },
+    {
+      "id": "convention.notice",
+      "source": "NOTICE.md",
+      "target": ".agents/conventions/NOTICE.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["testing", "terminology"],
+      "executable": false
+    },
+    {
       "id": "seed.skills-readme",
       "source": "assets/scaffold/agents-skills.README.md",
       "target": ".agents/skills/README.md",
@@ -191,6 +263,15 @@
       "lines": [
         ".agents/tools/release/*.py text eol=lf",
         ".agents/tools/release/*.md text eol=lf"
+      ]
+    },
+    {
+      "id": "contract.gitattributes-conventions",
+      "target": ".gitattributes",
+      "profiles": ["default", "light"],
+      "domains": ["docs", "tools", "testing", "specs", "terminology", "git", "environment"],
+      "lines": [
+        ".agents/conventions/*.md text eol=lf"
       ]
     }
   ]

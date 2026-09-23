@@ -199,9 +199,12 @@ python .agents/tools/release/release-plan.py --repo . --release-branch main --js
 
 ## Convention selection coverage
 
-`test_guidance_selection.py` checks missing/legacy versus recorded/all/none state, proposed
-read-only choices, explicit updates, invalid/symlinked input, write failure and unchanged-byte
-reruns. Real installation verifies opt-outs, preservation, and the conditional terminology
-block. A valid selection is a preference record, not proof of finished guidance or an actual
+`test_guidance_selection.py` checks pending versus recorded/all/none markers, proposed
+read-only choices, explicit updates, invalid markers and legacy records, legacy migration and
+conflicts, aliased legacy input and unchanged-byte reruns. Real installation verifies opt-outs,
+preservation, domain-scoped guides and routes, verify rejecting edited guides or removed routes,
+and the conditional terminology block. The `plan-retirement` task pair compares the same
+ordinary docs task with and without the installed docs guide; its reference actions test the
+oracle, not whether a live Agent follows the route. A valid selection is a preference record, not proof of finished guidance or an actual
 human dialogue; decision probes and task fixtures exercise those separate boundaries.
 The CLI never reads stdin, and runtime-only callers must not manufacture an onboarding answer.

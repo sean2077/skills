@@ -26,7 +26,7 @@ contain host projections/configuration, and `CLAUDE.md` links to the lean `AGENT
 - Never hand-edit generated projections or resolve ownership conflicts by overwriting them.
   Reconcile only exact scaffold-owned hook identities.
 - Newly authored project guidance belongs to the project, outside the managed AGENTS block.
-  Do not expand that block with generic research, docs/tool governance, or task controllers.
+  That block holds harness rules and guide routes only; never add project facts or controllers.
 - Keep repository EOL defaults in `.gitattributes`; preserve project exceptions and existing
   `.editorconfig`. Installation never renormalizes, stages, or rewrites unrelated user files.
 - Existing guidance is an input, not untouchable: repair confirmed drift within scope without
@@ -63,8 +63,9 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
    of demanding a new approval round for every routine, already authorized step.
 4. For an authorized initialization/upgrade, run the indicated mutating mode. Then **write or
    reconcile the selected missing project guidance** in its existing homes, and link it from the Agent
-   entry point. Respect an explicitly runtime-only request. Do not stop at suggestions or copy
-   this skill's manual into the target; choose the minimum useful project-specific additions.
+   entry point. Respect an explicitly runtime-only request; do not stop at suggestions. The
+   installer ships and routes each selected domain's generic rules (`.agents/conventions/`,
+   `.agents/tools/release/`); add only the project facts they defer to, never a copy of them.
 5. Verify harness assets with the same profile. Separately walk a new-Agent reader task using
    only the resulting entry points: find the applicable docs, real commands/cwd/effects,
    selected domain conventions, generated-source owners, verification limits, and

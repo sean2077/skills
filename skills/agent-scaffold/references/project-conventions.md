@@ -44,7 +44,10 @@ Adopt responsibility by purpose **and scope**, not one globally selected docs/to
 
 Use existing homes and equivalent guidance before adding content. A complete mature project
 may need only links, or no changes. A new project may need one short section, not one file per
-row below. Prefer facts that a new Agent cannot infer reliably over generic advice.
+row below. Prefer facts that a new Agent cannot infer reliably over generic advice: the generic
+daily rules for each selected domain already ship as `.agents/conventions/<domain>.md` (release:
+`.agents/tools/release/README.md`), routed from the managed block. This table covers the
+project facts those guides defer to.
 
 | Coverage to establish | Useful project-specific content |
 |---|---|
@@ -73,10 +76,12 @@ An explicitly runtime-only update remains runtime-only. A layout migration, new 
 changed permission model, or destructive cleanup is a separate scope decision, not an
 implicit part of installation. Preserve unrelated dirty/staged work and local overrides.
 
-Keep the managed AGENTS block unchanged by project customization. Put high-frequency entries
-and non-obvious local limits in project-owned prose outside it; link deeper guidance from
-there. The new Agent must not need this installed skill or the onboarding conversation to
-find project instructions. Do not copy all these principles into its resident context.
+Keep the managed AGENTS block unchanged by project customization; it already routes each
+selected domain to its installed generic guide. Put high-frequency project entries and
+non-obvious local limits in project-owned prose outside it; link deeper guidance from there. The
+new Agent must not need this installed skill or the onboarding conversation to find project
+instructions. Do not copy these principles or the installed guides into project docs; add only
+the project-specific facts they defer to.
 
 ## Upgrade by current ownership and coverage
 
