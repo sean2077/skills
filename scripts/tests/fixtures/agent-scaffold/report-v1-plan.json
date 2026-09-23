@@ -4,7 +4,7 @@
   "project_guidance": "not-assessed",
   "guidance_selection": {
     "status": "pending",
-    "path": ".agents/scaffold.json",
+    "path": "AGENTS.md",
     "domains": null,
     "defaults": [
       "docs",

@@ -208,7 +208,9 @@ validate_agents_markers() {
 render_agents_template() {
   local source
   source="$SKILL_DIR/$(asset_source contract.agents)"
-  run_core agents render --source "$source" --profile "$PROFILE" --target "$TARGET"
+  local args=(agents render --source "$source" --profile "$PROFILE" --target "$TARGET")
+  [[ "$DOMAINS_EXPLICIT" == 0 ]] || args+=(--domains "$DOMAINS")
+  run_core "${args[@]}"
 }
 
 ensure_agents_md() {
@@ -284,9 +286,6 @@ install_assets() {
 do_install() {
   local contract_linked=0 adopted_claude=0
   log "target repo: $TARGET   mode: $MODE   profile: $PROFILE"
-  if [[ "$DOMAINS_EXPLICIT" == 1 ]]; then
-    run_core guidance --target "$TARGET" --set "$DOMAINS"
-  fi
 
   if [[ ! -e "$TARGET/AGENTS.md" && -f "$TARGET/CLAUDE.md" && ! -L "$TARGET/CLAUDE.md" ]]; then
     atomic_replace_file "$TARGET/CLAUDE.md" "$TARGET/AGENTS.md"
@@ -302,8 +301,12 @@ do_install() {
     ensure_claude_md_symlink
     contract_linked=1
   fi
+  # The managed block records the selection; later steps read it back from AGENTS.md.
   ensure_agents_md
   [[ "$contract_linked" == 1 ]] || ensure_claude_md_symlink
+  local guidance_args=(guidance retire-legacy --target "$TARGET")
+  [[ "$DOMAINS_EXPLICIT" == 0 ]] || guidance_args+=(--domains "$DOMAINS")
+  run_core "${guidance_args[@]}"
 
   ensure_line_endings
   install_assets

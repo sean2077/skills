@@ -21,7 +21,7 @@ npx --yes skills@1.5.17 add /absolute/path/to/skills --skill agent-scaffold -a c
 
 Repeat `--skill` and `-a` for selective installs; quote `'*'`. Relative local sources need `./` or `../`. [Installer semantics](docs/compatibility.md#installer-semantics) covers discovery-only checks, global scope, and safe removal. **Project-scope removal from this catalog checkout can delete product files.**
 
-Installing `agent-scaffold` makes the skill available; it does not initialize the consumer's harness. Its [entry point](skills/agent-scaffold/SKILL.md) starts with a read-only plan. Full setup adopts existing project guidance and records one-time convention exclusions; see [onboarding selection](skills/agent-scaffold/references/onboarding-selection.md). Host trust and hook approval remain separate from installation.
+Installing `agent-scaffold` makes the skill available; it does not initialize the consumer's harness. Its [entry point](skills/agent-scaffold/SKILL.md) starts with a read-only plan. Full setup adopts existing project guidance and records one-time convention exclusions in the managed `AGENTS.md` block; see [onboarding selection](skills/agent-scaffold/references/onboarding-selection.md). Each selected domain's generic guide is installed under `.agents/conventions/` with a route from that block, so later Agents find it without the catalog skill. Host trust and hook approval remain separate from installation.
 
 ## Catalog
 

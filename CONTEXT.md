@@ -43,8 +43,12 @@ One named area of project guidance that a full **agent-scaffold** setup can esta
 _Avoid_: feature flag, module
 
 **Convention selection**:
-The accepted list of **Convention domains** recorded in `.agents/scaffold.json` and reused on later updates. An empty list is a choice of none; a missing record is pending. It records scope, not completed guidance. The report field `guidance_selection` keeps its compatibility name.
+The accepted list of **Convention domains** recorded by the domains marker in the managed `AGENTS.md` block and reused on later updates. `none` is a choice of none; a missing marker is pending. Earlier releases used `.agents/scaffold.json`, which upgrade migrates into the marker. It records scope, not completed guidance. The report field `guidance_selection` keeps its compatibility name.
 _Avoid_: completion record, settings file
+
+**Convention guide**:
+The generic daily guide for one selected **Convention domain**, installed by **agent-scaffold** at `.agents/conventions/<domain>.md` (release: `.agents/tools/release/README.md`) and routed from the managed `AGENTS.md` block. It is scaffold runtime refreshed on upgrade; project documentation wins where more specific and holds project facts.
+_Avoid_: project guide, template
 
 ### Agent authority
 

@@ -6,7 +6,7 @@ These opt-in fixtures inspect what an Agent actually changes, separately from [r
 
 | Case | Observations | Limit |
 |---|---|---|
-| `scaffold-selected-guidance` | Accepted domain JSON, real project guide/source routes, preserved exclusions and policies | A saved choice is not guidance completion; dialogue is evaluated separately |
+| `scaffold-selected-guidance` | Unchanged recorded selection in the managed block, real project guide/source routes, preserved exclusions and policies | A recorded choice is not guidance completion; dialogue is evaluated separately |
 | `commit-hunks` | Commit tree/parent, same-file staged hunk, another staged file, unstaged changes | One bounded Git scenario |
 | `spec-preservation` | Owned clauses, exact values, draft status, unresolved question, revised overview | Not complete semantic accuracy or reader comprehension |
 | `docs-move` (none/brief only) | Unique content and incoming/outgoing relative links/anchors | The fixture's Markdown subset, not a general repository link validator |
@@ -17,6 +17,7 @@ These opt-in fixtures inspect what an Agent actually changes, separately from [r
 | `lark-invented-syntax` | Mock calls, collection observation, and correct awaiting-reply count in `answer.json`; rejects unsupported flags/identities/IDs | Cooperative mock evidence, not adversarial execution proof or model effectiveness |
 | `lark-stateful-update` | Read before a dependent whole-object replacement, preserved unrelated fields/types and existing text, actual stored result | Cooperative local mock; no live command syntax, concurrent-change, or tamper-proof execution claim |
 | `lark-stateful-update-cached` | Same preservation checks with an explicitly complete/current supplied observation; direct safe write can pass without a redundant read | Controlled no-external-change fixture, not proof of cache freshness in a live service |
+| `plan-retirement` / `plan-retirement-installed-guide` (none/brief only) | Retained rationale and verbatim dated measurement, no remaining unmarked plan steps, route to the current owner, resolvable reader routes, docs-only changes | A matched pair: the installed scaffold docs guide and its managed route are the only fixture difference. Bounded oracle, not a measured gain |
 | `tdd-negative-input` | Captured missing-behavior RED at original source, then GREEN with unchanged tests/final hashes and an independent behavior check | Final answers and Agent-authored logs cannot replace missing sequence evidence |
 
 The syntax task-only prompt states the task and points to command documentation; the brief condition adds syntax guidance separately. Reading help or one message is insufficient: valid mock use must also produce the requested count.
@@ -49,6 +50,31 @@ cwd/effect explanations, or that the host obeyed a no-execution instruction; ins
 traces and use an independent reader for those claims. `test_project_conventions.py` separately
 executes real installer lifecycle operations. Neither fixture is a general Markdown validator or
 evidence of measured gains.
+
+## Installed-guide pair
+
+Both cases have identical project instructions and the same rendered light harness with `docs`
+selected. `plan-retirement-installed-guide` includes the current `assets/conventions/docs.md`
+and its rendered convention-route section; `plan-retirement` omits only that file and section.
+The control is a deliberate route ablation, not a valid installation to pass scaffold `verify`.
+This keeps unrelated harness rules out of the treatment difference.
+
+The shared prompt directs the Agent to read `AGENTS.md`, permits file reads/edits, and forbids
+command execution or code changes. It never names the convention guide. The pair tests following
+a route from a supplied authority document, not automatic native-host discovery. Run both with
+`--condition none` under the same host, model, configuration and cache labels, then compare their
+`passed` values and checks directly: `runner.py compare` deliberately rejects different fixtures,
+and here the fixture difference is the treatment. Inspect the treatment trace for an actual read
+of `.agents/conventions/docs.md`; a pass without that read is not evidence that the route worked.
+
+The retirement oracle requires preserved rationale and verbatim measurements in reachable
+reader documentation. It checks English completion cues near the top of a retained plan and
+rejects cues negated or deferred earlier in the same clause (`not implemented`, `to be
+completed`); a later warning such as "must not be run" does not cancel an earlier completion
+status, since that warning is what the docs guide asks for. Ordinary prose counts without a
+prescribed label or heading.
+Rewording the plan steps does not bypass that check. This is a bounded oracle, not general
+semantic validation or a mandated project format. One pair is descriptive; repeat on held-out tasks before claiming an improvement.
 
 ## Execute with an existing host
 

@@ -27,6 +27,8 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/runtime/symlink-manager.py` | `.agents/symlink-manager.py` | doctor, atomic real-link creation, sync, and verification |
 | `assets/runtime/generate-subagents.py` | `.agents/tools/generate-subagents.py` | subagent projection + `--check` drift mode |
 | `assets/runtime/release/` | `.agents/tools/release/` | only while `release` is selected: task-time release conventions, read-only analyzer and changelog extractor |
+| `assets/conventions/<domain>.md` | `.agents/conventions/<domain>.md` | only while that domain is selected: generic daily guide for docs, tools, testing, specs, terminology, git or environment work |
+| `NOTICE.md` | `.agents/conventions/NOTICE.md` | only while `testing` or `terminology` is selected: attribution for their adapted guides |
 | `assets/host/claude.settings.json` | merged into `.claude/settings.json` | Claude Code scaffold-owned hook source |
 | `assets/host/codex.hooks.json` | merged into `.codex/hooks.json` | Codex scaffold-owned hook source |
 | `assets/scaffold/AGENTS.harness.md` | managed block in `AGENTS.md` | only the marker-bounded block is scaffold-owned |
@@ -35,12 +37,22 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/scaffold/agents-skills.README.md` | `.agents/skills/README.md` if missing | lean ownership boundary |
 | `assets/scaffold/agents-subagents.README.md` | `.agents/subagents/README.md` if missing | lean ownership boundary |
 
-Accepted convention coverage lives in project-owned `.agents/scaffold.json`, written only for
-an explicit `--domains` answer and preserved on later asset updates. It is not a layout registry
-or automatically generated project guidance. Only domain-scoped assets follow it: the managed
-terminology section and the release runtime. A pending selection installs neither domain-scoped
-asset; deselection leaves dormant copies, as a default-to-light change does. See
-[one-time selection](onboarding-selection.md).
+Accepted convention coverage is recorded by a `<!-- agent-scaffold:domains=... -->` marker in the
+managed `AGENTS.md` block, written only for an explicit `--domains` answer (or migrated from a
+legacy `.agents/scaffold.json`) and preserved on later asset updates. It is not a layout registry
+or automatically generated project guidance. Only domain-scoped assets follow it: the convention
+guides and their managed routes, the managed terminology section and the release runtime. A
+pending selection installs no domain-scoped asset; deselection removes the route but leaves
+dormant copies, as a default-to-light change does. `.agents/conventions/` is scaffold runtime:
+the guides are refreshed on upgrade and byte-checked by verify, so project facts belong in
+project docs. See [one-time selection](onboarding-selection.md).
+
+Each managed convention file carries its own `agent-scaffold:convention=<domain>` comment
+(`notice` for attribution). An existing same-name file without that ownership marker is a
+conflict, not an upgrade target; preserve it and resolve placement/ownership explicitly before
+installation. The exact, unchanged unmarked guide from the pre-release implementation can be
+adopted by byte comparison. This does not claim ownership of unrelated directory entries or
+allow a modified unmarked guide to be overwritten.
 
 Project prose, terminology files, nested authority-document structure, subagent examples,
 Codex settings, package scripts, and CI/hook-manager integration are reference recipes rather than

@@ -19,27 +19,17 @@ correctness. Do not infer new requirements from onboarding or a missing test gui
 When a user instruction conflicts with project policy, surface the conflict under the existing
 authority rules rather than silently changing either. No new approval ceremony is needed.
 
-## Fill quality guidance that changes project decisions
+## Generic rules ship separately
 
-Use existing homes and equivalent rules. Select the relevant principles below and connect them
-to this project's commands, examples, contracts and risk boundaries; do not copy a checklist
-into every AGENTS file. A complete existing guide may need no edits.
-
-| Question | Guidance to adapt |
-|---|---|
-| Why is the expected result correct? | Use acceptance criteria, protocol/language contracts, hand-checkable literals, an independent model or invariant. Do not derive expected values by calling or repeating the implementation under test. |
-| What should a test observe? | Assert behavior and contractual effects at a stable seam. Avoid private names, incidental order or wording unless they are the contract. Interaction checks are appropriate for a required protocol frame, single send, audit event or forbidden contact. Multiple assertions may jointly prove one behavior. |
-| Which level exposes this risk? | Choose the smallest useful level. Use real entry-point/process, integration or target evidence when wiring, packaging, cwd, storage semantics or device behavior is the risk. Do not require E2E for every change or duplicate every assertion at every layer. |
-| What can replace a real dependency? | Use a double for isolation, cost, control or safety, not by default for every owned collaborator. State where the project uses real engines, faithful fakes, local servers or sandboxes and what each cannot prove. No blanket ban on mocks or snapshots. |
-| Can the test detect the relevant error? | Check discovery, target and artifact freshness; zero selected tests or broken setup is not a pass for the intended check. For a high-risk or suspiciously green test, use a small counterexample or authorized local fault injection to demonstrate sensitivity. Verify the injection actually reached the production boundary. Mutation testing is optional, not a per-test gate. |
-| Are results reproducible and honestly maintained? | Control clocks/randomness/state where practical, retain replay data, isolate concurrent fixtures and clean only test-owned resources. Diagnose flaky results instead of hiding them with retries. Review goldens against an independent contract; never bulk-regenerate or weaken a legitimate failure merely to turn green. Correct a wrong oracle with evidence and an explained change. |
-
-Keep mock/offline, contract/integration and real vendor/device evidence distinct. Include
-existing sandbox/credential restrictions and unavailable checks; simulator or fake success
-cannot certify physical hardware, engine-specific locking or live authentication. Preserve
-existing permitted quarantine/recovery policy without treating a skip as a passing check.
-Property, fuzz, mutation, performance and hardware methods remain conditional on the actual
-risk and the project's supported tools; do not install them all as part of onboarding.
+The installed [testing guide](../assets/conventions/testing.md) (`.agents/conventions/testing.md`,
+routed from the managed block) carries the generic daily rules: independent oracles, stable seams,
+test level and doubles, reproducibility, sensitivity, difficult boundaries and explicit test-first
+work. Do not restate them in project docs. Setup connects them to this project's facts: the runner
+and discovery arguments, where real engines, faithful fakes, local servers or sandboxes are used
+and what each cannot prove, existing credential and environment restrictions, and any permitted
+quarantine or recovery policy. Property, fuzz, mutation, performance and hardware methods remain
+conditional on the actual risk and the project's supported tools; do not install them as part of
+onboarding.
 
 ## Write project-owned guidance, not a second testing system
 
@@ -72,29 +62,3 @@ the correct scope/runner, an independent source of expected behavior, the real/d
 the applicable test-first policy and the checks it cannot claim? Inspect or safely execute only
 the affected checks; a command listing, green asset verification or matching headings does not
 prove test effectiveness. Record observed, inspected and unavailable evidence separately.
-
-## Direct observations and design seams
-
-Observe through a public seam. Inspecting a database, filesystem, queue or wire directly is
-correct when that adapter or stored representation is the subject; otherwise it bypasses the
-promised behavior. Avoid production-only test hooks; prefer an existing dependency boundary
-or a small behavior-preserving seam extraction while existing checks stay green.
-
-## Explicit test-first work and difficult boundaries
-
-Preserve the project's selected test-first scopes. When required, observe a failure caused by
-the missing behavior before implementation, rerun the same check after the fix, then refactor
-while green. Compiler/type/schema diagnostics can qualify when they prove the target contract;
-setup errors, zero discovered tests or stale artifacts cannot. No separate TDD installation or
-scaffold invocation is required during ordinary work. Do not manufacture a ceremonial RED for
-a mechanical change whose authoritative verifier is different.
-
-Retain targeted guidance only for risks this project has: coordinate concurrency with clocks,
-barriers or controlled delivery rather than sleeps; preserve minimized regressions and replay
-data for fuzz/property tests; test the supported old/new compatibility window and interrupted
-migrations against relevant engine semantics; inspect security rejection and absence of forbidden
-effects. Characterization records current behavior, not approval of every legacy defect.
-Performance and model-quality thresholds need the project's sampling/baseline policy rather
-than a noisy one-shot assertion. Hardware, ABI, timing and device risks require target evidence;
-host-only tests or simulator results do not certify them. Keep real credentials/production data
-out of fixtures. Use existing test tools; these examples do not authorize installing new ones.

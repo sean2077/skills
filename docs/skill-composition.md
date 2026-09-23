@@ -12,7 +12,7 @@ Use the smallest useful route. Ordinary research, testing/TDD, specification wri
 
 Full scaffold setup adopts existing guidance and fills selected gaps. [One-time selection](../skills/agent-scaffold/references/onboarding-selection.md) owns first-use/legacy defaults and recorded exclusions; [project conventions](../skills/agent-scaffold/references/project-conventions.md) owns the guidance workflow. Later updates reuse the saved choice without asking again.
 
-Selecting a domain authorizes guidance within setup scope, not policy rewrites or side effects. Existing test-first/coverage rules, glossary owners, commit conventions, and publishers still apply, including in excluded domains. New guidance belongs in project-owned locations and must be discoverable without the installed skill or onboarding conversation. Equivalent existing coverage can require no edits.
+Selecting a domain authorizes guidance within setup scope, not policy rewrites or side effects. Existing test-first/coverage rules, glossary owners, commit conventions, and publishers still apply, including in excluded domains. Each selected domain's generic daily rules install as `.agents/conventions/<domain>.md` (release: `.agents/tools/release/`) with one managed route, so later Agents find them without the installed skill or onboarding conversation. New guidance holds only the project facts those guides defer to, belongs in project-owned locations, and must be equally discoverable. Equivalent existing coverage can require no edits.
 
 ## Collaboration, feedback and delivery
 

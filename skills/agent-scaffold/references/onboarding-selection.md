@@ -5,8 +5,9 @@ selection. This selects **guidance coverage**, not new project policies or permi
 
 ## First setup or older installation
 
-Run the read-only asset `plan --json` and inspect `guidance_selection`. A missing
-`.agents/scaffold.json` is `pending`, whether the harness is new or already installed.
+Run the read-only asset `plan --json` and inspect `guidance_selection`. A managed `AGENTS.md`
+block without a domains marker (and no legacy `.agents/scaffold.json`) is `pending`, whether the
+harness is new or already installed.
 Offer all eight domains together as the default and ask **once**, before full setup writes:
 
 > By default I will establish or maintain documentation, tools, testing, specifications,
@@ -47,24 +48,37 @@ actual user choice, not permission for the Agent to choose exclusions on its own
 
 ## Persist scope, not a completion claim
 
-The installer saves the accepted list atomically to the project-owned
-`.agents/scaffold.json` after preflight and capability checks. It stores only:
+The installer records the accepted list in the managed `AGENTS.md` block, beside the profile
+marker, when it writes that block:
 
-```json
-{"schema_version": 1, "domains": ["docs", "tools", "testing", "specs", "terminology", "git", "release", "environment"]}
+```markdown
+<!-- agent-scaffold:domains=docs,tools,testing,specs,terminology,git,release,environment -->
 ```
 
-Track this file with the project so later sessions/worktrees inherit the decision. An empty
-list is a completed choice, not missing data. Excluded domains are not newly authored or
-expanded by scaffold, and existing project rules/files remain in force and are not deleted.
-Core authority, safe mutation, source/projection, and permission boundaries are not optional.
-The optional managed terminology section and the `.agents/tools/release/` runtime follow the
-selection; other project-owned glossary and release content is untouched. Existing unselected legacy installations retain their old managed
-contract until a full setup records a choice.
+`none` records an empty choice, which is complete, not missing data; an absent marker is
+pending. The list is always explicit, never `all`, so a later upstream domain stays unselected.
+`AGENTS.md` is tracked, so later sessions and worktrees inherit the decision. The whole block is
+scaffold-owned: hand edits to the marker are drift, and scope changes go through `--domains`.
 
-Selection persists before guidance authorship so an interrupted setup can resume **without
-asking again**. It does not certify that any guide was written or that a host loaded it.
-Repeat the pending guidance work for selected domains and report gaps honestly.
+The selection gates domain-scoped assets: each selected domain's generic daily guide in
+`.agents/conventions/` with one route in the managed block (release routes to its
+`.agents/tools/release/` runtime), the attribution notice for adapted testing/terminology
+guidance, and the optional managed terminology section. Excluded domains are not newly authored
+or expanded by scaffold, and existing project rules/files remain in force and are not deleted.
+Core authority, safe mutation, source/projection, and permission boundaries are not optional.
+Existing unselected legacy installations retain their old managed contract until a full setup
+records a choice.
+
+Earlier releases stored the choice in `.agents/scaffold.json`. A valid legacy file still counts
+as the recorded choice; the next apply/upgrade writes the marker and removes the file. A legacy
+file that disagrees with an existing marker is a conflict to resolve, not something to overwrite.
+Retirement rechecks the recorded scope before deleting the old file; an explicit `--domains`
+update is carried through that check so an authorized scope change can migrate safely.
+
+The marker is written with the managed block, before guidance authorship, so an interrupted
+setup can resume **without asking again**. It does not certify that any guide was written or
+that a host loaded it. Repeat the pending guidance work for selected domains and report gaps
+honestly.
 
 ## Later updates
 
@@ -79,7 +93,8 @@ Malformed, conflicting, unknown-schema or symlinked records are errors, not firs
 signals. Preserve them and recover the accepted scope from the project/history; do not reset
 to all, quietly replace them, or start a new preference questionnaire. Narrowly clarify an
 unrecoverable conflict rather than re-asking choices already known. A deliberately moved or
-removed guide does not remove the selection record or justify restoring its former template.
+removed project-owned guide does not remove the selection record or justify restoring its former
+template; managed convention files instead follow the [runtime ownership rules](harness-layout.md).
 
 The CLI never asks questions or reads stdin. Raw asset-only calls without `--domains` remain
 noninteractive and do not manufacture a selection; `project_guidance: not-assessed` and the

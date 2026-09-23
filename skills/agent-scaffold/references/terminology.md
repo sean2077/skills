@@ -4,7 +4,9 @@ Use when `terminology` is selected. Establish project-wide language and ongoing 
 not a mandatory modeling pass before every task. The managed terminology section follows the
 saved domain choice; existing project definitions remain project-owned even when excluded.
 Resolve known durable concepts during authorized setup and route readers to their actual source.
-Routine concept changes follow project guidance directly; no separate skill is required.
+Routine concept changes follow the project glossary and the installed
+[terminology guide](../assets/conventions/terminology.md) (`.agents/conventions/terminology.md`,
+routed from the managed block); no separate skill is required.
 
 ## Select the source
 
@@ -68,18 +70,10 @@ A map can retain a root glossary for system-wide terms. Resolve uncertain owners
 
 ## Maintenance
 
-Resolve terminology from repository evidence and owner intent. Update the glossary and affected controlled surfaces when introducing, translating, renaming, splitting, merging, or deprecating a durable concept. Preserve compatibility identifiers and expose meaningful disagreements rather than silently choosing a new definition.
-
-## Clarification and evolution
-
-Use recurring scenarios, code, schemas and owner decisions to distinguish a durable concept
-from a local variable name. Challenge conflicting meanings with concrete examples; when meaning
-or ownership is unknown, keep the boundary visible rather than inventing a definition. Preserve
-the owner's up-front or incremental preference; otherwise evolve only as concepts become clear.
-Do not create an empty glossary or force a context map for a small project.
-
-For a rename, split or merge, update the owning definitions, language equivalents and active
-reader routes together, preserving unique meaning and historical/compatibility identifiers.
-A concept's change does not authorize a public API, wire or database migration. A route inside
-a managed block must be updated through its source/renderer, not patched by hand. Existing
-local meanings can coexist under different owners. Read only relevant contexts during work.
+The installed guide carries the daily maintenance rules: evidence for a durable concept,
+visible disagreements, and updating definitions, equivalents and reader routes together on a
+rename, split, merge or deprecation without authorizing an API, wire or database migration. Do
+not restate them in project docs. During setup, resolve known durable concepts from repository
+evidence and owner intent; when meaning or ownership is unknown, keep the boundary visible rather
+than inventing a definition. A route inside a managed block must be updated through its
+source/renderer, not patched by hand. Existing local meanings can coexist under different owners.

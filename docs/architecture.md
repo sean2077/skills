@@ -9,7 +9,8 @@ This page maps product surfaces, source/generated ownership, and validation owne
 | Published skill catalog | `skills/<name>/` | Independently installable payloads containing regular files and directories only. |
 | Catalog metadata | `.claude-plugin/plugin.json` and README catalog rows | Installer grouping and navigation, not universal host certification or a native Codex plugin package. |
 | Project Agent harness | `.agents/` | This repository's project skills, subagents, and scaffold runtime; `.claude/` and `.codex/` contain host projections/configuration. |
-| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time conventions, read-only version analysis, and changelog extraction, installed only for the selected `release` domain and never resident. |
+| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time conventions, read-only version analysis, and changelog extraction, installed only for the selected `release` domain. Only its one-line managed route is resident; the procedure is read at task time. |
+| Convention guides | `skills/agent-scaffold/assets/conventions/` → `.agents/conventions/` | Generic daily guidance per selected domain, routed from the managed `AGENTS.md` block and byte-checked by verify; project docs hold project facts. |
 | Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer tests, and release automation. |
 
 The catalog is consumed directly; it has no generated `.claude/skills` or `.codex/skills` copies. `.agents/skills/` holds project skills, including `skill-eval`; `.claude/skills/` projects only those project skills. Project subagent `skill-verifier` reviews source and captured evidence, with [execution and delivery owned by its parent](development.md#optional-skill-verifier). Neither evaluator is installed for catalog/scaffold consumers.
@@ -42,9 +43,9 @@ Keep entry points focused and references reachable from `SKILL.md`, directly or 
 
 ## Project-convention ownership
 
-A full scaffold setup combines deterministic asset reconciliation with Agent-authored guidance in the project's existing locations. `.agents/scaffold.json` records the accepted convention domains, not layout or completed guidance. [Onboarding selection](../skills/agent-scaffold/references/onboarding-selection.md) owns first-use defaults, exclusions, pending state, and reuse; [project conventions](../skills/agent-scaffold/references/project-conventions.md) owns guidance adoption and maintenance.
+A full scaffold setup combines deterministic asset reconciliation with Agent-authored guidance in the project's existing locations. A domains marker in the managed `AGENTS.md` block records the accepted convention domains (upgrade migrates a legacy `.agents/scaffold.json` into it), not layout or completed guidance. [Onboarding selection](../skills/agent-scaffold/references/onboarding-selection.md) owns first-use defaults, exclusions, pending state, and reuse; [project conventions](../skills/agent-scaffold/references/project-conventions.md) owns guidance adoption and maintenance.
 
-Selected guidance remains project-owned, outside the managed AGENTS block. Preserve existing policies and deliberate guide renames, merges, or removals; repair confirmed drift in their current homes. The installer reports `scope: harness-assets` and `project_guidance: not-assessed`. A successful installation or saved selection does not establish semantic coverage. This repository uses its existing manuals rather than a parallel scaffold-generated documentation tree.
+Generic daily rules for each selected domain ship as installed convention guides with one managed route each, so later Agents find them without the catalog. Agent-authored guidance adds only the project facts they defer to and remains project-owned, outside the managed AGENTS block. Preserve existing policies and deliberate guide renames, merges, or removals; repair confirmed drift in their current homes. The installer reports `scope: harness-assets` and `project_guidance: not-assessed`. A successful installation or saved selection does not establish semantic coverage. This repository uses its existing manuals rather than a parallel scaffold-generated documentation tree.
 
 ## Runtime boundaries
 
