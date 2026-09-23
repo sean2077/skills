@@ -33,8 +33,18 @@ A host-facing symlink or generated file derived from a **Source** and not edited
 _Avoid_: copy, mirror
 
 **Scaffold runtime**:
-Runtime files installed and refreshed by **agent-scaffold** rather than edited in the target repository.
+Runtime files installed and refreshed by **agent-scaffold** rather than edited in the target repository. Some, such as `.agents/tools/release/`, are installed only for a selected **Convention domain**.
 _Avoid_: project tooling, harness source
+
+### Project conventions
+
+**Convention domain**:
+One named area of project guidance that a full **agent-scaffold** setup can establish and maintain: `docs`, `tools`, `testing`, `specs`, `terminology`, `git`, `release`, or `environment`. Selecting a domain scopes guidance coverage; it grants no new policy, tooling, or publication authority.
+_Avoid_: feature flag, module
+
+**Convention selection**:
+The accepted list of **Convention domains** recorded in `.agents/scaffold.json` and reused on later updates. An empty list is a choice of none; a missing record is pending. It records scope, not completed guidance. The report field `guidance_selection` keeps its compatibility name.
+_Avoid_: completion record, settings file
 
 ### Agent authority
 

@@ -21,6 +21,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Report already-wired hook configs as `present` in `agent-scaffold plan`. Plan said `merge` for every existing hook file even when apply would write nothing, so an up-to-date repository never previewed as clean; `present` now means apply's own merge and serialization reproduce the file byte for byte.
 - Keep scaffold fixture edit scopes JSON-serializable and reconstitute set comparisons after loading; prepare/assess round-trip regressions prevent in-memory-only tests from hiding broken persisted evaluations.
 - Reject an invalid `--domains` argument as a usage error (exit 2) before planning. It previously surfaced as an `invalid` saved selection with "repair the saved selection" advice, and `plan` exited 0, although no record existed.
 - Restore `lark-cli`'s conditional read-before-state-dependent-write and unrelated-content preservation without routine preflight/readback or call quotas. Keep compact task-routing keywords and the exclusion for a Feishu/Lark URL merely appearing in text, rather than narrowing it to quoted URLs, then add Chinese natural-language selection cases. Add missing-state/cached-state mock outcome fixtures and regressions for accepted-but-destructive writes, identity/target errors, type changes, tampering and malformed evidence; these test the oracles, not live-model effectiveness or service compatibility.
@@ -34,6 +35,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Dogfood the full scaffold upgrade on this repository: define convention domain and convention selection in `CONTEXT.md`, document how tests are written and registered (CI has no test discovery), state that skills plus tests are the specification boundary, and record where the pre-tag release analysis runs and how squash titles drive the version bump.
 - Preserve shared lock, concurrency, binding, session, strict-JSON and compact-history tests through the remaining approval/evaluation runtimes; remove checks exclusive to retired controllers. Host/project commit, specification, docs-move and test-first fixtures remain without retired skill treatments.
 - Refresh documentation ownership, consumer installation boundaries, dated evidence and release instructions; improve command failure handling and explicit cache-condition reporting without relabeling documentation checks as live-host evidence.
 

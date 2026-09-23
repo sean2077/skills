@@ -4,7 +4,7 @@ This page owns contributor commands, verification, generation, and this reposito
 
 ## Prerequisites
 
-Use Git with real symlink support, Python 3.11 for the primary suite, Bash on Linux/macOS or Git Bash on Windows, Node.js/`npx` for installer checks, and ShellCheck for shell validation. Generated runtimes have a separately exercised Python 3.8 floor; do not confuse that with the maintainer environment or certify all scripts at that floor.
+Use Git with real symlink support, Python 3.11 for the primary suite, Bash on Linux/macOS or Git Bash on Windows, Node.js/`npx` for installer checks, and ShellCheck for shell validation. Generated runtimes and the release runtime have a separately exercised Python 3.8 floor; do not confuse that with the maintainer environment or certify all scripts at that floor.
 
 Install pinned validation dependencies with `python -m pip install -r requirements-validation.txt`. Use UTF-8 and avoid bytecode files contaminating installable payloads:
 
@@ -104,6 +104,12 @@ Run from the task checkout in Bash. The subshell stops on failure without replac
 
 CI also runs on Ubuntu, macOS, and Windows; asserts platform shell/real-symlink behavior; installs every catalog skill into a throwaway repository and byte-compares regular-file payloads; and exercises the runtime floor under Python 3.8. A local run on one platform does not establish those other results; do not report platform, installer-fidelity, or Python-floor results unless those exact environments or checks ran. The offline example above exercises evaluation plumbing, not a live model.
 
+## Writing tests
+
+Tests are standard-library `unittest` modules: catalog validators in `scripts/test_*.py`, everything else in `scripts/tests/`, each runnable as `python <file>` (the two P0 modules as `python -m unittest scripts.tests.<module>`). There is **no test discovery**: [validation CI](../.github/workflows/validate.yml) and the core block above list every file. Register a new test file in both, or it never runs. Code installed into consumers targets Python 3.8+, but the Python 3.8 job exercises only the generated runtimes and the release runtime; add a floor-sensitive test there when a change needs that evidence.
+
+Exercise real Git repositories, the real installer and real symlinks in temporary directories. Mock only external services, as the release tests do for the `gh` publisher. Skip only for a missing platform capability, and state it in the skip reason. Assert observable behavior (bytes, exit codes, JSON reports, Git state), not the English wording of guidance; see [harness principles](harness-constraint-policy.md#choosing-guidance-and-machinery). A bug-fix regression should fail without its fix. Test-first work is not required repository-wide.
+
 ## Evaluation evidence
 
 Choose the matching guide rather than treating every check as the same evidence:
@@ -173,9 +179,9 @@ This repository's completion boundary is a verified GitHub Release created by [r
 
 Before any version bump, tag or publication, read the installed [release conventions](../.agents/tools/release/README.md). The repository-specific rules below win over their generic defaults.
 
-1. Accumulate changes under Unreleased. Choose the exact supported tag and move its notes into one matching dated changelog section. The installer grouping manifest `.claude-plugin/plugin.json` has no release-version field; do not invent one for a release. Use Conventional Commits without `Co-Authored-By`.
+1. Accumulate changes under Unreleased. Choose the exact supported tag and move its notes into one matching dated changelog section. The installer grouping manifest `.claude-plugin/plugin.json` has no release-version field; do not invent one for a release. Use Conventional Commits without `Co-Authored-By`, including squash-merge titles: the analyzer infers the bump from `main`'s commit subjects (a merge commit's merged commits, or a squash title).
 2. Validate and merge the release snapshot, then verify main CI. Resolve the intended remote main and exact release commit; the workflow rejects tags whose commits are not reachable from `origin/main`.
-3. With release authorization, create and push an annotated `vX.Y.Z` or numbered `-alpha.N`, `-beta.N`, or `-rc.N` tag. Prerelease numbers start at 1. The workflow does not accept build metadata or arbitrary SemVer prerelease labels. Never move or recreate an existing tag.
+3. Before tagging, run the analyzer with `--release-branch main` on a clean, attached `main` checkout equal to `origin/main`; a task worktree on another branch reports `release-line` attention by design. With release authorization, create and push an annotated `vX.Y.Z` or numbered `-alpha.N`, `-beta.N`, or `-rc.N` tag. Prerelease numbers start at 1. The workflow does not accept build metadata or arbitrary SemVer prerelease labels. Never move or recreate an existing tag.
 4. Observe reusable validation, tag/commit checks, exact changelog extraction, and workflow-owned publication. Do not race it with a manual publisher.
 5. Verify the release URL, tag/peeled commit, non-draft state, prerelease state, and body matching the tagged changelog. Report failed or unavailable evidence rather than declaring completion at push.
 
