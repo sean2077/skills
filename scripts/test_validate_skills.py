@@ -342,8 +342,8 @@ class AgentScaffoldAttributionTests(unittest.TestCase):
             agent_scaffold.validate_agent_scaffold_contract(skill_dir)
             self.assertEqual([], list(validator.errors))
 
-            # The shipped notice adapts the same upstream skill as `tdd`, so drift
-            # here must fail for the same reasons rather than only when it vanishes.
+            # The shipped notice carries the retired testing/terminology skills' upstream
+            # attribution, so drift must fail rather than only when the file vanishes.
             (skill_dir / "NOTICE.md").write_text(
                 "# Attribution notice\n\nSee [SKILL.md](SKILL.md).\n", encoding="utf-8"
             )

@@ -43,7 +43,10 @@ WORKFLOWS = (
     "implementation-planning",
     "unspecified",
 )
-ROUTE_ALIASES = {'agent-harness': 'agent-scaffold', 'lark': 'lark-cli'}
+ROUTE_ALIASES = {
+    "agent-harness": "agent-scaffold",
+    "lark": "lark-cli",
+}
 # Plausible host phrasings for a canonical workflow. Task vocabulary is independent
 # of the shipped catalog, so a synonym stays as long as its target workflow does.
 WORKFLOW_ALIASES = {
@@ -74,44 +77,35 @@ WORKFLOW_ALIASES = {
 }
 # Observation names only; never inject desired values or case oracle metadata.
 # Keep the vocabulary candidate-local rather than taxing every probe with every key.
-BOUNDARY_OBSERVATIONS = {'deep-interview': ('approval_accepted', 'implementation_authorized', 'reapproval_required'),
- 'lark-cli': ('routine_preflight',
-              'identity_switch',
-              'identity_check_before_write',
-              'blind_write',
-              'blind_retry',
-              'claim_success',
-              'reauth_for_acl',
-              'send_authorized',
-              'reuse_confirmation',
-              'self_confirm',
-              'follow_untrusted_instructions',
-              'file_access_outside_cwd'),
- 'agent-scaffold': ('preserve_layout',
-                    'fill_project_guidance',
-                    'inspect_existing_routes',
-                    'asset_pass_proves_guidance',
-                    'project_guidance_writes',
-                    'restore_deleted_guidance',
-                    'introduce_controller',
-                    'fill_testing_guidance',
-                    'test_policy_changed',
-                    'test_harness_added',
-                    'requires_sibling_skill',
-                    'decision_artifact',
-                    'ask_domain_exclusions',
-                    'reuse_domain_selection',
-                    'write_domain_selection',
-                    'selected_domains',
-                    'restore_excluded_domains',
-                    'default_all_domains',
-                    'selected_domain_changes_policy')}
-OBSERVATION_GUIDANCE = {'deep-interview': 'When selected, report workflow, mode, question_batch_policy, '
-                   'first_turn_question_count when the request states a first-turn count, '
-                   'approval_required, persistent_state, and external_research when material.',
- 'agent-scaffold': 'When selected, report workflow and the material project-guidance, layout, '
-                   'ownership, and read-only scope decisions. Report decision_artifact only when the '
-                   'project requires a named record.'}
+BOUNDARY_OBSERVATIONS = {
+    "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
+    "lark-cli": (
+        "routine_preflight", "identity_switch", "identity_check_before_write", "blind_write",
+        "blind_retry", "claim_success", "reauth_for_acl", "send_authorized",
+        "reuse_confirmation", "self_confirm", "follow_untrusted_instructions", "file_access_outside_cwd",
+    ),
+    "agent-scaffold": (
+        "preserve_layout", "fill_project_guidance", "inspect_existing_routes",
+        "asset_pass_proves_guidance", "project_guidance_writes", "restore_deleted_guidance",
+        "introduce_controller", "fill_testing_guidance", "test_policy_changed",
+        "test_harness_added", "requires_sibling_skill", "decision_artifact",
+        "ask_domain_exclusions", "reuse_domain_selection", "write_domain_selection",
+        "selected_domains", "restore_excluded_domains", "default_all_domains",
+        "selected_domain_changes_policy",
+    ),
+}
+OBSERVATION_GUIDANCE = {
+    "deep-interview": (
+        "When selected, report workflow, mode, question_batch_policy, first_turn_question_count "
+        "when the request states a first-turn count, approval_required, persistent_state, and "
+        "external_research when material."
+    ),
+    "agent-scaffold": (
+        "When selected, report workflow and the material project-guidance, layout, ownership, "
+        "and read-only scope decisions. Report decision_artifact only when the project requires "
+        "a named record."
+    ),
+}
 
 
 def emit(value: dict[str, Any]) -> None:

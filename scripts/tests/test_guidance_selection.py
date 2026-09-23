@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -159,6 +160,23 @@ class GuidanceSelectionTests(unittest.TestCase):
         result = fixture.invoke("plan")["guidance_selection"]
         self.assertEqual("pending", result["status"])
         self.assertFalse((fixture.root / CORE.GUIDANCE_FILE).exists())
+
+    def test_invalid_argument_is_a_usage_error_not_a_damaged_record(self):
+        fixture = preservation.ProjectConventionPreservationTests("runTest")
+        fixture.setUp(); self.addCleanup(fixture.doCleanups)
+        fixture.seed()
+        before = fixture.snapshot()
+        plan = subprocess.run([fixture.bash_bin, preservation.INSTALLER.as_posix(), "plan", "--profile", "light",
+                               "--domains", "docs,unknown", "--json"], cwd=str(fixture.root), env=fixture.env,
+                              capture_output=True, text=True, encoding="utf-8", timeout=180)
+        apply = fixture.invoke("apply", expected=2, extra=("--domains", "docs,unknown"))
+        for mode, result in (("plan", plan), ("apply", apply)):
+            with self.subTest(mode=mode):
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                output = result.stdout + result.stderr
+                self.assertIn("--domains requires", output)
+                self.assertNotIn("saved selection", output)
+        self.assertEqual(before, fixture.snapshot())
 
     def test_invalid_selection_fails_before_asset_mutation(self):
         fixture = preservation.ProjectConventionPreservationTests("runTest")

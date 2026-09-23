@@ -1490,6 +1490,9 @@ def command_files(args: argparse.Namespace) -> int:
 def command_preflight(args: argparse.Namespace) -> int:
     target = Path(args.target).resolve()
     manifest = load_manifest(Path(args.manifest))
+    if args.domains is not None:
+        # A bad argument is a usage error, not a damaged saved record.
+        parse_domains(args.domains)
     data = build_plan(target, args.profile, manifest, args.domains)
     if not data["ok"]:
         render_report(data, False)
@@ -1507,6 +1510,8 @@ def command_report(args: argparse.Namespace) -> int:
     manager_item = asset_by_id(manifest, "runtime.symlink-manager")
     manager = SKILL_DIR / manager_item["source"]
     if args.report_command == "plan":
+        if args.domains is not None:
+            parse_domains(args.domains)
         data = build_plan(target, args.profile, manifest, args.domains)
     elif args.report_command == "doctor":
         data = build_doctor(target, args.profile, manager)
