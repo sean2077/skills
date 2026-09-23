@@ -1,0 +1,29 @@
+name: task source snapshot
+
+on:
+  pull_request:
+    paths: ['.github/workflows/task-source-snapshot.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/lean-scaffold-retire-four-skills'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 4bc9bb9b5d5a817bd7457e5acb939aaa750092b6
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export tracked objects only
+        shell: bash
+        run: git bundle create "$RUNNER_TEMP/skills.bundle" --all
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testing-conventions-source
+          path: ${{ runner.temp }}/skills.bundle
+          retention-days: 1
+          if-no-files-found: error
