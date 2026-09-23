@@ -7,16 +7,16 @@ Paths are repository-relative. Commands are argv arrays; supported placeholders 
 ```json
 {
   "schema_version": 1,
-  "suite_id": "tdd-behavior",
-  "skill_path": "skills/tdd",
-  "fixture": "evals/examples/tdd/fixture",
+  "suite_id": "offline-protocol",
+  "skill_path": "skills/agent-scaffold",
+  "fixture": "evals/examples/offline/fixture",
   "adapter": {
-    "command": ["{python}", "{repo}/evals/examples/tdd/fake_adapter.py"],
+    "command": ["{python}", "{repo}/evals/examples/offline/fake_adapter.py"],
     "timeout_seconds": 30,
     "max_output_bytes": 262144
   },
   "verifier": {
-    "command": ["{python}", "{repo}/evals/examples/tdd/verifier.py"],
+    "command": ["{python}", "{repo}/evals/examples/offline/verifier.py"],
     "timeout_seconds": 30,
     "max_output_bytes": 262144
   },
@@ -91,6 +91,6 @@ Both baseline and treatment must complete with valid trigger and scope gates. A 
 - `21`: verifier failure or mutation.
 - `30`: a valid suite failed trigger, correctness, scope, or budget gates.
 
-The repository includes an offline example at `evals/examples/tdd/`.
+The repository includes a synthetic protocol example at `evals/examples/offline/`. Its fake adapter applies a fixed arithmetic edit; it tests plumbing, not the named candidate skill or model effectiveness.
 
 After persisting a suite result, run `skill_eval.py validate-result <result.json>` to recompute every stored baseline/treatment comparison and reject tampered comparisons or inconsistent summary counts.

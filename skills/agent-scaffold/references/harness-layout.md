@@ -34,6 +34,10 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/scaffold/agents-skills.README.md` | `.agents/skills/README.md` if missing | lean ownership boundary |
 | `assets/scaffold/agents-subagents.README.md` | `.agents/subagents/README.md` if missing | lean ownership boundary |
 
+Accepted convention coverage lives in project-owned `.agents/scaffold.json`, written only for
+an explicit `--domains` answer and preserved on later asset updates. It is not a layout registry
+or automatically generated project guidance. See [one-time selection](onboarding-selection.md).
+
 Project prose, terminology files, nested authority-document structure, subagent examples,
 Codex settings, package scripts, and CI/hook-manager integration are reference recipes rather than
 installed templates. The installer preserves project-owned content; the Agent must adopt and fill its relevant gaps during a full setup under [project conventions](project-conventions.md). Project choices remain authoritative on later upgrades. Formatter, linter, test, and

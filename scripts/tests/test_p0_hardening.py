@@ -47,12 +47,12 @@ class SkillEvalHardeningTest(unittest.TestCase):
         # This control file is compared byte-for-byte with a fresh worktree.
         # Do not inherit the machine's checkout EOL for copied LF inputs.
         (self.repo / ".gitattributes").write_bytes(b"evals/**/suite.json text eol=lf\n")
-        skill = self.repo / "skills" / "tdd"
+        skill = self.repo / "skills" / "agent-scaffold"
         skill.mkdir(parents=True)
-        (skill / "SKILL.md").write_text("---\nname: tdd\n---\n", encoding="utf-8")
+        (skill / "SKILL.md").write_text("---\nname: agent-scaffold\n---\n", encoding="utf-8")
         git(self.repo, "add", ".")
         git(self.repo, "commit", "-m", "eval fixture")
-        self.manifest = self.repo / "evals" / "examples" / "tdd" / "suite.json"
+        self.manifest = self.repo / "evals" / "examples" / "offline" / "suite.json"
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -145,7 +145,7 @@ json.dump({'schema_version':1,'contract':'agent-skill-eval/v1','run_id':r['run_i
         self.assertEqual(len(baseline["repository_snapshot_digest"]), 64)
 
     def test_dirty_fixture_is_ignored_by_materialized_revision(self) -> None:
-        fixture = self.repo / "evals" / "examples" / "tdd" / "fixture" / "src" / "calc.py"
+        fixture = self.repo / "evals" / "examples" / "offline" / "fixture" / "src" / "calc.py"
         fixture.write_text("def add(left, right):\n    return 999\n", encoding="utf-8")
         result = run_suite(
             self.manifest,

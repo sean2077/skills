@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "suite_id": "tdd-behavior",
-  "skill_path": "skills/tdd",
-  "fixture": "evals/examples/tdd/fixture",
+  "suite_id": "offline-protocol",
+  "skill_path": "skills/agent-scaffold",
+  "fixture": "evals/examples/offline/fixture",
   "adapter": {
     "command": [
       "{python}",
-      "{repo}/evals/examples/tdd/fake_adapter.py"
+      "{repo}/evals/examples/offline/fake_adapter.py"
     ],
     "timeout_seconds": 10,
     "max_output_bytes": 262144
@@ -14,7 +14,7 @@
   "verifier": {
     "command": [
       "{python}",
-      "{repo}/evals/examples/tdd/verifier.py"
+      "{repo}/evals/examples/offline/verifier.py"
     ],
     "timeout_seconds": 10,
     "max_output_bytes": 262144

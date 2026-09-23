@@ -59,6 +59,21 @@ harness assets and does not judge semantic project guidance. These additive fiel
 change `ok` or exit-code meanings. The full skill also performs the Agent-owned
 [project-convention work](project-conventions.md); no new automatic policy gate is implied.
 
+## Convention selection
+
+All reports include `guidance_selection` with `status`, `path`, `domains` and `defaults`.
+`pending` means no accepted record exists: first full setup or legacy migration must ask once
+for exclusions from the default-all list. `recorded` means reuse the saved array (including
+empty) without asking again. `plan --domains ...` reports `proposed` without writing; the printed
+apply/upgrade command retains that proposed choice. Malformed/aliased records are `invalid`
+and add an attention/failure check; do not reset or re-onboard them.
+
+The record `.agents/scaffold.json` is a project-owned coverage preference, not a layout schema
+or completion assertion. `project_guidance` remains `not-assessed`, even with a valid selection.
+Raw apply/upgrade without a choice stays asset-only until the Agent completes the one-time
+selection and selected guidance. The CLI never blocks on stdin or prompts. See
+[selection](onboarding-selection.md) for explicit updates and interruption behavior.
+
 ## Line-ending checks
 
 - `contract.line-endings`: the prepended managed `.gitattributes` defaults match the asset.

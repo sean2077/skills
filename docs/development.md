@@ -59,7 +59,7 @@ Run from the task checkout in Bash. The subshell stops on failure without replac
   python scripts/validate_skills.py
   python scripts/test_validate_skills.py
   python scripts/tests/test_semver_release_plan.py
-  python scripts/tests/test_tdd_contract.py
+  python scripts/tests/test_scaffold_distribution.py
   python scripts/tests/test_private_skill_eval_contract.py
   python scripts/tests/test_live_skill_eval_adapter.py
   python scripts/tests/test_task_outcomes.py
@@ -71,14 +71,14 @@ Run from the task checkout in Bash. The subshell stops on failure without replac
   python -m unittest -v scripts.tests.test_p0_agent_workflows
   python -m unittest -v scripts.tests.test_p0_hardening
 
-  python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
+  python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/offline/suite.json
   for suite in evals/agent-skills/*/suite.json; do
     python .agents/skills/skill-eval/scripts/skill_eval.py validate "$suite"
   done
   result="$(mktemp)"
   trap 'rm -f "$result"' EXIT
   python .agents/skills/skill-eval/scripts/skill_eval.py run \
-    evals/examples/tdd/suite.json --output "$result"
+    evals/examples/offline/suite.json --output "$result"
   python .agents/skills/skill-eval/scripts/skill_eval.py validate-result "$result"
 
   for skill in skills/*; do
@@ -91,6 +91,7 @@ Run from the task checkout in Bash. The subshell stops on failure without replac
   python scripts/tests/test_agent_scaffold_core.py
   python scripts/tests/test_workspace_entry.py
   python scripts/tests/test_project_conventions.py
+  python scripts/tests/test_guidance_selection.py
   bash scripts/check-agent-scaffold.sh
   AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS=1 bash scripts/e2e-agent-scaffold.sh
 
@@ -120,7 +121,7 @@ Commit intended candidate/manifests before revision-pinned evaluation; uncommitt
 
 For substantive skill changes or uncertain evidence, pass the project `skill-verifier` the absolute task checkout, pinned revision, diff/dirty snapshot, scope, acceptance, and existing result paths. The parent captures those artifacts because the reviewer does not run shell commands. For example:
 
-> Review this spec-writing change at <revision> in <absolute-task-checkout> and the supplied results. Find regressions or assertions that accept a wrong output; return findings and proposed checks without modifying sources or executing commands.
+> Review this scaffold-guidance change at <revision> in <absolute-task-checkout> and the supplied results. Find regressions or assertions that accept a wrong output; return findings and proposed checks without modifying sources or executing commands.
 
 [Instructions](../.agents/subagents/skill-verifier/instructions.md) and [metadata](../.agents/subagents/skill-verifier/metadata.json) are the role's source. Generate projections using `python .agents/tools/generate-subagents.py`; use `--check` for drift. The role is opt-in and project-owned, not a catalog/scaffold-consumer install or approval authority. Model and effort remain host-selected.
 
@@ -131,11 +132,11 @@ Use a fresh instance with only task, acceptance, and anonymized artifacts for an
 ## Scaffold testing conventions
 
 Testing-quality guidance is established by the full scaffold skill and owned by the consumer
-project. `tdd` retains explicit test-first execution and independent fallback references.
+project. Test-first execution remains a scoped project/user choice, not a catalog dependency.
 The testing-guidance fixture checks source-owned clauses, runner discovery arguments, links
 and preservation of tests/coverage configuration. It does not infer prose quality from keywords
 or prove live model effectiveness. Installer preservation and TDD RED/GREEN traces remain
-separate checks; isolated payload/reference tests protect independent skill installation.
+separate checks; isolated payload/reference tests protect the retained scaffold installation.
 
 ## Scaffold project-guidance changes
 
@@ -176,4 +177,21 @@ This repository's completion boundary is a verified GitHub Release created by [r
 4. Observe reusable validation, tag/commit checks, exact changelog extraction, and workflow-owned publication. Do not race it with a manual publisher.
 5. Verify the release URL, tag/peeled commit, non-draft state, prerelease state, and body matching the tagged changelog. Report failed or unavailable evidence rather than declaring completion at push.
 
-The catalog [semver-release](../skills/semver-release/SKILL.md) remains repository-neutral. Its schema 2 `analyzed` status establishes only local supported-format analysis, not branch policy, publishability, or authorization. Pass `--release-branch` only from explicit repository policy and resolve attention before mutation. Documentation-only PRs do not bump the version, create tags, or publish releases.
+The maintainer [release analyzer](../scripts/release/release-plan.py) remains a read-only tool, not a catalog skill or installed scaffold asset. Its schema 2 `analyzed` status establishes only local supported-format analysis, not branch policy, publishability, or authorization. Pass `--release-branch` only from explicit repository policy and resolve attention before mutation. Documentation-only PRs do not bump the version, create tags, or publish releases.
+
+The [changelog extractor](../scripts/release/extract-changelog.py) is owned by this repository's
+release CI. Both release helpers moved from the retired skill without compatibility wrappers;
+the planner and real-Git/mock-publisher regressions still cover them. Local analysis:
+
+```bash
+python scripts/release/release-plan.py --repo . --release-branch main --json
+```
+
+## Convention selection coverage
+
+`test_guidance_selection.py` checks missing/legacy versus recorded/all/none state, proposed
+read-only choices, explicit updates, invalid/symlinked input, write failure and unchanged-byte
+reruns. Real installation verifies opt-outs, preservation, and the conditional terminology
+block. A valid selection is a preference record, not proof of finished guidance or an actual
+human dialogue; decision probes and task fixtures exercise those separate boundaries.
+The CLI never reads stdin, and runtime-only callers must not manufacture an onboarding answer.

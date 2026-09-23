@@ -2,6 +2,21 @@
   "schema_version": 1,
   "scope": "harness-assets",
   "project_guidance": "not-assessed",
+  "guidance_selection": {
+    "status": "pending",
+    "path": ".agents/scaffold.json",
+    "domains": null,
+    "defaults": [
+      "docs",
+      "tools",
+      "testing",
+      "specs",
+      "terminology",
+      "git",
+      "release",
+      "environment"
+    ]
+  },
   "mode": "plan",
   "target": "<target>",
   "profile": "light",

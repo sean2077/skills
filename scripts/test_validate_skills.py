@@ -296,9 +296,9 @@ class NpxPayloadContractTests(unittest.TestCase):
 
 class PayloadContractTests(unittest.TestCase):
     def test_heading_and_equivalent_prose_are_not_machine_interfaces(self):
-        from contracts import conventional_commit, semver_release, agent_scaffold
+        from contracts import agent_scaffold
         skills_root = Path(__file__).resolve().parents[1] / "skills"
-        for module in (conventional_commit, semver_release, agent_scaffold):
+        for module in (agent_scaffold,):
             with self.subTest(skill=module.SKILL), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 for relative in module.REQUIRED_PATHS:
@@ -319,66 +319,6 @@ class PayloadContractTests(unittest.TestCase):
                 (root / module.REQUIRED_PATHS[-1]).unlink()
                 function(root)
                 self.assertTrue(any("missing required payload" in item for item in validator.errors))
-
-
-class DomainModelingAttributionTests(unittest.TestCase):
-    def test_upstream_provenance_and_license_text_are_required(self) -> None:
-        from contracts import domain_modeling
-
-        real_notice = (
-            Path(__file__).resolve().parents[1] / "skills" / "domain-modeling" / "NOTICE.md"
-        ).read_text(encoding="utf-8")
-        with tempfile.TemporaryDirectory() as directory:
-            skill_dir = Path(directory) / "domain-modeling"
-            for relative in domain_modeling.REQUIRED_PATHS:
-                path = skill_dir / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("# Placeholder\n", encoding="utf-8")
-            validator.errors.clear()
-            domain_modeling.validate_domain_modeling_contract(skill_dir)
-            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
-
-            (skill_dir / "NOTICE.md").write_text(real_notice, encoding="utf-8")
-            validator.errors.clear()
-            domain_modeling.validate_domain_modeling_contract(skill_dir)
-            self.assertEqual([], list(validator.errors))
-
-            # Keeping the start of the grant while deleting its middle sentences must
-            # fail: anchored fragments cannot stand in for the license text.
-            lines = real_notice.splitlines(True)
-            start = next(
-                index
-                for index, line in enumerate(lines)
-                if line.startswith("of this software and associated documentation files")
-            )
-            end = next(
-                index
-                for index, line in enumerate(lines)
-                if line.startswith("furnished to do so, subject to the following conditions:")
-            )
-            hollowed = "".join(lines[:start] + lines[end + 1 :])
-            self.assertIn("Permission is hereby granted", hollowed)
-            self.assertNotIn("subject to the following conditions:", hollowed)
-            (skill_dir / "NOTICE.md").write_text(hollowed, encoding="utf-8")
-            validator.errors.clear()
-            domain_modeling.validate_domain_modeling_contract(skill_dir)
-            self.assertTrue(any("MIT license text" in item for item in validator.errors))
-
-            # Provenance lines alone are not the MIT text either.
-            (skill_dir / "NOTICE.md").write_text(
-                "# Attribution notice\n\n" + "\n".join(domain_modeling.PROVENANCE_MARKERS) + "\n",
-                encoding="utf-8",
-            )
-            validator.errors.clear()
-            domain_modeling.validate_domain_modeling_contract(skill_dir)
-            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
-
-            (skill_dir / "NOTICE.md").unlink()
-            validator.errors.clear()
-            domain_modeling.validate_domain_modeling_contract(skill_dir)
-            self.assertTrue(
-                any("missing required skill payload" in item for item in validator.errors)
-            )
 
 
 class AgentScaffoldAttributionTests(unittest.TestCase):
@@ -420,9 +360,8 @@ class AgentScaffoldAttributionTests(unittest.TestCase):
 class SemverChangelogExtractionTests(unittest.TestCase):
     EXTRACTOR = (
         Path(__file__).resolve().parents[1]
-        / "skills"
-        / "semver-release"
         / "scripts"
+        / "release"
         / "extract-changelog.py"
     )
 

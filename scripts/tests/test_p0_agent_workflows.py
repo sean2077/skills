@@ -115,12 +115,12 @@ class SkillEvalTest(unittest.TestCase):
         # This control file is compared byte-for-byte with a fresh worktree.
         # Do not inherit the machine's checkout EOL for copied LF inputs.
         (self.repo / ".gitattributes").write_bytes(b"evals/**/suite.json text eol=lf\n")
-        skill = self.repo / "skills" / "tdd"
+        skill = self.repo / "skills" / "agent-scaffold"
         skill.mkdir(parents=True)
-        (skill / "SKILL.md").write_text("---\nname: tdd\n---\n", encoding="utf-8")
+        (skill / "SKILL.md").write_text("---\nname: agent-scaffold\n---\n", encoding="utf-8")
         git(self.repo, "add", ".")
         git(self.repo, "commit", "-m", "eval fixture")
-        self.manifest = self.repo / "evals" / "examples" / "tdd" / "suite.json"
+        self.manifest = self.repo / "evals" / "examples" / "offline" / "suite.json"
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -207,7 +207,7 @@ class SkillEvalTest(unittest.TestCase):
             validate_manifest(data, self.repo)
         if hasattr(os, "symlink"):
             data = self.load_manifest()
-            link = self.repo / "evals" / "examples" / "tdd" / "fixture" / "escape"
+            link = self.repo / "evals" / "examples" / "offline" / "fixture" / "escape"
             os.symlink(str(Path(self.temp.name)), str(link), target_is_directory=True)
             self.save_manifest(data)
             with self.assertRaises(HarnessError):

@@ -112,12 +112,43 @@ class OutcomeTests(unittest.TestCase):
 
     def test_retired_docs_fixture_rejects_skill_condition_before_writes(self):
         out = self.root / "retired-treatment"
-        with self.assertRaisesRegex(ValueError, "none/brief"):
-            runner.prepare_run("docs-move", out, "skill")
-        self.assertFalse(out.exists())
+        for case in ("docs-move", "spec-preservation", "commit-hunks", "tdd-negative-input"):
+            with self.subTest(case=case), self.assertRaisesRegex(ValueError, "none/brief"):
+                runner.prepare_run(case, out, "skill")
+            self.assertFalse(out.exists())
         for condition in ("none", "brief"):
             result = runner.prepare_run("docs-move", self.root / condition, condition)
             self.assertIsNone(result["skill_digest"])
+
+    def test_selected_conventions_require_scope_and_real_project_guidance(self):
+        workspace, state = self.fixture("scaffold-selected-guidance")
+        def result():
+            return self.passed(workspace, "scaffold-selected-guidance", state)
+        self.assertFalse(result()[0])
+        selection = {"schema_version": 1, "domains": cases.SELECTED_DOMAINS}
+        cases.write(workspace, ".agents/scaffold.json", json.dumps(selection))
+        self.assertFalse(result()[0])  # Choice alone cannot certify authored guidance.
+        original = (workspace / "AGENTS.md").read_text()
+        cases.write(workspace, "AGENTS.md", original + "\n[Guide](guide/development.md)\n")
+        self.assertFalse(result()[0])
+        guide = ("# 开发\nExisting owner guidance.\n" + "\n".join(cases.CONVENTION_CLAUSES)
+                 + "\n[Spec](../spec.md) [Language](../language.md) [Checks](../quality.py)\n")
+        cases.write(workspace, "guide/development.md", guide)
+        self.assertTrue(*result())
+        for domains in (cases.SELECTED_DOMAINS + ["release"], [], cases.SELECTED_DOMAINS[:-1],
+                        cases.SELECTED_DOMAINS + ["docs"]):
+            with self.subTest(domains=domains):
+                cases.write(workspace, ".agents/scaffold.json", json.dumps({**selection, "domains": domains}))
+                self.assertFalse(result()[0])
+        cases.write(workspace, ".agents/scaffold.json", json.dumps(selection))
+        for before, after in (("250 ms", "500 ms"), ("../language.md", "../language.md#missing"),
+                              ("Existing owner guidance.", "")):
+            cases.write(workspace, "guide/development.md", guide.replace(before, after))
+            self.assertFalse(result()[0])
+        cases.write(workspace, "guide/development.md", guide.replace("# 开发", "# Working here"))
+        self.assertTrue(*result())
+        cases.write(workspace, "release.md", "replaced the excluded release policy\n")
+        self.assertFalse(result()[0])
 
     def test_testing_guidance_preserves_policy_sources_and_discovery(self):
         workspace, state = self.fixture("scaffold-testing-guidance")
@@ -276,14 +307,14 @@ class OutcomeTests(unittest.TestCase):
         runs = {}
         for condition in ("none", "brief", "skill"):
             path = self.root / condition
-            runs[condition] = runner.prepare_run("spec-preservation", path, condition)
+            runs[condition] = runner.prepare_run("scaffold-guidance", path, condition)
             self.assertEqual((path / "guidance").exists(), condition == "skill")
             self.assertEqual("Read relevant references" in (path / "prompt.txt").read_text(), condition == "skill")
         self.assertEqual(len({r["fixture_digest"] for r in runs.values()}), 1)
         self.assertEqual(len({r["state"]["base"] for r in runs.values()}), 1)
         self.assertIsNone(runs["none"]["skill_revision"])
         with self.assertRaisesRegex(ValueError, "exists"):
-            runner.prepare_run("spec-preservation", self.root / "skill", "skill")
+            runner.prepare_run("scaffold-guidance", self.root / "skill", "skill")
 
     def test_payload_exports_committed_references_and_old_revisions(self):
         repository = self.root / "source"

@@ -6,6 +6,7 @@ These opt-in fixtures inspect what an Agent actually changes, separately from [r
 
 | Case | Observations | Limit |
 |---|---|---|
+| `scaffold-selected-guidance` | Accepted domain JSON, real project guide/source routes, preserved exclusions and policies | A saved choice is not guidance completion; dialogue is evaluated separately |
 | `commit-hunks` | Commit tree/parent, same-file staged hunk, another staged file, unstaged changes | One bounded Git scenario |
 | `spec-preservation` | Owned clauses, exact values, draft status, unresolved question, revised overview | Not complete semantic accuracy or reader comprehension |
 | `docs-move` (none/brief only) | Unique content and incoming/outgoing relative links/anchors | The fixture's Markdown subset, not a general repository link validator |
@@ -25,9 +26,9 @@ CI's `scripts/tests/test_task_outcomes.py` exercises good/bad reference actions 
 Use an authorized, disposable, credential-limited environment outside this checkout. Each run creates a separate Git repository and refuses an existing output directory. Choose `none` (task only), `brief` (task plus short instruction), or `skill` (task plus a pinned complete skill payload, including references). This measures explicit application, not native discovery. `docs-move` retains its host-workflow oracle with only `none` and `brief`; its former catalog skill is retired, so `skill` is rejected before creating a run.
 
 ```bash
-python evals/tasks/runner.py prepare commit-hunks /absolute/eval/commit-none --condition none
-python evals/tasks/runner.py prepare commit-hunks /absolute/eval/commit-brief --condition brief
-python evals/tasks/runner.py prepare commit-hunks /absolute/eval/commit-skill --condition skill --skill-revision HEAD
+python evals/tasks/runner.py prepare scaffold-testing-guidance /absolute/eval/testing-none --condition none
+python evals/tasks/runner.py prepare scaffold-testing-guidance /absolute/eval/testing-brief --condition brief
+python evals/tasks/runner.py prepare scaffold-testing-guidance /absolute/eval/testing-skill --condition skill --skill-revision HEAD
 ```
 
 Run these commands from the evaluator's checkout. Commit intended skill changes before using `HEAD`: payloads come from Git, not dirty files. For old/new comparisons, use two full skill commit IDs with the same fixture/evaluator; the evaluator hash is recorded separately. Match run order, model, effort, permissions, plugin/memory configuration, cache conditions, and interventions, recording deviations. A brief request is a legitimate control. Repeated held-out tasks are needed for a stable-advantage claim.
@@ -54,7 +55,7 @@ Run from the evaluator checkout in Bash/Git Bash after setting an exact `CLAUDE_
   # Bash tool permission permits execution; it does not provide a sandbox.
   : "${CLAUDE_MODEL_ID:?Set an exact model ID, not a moving alias}"
   : "${CLAUDE_CACHE_CONDITION:?Describe the actual observed cache condition}"
-  run=/absolute/eval/commit-skill
+  run=/absolute/eval/testing-skill
   test -d "$run/workspace"
   printf 'Retained task output: %s\n' "$run"
   claude --version > "$run/host-version.txt"
@@ -102,21 +103,24 @@ Invoke `runner.py run <prepared-directory> --driver-json <config.json> --model <
 Capture the host; do not ask the model to invent this envelope. Token volume includes cache reads/creation and is not a dollar estimate. Unknown metrics stay null; the runner bounds elapsed time below by its own observation. The reduced environment does not forward API secrets; use a separately configured sandboxed host/wrapper with authorized authentication. Tools must not alter prepared controls/guidance or the source repository. Failure retains the attempt and cannot become a passing cost comparison.
 
 ```bash
-python evals/tasks/runner.py compare /absolute/eval/commit-none/result.json /absolute/eval/commit-skill/result.json
+python evals/tasks/runner.py compare /absolute/eval/testing-none/result.json /absolute/eval/testing-skill/result.json
 ```
 
 Comparison requires completed runs matching fixture, evaluator, platform, Python, host/version/model/configuration, and cache labels. It reports correctness and metric differences, retaining null for unknown usage. A failed task in a valid control is evidence; a failed host is not a valid control. Operator-supplied labels/logs are not attestation: consistent files do not authenticate edited results or prove confinement and matched conditions.
 
-## Remaining catalog coverage
+## Coverage after route retirement
 
-Reuse existing checks rather than duplicating them in another runtime:
+`agent-scaffold` has real installer/selection tests and bounded guidance fixtures; authenticated
+host discovery and actual dialogue need separate observations. `deep-interview` retains
+revision/digest/approval tests, and `lark-cli` retains mock and decision cases.
 
-| Skills | Evidence / next useful observation |
-|---|---|
-| `agent-scaffold` | Core/workspace/layout/E2E asset tests plus project-guidance outcome fixtures; semantic adaptation and authenticated discovery/hooks need separate observed runs |
-| `conventional-commit`, `spec-writing`, `lark-cli`, `tdd` | Outcome fixtures above; decision probes remain separate |
-| `semver-release` | Planner/extractor tests and real release shell execution with a mock publisher; real publication is never an evaluation side effect |
-| `deep-interview` | Revision, digest approval, recovery, and exact-file tests; not proof of task quality |
-| `domain-modeling` | Contextual examples and routing probes; inspect definitions and migrated consumers before efficacy claims |
+Commit scope, specification preservation, docs moves and test-first traces remain **host/project
+fixtures** with `none` and `brief` conditions; their retired skills are not installed as treatments.
+`runner.py prepare ... --condition skill` rejects those cases before writing. The scaffolding
+fixtures still compare task-only/brief/pinned-skill conditions. Do not redirect ordinary task
+fixtures to scaffold merely because it now establishes their project conventions.
 
-This fixture set does not certify a host or establish gains for all catalog skills.
+Release planning/extraction and real-Git/mock-publisher tests remain repository tooling checks
+under `scripts/release/`, not automatic release side effects or catalog-skill certification.
+No source deletion proves that native models have equal effectiveness; retain the bounded
+fixtures and measure actual tasks when that question matters.

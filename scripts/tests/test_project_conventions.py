@@ -60,8 +60,8 @@ class ProjectConventionPreservationTests(unittest.TestCase):
                     result[relative] = ("directory",)
         return result
 
-    def invoke(self, mode, *, expected=0, cwd=None):
-        args = [self.bash_bin, INSTALLER.as_posix(), mode, "--profile", "light"]
+    def invoke(self, mode, *, expected=0, cwd=None, extra=()):
+        args = [self.bash_bin, INSTALLER.as_posix(), mode, "--profile", "light", *extra]
         if mode in ("plan", "doctor", "verify"):
             args.append("--json")
         cp = subprocess.run(args, cwd=str(cwd or self.root), env=self.env,

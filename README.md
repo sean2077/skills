@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of 8 reusable [Agent Skills](https://agentskills.io/specification) for requirements, documentation, repository operations, release, and productivity.
+A curated catalog of 3 reusable [Agent Skills](https://agentskills.io/specification) for requirements, documentation, repository operations, release, and productivity.
 
 Install the skills that add something to your host or project. Ordinary investigation, experiments, cleanup, review, and delivery use the host/project workflow (including native goals where available); there is no mandatory skill chain. The [selection guide](docs/skill-composition.md) explains adjacent routes and retired installations.
 
@@ -10,7 +10,7 @@ Run installation from the **consumer project**, not this catalog checkout. These
 
 ```bash
 # One skill for Claude Code and Codex
-npx --yes skills@1.5.17 add sean2077/skills --skill tdd -a claude-code -a codex
+npx --yes skills@1.5.17 add sean2077/skills --skill agent-scaffold -a claude-code -a codex
 
 # Complete catalog for just these two targets
 npx --yes skills@1.5.17 add sean2077/skills --skill '*' -a claude-code -a codex
@@ -21,7 +21,7 @@ npx --yes skills@1.5.17 add /absolute/path/to/skills --skill agent-scaffold -a c
 
 Replace the absolute path with the catalog checkout. Repeat `--skill` and `-a` for selective installs; quote `'*'`. A relative local source needs `./` or `../`, not a repository-like shorthand. See [installer semantics](docs/compatibility.md#installer-semantics) for scope, discovery-only checks, global installation, and safe removal.
 
-Installing `agent-scaffold` makes the skill available; it does **not** apply a harness to the consumer project. Its [entry point](skills/agent-scaffold/SKILL.md) starts with a read-only plan. A full authorized initialization also adopts or fills project-owned document, command, verification, and source-ownership guidance; the installer alone handles only harness assets. Host trust and hook approval remain separate from installation; see [compatibility](docs/compatibility.md).
+Installing `agent-scaffold` makes the skill available; it does **not** apply a harness to the consumer project. Its [entry point](skills/agent-scaffold/SKILL.md) starts with a read-only plan. A full initialization or old-version migration offers all project-convention domains by default and asks once which to exclude. The accepted selection is saved in `.agents/scaffold.json`; later updates reuse it without repeating that question. The Agent fills selected guidance in existing project locations; the installer alone handles assets. See [one-time selection](skills/agent-scaffold/references/onboarding-selection.md). Host trust and hook approval remain separate from installation; see [compatibility](docs/compatibility.md).
 
 ## Catalog
 
@@ -29,14 +29,9 @@ Each catalog skill is independently installable from `skills/<name>/`. The linke
 
 | Skill | Use |
 |---|---|
-| [agent-scaffold](skills/agent-scaffold/) | Initialize or maintain the harness and usable project document/command guidance, adopting existing layouts. |
-| [conventional-commit](skills/conventional-commit/) | Create a scoped local commit or message while preserving unrelated index state. |
+| [agent-scaffold](skills/agent-scaffold/) | Initialize or maintain the harness and selected project conventions; preserve existing layouts and remember one-time exclusions. |
 | [deep-interview](skills/deep-interview/) | Resolve requirements into an approved specification; exact-file approval records are optional. |
-| [domain-modeling](skills/domain-modeling/) | Define and evolve project terminology, context boundaries, and multilingual equivalents. |
 | [lark-cli](skills/lark-cli/) | Perform selected 飞书/Feishu/Lark CLI operations with identity and side-effect safeguards. |
-| [semver-release](skills/semver-release/) | Analyze a version and complete an authorized repository-owned release. |
-| [spec-writing](skills/spec-writing/) | Write or revise requirements/design documents while preserving settled meaning. |
-| [tdd](skills/tdd/) | Perform user- or project-required test-first implementation with RED/GREEN evidence. |
 
 The project skill `.agents/skills/skill-eval` and project subagent `skill-verifier` support this repository's own evaluations. Neither is a catalog install target.
 

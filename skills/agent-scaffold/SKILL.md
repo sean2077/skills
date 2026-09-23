@@ -1,6 +1,6 @@
 ---
 name: agent-scaffold
-description: "Use to initialize, inspect, or upgrade a Claude Code + Codex project harness and its document, command, testing, and source-ownership guidance. Preserve existing layouts. Not for routine research, docs reorganization, scripting, delivery, or third-party skill installation."
+description: "Use to initialize, inspect, or upgrade a Claude Code + Codex project harness and its selected project conventions. Preserve existing layouts. Not for routine research, docs reorganization, scripting, delivery, or third-party skill installation."
 ---
 
 # Agent Scaffold
@@ -10,7 +10,7 @@ The installer owns deterministic harness assets; the Agent adopts and fills proj
 conventions. A successful installer run alone does not complete project onboarding.
 
 ```bash
-bash <skill-dir>/agent-scaffold.sh <mode> [--profile default|light] [--json]
+bash <skill-dir>/agent-scaffold.sh <mode> [--profile default|light] [--domains all|none|list] [--json]
 ```
 
 Run inside the authorized target checkout. The runtime requires git, Python 3.8+, Bash 3.2+,
@@ -50,21 +50,24 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
 
 1. Resolve the task checkout, revision, applicable authority chain, and existing lifecycle
    owner; do not infer them from session cwd or create a second worktree manager.
-2. For initialization or upgrade, read [project conventions](references/project-conventions.md).
+2. For full initialization or upgrade, follow [one-time selection](references/onboarding-selection.md).
+   Offer all domains by default on first use or legacy migration; ask which to exclude once,
+   reusing an explicit answer already given. Reuse a recorded selection on later runs without
+   asking again. Read [project conventions](references/project-conventions.md) for selected domains.
    Inspect relevant entry points and actual configurations/callers before expanding the scan.
    Reuse existing answers; identify missing document, command, test-quality, verification,
-   source, and safety guidance. Follow [testing conventions](references/testing-conventions.md)
-   for test-policy discovery and project-specific quality guidance; do not impose TDD. This assessment also applies to previews, without writing or running setup commands.
+   source, and safety guidance within the accepted selection. Use the relevant references below;
+   selected testing does not impose TDD, nor does selected release authorize publication. This assessment also applies to previews, without writing or running setup commands.
 3. Run `plan` for assets; combine its `apply_mode` and profile with the needed project-guidance
    changes. Resolve material scope/ownership conflicts. Follow existing authorization instead
    of demanding a new approval round for every routine, already authorized step.
 4. For an authorized initialization/upgrade, run the indicated mutating mode. Then **write or
-   reconcile the missing project guidance** in its existing homes, and link it from the Agent
+   reconcile the selected missing project guidance** in its existing homes, and link it from the Agent
    entry point. Respect an explicitly runtime-only request. Do not stop at suggestions or copy
    this skill's manual into the target; choose the minimum useful project-specific additions.
 5. Verify harness assets with the same profile. Separately walk a new-Agent reader task using
    only the resulting entry points: find the applicable docs, real commands/cwd/effects,
-   test-design and dependency boundaries, generated-source owners, verification limits, and
+   selected domain conventions, generated-source owners, verification limits, and
    delivery boundary. Check changed links and
    affected commands safely; preserve unavailable evidence as a gap rather than inventing it.
 6. Report adopted locations, material additions/repairs, observed checks, and unresolved gaps.
@@ -76,7 +79,10 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
 
 | Need | Reference |
 |---|---|
+| Default-all first setup, legacy migration, one-time opt-outs, saved choices | [Onboarding selection](references/onboarding-selection.md) |
 | First-use project guidance, layout adoption, docs/tools, and incremental maintenance | [Project conventions](references/project-conventions.md) |
+| Specification status, semantic preservation and acceptance | [Specification conventions](references/specification-conventions.md) |
+| Commit scope, delivery, version/notes authorities and release completion | [Delivery conventions](references/delivery-conventions.md) |
 | Project test design, dependency boundaries, existing gates, and TDD policy | [Testing conventions](references/testing-conventions.md) |
 | Session entry, task paths, external worktrees, and lifecycle handoff | [Workspace context](references/workspace-context.md) |
 | EOL defaults, exceptions, and authorized migration | [Line endings](references/line-endings.md) |
@@ -90,4 +96,4 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
 | Platforms, symlink repair, and checkpoint limitations | [Platform support](references/platform-support.md) |
 | Structured reports and troubleshooting | [Diagnostics](references/diagnostics.md) |
 
-See [NOTICE.md](NOTICE.md) for attribution of the adapted testing guidance.
+See [NOTICE.md](NOTICE.md) for attribution of adapted testing and terminology guidance.

@@ -125,14 +125,25 @@ TESTING_CLAUSES = (
     "Review golden changes against protocol.md rather than approving new output blindly.",
 )
 TESTING_ARGV = ["python", "-m", "unittest", "discover", "-s", "spec", "-p", "*_spec.py"]
+SELECTED_DOMAINS = ["docs", "tools", "testing", "specs", "terminology", "environment"]
+CONVENTION_CLAUSES = (
+    "Keep the timeout exactly 250 ms; the draft does not imply approval.",
+    "A workspace is this project's checkout, not a remote task.",
+    "Test-first is optional; offline checks do not prove provider authentication.",
+)
 CASES = {
+    "scaffold-selected-guidance": {
+        "skill": "agent-scaffold",
+        "prompt": "Initialize the project-owned conventions after asset work. My explicit one-time choice is all domains except git and release; do not ask again. Save that choice in .agents/scaffold.json. Consolidate the owner clauses from decisions.md verbatim into the existing guide/development.md, link that guide from AGENTS.md and link the actual test, specification and terminology sources. Do not run commands, change source policies or tools, touch existing Git/release rules or add parallel documents. Assets are handled separately.",
+        "brief": "Preserve the explicit exclusions and existing policies; save selection independently of guidance completion and connect meaningful project guidance to its sources.",
+    },
     "commit-hunks": {
-        "skill": "conventional-commit",
+        "skill": None,
         "prompt": "Create one Conventional Commit for only FEATURE=False to FEATURE=True in config.py. Preserve the unrelated pre-staged NOTE change and notes.txt, and the unstaged TRACING change. Do not push or rewrite history.",
         "brief": "Compare the exact commit tree and parent with the requested patch; preserve unrelated index and working-tree content.",
     },
     "spec-preservation": {
-        "skill": "spec-writing",
+        "skill": None,
         "prompt": "Rewrite the overview in spec.md so a new implementer can use it. Keep its normative clauses verbatim, exact values, X-Request-ID, and draft status. Do not imply approval or invent answers to the open question.",
         "brief": "Preserve source-owned requirements and status; check what a reader can answer from the document alone.",
     },
@@ -143,17 +154,17 @@ CASES = {
     },
     "scaffold-guidance": {
         "skill": "agent-scaffold",
-        "prompt": "Complete first-use project guidance as part of Agent harness initialization; asset installation is handled separately. Read project sources, fill missing command, documentation and generated-source guidance, and connect it from AGENTS.md. Preserve existing layout, the owner note, the existing delivery clause verbatim, draft status, user files and toolchain. Do not run installers, generators or commands, move files, or add empty/default directories.",
+        "prompt": "Complete first-use project guidance as part of Agent harness initialization; asset installation is handled separately. Read project sources, fill missing command, documentation and generated-source guidance, and connect it from AGENTS.md. Preserve existing layout, the owner note, the existing delivery clause verbatim, draft status, user files and toolchain. The owner already selected all domains. Do not run installers, generators or commands, move files, or add empty/default directories.",
         "brief": "Use current project entry points and actual command/source owners. Fill genuine guidance gaps rather than copying a template; installer success is not reader readiness.",
     },
     "scaffold-upgrade-guidance": {
         "skill": "agent-scaffold",
-        "prompt": "Reconcile project guidance during a harness upgrade. CONTRIBUTING.md now owns the guide that was deliberately merged out of doc/development.md. Repair stale Agent navigation; preserve existing content and do not recreate the removed guide or change project commands. Asset updates are handled separately; do not run commands.",
+        "prompt": "Reconcile project guidance during a harness upgrade. CONTRIBUTING.md now owns the guide that was deliberately merged out of doc/development.md. Repair stale Agent navigation; preserve existing content and do not recreate the removed guide or change project commands. Asset updates are handled separately; the owner already selected all domains. Do not run commands.",
         "brief": "Adopt the current successor and repair routes without restoring an earlier template.",
     },
     "scaffold-testing-guidance": {
         "skill": "agent-scaffold",
-        "prompt": "Complete the testing-guidance part of harness initialization. Asset work is separate. Consolidate quality-decisions.md into the existing handbook/development.md and connect that guide from AGENTS.md. Keep the owner clauses verbatim in the guide, explain the existing runner with its discovery arguments, and link the protocol and existing test example. Preserve current test-first/coverage choices and all other files. Do not execute commands, change tests, add frameworks or create parallel guides. No sibling skill is installed.",
+        "prompt": "Complete the testing-guidance part of harness initialization. Asset work is separate. Consolidate quality-decisions.md into the existing handbook/development.md and connect that guide from AGENTS.md. Keep the owner clauses verbatim in the guide, explain the existing runner with its discovery arguments, and link the protocol and existing test example. Preserve current test-first/coverage choices and all other files. Do not execute commands, change tests, add frameworks or create parallel guides. The owner already selected testing; asset/selection-record work is separate. No sibling skill is installed.",
         "brief": "Use actual project sources to fill test-quality guidance, preserve policy and test discovery, and keep it reachable without depending on another skill.",
     },
     "lark-unknown-write": {
@@ -167,7 +178,7 @@ CASES = {
         "brief": "Read the fixture contract before invoking it; an unsupported argument shape is a gap to report, not permission to guess another one.",
     },
     "tdd-negative-input": {
-        "skill": "tdd",
+        "skill": None,
         "prompt": "Use test-first development to make cap(value, limit) reject a negative value with ValueError. Preserve existing tests. Run python check.py after adding the regression and again after the fix; do not modify check.py. It reports hashes and outcomes needed to verify RED then GREEN.",
         "brief": "Observe a missing-behavior failure before changing production code, then rerun the same tests after the fix.",
     },
@@ -206,6 +217,15 @@ def prepare(root: Path, case_id: str) -> dict:
             (root / "doc/development.md").unlink()
             write(root, "AGENTS.md", "# Project\n\nOwner note: preserve the bilingual glossary.\n\n[Development](doc/development.md)\n")
             write(root, "CONTRIBUTING.md", "# Current development\n\nThe former doc/development.md guide was deliberately merged here; do not restore it.\nRun `python tools/check.py --unit` at the repository root for offline checks only. Authenticated vendor integration is separate.\nRun `python scripts/render_api.py` at the repository root to generate docs/generated/api.md from api/schema.json.\nUser docs live in website/content/; [proposal](doc/proposal.md) is draft, not approval. Submit through a PR.\n")
+    elif case_id == "scaffold-selected-guidance":
+        write(root, "AGENTS.md", "# Project\nOwner note: keep existing Git/release rules.\n")
+        write(root, "guide/development.md", "# Development\nExisting owner guidance.\n")
+        write(root, "decisions.md", "# Owner requirements\n\nConsolidate these clauses verbatim.\n" + "\n\n".join(CONVENTION_CLAUSES) + "\n")
+        write(root, "spec.md", "---\nstatus: draft\n---\n# Contract\nTimeout: 250 ms.\n")
+        write(root, "language.md", "# Project language\nWorkspace: the project's checkout, not a remote task.\n")
+        write(root, "quality.py", "# Run python quality.py --unit from the project root; offline only.\n")
+        write(root, "release.md", "# Release\nExternal owner handles publication. Do not replace this policy.\n")
+        write(root, ".gitmessage", "existing commit template\n")
     elif case_id == "scaffold-testing-guidance":
         write(root, "AGENTS.md", "# Project\nOwner note: keep the existing delivery policy.\n")
         write(root, "handbook/development.md", "# Development\nSubmit through a PR; never auto-merge.\n")
@@ -252,6 +272,10 @@ def prepare(root: Path, case_id: str) -> dict:
             for path in git(root, "ls-files", "-z").decode().split("\0")
             if path and path not in editable
         }
+    if case_id == "scaffold-selected-guidance":
+        state["protected"] = {path: digest(read(root, path))
+                              for path in git(root, "ls-files", "-z").decode().split("\0")
+                              if path and path not in {"AGENTS.md", "guide/development.md"}}
     return state
 
 
@@ -374,6 +398,34 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             if case_id == "scaffold-upgrade-guidance":
                 check("current successor adopted", "CONTRIBUTING.md" in pages)
                 check("deleted guide not resurrected", not (root / "doc/development.md").exists())
+        elif case_id == "scaffold-selected-guidance":
+            selection = decode_json(read(root, ".agents/scaffold.json"))
+            values = selection.get("domains") if isinstance(selection, dict) else None
+            check("accepted domains persisted exactly", isinstance(selection, dict)
+                  and set(selection) == {"schema_version", "domains"}
+                  and type(selection["schema_version"]) is int and selection["schema_version"] == 1
+                  and isinstance(values, list) and all(isinstance(v, str) for v in values)
+                  and len(values) == len(SELECTED_DOMAINS) and set(values) == set(SELECTED_DOMAINS))
+            pages = reachable_guidance(root)
+            guide = pages.get("guide/development.md", "")
+            check("owner note remains", "Owner note: keep existing Git/release rules." in pages["AGENTS.md"])
+            check("existing guidance retained", "Existing owner guidance." in guide)
+            check("selected conventions actually written", all(c in guide for c in CONVENTION_CLAUSES))
+            for source in ("spec.md", "language.md"):
+                check("actual project source reachable: " + source, source in pages)
+            links = re.findall(r"\]\(([^)\s]+)\)", guide)
+            check("actual command source linked", any(
+                os.path.abspath(root / "guide" / unquote(urlsplit(link).path)) == str(root / "quality.py")
+                for link in links))
+            allowed = set(state["protected"]) | {"AGENTS.md", "guide/development.md", ".agents/scaffold.json"}
+            actual = {p.relative_to(root).as_posix() for p in root.rglob("*")
+                      if ".git" not in p.relative_to(root).parts and p.is_file()}
+            check("no parallel guidance or control files", actual == allowed)
+            expected_dirs = {str(parent).replace("\\", "/") for path in allowed
+                             for parent in Path(path).parents if str(parent) != "."}
+            actual_dirs = {p.relative_to(root).as_posix() for p in root.rglob("*")
+                           if ".git" not in p.relative_to(root).parts and p.is_dir()}
+            check("no empty default directories", actual_dirs == expected_dirs)
         elif case_id == "scaffold-testing-guidance":
             pages = reachable_guidance(root)
             check("testing guide reachable", "handbook/development.md" in pages)

@@ -5,6 +5,14 @@ preview of that work. The Agent owns semantic adaptation; the installer owns det
 assets. An authorized full setup includes writing useful missing guidance, not only listing
 recommendations. Routine docs cleanup, research, and scripting do not trigger scaffold.
 
+## Accepted coverage
+
+Apply [one-time selection](onboarding-selection.md) before full setup: all domains are offered
+by default; the user can exclude any in one question. A recorded choice is reused, not asked
+again on updates. The rows below are coverage areas for selected domains, not a requirement to
+create one file per area. Do not maintain excluded domains or delete their existing guidance.
+Core safety, permissions and source/projection ownership always apply.
+
 ## Discover the actual project
 
 Resolve the authorized checkout and its applicable instructions first. Read existing entry
@@ -41,6 +49,9 @@ row below. Prefer facts that a new Agent cannot infer reliably over generic advi
 | Coverage to establish | Useful project-specific content |
 |---|---|
 | Document entry and ownership | Where current development/design/operations material lives, what each location owns, and where a new document belongs. Preserve unique content and update actual readers/callers when material moves. |
+| Specifications (`specs`) | Adopt semantic preservation, current/target status and observable acceptance using [specification conventions](specification-conventions.md). Do not invent product decisions. |
+| Terminology (`terminology`) | Establish the actual glossary owner and project-wide incremental maintenance using [terminology](terminology.md), not a mandatory context-map template. |
+| Git and releases (`git`, `release`) | Establish the selected project commit/delivery and release policy using [delivery conventions](delivery-conventions.md); retain real tools rather than replacing them with prose. |
 | Status and evidence | How this project distinguishes drafts, current decisions, implemented behavior, and history. Approval and recent edits are not proof of implementation. Preserve established conventions; optional flat `status`/`updated` are hints, not a mandatory schema. Formats owning their frontmatter keep it. |
 | Task commands | Real build/test/diagnostic/generation entries, cwd, necessary environment, and consequential effects. Keep internal helpers private and established CLI/installed/service-bound interfaces stable. |
 | Test quality and policy | Adopt test locations, discovery/runner configuration, fixtures, coverage gates, and scoped test-first choices. Fill useful design/oracle, dependency and failure-evidence guidance using [testing conventions](testing-conventions.md), without imposing a framework or TDD. |
@@ -52,7 +63,7 @@ row below. Prefer facts that a new Agent cannot infer reliably over generic advi
 For example, record that `make check` omits hardware tests, or that a dev command stops an
 installed service, when supported by this project. Do not invent those effects or commands.
 Do not settle unknown product architecture, test policy, or approval status while filling a
-document. Report material unresolved choices and complete the independent safe parts.
+document. Report material unresolved choices and complete independent safe parts. Selected domains default to useful coverage, not forced frameworks or policies; an inapplicable domain can state its supported boundary briefly.
 
 ## Author within the granted scope
 
@@ -69,7 +80,7 @@ find project instructions. Do not copy all these principles into its resident co
 
 ## Upgrade by current ownership and coverage
 
-The installer refreshes managed assets; the Agent maintains project-owned guidance with the
+The installer refreshes managed assets and preserves the accepted domain list; the Agent maintains project-owned guidance with the
 project's existing editing authority. Initial authorship does not grant permanent template
 ownership. Do not add a mandatory layout registry, recurring approval gate, or side database.
 

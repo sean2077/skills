@@ -8,28 +8,25 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking
 
-- Retire `work-protocol`, `best-practice-research`, `tooling-conventions`, and `project-docs-organizer` (12 → 8 catalog skills), including coordination runtime, inventory checker, generated payloads, contracts, and retired routing candidates. Preserve existing consumer installations/state until their owner completes or explicitly migrates them; no aliases, automatic uninstall, state migration, or replacement controller is introduced.
-
-- Retire `ralph` from the catalog (13 → 12 skills), including its loop runtime, references, source, contract, generator target, and route alias. Use native goals or the host/project workflow for new continuation tasks; exact attempt/stall/plateau semantics remain project-owned, not claimed as native-goal parity. Finish or explicitly abort active runs with the original installed runtime before removing it; preserve existing state and evidence, with no automatic migration or consumer uninstall.
+- Retire `ralph`, `work-protocol`, `best-practice-research`, `tooling-conventions`, `project-docs-organizer`, `tdd`, `spec-writing`, `conventional-commit`, `semver-release`, and `domain-modeling` (13 → 3 catalog skills across this release). Retain `agent-scaffold`, `deep-interview`, and `lark-cli`. Ordinary tasks use native host/project workflows; useful quality, vocabulary and delivery conventions become project-owned scaffold guidance, not replacement controllers or aliases.
+- Remove exclusive loop/coordination/inventory payloads, runtime targets and catalog contracts. Existing consumer installations, states and policies are not removed or automatically migrated; finish/cancel old owned runs with the original runtime and preserve direct checker consumers before uninstalling.
+- Move this repository's release analyzer and changelog extractor to `scripts/release/`, update CI and retain regression coverage without old-path wrappers. External direct consumers must pin or migrate before removing the retired payloads.
 
 ### Added
 
-- Make full `agent-scaffold` setup adopt and fill project-specific test-quality guidance: independent oracles, contractual observations, risk-based levels, real/double boundaries, sensitivity and honest baselines. Preserve existing runners/layouts, coverage gates and scoped TDD policy; no framework, mandatory test-first or managed AGENTS expansion is introduced.
-- Expand `agent-scaffold` full initialization/upgrade to adopt and fill project-owned documentation, command, verification, source, and environment guidance. Respect existing layouts and project customizations; use current successors instead of recreating deleted/merged templates, without growing the managed AGENTS block or adding a layout registry.
-- Add explicit installer-report scope (`harness-assets`, project guidance `not-assessed`), real installer layout/read-only/idempotence preservation tests, scaffold decision probes, and bounded task-outcome fixtures. These checks distinguish runtime installation from Agent-authored guidance and do not claim live-host/model effectiveness.
+- Offer all eight convention domains on first full setup or legacy migration, ask once for exclusions, and save the accepted list in `.agents/scaffold.json`. Later updates reuse the choice without re-asking or re-enabling excluded/new domains. Preview and runtime-only calls do not accept defaults; a saved preference does not certify completed guidance.
+- Make full scaffold setup adopt and fill selected project documentation, tooling, test-quality, specifications, terminology, Git/delivery, release and environment guidance in existing locations. Preserve actual layouts, scoped policies and deliberate guide renames/merges/removals; do not impose frameworks, approval systems, directory templates or publishers.
+- Distinguish installer `harness-assets` verification, persisted selection and Agent-authored semantic coverage. Add selection/preflight/opt-out/preservation tests, decision probes and bounded artifact fixtures. Only the managed terminology section follows the optional domain choice; the default resident contract remains compact.
 
 ### Fixed
 
-- Accept a directory reader route (`[docs](website/content/)`) in the scaffold guidance fixtures. The traversal read every local link as a file, so naming a documentation owner by directory failed the oracle as a missing artifact; a heading fragment on such a route and a missing file still fail, and workspace/symlink containment is unchanged.
-- Hold `agent-scaffold`'s new upstream MIT attribution in its targeted contract. Generic validation only routes a shipped `NOTICE.md`, so the notice could be emptied to a stub with every catalog check green — the same drift already closed for `tdd` and `domain-modeling`.
+- Accept directory reader routes and equivalent quoted/fenced command examples in guidance fixtures while rejecting missing fragments, wrong discovery arguments and dropped project-owned clauses. Retain filesystem/source preservation and no-sibling installation checks.
+- Protect adapted testing and terminology attribution with the complete upstream MIT notice as well as provenance, not just an existing notice file.
 
 ### Changed
 
-- Separate reusable project testing conventions from explicit TDD execution. `tdd` reads project guidance first and keeps compact, independently installable fallback material plus RED/GREEN evidence requirements. The scaffold testing adaptation ships its own upstream attribution notice; neither skill depends on the other.
-- Preserve shared state-safety coverage by moving lock, concurrency, binding, session, strict-JSON, and compact-history regressions from the retired loop to `deep-interview`; remove loop-only tests and the now-unused score helper, then regenerate the approval payload. Keep `work-protocol` ownership semantics and historical release/audit records unchanged.
-
-- Refresh repository documentation against v8: distinguish catalog sources from consumer installation destinations, clarify canonical/generated ownership, preserve dated evidence, and align release guidance with main reachability, supported tags, and schema-2 local analysis.
-- Make maintainer and evaluation examples fail safely, retain failure output, and require an explicit observed cache condition instead of assuming cold-cache execution. Keep all catalog routes, runtime behavior, historical records, and optional-review boundaries unchanged.
+- Preserve shared lock, concurrency, binding, session, strict-JSON and compact-history tests through the remaining approval/evaluation runtimes; remove checks exclusive to retired controllers. Host/project commit, specification, docs-move and test-first fixtures remain without retired skill treatments.
+- Refresh documentation ownership, consumer installation boundaries, dated evidence and release instructions; improve command failure handling and explicit cache-condition reporting without relabeling documentation checks as live-host evidence.
 
 ## [v8.0.0] — 2026-09-23
 

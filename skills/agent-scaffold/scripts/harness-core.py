@@ -24,6 +24,10 @@ SCHEMA_VERSION = 1
 SKILL_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = Path(__file__).with_name("managed-assets.json")
 PROFILES = {"default", "light"}
+GUIDANCE_DOMAINS = ("docs", "tools", "testing", "specs", "terminology", "git", "release", "environment")
+GUIDANCE_FILE = ".agents/scaffold.json"
+TERMINOLOGY_START = "<!-- agent-scaffold:terminology:start -->"
+TERMINOLOGY_END = "<!-- agent-scaffold:terminology:end -->"
 STRATEGIES = {"copy", "seed", "merge-json", "managed-block", "prepend-block"}
 MANAGED_HOOK_FILES = (
     "trunk_edit_guard.sh",
@@ -109,6 +113,72 @@ def load_json(path: Path, display_name: Optional[str] = None) -> Any:
         raise CoreError("{0}: cannot read UTF-8 JSON ({1})".format(name, exc))
     except (ValueError, RecursionError) as exc:
         raise CoreError("{0}: invalid JSON ({1})".format(name, exc))
+
+
+def parse_domains(value: str) -> List[str]:
+    """An explicit answer; absence is different from all or none."""
+    if value == "all":
+        return list(GUIDANCE_DOMAINS)
+    if value == "none":
+        return []
+    values = [item.strip() for item in value.split(",")]
+    if (not all(values) or len(values) != len(set(values))
+            or any(item not in GUIDANCE_DOMAINS for item in values)):
+        raise CoreError("--domains requires all, none, or unique names from: " + ",".join(GUIDANCE_DOMAINS))
+    return [item for item in GUIDANCE_DOMAINS if item in values]
+
+
+def load_guidance_selection(target: Path) -> Optional[List[str]]:
+    """Read accepted scope without following aliases or treating damage as first use."""
+    parent = target / ".agents"
+    path = target / GUIDANCE_FILE
+    if os.path.lexists(str(parent)) and (parent.is_symlink() or not parent.is_dir()):
+        raise CoreError(GUIDANCE_FILE + ": .agents must be a real directory")
+    if not os.path.lexists(str(path)):
+        return None
+    if path.is_symlink() or not path.is_file():
+        raise CoreError(GUIDANCE_FILE + ": selection must be a regular file")
+    def unique(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+        value: Dict[str, Any] = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError("duplicate key: " + key)
+            value[key] = item
+        return value
+    try:
+        with path.open("rb") as source:
+            raw = source.read(16385)
+        if len(raw) > 16384:
+            raise ValueError("selection exceeds 16 KiB")
+        data = json.loads(raw.decode("utf-8"), object_pairs_hook=unique, parse_constant=_reject_constant)
+        if not isinstance(data, dict) or set(data) != {"schema_version", "domains"}:
+            raise ValueError("expected schema_version and domains only")
+        if type(data["schema_version"]) is not int or data["schema_version"] != 1:
+            raise ValueError("unsupported selection schema")
+        values = data["domains"]
+        if (not isinstance(values, list) or any(not isinstance(v, str) or v not in GUIDANCE_DOMAINS for v in values)
+                or len(values) != len(set(values))):
+            raise ValueError("domains must be a unique array of known domain names")
+        return [item for item in GUIDANCE_DOMAINS if item in values]
+    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
+        raise CoreError(GUIDANCE_FILE + ": invalid selection; preserve and repair it, not re-onboard ({0})".format(exc))
+
+
+def guidance_selection(target: Path, requested: Optional[str] = None) -> Dict[str, Any]:
+    saved = load_guidance_selection(target)
+    domains = parse_domains(requested) if requested is not None else saved
+    return {"status": "proposed" if requested is not None else ("pending" if saved is None else "recorded"),
+            "path": GUIDANCE_FILE, "domains": domains,
+            "defaults": list(GUIDANCE_DOMAINS) if saved is None else None}
+
+
+def save_guidance_selection(target: Path, requested: str) -> None:
+    # Validate existing state even for an explicit replacement; never overwrite a corrupt
+    # or foreign record as if it were a fresh selection. No prompt or stdin read here.
+    saved = load_guidance_selection(target)
+    domains = parse_domains(requested)
+    if saved != domains:
+        write_json(target / GUIDANCE_FILE, {"schema_version": 1, "domains": domains})
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -546,11 +616,14 @@ def marker_state(path: Path) -> str:
     return "invalid"
 
 
-def render_agents_template(source: Path, profile: str) -> str:
+def render_agents_template(source: Path, profile: str, domains: Optional[Sequence[str]] = None) -> str:
     try:
         text = source.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise CoreError("{0}: cannot read UTF-8 text ({1})".format(source, exc))
+    if domains is not None and "terminology" not in domains:
+        text = re.sub(re.escape(TERMINOLOGY_START) + r"[\s\S]*?" + re.escape(TERMINOLOGY_END) + r"\n?", "", text)
+    text = text.replace(TERMINOLOGY_START + "\n", "").replace(TERMINOLOGY_END + "\n", "")
     output: List[str] = []
     skip = False
     for line in text.replace("\r\n", "\n").replace("\r", "\n").splitlines(True):
@@ -610,14 +683,16 @@ def extract_managed_block(text: str) -> Optional[str]:
     return normalized[start:line_end]
 
 
-def managed_block_matches(path: Path, source: Path, profile: str) -> bool:
+def managed_block_matches(path: Path, source: Path, profile: str, domains: Optional[Sequence[str]] = None) -> bool:
     if marker_state(path) != "valid":
         return False
     try:
         actual = extract_managed_block(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError):
         return False
-    expected = extract_managed_block(render_agents_template(source, profile))
+    if domains is None:
+        domains = load_guidance_selection(path.parent)
+    expected = extract_managed_block(render_agents_template(source, profile, domains))
     return actual == expected
 
 
@@ -740,7 +815,7 @@ def check_record(
     return record
 
 
-def report(mode: str, target: Path, profile: str, checks: List[Dict[str, Any]], apply_mode: Optional[str]) -> Dict[str, Any]:
+def report(mode: str, target: Path, profile: str, checks: List[Dict[str, Any]], apply_mode: Optional[str], domains: Optional[str] = None) -> Dict[str, Any]:
     if mode not in REPORT_MODES:
         raise CoreError("unknown report mode: {0}".format(mode))
     if profile not in PROFILES:
@@ -748,10 +823,17 @@ def report(mode: str, target: Path, profile: str, checks: List[Dict[str, Any]], 
     if apply_mode not in {None, "apply", "upgrade"}:
         raise CoreError("unknown apply mode: {0}".format(apply_mode))
     failure_states = {"fail", "attention"}
+    try:
+        selection = guidance_selection(target, domains)
+    except CoreError as exc:
+        selection = {"status": "invalid", "path": GUIDANCE_FILE, "domains": None, "defaults": None}
+        checks = checks + [check_record("guidance.selection", "attention" if mode == "plan" else "fail",
+                                       GUIDANCE_FILE, "repair the saved selection without changing its intent", str(exc))]
     return {
         "schema_version": SCHEMA_VERSION,
         "scope": "harness-assets",
         "project_guidance": "not-assessed",
+        "guidance_selection": selection,
         "mode": mode,
         "target": str(target),
         "profile": profile,
@@ -767,6 +849,9 @@ def render_report(data: Dict[str, Any], as_json: bool) -> None:
         sys.stdout.write("\n")
         return
     print("[harness] scope: {0}; project guidance: {1}".format(data["scope"], data["project_guidance"]))
+    selection = data["guidance_selection"]
+    print("[harness] guidance selection: {0}; domains: {1}".format(
+        selection["status"], ",".join(selection["domains"]) if selection["domains"] is not None else "not selected"))
     print("[harness] {0}: {1} (profile: {2})".format(data["mode"], data["target"], data["profile"]))
     for item in data["checks"]:
         location = " {0}".format(item["path"]) if item.get("path") else ""
@@ -777,8 +862,10 @@ def render_report(data: Dict[str, Any], as_json: bool) -> None:
             print("    fix: {0}".format(item["fix"]))
     if data.get("apply_mode") and data["ok"]:
         print(
-            "[harness] to apply: bash <skill-dir>/agent-scaffold.sh {0} --profile {1}".format(
-                data["apply_mode"], data["profile"]
+            "[harness] to apply: bash <skill-dir>/agent-scaffold.sh {0} --profile {1}{2}".format(
+                data["apply_mode"], data["profile"],
+                " --domains " + (",".join(selection["domains"]) or "none")
+                if selection["status"] == "proposed" else ""
             )
         )
     elif data["mode"] == "plan" and not data["ok"]:
@@ -834,7 +921,7 @@ def host_agent_candidates(target: Path) -> List[str]:
     return candidates
 
 
-def build_plan(target: Path, profile: str, manifest: Dict[str, Any]) -> Dict[str, Any]:
+def build_plan(target: Path, profile: str, manifest: Dict[str, Any], domains: Optional[str] = None) -> Dict[str, Any]:
     checks: List[Dict[str, Any]] = []
     boundary_conflict = False
     for relative in MANAGED_DIRECTORY_BOUNDARIES:
@@ -854,6 +941,10 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any]) -> Dict[str
             )
     if boundary_conflict:
         return report("plan", target, profile, checks, "apply")
+    try:
+        selected = guidance_selection(target, domains)["domains"]
+    except CoreError:
+        return report("plan", target, profile, checks, "apply", domains)
     contract = asset_by_id(manifest, "contract.agents")
     agents = target / contract["target"]
     contract_source = SKILL_DIR / contract["source"]
@@ -886,7 +977,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any]) -> Dict[str
             )
         elif not agents.exists():
             checks.append(check_record("contract.agents", "create", contract["target"], None))
-        elif state == "valid" and managed_block_matches(agents, contract_source, profile):
+        elif state == "valid" and managed_block_matches(agents, contract_source, profile, selected):
             checks.append(check_record("contract.agents", "present", contract["target"], None))
         elif state == "valid":
             checks.append(check_record("contract.agents", "refresh", contract["target"], None))
@@ -1104,7 +1195,7 @@ def build_plan(target: Path, profile: str, manifest: Dict[str, Any]) -> Dict[str
                 "adopt " + ", ".join(candidates) if candidates else "no hand-authored host agents",
             )
         )
-    return report("plan", target, profile, checks, apply_mode)
+    return report("plan", target, profile, checks, apply_mode, domains)
 
 
 def run_tool(
@@ -1160,6 +1251,10 @@ def build_verify(
                 )
             )
     if checks:
+        return report("verify", target, profile, checks, None)
+    try:
+        load_guidance_selection(target)
+    except CoreError:
         return report("verify", target, profile, checks, None)
     for item in active_assets(manifest, profile):
         if item["strategy"] != "copy":
@@ -1372,7 +1467,8 @@ def command_hooks(args: argparse.Namespace) -> int:
 
 def command_agents(args: argparse.Namespace) -> int:
     if args.agents_command == "render":
-        rendered = render_agents_template(Path(args.source), args.profile)
+        domains = load_guidance_selection(Path(args.target)) if args.target else None
+        rendered = render_agents_template(Path(args.source), args.profile, domains)
         sys.stdout.buffer.write(rendered.encode("utf-8"))
         return 0
     state = marker_state(Path(args.file))
@@ -1394,7 +1490,7 @@ def command_files(args: argparse.Namespace) -> int:
 def command_preflight(args: argparse.Namespace) -> int:
     target = Path(args.target).resolve()
     manifest = load_manifest(Path(args.manifest))
-    data = build_plan(target, args.profile, manifest)
+    data = build_plan(target, args.profile, manifest, args.domains)
     if not data["ok"]:
         render_report(data, False)
         raise CoreError("preflight has attention items; resolve them before mutation")
@@ -1411,7 +1507,7 @@ def command_report(args: argparse.Namespace) -> int:
     manager_item = asset_by_id(manifest, "runtime.symlink-manager")
     manager = SKILL_DIR / manager_item["source"]
     if args.report_command == "plan":
-        data = build_plan(target, args.profile, manifest)
+        data = build_plan(target, args.profile, manifest, args.domains)
     elif args.report_command == "doctor":
         data = build_doctor(target, args.profile, manager)
     elif args.report_command == "verify":
@@ -1471,6 +1567,7 @@ def build_parser() -> argparse.ArgumentParser:
     agents_render = agents_sub.add_parser("render")
     agents_render.add_argument("--source", required=True)
     agents_render.add_argument("--profile", choices=sorted(PROFILES), required=True)
+    agents_render.add_argument("--target")
 
     files = subparsers.add_parser("files")
     files_sub = files.add_subparsers(dest="files_command", required=True)
@@ -1485,6 +1582,11 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--target", required=True)
     preflight.add_argument("--profile", choices=sorted(PROFILES), required=True)
     preflight.add_argument("--mode", choices=("apply", "upgrade"), required=True)
+    preflight.add_argument("--domains")
+
+    guidance = subparsers.add_parser("guidance")
+    guidance.add_argument("--target", required=True)
+    guidance.add_argument("--set", required=True)
 
     report_parser = subparsers.add_parser("report")
     report_sub = report_parser.add_subparsers(dest="report_command", required=True)
@@ -1493,6 +1595,8 @@ def build_parser() -> argparse.ArgumentParser:
         report_mode.add_argument("--target", required=True)
         report_mode.add_argument("--profile", choices=sorted(PROFILES), required=True)
         report_mode.add_argument("--json", action="store_true")
+        if name == "plan":
+            report_mode.add_argument("--domains")
     return parser
 
 
@@ -1504,6 +1608,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             manifest = load_manifest(Path(args.manifest))
             source = SKILL_DIR / asset_by_id(manifest, "contract.agents")["source"]
             sys.stdout.buffer.write((select_profile(Path(args.target), source) + "\n").encode("utf-8"))
+            return 0
+        if args.command == "guidance":
+            save_guidance_selection(Path(args.target).resolve(), args.set)
             return 0
         if args.command == "assets":
             return command_assets(args)
