@@ -100,6 +100,41 @@ class OutcomeTests(unittest.TestCase):
         cases.write(workspace, "doc/development.md", page)
         cases.write(workspace, "docs/generated/api.md", "modified output\n")
         self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        cases.write(workspace, "docs/generated/api.md", "# Generated API\nDo not hand-edit.\n")
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        # Naming the directory without its trailing slash is the same owner fact.
+        cases.write(workspace, "doc/development.md", page.replace("website/content/.", "website/content is the directory."))
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        # The task forbids extra files and new/empty directories; enforce it.
+        cases.write(workspace, "doc/notes.md", "unrequested page\n")
+        self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        (workspace / "doc/notes.md").unlink()
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        (workspace / "onboarding").mkdir()
+        self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        (workspace / "onboarding").rmdir()
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+
+    @unittest.skipIf(not hasattr(os, "symlink"), "symlink unsupported")
+    def test_link_traversal_accepts_a_symlinked_workspace_root(self) -> None:
+        # macOS /tmp and /var, or a linked checkout, must not look like escaping links.
+        real = self.root / "root-real"
+        (real / "docs").mkdir(parents=True)
+        (real / "AGENTS.md").write_bytes(b"[Guide](docs/guide.md)\n")
+        (real / "docs" / "guide.md").write_bytes(b"# Guide\n")
+        link = self.root / "root-link"
+        try:
+            link.symlink_to(real, target_is_directory=True)
+        except OSError as exc:  # pragma: no cover - platform capability
+            self.skipTest("symlink creation unsupported: %s" % exc)
+        self.assertEqual({"AGENTS.md": "[Guide](docs/guide.md)\n", "docs/guide.md": "# Guide\n"},
+                         cases.reachable_guidance(link))
+        outside = self.root / "outside.md"
+        outside.write_bytes(b"outside\n")
+        os.symlink(outside, real / "escape.md")
+        (real / "AGENTS.md").write_bytes(b"[Escape](escape.md)\n")
+        with self.assertRaisesRegex(ValueError, "symlinked result"):
+            cases.reachable_guidance(link)
 
     def test_scaffold_upgrade_repairs_routes_not_deleted_templates(self):
         workspace, state = self.fixture("scaffold-upgrade-guidance")
@@ -186,6 +221,16 @@ class OutcomeTests(unittest.TestCase):
                 cases.write(workspace, "handbook/development.md", formatted)
                 self.assertTrue(*result())
                 cases.write(workspace, "handbook/development.md", formatted.replace("-s spec", "-s tests"))
+                self.assertFalse(result()[0])
+        # A shell prompt marker is presentation; it must not hide the real argv.
+        command = "python -m unittest discover -s spec -p '*_spec.py'"
+        for prompt in ("$ ", "> ", "PS> "):
+            with self.subTest(prompt=prompt):
+                cases.write(workspace, "handbook/development.md", guide.replace(
+                    "`" + command + "`", "```bash\n" + prompt + command + "\n```"))
+                self.assertTrue(*result())
+                cases.write(workspace, "handbook/development.md", guide.replace(
+                    "`" + command + "`", "```bash\n" + prompt + command.replace("-s spec", "-s tests") + "\n```"))
                 self.assertFalse(result()[0])
         cases.write(workspace, "handbook/development.md", guide)
         for relative in ("TESTING.md", "tests/placeholder.py", "tools/test.sh"):
@@ -302,6 +347,25 @@ class OutcomeTests(unittest.TestCase):
         self.assertFalse(self.passed(workspace, "tdd-negative-input", state, [green, red])[0])
         cases.write(workspace, "check.py", "raise SystemExit(0)\n")
         self.assertFalse(self.passed(workspace, "tdd-negative-input", state, [red, green])[0])
+
+    def test_scaffold_fixture_controls_round_trip_through_json(self):
+        for case in ("scaffold-guidance", "scaffold-upgrade-guidance",
+                     "scaffold-testing-guidance", "scaffold-selected-guidance"):
+            with self.subTest(case=case):
+                output = self.root / (case + "-persisted")
+                prepared = runner.prepare_run(case, output, "none")
+                self.assertEqual(prepared, runner.load(output / "fixture.json"))
+                # Assess re-loads the JSON, not the original in-memory state.
+                result = runner.assess(output)
+                self.assertFalse(result["passed"])  # No guidance has been authored yet.
+                if "editable" in prepared["state"]:
+                    self.assertIsInstance(prepared["state"]["editable"], list)
+                    self.assertTrue(cases.guidance_changed_paths(output / "workspace", prepared["state"])
+                                    <= set(prepared["state"]["editable"]))
+                # An initially broken reader route may stop before the scope assertion;
+                # persisted controls must still reproduce every in-memory oracle result.
+                self.assertEqual(cases.verify(output / "workspace", case, prepared["state"]),
+                                 result["checks"])
 
     def test_three_conditions_share_fixture_not_candidate(self):
         runs = {}

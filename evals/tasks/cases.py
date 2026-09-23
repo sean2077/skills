@@ -258,25 +258,40 @@ def prepare(root: Path, case_id: str) -> dict:
         state["source"] = digest((root / "cap.py").read_bytes())
         state["test"] = digest((root / "test_cap.py").read_bytes())
     state["protected"] = {p.name: digest(p.read_bytes()) for p in root.iterdir() if p.name in ("check.py", "lark_mock.py")}
-    if case_id in ("scaffold-guidance", "scaffold-upgrade-guidance"):
-        editable = {"AGENTS.md", "doc/development.md"} if case_id == "scaffold-guidance" else {"AGENTS.md"}
+    scaffold_editable = {
+        "scaffold-guidance": {"AGENTS.md", "doc/development.md"},
+        "scaffold-upgrade-guidance": {"AGENTS.md"},
+        "scaffold-testing-guidance": {"AGENTS.md", "handbook/development.md"},
+    }.get(case_id)
+    if scaffold_editable:
+        state["editable"] = sorted(scaffold_editable)
         state["protected"] = {
             path: digest(read(root, path))
             for path in git(root, "ls-files", "-z").decode().split("\0")
-            if path and path not in editable
+            if path and path not in scaffold_editable
         }
-    if case_id == "scaffold-testing-guidance":
-        editable = {"AGENTS.md", "handbook/development.md"}
-        state["protected"] = {
-            path: digest(read(root, path))
-            for path in git(root, "ls-files", "-z").decode().split("\0")
-            if path and path not in editable
-        }
+        state["dirs"] = workspace_dirs(root)
     if case_id == "scaffold-selected-guidance":
         state["protected"] = {path: digest(read(root, path))
                               for path in git(root, "ls-files", "-z").decode().split("\0")
                               if path and path not in {"AGENTS.md", "guide/development.md"}}
     return state
+
+
+def guidance_changed_paths(root: Path, state: dict) -> set:
+    """Fixture files added, modified or removed since its prepared commit."""
+    changed = set(git(root, "diff", "--name-only", state["base"]).decode().splitlines())
+    changed.update(git(root, "ls-files", "--others", "--exclude-standard").decode().splitlines())
+    return changed
+
+
+def workspace_dirs(root: Path) -> list:
+    """Fixture directories, excluding Git metadata. Empty directories count here."""
+    return sorted(
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_dir() and path.relative_to(root).parts[0] != ".git"
+    )
 
 
 def contained(root: Path, path: str) -> Path:
@@ -305,6 +320,10 @@ def read(root: Path, path: str) -> bytes:
 
 def reachable_guidance(root: Path) -> dict[str, str]:
     """Bounded fixture Markdown traversal, not a full Markdown/semantic validator."""
+    # Lexical root for relative-link normalization. Resolving it would make a
+    # symlinked workspace (macOS /tmp, /var, or a linked checkout) look like an
+    # escaping link; symlink rejection stays in contained()/read().
+    root_abs = Path(os.path.abspath(root))
     pending, seen = ["AGENTS.md"], {}
     while pending:
         name = pending.pop()
@@ -320,7 +339,7 @@ def reachable_guidance(root: Path) -> dict[str, str]:
                 continue
             target = (root / name).parent / unquote(url.path) if url.path else root / name
             # Normalize relative links but reject outside roots and symlinked results.
-            relative = Path(os.path.abspath(target)).relative_to(root.resolve()).as_posix()
+            relative = Path(os.path.abspath(target)).relative_to(root_abs).as_posix()
             # A directory route (website/content/) is a valid reader link, not a page.
             if contained(root, relative).is_dir():
                 if url.fragment:
@@ -384,11 +403,13 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
         elif case_id in ("scaffold-guidance", "scaffold-upgrade-guidance"):
             pages = reachable_guidance(root)
             text = "\n".join(pages.values())
+            check("no added fixture directory", workspace_dirs(root) == state["dirs"])
+            check("only project guidance changed", guidance_changed_paths(root, state) <= set(state["editable"]))
             check("owner note preserved", "Owner note: preserve the bilingual glossary." in pages["AGENTS.md"])
             check("guidance is reachable beyond the resident contract", len(pages) > 1)
             for command in ("python tools/check.py --unit", "python scripts/render_api.py"):
                 check("reader can find " + command, command in text)
-            for source in ("api/schema.json", "docs/generated/api.md", "website/content/"):
+            for source in ("api/schema.json", "docs/generated/api.md", "website/content"):
                 check("reader can find owner " + source, source in text)
             check("draft source is reachable", "doc/proposal.md" in pages)
             for name in ("tool", "DEVELOPMENT.md", "docs/development.md", "tools/README.md"):
@@ -440,8 +461,10 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             commands.extend(guide.splitlines())
             argv_matches = []
             for command in commands:
+                # A shell prompt marker is presentation, not part of the command.
+                candidate = re.sub(r"^\s*(?:\$|>|PS>)\s+", "", command)
                 try:
-                    argv_matches.append(shlex.split(command) == TESTING_ARGV)
+                    argv_matches.append(shlex.split(candidate) == TESTING_ARGV)
                 except ValueError:
                     continue  # Unrelated inline examples need not be complete shell commands.
             check("existing discovery command retained", any(argv_matches))
@@ -451,9 +474,8 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             check("existing test example linked", any(
                 os.path.abspath(root / "handbook" / urlsplit(link).path)
                 == str(root / "spec/encoder_spec.py") for link in links))
-            changed = set(git(root, "diff", "--name-only", state["base"]).decode().splitlines())
-            changed.update(git(root, "ls-files", "--others", "--exclude-standard").decode().splitlines())
-            check("only project guidance changed", changed <= {"AGENTS.md", "handbook/development.md"})
+            check("only project guidance changed", guidance_changed_paths(root, state) <= set(state["editable"]))
+            check("no added fixture directory", workspace_dirs(root) == state["dirs"])
             for name in ("test", "tests", "__tests__", "tools", ".agents", "TESTING.md"):
                 check("no new fixture-default directory or skill dependency: " + name,
                       not (root / name).exists())

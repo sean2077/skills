@@ -73,6 +73,13 @@ the applicable test-first policy and the checks it cannot claim? Inspect or safe
 the affected checks; a command listing, green asset verification or matching headings does not
 prove test effectiveness. Record observed, inspected and unavailable evidence separately.
 
+## Direct observations and design seams
+
+Observe through a public seam. Inspecting a database, filesystem, queue or wire directly is
+correct when that adapter or stored representation is the subject; otherwise it bypasses the
+promised behavior. Avoid production-only test hooks; prefer an existing dependency boundary
+or a small behavior-preserving seam extraction while existing checks stay green.
+
 ## Explicit test-first work and difficult boundaries
 
 Preserve the project's selected test-first scopes. When required, observe a failure caused by

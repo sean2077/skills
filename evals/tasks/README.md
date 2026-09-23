@@ -38,10 +38,11 @@ Give the subject only `prompt.txt`, the fixture workspace, and named guidance. K
 The scaffold fixtures focus on the Agent-owned guidance step after separate asset installation:
 a correct result is usable project-specific navigation and content, not extra default folders.
 Their oracles reject missing command/source routes, broken anchors, altered protected inputs,
-and resurrected templates. They do not prove all meaning, cwd/effect explanations, or that the
-host obeyed a no-execution instruction; inspect actual traces and use an independent reader
-for those claims. `test_project_conventions.py` separately executes real installer lifecycle
-operations. Neither fixture is a general Markdown validator or evidence of measured gains.
+resurrected templates, and unrequested added files or directories. They do not prove all meaning,
+cwd/effect explanations, or that the host obeyed a no-execution instruction; inspect actual
+traces and use an independent reader for those claims. `test_project_conventions.py` separately
+executes real installer lifecycle operations. Neither fixture is a general Markdown validator or
+evidence of measured gains.
 
 ## Execute with an existing host
 

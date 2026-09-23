@@ -1,6 +1,6 @@
 ---
 name: agent-scaffold
-description: "Use to initialize, inspect, or upgrade a Claude Code + Codex project harness and its selected project conventions. Preserve existing layouts. Not for routine research, docs reorganization, scripting, delivery, or third-party skill installation."
+description: "Use to initialize, inspect, or upgrade a Claude Code + Codex harness with .agents/ SSOT, real-symlink projections, hooks, subagents, authority docs, LF/CRLF policy, and selected project conventions. Adopt existing layouts. Not for ordinary commits, testing, docs, releases, or third-party skill installation."
 ---
 
 # Agent Scaffold

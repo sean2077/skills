@@ -20,6 +20,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Keep scaffold fixture edit scopes JSON-serializable and reconstitute set comparisons after loading; prepare/assess round-trip regressions prevent in-memory-only tests from hiding broken persisted evaluations.
+- Restore `agent-scaffold`'s decisive routing triggers (`.agents/` SSOT, real-symlink projections, hooks, subagents, authority docs, LF/CRLF policy) in its published description. The rewrite kept the work but dropped the words, and no other catalog description covers symlink repair, hook wiring, subagent authoring, or repository EOL policy, so those requests lost their only decisive trigger.
+- Preserve the restored production-only test-hook and direct-inspection ("side channel") rules in scaffold testing guidance when retiring `tdd`; a database, filesystem, queue or wire inspection is correct only when that adapter or stored form is the subject.
+- Make the scaffold guidance fixtures independent of a symlinked workspace path. The link traversal resolved only one side, so a workspace reached through a symlink (macOS `/tmp` or `/var`, a linked checkout, a `tempfile` root) failed the oracle with a false `not in the subpath` result, marking correct guidance as failing.
+- Enforce the scaffold guidance fixture's own "no extra files or empty directories" constraint; only four hardcoded names were checked, so an added page or a new empty directory passed while truly altered protected inputs still failed. Reject a shell prompt marker (`$`, `>`) hiding a fenced test command and accept a directory owner named without a trailing slash; a genuinely wrong discovery argument, a missing file, and a heading fragment on a directory route still fail.
 - Accept directory reader routes and equivalent quoted/fenced command examples in guidance fixtures while rejecting missing fragments, wrong discovery arguments and dropped project-owned clauses. Retain filesystem/source preservation and no-sibling installation checks.
 - Protect adapted testing and terminology attribution with the complete upstream MIT notice as well as provenance, not just an existing notice file.
 
