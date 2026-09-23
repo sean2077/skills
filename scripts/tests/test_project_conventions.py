@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 
@@ -17,6 +16,10 @@ INSTALLER = ROOT / "skills/agent-scaffold/agent-scaffold.sh"
 
 class ProjectConventionPreservationTests(unittest.TestCase):
     def setUp(self):
+        # Native Windows process lookup can choose the System32 WSL launcher
+        # before PATH. Resolve the same Git Bash/POSIX executable as other suites.
+        self.bash_bin = shutil.which("bash")
+        self.assertIsNotNone(self.bash_bin, "Git Bash/POSIX bash is required for installer tests")
         self.temp = tempfile.TemporaryDirectory(prefix="project conventions ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve() / "project space"
@@ -58,7 +61,7 @@ class ProjectConventionPreservationTests(unittest.TestCase):
         return result
 
     def invoke(self, mode, *, expected=0, cwd=None):
-        args = ["bash", INSTALLER.as_posix(), mode, "--profile", "light"]
+        args = [self.bash_bin, INSTALLER.as_posix(), mode, "--profile", "light"]
         if mode in ("plan", "doctor", "verify"):
             args.append("--json")
         cp = subprocess.run(args, cwd=str(cwd or self.root), env=self.env,
