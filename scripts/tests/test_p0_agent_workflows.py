@@ -32,7 +32,6 @@ from p0_runtime.skill_eval import (  # noqa: E402
     validate_manifest,
     validate_result,
 )
-from p0_runtime.common import discover_git_context, run_git  # noqa: E402
 
 
 def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -59,7 +58,6 @@ def init_repo(path: Path) -> str:
 
 
 class CommonSecurityTest(unittest.TestCase):
-
     def test_atomic_json_failure_preserves_original_and_removes_candidate(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "result.json"

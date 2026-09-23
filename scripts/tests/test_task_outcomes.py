@@ -91,6 +91,13 @@ class OutcomeTests(unittest.TestCase):
                 self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
         cases.write(workspace, "doc/development.md", page.replace("# Working on this project", "# 开发入口"))
         self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        # A directory route is a valid way to name a docs owner; only a fragment on it is not.
+        linked = page.replace("website/content/.", "[website/content/](../website/content/).")
+        cases.write(workspace, "doc/development.md", linked)
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        cases.write(workspace, "doc/development.md", linked.replace("../website/content/)", "../website/content/#top)"))
+        self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        cases.write(workspace, "doc/development.md", page)
         cases.write(workspace, "docs/generated/api.md", "modified output\n")
         self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
 

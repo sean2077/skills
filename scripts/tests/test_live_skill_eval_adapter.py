@@ -436,8 +436,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             self.assertEqual(0, self.verifier.main())
         return json.loads(output.getvalue())["passed"]
 
-
-    def test_scaffold_guidance_observations_are_not_asset_success(self):
+    def test_scaffold_guidance_observations_are_not_asset_success(self) -> None:
         suite = json.loads((ROOT / "evals/agent-skills/agent-scaffold/suite.json").read_text(encoding="utf-8"))
         for case in suite["cases"]:
             if case["kind"] != "positive":

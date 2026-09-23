@@ -98,7 +98,6 @@ leave the review branch and checkout available until their owner authorizes clea
 Before removal, release processes using the directory; changing a child shell's cwd
 cannot release an Agent or terminal's Windows directory handle.
 
-
 ## User choice and migration
 
 Keep a durable preference in project-owned `AGENTS.md` prose outside the managed block,

@@ -7,12 +7,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from p0_runtime.common import HarnessError, discover_git_context  # noqa: E402
+from p0_runtime.common import HarnessError  # noqa: E402
 from p0_runtime.skill_eval import EXIT_ADAPTER, EXIT_VERIFIER, ProtocolFailure, run_suite  # noqa: E402
 
 

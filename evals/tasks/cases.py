@@ -255,7 +255,8 @@ def prepare(root: Path, case_id: str) -> dict:
     return state
 
 
-def read(root: Path, path: str) -> bytes:
+def contained(root: Path, path: str) -> Path:
+    """Resolve a workspace-relative result path, rejecting escapes and symlinks."""
     relative = Path(path)
     if relative.is_absolute() or ".." in relative.parts:
         raise ValueError("result escapes workspace: " + path)
@@ -264,6 +265,11 @@ def read(root: Path, path: str) -> bytes:
         target = target / part
         if target.is_symlink():
             raise ValueError("symlinked result: " + path)
+    return target
+
+
+def read(root: Path, path: str) -> bytes:
+    target = contained(root, path)
     if not target.is_file():
         raise ValueError("missing result: " + path)
     with target.open("rb") as handle:
@@ -291,6 +297,11 @@ def reachable_guidance(root: Path) -> dict[str, str]:
             target = (root / name).parent / unquote(url.path) if url.path else root / name
             # Normalize relative links but reject outside roots and symlinked results.
             relative = Path(os.path.abspath(target)).relative_to(root.resolve()).as_posix()
+            # A directory route (website/content/) is a valid reader link, not a page.
+            if contained(root, relative).is_dir():
+                if url.fragment:
+                    raise ValueError("heading fragment on a directory route")
+                continue
             contents = read(root, relative).decode("utf-8")
             if url.fragment:
                 headings = re.findall(r"^#{1,6}\s+(.+?)\s*#*\s*$", contents, re.M)

@@ -18,6 +18,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Expand `agent-scaffold` full initialization/upgrade to adopt and fill project-owned documentation, command, verification, source, and environment guidance. Respect existing layouts and project customizations; use current successors instead of recreating deleted/merged templates, without growing the managed AGENTS block or adding a layout registry.
 - Add explicit installer-report scope (`harness-assets`, project guidance `not-assessed`), real installer layout/read-only/idempotence preservation tests, scaffold decision probes, and bounded task-outcome fixtures. These checks distinguish runtime installation from Agent-authored guidance and do not claim live-host/model effectiveness.
 
+### Fixed
+
+- Accept a directory reader route (`[docs](website/content/)`) in the scaffold guidance fixtures. The traversal read every local link as a file, so naming a documentation owner by directory failed the oracle as a missing artifact; a heading fragment on such a route and a missing file still fail, and workspace/symlink containment is unchanged.
+
 ### Changed
 
 - Separate reusable project testing conventions from explicit TDD execution. `tdd` reads project guidance first and keeps compact, independently installable fallback material plus RED/GREEN evidence requirements. The scaffold testing adaptation ships its own upstream attribution notice; neither skill depends on the other.

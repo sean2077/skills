@@ -25,7 +25,6 @@ TARGETS = {
         "package_scope": "project-private",
         "target": ".agents/skills/skill-eval",
     },
-
 }
 
 
