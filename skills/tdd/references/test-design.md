@@ -17,6 +17,11 @@ model or invariant for the oracle. Do not call or duplicate the production algor
 its own expected result. Several assertions can jointly establish one behavior. Internal calls,
 incidental order and wording matter only when they are themselves part of the contract.
 
+Observe through a public seam. Inspecting a database, filesystem, queue or wire directly is
+correct only when that adapter or stored form is the subject; otherwise it is a side channel.
+Avoid production-only test hooks: prefer an existing dependency boundary, or a small
+behavior-preserving seam extraction while green.
+
 For pure rules, start near the function/module. For wiring, packaging, configuration or storage
 semantics, exercise the real boundary; add a broader tracer when lower-level tests cannot expose
 the risk. Test-first does not mandate unit-only or E2E-only testing, nor changing the framework.
