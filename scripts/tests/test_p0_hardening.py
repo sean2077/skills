@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import errno
 import json
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -38,6 +41,39 @@ def init_repo(path: Path) -> str:
     return git(path, "rev-parse", "HEAD").stdout.strip()
 
 
+# A fixture teardown removes a live Git repository: `run_suite` materializes a
+# detached worktree whose administration stays in the fixture repository's `.git`,
+# and Python 3.8's POSIX `rmtree` lists a directory before removing each entry, so
+# an entry that appears in that window makes the final `rmdir` report ENOTEMPTY.
+# The assertions have already run by then, so retry a bounded number of times
+# (the mitigation `worktree.sh` uses for the same removal race) instead of failing
+# a passing test; a tree that is really not removable still raises.
+TRANSIENT_REMOVAL_ERRNOS = (errno.ENOTEMPTY, errno.EBUSY)
+REMOVAL_ATTEMPTS = 3
+REMOVAL_RETRY_DELAY_SECONDS = 0.2
+
+
+def cleanup_fixture(directory: tempfile.TemporaryDirectory) -> None:
+    for attempt in range(1, REMOVAL_ATTEMPTS + 1):
+        try:
+            if attempt == 1:
+                directory.cleanup()
+            else:
+                # `TemporaryDirectory.cleanup()` detaches its finalizer on the first
+                # call and never re-attempts removal afterwards, so a retry has to
+                # remove the surviving tree directly.
+                shutil.rmtree(directory.name)
+        except OSError as exc:
+            if getattr(exc, "errno", None) not in TRANSIENT_REMOVAL_ERRNOS or attempt == REMOVAL_ATTEMPTS:
+                raise
+        else:
+            if not os.path.exists(directory.name):
+                return
+        if attempt < REMOVAL_ATTEMPTS:
+            time.sleep(REMOVAL_RETRY_DELAY_SECONDS)
+    raise OSError(errno.ENOTEMPTY, "fixture directory survived cleanup attempts", directory.name)
+
+
 class SkillEvalHardeningTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -55,7 +91,7 @@ class SkillEvalHardeningTest(unittest.TestCase):
         self.manifest = self.repo / "evals" / "examples" / "tdd" / "suite.json"
 
     def tearDown(self) -> None:
-        self.temp.cleanup()
+        cleanup_fixture(self.temp)
 
     def load_manifest(self) -> dict:
         return json.loads(self.manifest.read_text(encoding="utf-8"))
