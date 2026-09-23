@@ -1,3 +1,4 @@
+<!-- agent-scaffold:convention=environment -->
 # Setup and collaboration conventions
 
 Generic guide installed and refreshed by agent-scaffold; do not edit it here. The project's

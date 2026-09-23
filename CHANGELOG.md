@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve existing project-owned convention files when introducing scaffold guides: per-file ownership markers distinguish refreshable runtime from same-name local content; only byte-identical unmarked pre-release guides are adopted. Recheck legacy selection agreement before retirement while carrying explicit scope updates through migration.
+- Correct the installed-guide task comparison so both arms share the same harness context and differ only in the guide and its route. Allow file reading/editing without command execution, reject negated retirement status and paraphrased live plans, and require retained history to remain reachable. These regressions test bounded fixture behavior, not measured model effectiveness.
+
 ### Breaking
 
 - Record the accepted convention selection as a `<!-- agent-scaffold:domains=... -->` marker in the managed `AGENTS.md` block instead of `.agents/scaffold.json`. Apply/upgrade migrates a valid legacy file into the marker and removes it; a legacy file that disagrees with the marker fails closed. Report `guidance_selection.path` is now `AGENTS.md` (or the legacy path until migration), and a leftover legacy file makes verify fail with `guidance.legacy-record` until upgrade.

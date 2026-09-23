@@ -160,6 +160,37 @@ class GuidanceSelectionTests(unittest.TestCase):
         self.assertFalse(CORE.retire_legacy_selection(self.root))
         self.assertEqual(["docs", "git"], CORE.load_guidance_selection(self.root))
 
+    def test_retiring_legacy_requires_agreement_or_the_explicit_update(self):
+        self.contract(["docs"])
+        self.record_legacy('{"schema_version":1,"domains":["git"]}')
+        before = (self.agents.read_bytes(), self.legacy.read_bytes())
+        for requested in (None, "git", "unknown"):
+            with self.subTest(requested=requested), self.assertRaises(CORE.CoreError):
+                CORE.retire_legacy_selection(self.root, requested)
+            self.assertEqual(before, (self.agents.read_bytes(), self.legacy.read_bytes()))
+        self.assertTrue(CORE.retire_legacy_selection(self.root, "docs"))
+        self.assertEqual(["docs"], CORE.load_guidance_selection(self.root))
+
+    def test_convention_ownership_does_not_come_from_the_directory_name(self):
+        manifest = CORE.load_manifest()
+        for asset_id in ("convention.docs", "convention.notice"):
+            with self.subTest(asset=asset_id):
+                item = CORE.asset_by_id(manifest, asset_id)
+                source = CORE.SKILL_DIR / item["source"]
+                installed = self.root / "existing.md"
+                installed.write_bytes(b"# Project-owned rule\nPreserve this policy.\n")
+                self.assertFalse(CORE.convention_asset_owned(item, source, installed))
+                installed.write_bytes(source.read_bytes() + b"\nManaged drift.\n")
+                self.assertTrue(CORE.convention_asset_owned(item, source, installed))
+                # Exact unmarked pre-release copies can be adopted; changed copies cannot.
+                unmarked = source.read_bytes().split(b"\n", 1)[1]
+                installed.write_bytes(unmarked)
+                self.assertTrue(CORE.convention_asset_owned(item, source, installed))
+                installed.write_bytes(unmarked + b"\nLocal policy.\n")
+                self.assertFalse(CORE.convention_asset_owned(item, source, installed))
+                installed.write_bytes(b"<!-- agent-scaffold:convention=other -->\n")
+                self.assertFalse(CORE.convention_asset_owned(item, source, installed))
+
     def test_argument_validation_is_exact(self):
         for value in ('', 'all,docs', 'none,git', 'docs,docs', 'doc', 'docs,', ',docs', 'unknown', 'docs,,tools'):
             with self.subTest(value=value), self.assertRaises(CORE.CoreError):
@@ -342,6 +373,30 @@ class InstallerSelectionTests(unittest.TestCase):
         self.assertFalse((fixture.root / CORE.LEGACY_GUIDANCE_FILE).exists())
         self.assertEqual("docs,git", marker(agents.read_text(encoding="utf-8")))
         self.assert_installed(fixture, ("convention.docs", "convention.git"))
+        self.assertTrue(fixture.invoke("verify")["ok"])
+
+    def test_foreign_convention_files_block_upgrade_before_any_writes(self):
+        for path, domains in ((".agents/conventions/docs.md", "docs"),
+                              (".agents/conventions/NOTICE.md", "testing")):
+            with self.subTest(path=path):
+                fixture = self.fixture()
+                fixture.write(path, "# Project-owned content\nDo not replace this file.\n")
+                # A real v9-style accepted record does not grant ownership of new paths.
+                fixture.write(CORE.LEGACY_GUIDANCE_FILE,
+                              json.dumps({"schema_version": 1, "domains": [domains]}))
+                before = fixture.snapshot()
+                planned = fixture.invoke("plan")
+                self.assertEqual("attention", next(c["status"] for c in planned["checks"] if c["path"] == path))
+                fixture.invoke("upgrade", expected=2)
+                self.assertEqual(before, fixture.snapshot())
+
+    def test_explicit_scope_update_can_migrate_a_different_legacy_selection(self):
+        fixture = self.fixture()
+        fixture.write(CORE.LEGACY_GUIDANCE_FILE, '{"schema_version":1,"domains":["git"]}\n')
+        fixture.invoke("upgrade", extra=("--domains", "docs"))
+        self.assertEqual(["docs"], CORE.load_guidance_selection(fixture.root))
+        self.assertFalse((fixture.root / CORE.LEGACY_GUIDANCE_FILE).exists())
+        self.assert_installed(fixture, ("convention.docs",))
         self.assertTrue(fixture.invoke("verify")["ok"])
 
     def test_conflicting_records_fail_before_mutation(self):

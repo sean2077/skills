@@ -53,16 +53,25 @@ evidence of measured gains.
 
 ## Installed-guide pair
 
-`plan-retirement-installed-guide` materializes the current `assets/conventions/docs.md` and its
-`render_agents_template` route exactly as an install with only `docs` selected would;
-`plan-retirement` is the same task without them. Neither prompt mentions the guide, so the pair
-asks whether an Agent that knows nothing about the scaffold skill finds and follows a resident route
-during ordinary work. Run both with `--condition none` under the same host, model, configuration
-and cache labels, then compare their `passed` values and checks directly: `runner.py compare`
-deliberately rejects different fixtures, and here the fixture difference is the treatment. Inspect
-the treatment trace for an actual read of `.agents/conventions/docs.md`; a pass without that read is
-not evidence that the route worked. One pair is descriptive; repeat on held-out tasks before
-claiming the route improves outcomes.
+Both cases have identical project instructions and the same rendered light harness with `docs`
+selected. `plan-retirement-installed-guide` includes the current `assets/conventions/docs.md`
+and its rendered convention-route section; `plan-retirement` omits only that file and section.
+The control is a deliberate route ablation, not a valid installation to pass scaffold `verify`.
+This keeps unrelated harness rules out of the treatment difference.
+
+The shared prompt directs the Agent to read `AGENTS.md`, permits file reads/edits, and forbids
+command execution or code changes. It never names the convention guide. The pair tests following
+a route from a supplied authority document, not automatic native-host discovery. Run both with
+`--condition none` under the same host, model, configuration and cache labels, then compare their
+`passed` values and checks directly: `runner.py compare` deliberately rejects different fixtures,
+and here the fixture difference is the treatment. Inspect the treatment trace for an actual read
+of `.agents/conventions/docs.md`; a pass without that read is not evidence that the route worked.
+
+The retirement oracle requires preserved rationale and verbatim measurements in reachable
+reader documentation. A retained plan needs an explicit English status/state/note line or status heading
+near the top; negated or pending status does not count. Rewording its steps does not remove that
+requirement. This is a bounded fixture convention, not general semantic validation or a mandated
+project format. One pair is descriptive; repeat on held-out tasks before claiming an improvement.
 
 ## Execute with an existing host
 

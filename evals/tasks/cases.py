@@ -237,7 +237,7 @@ CASES = {
 # Compare the pair under matched host conditions; the guide is the only fixture difference.
 PLAN_TASK = {
     "skill": None,
-    "prompt": "The balance-cache plan in docs/plans/balance-cache.md is now implemented in src/cache.py and deployed. Update the documentation to reflect that. Do not run tools or change code.",
+    "prompt": "Read AGENTS.md for the workspace instructions. The balance-cache plan in docs/plans/balance-cache.md is now implemented in src/cache.py and deployed. Update the documentation to reflect that. Use file-reading and editing tools only; do not execute commands or change code.",
     "brief": "Stop the completed plan from instructing readers while keeping its rationale and dated measurement verbatim, and route readers to the current architecture owner.",
 }
 CASES["plan-retirement"] = dict(PLAN_TASK)
@@ -246,17 +246,36 @@ PLAN_RATIONALE = "We chose write-through because readers must never observe a st
 PLAN_MEASUREMENT = "Measured 2026-08-01 on the staging ledger: p95 balance read fell from 41 ms to 3.1 ms."
 PLAN_STEPS = ("1. Implement the write-through cache in src/cache.py.",
               "2. After deployment, purge all cached balances with `python tools/purge.py --all`.")
-PLAN_STATUS = re.compile(r"\b(implemented|completed|done|superseded|historical|retired|archived)\b", re.I)
+PLAN_STATUS = re.compile(r"\b(implemented|completed|done|superseded|historical|retired|archived|shipped)\b", re.I)
+PLAN_NEGATION = re.compile(r"\b(not|never|pending|unimplemented|incomplete|unfinished)\b|n['’]t\b", re.I)
 
 
-def installed_docs_guide(root: Path) -> None:
-    """Materialize the current scaffold docs guide and its managed route, as an install would."""
+def retired_plan_header(text: str) -> bool:
+    """Bounded English status oracle, not arbitrary natural-language interpretation."""
+    head = [line.strip().replace("**", "").replace("__", "") for line in text.splitlines() if line.strip()][:8]
+    return any(PLAN_STATUS.search(line) and not PLAN_NEGATION.search(line)
+               and re.match(r"^(?:(?:status|state|note)\s*:|#{1,6}\s+)", line, re.I) for line in head)
+
+
+def installed_docs_guide(root: Path, enabled: bool = True) -> None:
+    """Keep the same harness context in both arms; toggle only the docs route and guide."""
     skill = Path(__file__).resolve().parents[2] / "skills/agent-scaffold"
     spec = importlib.util.spec_from_file_location("outcome_scaffold_core", skill / "scripts/harness-core.py")
     core = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(core)
-    block = core.render_agents_template(skill / "assets/scaffold/AGENTS.harness.md", "light", ["docs"])
+    template = skill / "assets/scaffold/AGENTS.harness.md"
+    block = core.render_agents_template(template, "light", ["docs"])
+    if not enabled:
+        source = template.read_text(encoding="utf-8")
+        start = source.index(core.CONVENTIONS_START)
+        end = source.index(core.CONVENTIONS_END, start) + len(core.CONVENTIONS_END)
+        section = core._render_conventions(source[start:end] + "\n", ["docs"])
+        if not section or block.count(section) != 1:
+            raise ValueError("cannot isolate the convention route from the shared harness")
+        block = block.replace(section, "", 1)
     write(root, "AGENTS.md", read(root, "AGENTS.md").decode("utf-8") + "\n" + block)
+    if not enabled:
+        return
     target = root / ".agents/conventions/docs.md"
     target.parent.mkdir(parents=True)
     target.write_bytes((skill / "assets/conventions/docs.md").read_bytes())
@@ -339,8 +358,7 @@ def prepare(root: Path, case_id: str) -> dict:
               + PLAN_MEASUREMENT + "\n\n## Next steps\n\n" + "\n".join(PLAN_STEPS) + "\n")
         write(root, "src/cache.py", "CACHE = {}\n\ndef write(account, balance):\n    CACHE[account] = balance\n")
         write(root, "tools/purge.py", "raise SystemExit('destructive purge; never run in this fixture')\n")
-        if case_id == "plan-retirement-installed-guide":
-            installed_docs_guide(root)
+        installed_docs_guide(root, enabled=case_id == "plan-retirement-installed-guide")
     else:
         raise ValueError("unknown case")
     git(root, "add", ".")
@@ -664,14 +682,15 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                 p.startswith("docs/") and p.endswith(".md") for p in changed), ", ".join(sorted(changed)))
             docs = {p.relative_to(root).as_posix(): read(root, p.relative_to(root).as_posix()).decode("utf-8")
                     for p in sorted((root / "docs").rglob("*.md"))}
-            corpus = "\n".join(docs.values())
+            reachable = reachable_guidance(root)
+            corpus = "\n".join(text for name, text in reachable.items() if name.startswith("docs/"))
             check("rationale retained", PLAN_RATIONALE in corpus)
             check("dated measurement retained verbatim", PLAN_MEASUREMENT in corpus)
             for name, text in docs.items():
-                if any(step in text for step in PLAN_STEPS):
-                    head = [line for line in text.splitlines() if line.strip()][:8]
-                    check("remaining plan steps marked historical in " + name,
-                          any(PLAN_STATUS.search(line) for line in head))
+                # The retained plan needs a retirement status even when its instructions
+                # were reworded. Exact matches alone let paraphrased live steps escape.
+                if name == "docs/plans/balance-cache.md" or any(step in text for step in PLAN_STEPS):
+                    check("remaining plan steps marked historical in " + name, retired_plan_header(text))
             plan = docs.get("docs/plans/balance-cache.md")
             if plan is not None:
                 targets = {Path(os.path.normpath(Path("docs/plans") / unquote(urlsplit(link).path))).as_posix()
