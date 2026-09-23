@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v9.0.0] — 2026-09-23
+
 ### Breaking
 
 - Retire `ralph`, `work-protocol`, `best-practice-research`, `tooling-conventions`, `project-docs-organizer`, `tdd`, `spec-writing`, `conventional-commit`, `semver-release`, and `domain-modeling` (13 → 3 catalog skills across this release). Retain `agent-scaffold`, `deep-interview`, and `lark-cli`. Ordinary tasks use native host/project workflows; useful quality, vocabulary and delivery conventions become project-owned scaffold guidance, not replacement controllers or aliases.
@@ -607,7 +609,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v8.0.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v9.0.0...HEAD
+[v9.0.0]: https://github.com/sean2077/skills/compare/v8.0.0...v9.0.0
 [v8.0.0]: https://github.com/sean2077/skills/compare/v7.0.0...v8.0.0
 [v7.0.0]: https://github.com/sean2077/skills/compare/v6.2.0...v7.0.0
 [v6.2.0]: https://github.com/sean2077/skills/compare/v6.1.0...v6.2.0
