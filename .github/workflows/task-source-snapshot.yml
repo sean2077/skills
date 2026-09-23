@@ -1,0 +1,62 @@
+name: task source snapshot
+
+on:
+  push:
+    branches: ['refactor/project-conventions-onboarding']
+    paths: ['.github/workflows/task-source-snapshot.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.repository == 'sean2077/skills' && github.ref == 'refs/heads/refactor/project-conventions-onboarding'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: d136d90b1b99c64f78323098ed1a4f357a102f97
+          persist-credentials: false
+      - name: Prepare six immutable main-sync blobs without updating refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, os, subprocess, urllib.request
+          from pathlib import Path
+          repo = 'sean2077/skills'
+          assert os.environ['GITHUB_REPOSITORY'] == repo
+          def git(*args):
+              return subprocess.check_output(['git', *args]).decode().strip()
+          assert git('rev-parse', 'HEAD') == 'd136d90b1b99c64f78323098ed1a4f357a102f97'
+          def api(suffix, data=None):
+              request = urllib.request.Request('https://api.github.com/repos/' + repo + suffix,
+                  data=json.dumps(data).encode() if data is not None else None,
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                           'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json'})
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  return json.load(response)
+          sha = '5e15a8dd309a8abfc1ccc3b99178a5c15bf97b34'
+          raw = base64.b64decode(api('/git/blobs/' + sha)['content'])
+          assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == sha
+          changes = json.loads(raw)
+          assert len(changes) == 6
+          for item in changes:
+              path = Path(item['path'])
+              assert not path.is_absolute() and '..' not in path.parts and path.parts[0] != '.git'
+              lines = path.read_text(encoding='utf-8').splitlines(True)
+              for start, end, replacement in reversed(item['edits']):
+                  assert 0 <= start <= end <= len(lines)
+                  lines[start:end] = [replacement]
+              path.write_bytes(''.join(lines).encode('utf-8'))
+          subprocess.run(['git', 'add', '--'] + [item['path'] for item in changes], check=True)
+          assert git('write-tree') == '95ac4eabb4d7e6c9fd86d59f7e07888da18b18ff'
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          for item in changes:
+              data = Path(item['path']).read_bytes()
+              result = api('/git/blobs', {'encoding': 'base64', 'content': base64.b64encode(data).decode()})
+              assert result['sha'] == git('rev-parse', ':' + item['path'])
+          print('Prepared six verified immutable content objects; no ref or tree write.')
+          PY
