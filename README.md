@@ -1,12 +1,12 @@
 # skills
 
-A curated catalog of 3 reusable [Agent Skills](https://agentskills.io/specification) for Agent harness and project conventions, requirements, and productivity.
+A curated catalog of reusable [Agent Skills](https://agentskills.io/specification) for Agent harness setup, requirements interviews, and Feishu/Lark operations.
 
-Install the skills that add something to your host or project. Ordinary investigation, experiments, cleanup, review, and delivery use the host/project workflow (including native goals where available); there is no mandatory skill chain. The [selection guide](docs/skill-composition.md) explains adjacent routes and retired installations.
+Install only what adds value to your host or project. Ordinary investigation, testing, cleanup, review, and delivery use the host/project workflow; there is no mandatory skill chain. See the [selection guide](docs/skill-composition.md) for route boundaries and retired installations.
 
 ## Install
 
-Run installation from the **consumer project**, not this catalog checkout. These examples use the repository's audited installer pin; they do not claim it is the latest version.
+Run from the **consumer project**, not this catalog checkout. These examples use the audited installer pin, not a claim about the latest version.
 
 ```bash
 # One skill for Claude Code and Codex
@@ -15,17 +15,17 @@ npx --yes skills@1.5.17 add sean2077/skills --skill agent-scaffold -a claude-cod
 # Complete catalog for just these two targets
 npx --yes skills@1.5.17 add sean2077/skills --skill '*' -a claude-code -a codex
 
-# A local catalog source, still installing into the consumer project
+# Local catalog source; replace the absolute path
 npx --yes skills@1.5.17 add /absolute/path/to/skills --skill agent-scaffold -a codex
 ```
 
-Replace the absolute path with the catalog checkout. Repeat `--skill` and `-a` for selective installs; quote `'*'`. A relative local source needs `./` or `../`, not a repository-like shorthand. See [installer semantics](docs/compatibility.md#installer-semantics) for scope, discovery-only checks, global installation, and safe removal.
+Repeat `--skill` and `-a` for selective installs; quote `'*'`. Relative local sources need `./` or `../`. [Installer semantics](docs/compatibility.md#installer-semantics) covers discovery-only checks, global scope, and safe removal. **Project-scope removal from this catalog checkout can delete product files.**
 
-Installing `agent-scaffold` makes the skill available; it does **not** apply a harness to the consumer project. Its [entry point](skills/agent-scaffold/SKILL.md) starts with a read-only plan. A full initialization or old-version migration offers all project-convention domains by default and asks once which to exclude. The accepted selection is saved in `.agents/scaffold.json`; later updates reuse it without repeating that question. The Agent fills selected guidance in existing project locations; the installer alone handles assets. See [one-time selection](skills/agent-scaffold/references/onboarding-selection.md). Host trust and hook approval remain separate from installation; see [compatibility](docs/compatibility.md).
+Installing `agent-scaffold` makes the skill available; it does not initialize the consumer's harness. Its [entry point](skills/agent-scaffold/SKILL.md) starts with a read-only plan. Full setup adopts existing project guidance and records one-time convention exclusions; see [onboarding selection](skills/agent-scaffold/references/onboarding-selection.md). Host trust and hook approval remain separate from installation.
 
 ## Catalog
 
-Each catalog skill is independently installable from `skills/<name>/`. The linked entry point owns its full workflow and on-demand references.
+Each skill is independently installable. Its entry point owns the workflow and on-demand references.
 
 | Skill | Use |
 |---|---|
@@ -33,23 +33,21 @@ Each catalog skill is independently installable from `skills/<name>/`. The linke
 | [deep-interview](skills/deep-interview/) | Resolve requirements into an approved specification; exact-file approval records are optional. |
 | [lark-cli](skills/lark-cli/) | Perform selected 飞书/Feishu/Lark CLI operations with identity and side-effect safeguards. |
 
-The project skill `.agents/skills/skill-eval` and project subagent `skill-verifier` support this repository's own evaluations. Neither is a catalog install target.
+Project skill `skill-eval` and subagent `skill-verifier` support this repository's evaluations. Neither is a catalog install target.
 
 ## Documentation
 
 | Need | Start here |
 |---|---|
-| Choose skills, combine them, or clean up retired installations | [Selection and composition](docs/skill-composition.md) |
-| Understand catalog, harness, and source/generated ownership | [Architecture](docs/architecture.md) |
-| Contribute, verify changes, regenerate, or release | [Development](docs/development.md) |
-| Check installer behavior, host trust, and dated support evidence | [Compatibility](docs/compatibility.md) |
-| Maintain documentation or design a skill | [Documentation maintenance](docs/documentation-maintenance.md) · [Harness principles](docs/harness-constraint-policy.md) |
-| Measure routing decisions or actual task outcomes | [Routing probes](evals/agent-skills/README.md) · [Task outcomes](evals/tasks/README.md) |
-| Work as a repository Agent | [AGENTS.md](AGENTS.md) · [Canonical terminology](CONTEXT.md) |
-| Review pending changes and releases | [CHANGELOG.md](CHANGELOG.md) |
-
-Historical audits are linked from the [maintenance guide](docs/documentation-maintenance.md#historical-records); they are not current operating instructions.
+| Choose routes or remove retired installations | [Selection and composition](docs/skill-composition.md) |
+| Find the source to edit | [Architecture and ownership](docs/architecture.md) |
+| Contribute, verify, regenerate, or release | [Development](docs/development.md) |
+| Check installer behavior, host trust, and dated evidence | [Compatibility](docs/compatibility.md) |
+| Maintain docs or design a skill | [Documentation maintenance](docs/documentation-maintenance.md) · [Harness principles](docs/harness-constraint-policy.md) |
+| Evaluate decisions or actual task outcomes | [Routing probes](evals/agent-skills/README.md) · [Task outcomes](evals/tasks/README.md) |
+| Work as a repository Agent | [AGENTS.md](AGENTS.md) · [Terminology](CONTEXT.md) |
+| Review changes and past decisions | [CHANGELOG.md](CHANGELOG.md) · [Historical records](docs/documentation-maintenance.md#historical-records) |
 
 ## License
 
-MIT. Preserve any skill-specific attribution notices when redistributing its payload.
+MIT. Preserve skill-specific attribution notices when redistributing payloads.
