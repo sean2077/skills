@@ -21,6 +21,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Accept a directory reader route (`[docs](website/content/)`) in the scaffold guidance fixtures. The traversal read every local link as a file, so naming a documentation owner by directory failed the oracle as a missing artifact; a heading fragment on such a route and a missing file still fail, and workspace/symlink containment is unchanged.
+- Hold `agent-scaffold`'s new upstream MIT attribution in its targeted contract. Generic validation only routes a shipped `NOTICE.md`, so the notice could be emptied to a stub with every catalog check green — the same drift already closed for `tdd` and `domain-modeling`.
 
 ### Changed
 

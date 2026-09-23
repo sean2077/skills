@@ -297,6 +297,7 @@ class NpxPayloadContractTests(unittest.TestCase):
 class PayloadContractTests(unittest.TestCase):
     def test_heading_and_equivalent_prose_are_not_machine_interfaces(self):
         from contracts import conventional_commit, semver_release, agent_scaffold
+        skills_root = Path(__file__).resolve().parents[1] / "skills"
         for module in (conventional_commit, semver_release, agent_scaffold):
             with self.subTest(skill=module.SKILL), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
@@ -304,6 +305,13 @@ class PayloadContractTests(unittest.TestCase):
                     path = root / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text("# Alternate heading\nEquivalent task guidance.\n", encoding="utf-8")
+                # An attribution notice is licensed content rather than task prose, so
+                # its own contract owns it; seed the shipped text before rewording tests.
+                if getattr(module, "NOTICE_MARKERS", None):
+                    (root / "NOTICE.md").write_text(
+                        (skills_root / module.SKILL / "NOTICE.md").read_text(encoding="utf-8"),
+                        encoding="utf-8",
+                    )
                 validator.errors.clear()
                 function = getattr(module, "validate_" + module.SKILL.replace("-", "_") + "_contract")
                 function(root)
@@ -371,6 +379,42 @@ class DomainModelingAttributionTests(unittest.TestCase):
             self.assertTrue(
                 any("missing required skill payload" in item for item in validator.errors)
             )
+
+
+class AgentScaffoldAttributionTests(unittest.TestCase):
+    def test_upstream_provenance_and_license_text_are_required(self) -> None:
+        from contracts import agent_scaffold
+
+        skills_root = Path(__file__).resolve().parents[1] / "skills"
+        real_notice = (skills_root / "agent-scaffold" / "NOTICE.md").read_text(encoding="utf-8")
+        with tempfile.TemporaryDirectory() as directory:
+            skill_dir = Path(directory) / "agent-scaffold"
+            for relative in agent_scaffold.REQUIRED_PATHS:
+                path = skill_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("# Placeholder\n", encoding="utf-8")
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
+
+            (skill_dir / "NOTICE.md").write_text(real_notice, encoding="utf-8")
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertEqual([], list(validator.errors))
+
+            # The shipped notice adapts the same upstream skill as `tdd`, so drift
+            # here must fail for the same reasons rather than only when it vanishes.
+            (skill_dir / "NOTICE.md").write_text(
+                "# Attribution notice\n\nSee [SKILL.md](SKILL.md).\n", encoding="utf-8"
+            )
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
+
+            (skill_dir / "NOTICE.md").unlink()
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertTrue(any("missing required payload" in item for item in validator.errors))
 
 
 class SemverChangelogExtractionTests(unittest.TestCase):
