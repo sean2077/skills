@@ -20,6 +20,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Restore `agent-scaffold`'s decisive routing triggers (`.agents/` SSOT, real-symlink projections, hooks, subagents, authority docs, LF/CRLF policy) in its published description. The rewrite kept the work but dropped the words, and no other catalog description covers symlink repair, hook wiring, subagent authoring, or repository EOL policy, so those requests lost their only decisive trigger.
+- Restore the `tdd` production-only test-hook and direct-inspection ("side channel") rules. The reference compression dropped them from the catalog; a database, filesystem, queue or wire inspection is now again correct only when that adapter or stored form is the subject.
+- Make the scaffold guidance fixtures independent of a symlinked workspace path. The link traversal resolved only one side, so a workspace reached through a symlink (macOS `/tmp` or `/var`, a linked checkout, a `tempfile` root) failed the oracle with a false `not in the subpath` result, marking correct guidance as failing.
+- Enforce the scaffold guidance fixture's own "no extra files or empty directories" constraint; only four hardcoded names were checked, so an added page or a new empty directory passed while truly altered protected inputs still failed. Reject a shell prompt marker (`$`, `>`) hiding a fenced test command and accept a directory owner named without a trailing slash; a genuinely wrong discovery argument, a missing file, and a heading fragment on a directory route still fail.
 - Accept a directory reader route (`[docs](website/content/)`) in the scaffold guidance fixtures. The traversal read every local link as a file, so naming a documentation owner by directory failed the oracle as a missing artifact; a heading fragment on such a route and a missing file still fail, and workspace/symlink containment is unchanged.
 - Hold `agent-scaffold`'s new upstream MIT attribution in its targeted contract. Generic validation only routes a shipped `NOTICE.md`, so the notice could be emptied to a stub with every catalog check green — the same drift already closed for `tdd` and `domain-modeling`.
 
