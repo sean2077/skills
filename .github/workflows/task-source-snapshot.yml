@@ -1,0 +1,29 @@
+name: task source snapshot
+
+on:
+  pull_request:
+    paths: ['.github/workflows/task-source-snapshot.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/retire-ralph-native-goals'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 47fd61eee5cf131f89c80a5b54d84e64be8f3cad
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bundle tracked history without checkout credentials
+        shell: bash
+        run: git bundle create "$RUNNER_TEMP/skills.bundle" --all
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: retirement-source
+          path: ${{ runner.temp }}/skills.bundle
+          retention-days: 1
+          if-no-files-found: error
