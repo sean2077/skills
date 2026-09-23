@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v10.0.0] — 2026-09-24
+
 ### Breaking
 
 - Record the accepted convention selection as a `<!-- agent-scaffold:domains=... -->` marker in the managed `AGENTS.md` block instead of `.agents/scaffold.json`. Apply/upgrade migrates a valid legacy file into the marker and removes it; a legacy file that disagrees with the marker fails closed, and retirement rechecks agreement (or the explicit `--domains` update) before deleting it. Report `guidance_selection.path` is now `AGENTS.md` (or the legacy path until migration), and a leftover legacy file makes verify fail with `guidance.legacy-record` until upgrade.
@@ -623,7 +625,8 @@ Agent-Skills hosts).
 - The repository dogfoods the `agent-scaffold` harness (`.agents/` SSOT + `tools/agent/`), so
   the catalog is developed with the same governance it ships.
 
-[Unreleased]: https://github.com/sean2077/skills/compare/v9.0.0...HEAD
+[Unreleased]: https://github.com/sean2077/skills/compare/v10.0.0...HEAD
+[v10.0.0]: https://github.com/sean2077/skills/compare/v9.0.0...v10.0.0
 [v9.0.0]: https://github.com/sean2077/skills/compare/v8.0.0...v9.0.0
 [v8.0.0]: https://github.com/sean2077/skills/compare/v7.0.0...v8.0.0
 [v7.0.0]: https://github.com/sean2077/skills/compare/v6.2.0...v7.0.0
