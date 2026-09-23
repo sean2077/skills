@@ -68,10 +68,10 @@ and here the fixture difference is the treatment. Inspect the treatment trace fo
 of `.agents/conventions/docs.md`; a pass without that read is not evidence that the route worked.
 
 The retirement oracle requires preserved rationale and verbatim measurements in reachable
-reader documentation. A retained plan needs an explicit English status/state/note line or status heading
-near the top; negated or pending status does not count. Rewording its steps does not remove that
-requirement. This is a bounded fixture convention, not general semantic validation or a mandated
-project format. One pair is descriptive; repeat on held-out tasks before claiming an improvement.
+reader documentation. It checks English completion cues near the top of a retained plan and
+rejects negated or pending cues; ordinary prose counts without a prescribed label or heading.
+Rewording the plan steps does not bypass that check. This is a bounded oracle, not general
+semantic validation or a mandated project format. One pair is descriptive; repeat on held-out tasks before claiming an improvement.
 
 ## Execute with an existing host
 

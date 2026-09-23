@@ -253,8 +253,7 @@ PLAN_NEGATION = re.compile(r"\b(not|never|pending|unimplemented|incomplete|unfin
 def retired_plan_header(text: str) -> bool:
     """Bounded English status oracle, not arbitrary natural-language interpretation."""
     head = [line.strip().replace("**", "").replace("__", "") for line in text.splitlines() if line.strip()][:8]
-    return any(PLAN_STATUS.search(line) and not PLAN_NEGATION.search(line)
-               and re.match(r"^(?:(?:status|state|note)\s*:|#{1,6}\s+)", line, re.I) for line in head)
+    return any(PLAN_STATUS.search(line) and not PLAN_NEGATION.search(line) for line in head)
 
 
 def installed_docs_guide(root: Path, enabled: bool = True) -> None:

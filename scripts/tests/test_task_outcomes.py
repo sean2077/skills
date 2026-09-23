@@ -199,6 +199,8 @@ class OutcomeTests(unittest.TestCase):
                     self.assertFalse(result()[0], before)
                 plan.write_text(marked.replace("Status: implemented", "Note: shipped"), encoding="utf-8")
                 self.assertTrue(*result())  # Equivalent explicit completion wording remains valid.
+                plan.write_text(marked.replace("Status: implemented", "This plan is implemented"), encoding="utf-8")
+                self.assertTrue(*result())  # Ordinary prose needs no prescribed field or heading.
                 # Moving the history to the owner and removing the plan is also valid.
                 plan.unlink(); plan.parent.rmdir()
                 self.assertFalse(result()[0])  # Rationale and dated evidence were lost.
