@@ -321,6 +321,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Canonicalized the `skill-eval` Python executable before applying repository-boundary checks, so setup-python interpreter symlinks remain valid without allowing arbitrary executable escapes.
 - Accepted platform aliases for the bound worktree root in workflow JSON and artifact paths while continuing to reject descendant symlink traversal and resolved paths outside the worktree.
 - Prevented validation imports from writing `__pycache__` files that could contaminate installed-payload comparisons later in the same CI job.
+
 ### ⚠ Breaking
 
 - The standalone `trace` install target is removed. Existing consumers must replace it with `analyze`, whose causal-investigation mode preserves the read-only hypothesis, falsification, and discriminating-probe workflow, and remove stale `trace` projections to prevent duplicate routing.
@@ -547,6 +548,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `harness-init.sh` name is removed without an alias.
 - Old runtime-path migration, retired formatter cleanup, package/Husky caller rewrites,
   deprecated no-op selection flags, and their verification fixtures are removed outright.
+  Current modes inspect and reconcile only the current harness contract.
 - `agent-scaffold` installs only harness-owned runtime and contract content. Formatter,
   example-agent, hook-manager, package, CI, project prose, nested-contract, and Codex
   settings choices remain project-owned reference recipes.
