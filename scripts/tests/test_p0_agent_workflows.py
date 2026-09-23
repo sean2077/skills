@@ -74,12 +74,19 @@ REMOVAL_RETRY_DELAY_SECONDS = 0.2
 def cleanup_fixture(directory: tempfile.TemporaryDirectory) -> None:
     for attempt in range(1, REMOVAL_ATTEMPTS + 1):
         try:
-            directory.cleanup()
-            if not os.path.exists(directory.name):
-                return
+            if attempt == 1:
+                directory.cleanup()
+            else:
+                # `TemporaryDirectory.cleanup()` detaches its finalizer on the first
+                # call and never re-attempts removal afterwards, so a retry has to
+                # remove the surviving tree directly.
+                shutil.rmtree(directory.name)
         except OSError as exc:
             if getattr(exc, "errno", None) not in TRANSIENT_REMOVAL_ERRNOS or attempt == REMOVAL_ATTEMPTS:
                 raise
+        else:
+            if not os.path.exists(directory.name):
+                return
         if attempt < REMOVAL_ATTEMPTS:
             time.sleep(REMOVAL_RETRY_DELAY_SECONDS)
     raise OSError(errno.ENOTEMPTY, "fixture directory survived cleanup attempts", directory.name)
@@ -136,8 +143,11 @@ class CommonSecurityTest(unittest.TestCase):
 
 class FixtureCleanupTest(unittest.TestCase):
     def test_transient_removal_race_is_retried(self) -> None:
+        real_cleanup = tempfile.TemporaryDirectory.cleanup
         real_rmtree = shutil.rmtree
         removals = []
+        cleanups = []
+        detached = []
 
         def flaky_rmtree(path, *args, **kwargs):
             removals.append(str(path))
@@ -145,11 +155,23 @@ class FixtureCleanupTest(unittest.TestCase):
                 raise OSError(errno.ENOTEMPTY, "Directory not empty")
             return real_rmtree(path, *args, **kwargs)
 
+        def one_shot_cleanup(directory):
+            # Python 3.8 detaches the finalizer on the first call and never removes
+            # the tree again, so the retry must not depend on calling cleanup() twice.
+            cleanups.append(str(directory))
+            if detached:
+                return
+            detached.append(True)
+            real_cleanup(directory)
+
         directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        with mock.patch("shutil.rmtree", side_effect=flaky_rmtree):
+        self.addCleanup(real_cleanup, directory)
+        with mock.patch("shutil.rmtree", side_effect=flaky_rmtree), mock.patch.object(
+            tempfile.TemporaryDirectory, "cleanup", one_shot_cleanup
+        ):
             cleanup_fixture(directory)
         self.assertEqual(len(removals), 2)
+        self.assertEqual(len(cleanups), 1)
         self.assertFalse(os.path.exists(directory.name))
 
     def test_unremovable_fixture_still_fails_the_test(self) -> None:

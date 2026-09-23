@@ -56,12 +56,19 @@ REMOVAL_RETRY_DELAY_SECONDS = 0.2
 def cleanup_fixture(directory: tempfile.TemporaryDirectory) -> None:
     for attempt in range(1, REMOVAL_ATTEMPTS + 1):
         try:
-            directory.cleanup()
-            if not os.path.exists(directory.name):
-                return
+            if attempt == 1:
+                directory.cleanup()
+            else:
+                # `TemporaryDirectory.cleanup()` detaches its finalizer on the first
+                # call and never re-attempts removal afterwards, so a retry has to
+                # remove the surviving tree directly.
+                shutil.rmtree(directory.name)
         except OSError as exc:
             if getattr(exc, "errno", None) not in TRANSIENT_REMOVAL_ERRNOS or attempt == REMOVAL_ATTEMPTS:
                 raise
+        else:
+            if not os.path.exists(directory.name):
+                return
         if attempt < REMOVAL_ATTEMPTS:
             time.sleep(REMOVAL_RETRY_DELAY_SECONDS)
     raise OSError(errno.ENOTEMPTY, "fixture directory survived cleanup attempts", directory.name)
