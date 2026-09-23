@@ -58,9 +58,6 @@ from catalog_core import (
 from contracts.agent_scaffold import validate_agent_scaffold_contract
 from contracts.conventional_commit import validate_conventional_commit_contract
 from contracts.semver_release import validate_semver_release_contract
-from contracts.tooling_conventions import (
-    validate_tooling_conventions_contract,
-)
 
 __all__ = [
     "cli",
@@ -80,7 +77,6 @@ __all__ = [
     "validate_resident_contract",
     "validate_semver_release_contract",
     "validate_targeted_contract_coverage",
-    "validate_tooling_conventions_contract",
     "warnings",
 ]
 

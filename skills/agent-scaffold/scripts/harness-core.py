@@ -750,6 +750,8 @@ def report(mode: str, target: Path, profile: str, checks: List[Dict[str, Any]], 
     failure_states = {"fail", "attention"}
     return {
         "schema_version": SCHEMA_VERSION,
+        "scope": "harness-assets",
+        "project_guidance": "not-assessed",
         "mode": mode,
         "target": str(target),
         "profile": profile,
@@ -764,6 +766,7 @@ def render_report(data: Dict[str, Any], as_json: bool) -> None:
         json.dump(data, sys.stdout, indent=2, ensure_ascii=False)
         sys.stdout.write("\n")
         return
+    print("[harness] scope: {0}; project guidance: {1}".format(data["scope"], data["project_guidance"]))
     print("[harness] {0}: {1} (profile: {2})".format(data["mode"], data["target"], data["profile"]))
     for item in data["checks"]:
         location = " {0}".format(item["path"]) if item.get("path") else ""

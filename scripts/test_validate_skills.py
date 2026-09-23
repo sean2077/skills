@@ -202,17 +202,17 @@ class TargetedContractCoverageTests(unittest.TestCase):
 
     def test_prompt_only_skill_needs_no_contract(self) -> None:
         errors = self.validate(
-            skill_names={"prompt-skill", "work-protocol"},
-            covered={"work-protocol"},
-            required={"work-protocol"},
+            skill_names={"prompt-skill", "stateful-skill"},
+            covered={"stateful-skill"},
+            required={"stateful-skill"},
         )
         self.assertEqual([], errors)
 
     def test_required_targeted_contract_cannot_disappear(self) -> None:
         errors = self.validate(
-            skill_names={"runtime-skill", "work-protocol"},
+            skill_names={"runtime-skill", "stateful-skill"},
             covered={"runtime-skill"},
-            required={"runtime-skill", "work-protocol"},
+            required={"runtime-skill", "stateful-skill"},
         )
         self.assertTrue(
             any("required targeted contracts are missing" in error for error in errors)
@@ -297,6 +297,7 @@ class NpxPayloadContractTests(unittest.TestCase):
 class PayloadContractTests(unittest.TestCase):
     def test_heading_and_equivalent_prose_are_not_machine_interfaces(self):
         from contracts import conventional_commit, semver_release, agent_scaffold
+        skills_root = Path(__file__).resolve().parents[1] / "skills"
         for module in (conventional_commit, semver_release, agent_scaffold):
             with self.subTest(skill=module.SKILL), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
@@ -304,6 +305,13 @@ class PayloadContractTests(unittest.TestCase):
                     path = root / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text("# Alternate heading\nEquivalent task guidance.\n", encoding="utf-8")
+                # An attribution notice is licensed content rather than task prose, so
+                # its own contract owns it; seed the shipped text before rewording tests.
+                if getattr(module, "NOTICE_MARKERS", None):
+                    (root / "NOTICE.md").write_text(
+                        (skills_root / module.SKILL / "NOTICE.md").read_text(encoding="utf-8"),
+                        encoding="utf-8",
+                    )
                 validator.errors.clear()
                 function = getattr(module, "validate_" + module.SKILL.replace("-", "_") + "_contract")
                 function(root)
@@ -371,6 +379,42 @@ class DomainModelingAttributionTests(unittest.TestCase):
             self.assertTrue(
                 any("missing required skill payload" in item for item in validator.errors)
             )
+
+
+class AgentScaffoldAttributionTests(unittest.TestCase):
+    def test_upstream_provenance_and_license_text_are_required(self) -> None:
+        from contracts import agent_scaffold
+
+        skills_root = Path(__file__).resolve().parents[1] / "skills"
+        real_notice = (skills_root / "agent-scaffold" / "NOTICE.md").read_text(encoding="utf-8")
+        with tempfile.TemporaryDirectory() as directory:
+            skill_dir = Path(directory) / "agent-scaffold"
+            for relative in agent_scaffold.REQUIRED_PATHS:
+                path = skill_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("# Placeholder\n", encoding="utf-8")
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
+
+            (skill_dir / "NOTICE.md").write_text(real_notice, encoding="utf-8")
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertEqual([], list(validator.errors))
+
+            # The shipped notice adapts the same upstream skill as `tdd`, so drift
+            # here must fail for the same reasons rather than only when it vanishes.
+            (skill_dir / "NOTICE.md").write_text(
+                "# Attribution notice\n\nSee [SKILL.md](SKILL.md).\n", encoding="utf-8"
+            )
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertTrue(any("upstream provenance" in item for item in validator.errors))
+
+            (skill_dir / "NOTICE.md").unlink()
+            validator.errors.clear()
+            agent_scaffold.validate_agent_scaffold_contract(skill_dir)
+            self.assertTrue(any("missing required payload" in item for item in validator.errors))
 
 
 class SemverChangelogExtractionTests(unittest.TestCase):
@@ -687,79 +731,6 @@ class RepositoryReleaseAutomationContractTests(unittest.TestCase):
             release_text=release_text.replace("--json body", "--json other")
         )
         self.assertTrue(any("verify afterward" in error for error in errors))
-
-
-class ToolingContractEditorialTests(unittest.TestCase):
-    def test_checker_and_fixture_prose_is_not_a_catalog_interface(self) -> None:
-        from contracts import tooling_conventions as tooling
-        from unittest import mock
-        original_read = Path.read_text
-        # Synthetic bodies isolate the validator's contract; the real shell suite
-        # separately exercises the shipped checker. Do not anchor this regression
-        # to current diagnostic captions, variable names, or documentation prose.
-        alternatives = {
-            Path(__file__).resolve().parent / "tests/test-tooling-inventory.sh":
-                "#!/usr/bin/env bash\n# Different fixture diagnostics.\nexit 0\n",
-            tooling.SKILLS_DIR / "tooling-conventions/scripts/inventory-check.sh":
-                "#!/usr/bin/env bash\ncandidate=':(literal)name'\nprintf '%s\\n' \"$candidate\"\n",
-            tooling.SKILLS_DIR / "tooling-conventions/references/verification.md":
-                "# Project verification\nUse the applicable syntax and behavior checks.\n",
-        }
-        for target, revised in alternatives.items():
-            def read(path, *args, **kwargs):
-                return revised if path == target else original_read(path, *args, **kwargs)
-            with self.subTest(path=target.name), mock.patch.object(Path, "read_text", read):
-                validator.errors.clear()
-                tooling.validate()
-                self.assertEqual([], list(validator.errors))
-
-    def test_inventory_ci_checks_a_run_step_not_names_comments_or_examples(self) -> None:
-        from contracts import tooling_conventions as tooling
-        good = "jobs:\n  check:\n    steps:\n      - name: Arbitrary title\n        run: |\n          # A harmless comment\n          bash 'scripts/tests/test-tooling-inventory.sh'\n"
-        enabled = (
-            "jobs:\n  check:\n    steps:\n      - if: ${{ !cancelled() }}\n        run: bash scripts/tests/test-tooling-inventory.sh\n"
-        )
-        bad = (
-            "jobs:\n  check:\n    steps:\n      - name: bash scripts/tests/test-tooling-inventory.sh\n        run: echo skipped\n",
-            "jobs:\n  check:\n    steps:\n      - run: |\n          # bash scripts/tests/test-tooling-inventory.sh\n          echo skipped\n",
-            "jobs:\n  check:\n    steps:\n      - run: |\n          cat <<'EXAMPLE'\n          bash scripts/tests/test-tooling-inventory.sh\n          EXAMPLE\n",
-            "jobs: [invalid\n",
-            # A statically disabled step never runs the suite, whatever its `run` says.
-            "jobs:\n  check:\n    steps:\n      - if: false\n        run: bash scripts/tests/test-tooling-inventory.sh\n",
-            "jobs:\n  check:\n    steps:\n      - if: ${{ false }}\n        run: bash scripts/tests/test-tooling-inventory.sh\n",
-            "jobs:\n  check:\n    if: false\n    steps:\n      - run: bash scripts/tests/test-tooling-inventory.sh\n",
-        )
-        for text in bad:
-            with self.subTest(text=text):
-                validator.errors.clear()
-                tooling.validate_inventory_ci(text)
-                self.assertTrue(validator.errors)
-        for text in (good, enabled):
-            with self.subTest(text=text):
-                validator.errors.clear()
-                tooling.validate_inventory_ci(text)
-                self.assertEqual([], list(validator.errors))
-
-
-class PublicSummaryContractTests(unittest.TestCase):
-    def setUp(self) -> None:
-        validator.errors.clear()
-
-    def test_tooling_readme_summary_cannot_reactivate_retired_checker(self) -> None:
-        validator.validate_tooling_conventions_contract(
-            readme_text=(
-                "| [tooling-conventions](skills/tooling-conventions/) | Run "
-                "scripts/manifest-check.sh for every tool surface. | Shell |"
-            )
-        )
-        self.assertTrue(
-            any(
-                "retired flat-surface contract remains active" in error
-                for error in validator.errors
-            )
-        )
-
-
 
 
 class LarkCliContractTests(unittest.TestCase):

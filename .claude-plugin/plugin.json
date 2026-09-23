@@ -3,16 +3,12 @@
   "description": "Reusable agent skills for development, ops, and productivity.",
   "skills": [
     "./skills/agent-scaffold",
-    "./skills/best-practice-research",
     "./skills/conventional-commit",
     "./skills/deep-interview",
     "./skills/domain-modeling",
     "./skills/lark-cli",
-    "./skills/project-docs-organizer",
     "./skills/semver-release",
     "./skills/spec-writing",
-    "./skills/tdd",
-    "./skills/tooling-conventions",
-    "./skills/work-protocol"
+    "./skills/tdd"
   ]
 }

@@ -8,10 +8,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking
 
+- Retire `work-protocol`, `best-practice-research`, `tooling-conventions`, and `project-docs-organizer` (12 → 8 catalog skills), including coordination runtime, inventory checker, generated payloads, contracts, and retired routing candidates. Preserve existing consumer installations/state until their owner completes or explicitly migrates them; no aliases, automatic uninstall, state migration, or replacement controller is introduced.
+
 - Retire `ralph` from the catalog (13 → 12 skills), including its loop runtime, references, source, contract, generator target, and route alias. Use native goals or the host/project workflow for new continuation tasks; exact attempt/stall/plateau semantics remain project-owned, not claimed as native-goal parity. Finish or explicitly abort active runs with the original installed runtime before removing it; preserve existing state and evidence, with no automatic migration or consumer uninstall.
+
+### Added
+
+- Make full `agent-scaffold` setup adopt and fill project-specific test-quality guidance: independent oracles, contractual observations, risk-based levels, real/double boundaries, sensitivity and honest baselines. Preserve existing runners/layouts, coverage gates and scoped TDD policy; no framework, mandatory test-first or managed AGENTS expansion is introduced.
+- Expand `agent-scaffold` full initialization/upgrade to adopt and fill project-owned documentation, command, verification, source, and environment guidance. Respect existing layouts and project customizations; use current successors instead of recreating deleted/merged templates, without growing the managed AGENTS block or adding a layout registry.
+- Add explicit installer-report scope (`harness-assets`, project guidance `not-assessed`), real installer layout/read-only/idempotence preservation tests, scaffold decision probes, and bounded task-outcome fixtures. These checks distinguish runtime installation from Agent-authored guidance and do not claim live-host/model effectiveness.
+
+### Fixed
+
+- Accept a directory reader route (`[docs](website/content/)`) in the scaffold guidance fixtures. The traversal read every local link as a file, so naming a documentation owner by directory failed the oracle as a missing artifact; a heading fragment on such a route and a missing file still fail, and workspace/symlink containment is unchanged.
+- Hold `agent-scaffold`'s new upstream MIT attribution in its targeted contract. Generic validation only routes a shipped `NOTICE.md`, so the notice could be emptied to a stub with every catalog check green — the same drift already closed for `tdd` and `domain-modeling`.
 
 ### Changed
 
+- Separate reusable project testing conventions from explicit TDD execution. `tdd` reads project guidance first and keeps compact, independently installable fallback material plus RED/GREEN evidence requirements. The scaffold testing adaptation ships its own upstream attribution notice; neither skill depends on the other.
 - Preserve shared state-safety coverage by moving lock, concurrency, binding, session, strict-JSON, and compact-history regressions from the retired loop to `deep-interview`; remove loop-only tests and the now-unused score helper, then regenerate the approval payload. Keep `work-protocol` ownership semantics and historical release/audit records unchanged.
 
 - Refresh repository documentation against v8: distinguish catalog sources from consumer installation destinations, clarify canonical/generated ownership, preserve dated evidence, and align release guidance with main reachability, supported tags, and schema-2 local analysis.

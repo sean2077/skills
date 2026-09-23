@@ -23,7 +23,7 @@ The initial installer review used revision `8fa013752416a7aa082d023489e8141a0764
 | Agent Skills format | Catalog validators and pinned official `skills-ref` | Identical discovery, optional fields, or executable-language support across clients |
 | Installer discovery/copying | Pinned catalog-root discovery and byte-compared install smoke tests | Runtime support for every installer target |
 | Host wiring | Scaffold core/workspace/static/E2E checks | Trust, hook approval, organization policy, cloud variants, or effective live-host permissions |
-| Owned runtime behavior | Workflow/P0/hardening, protocol, and adapter/oracle tests | Universal task effectiveness, model compliance, or token savings |
+| Owned runtime behavior | Workflow/evaluation/hardening and adapter/oracle tests | Universal task effectiveness, model compliance, or token savings |
 
 The catalog is the set under `skills/`. Project `skill-eval` under `.agents/skills/` is excluded by its internal metadata, manifest/README boundary, and normal discovery filtering; explicitly enabling internal discovery is a different operation. The [architecture](architecture.md) owns source and generated-file details. Routing probes and task outcomes have separate [measurement guides](../evals/agent-skills/README.md).
 
@@ -107,6 +107,14 @@ Repeat `--skill` and `-a` to select skills and targets. Omitting `--skill` opens
 Inspect options with `npx --yes skills@1.5.17 --help`. With this pin, `add <source> --help` may execute the add flow. Choose global scope explicitly using the CLI's documented option and inspect intended targets; changing source paths does not select global scope. Remove retired installations only from the consumer project or intended global scope, preserving unrelated entries and local modifications. **Project-scope removal from the catalog root can delete `skills/*` product files.** See [retired-installation guidance](skill-composition.md#installation-and-evidence).
 
 Installer target lists are discovery metadata, not certification. Upgrading the pin is an explicit dependency change with discovery, installation, payload, and platform checks. Official installer reference: [vercel-labs/skills](https://github.com/vercel-labs/skills).
+
+## Scaffold guidance scope
+
+Installer reports expose `scope: harness-assets` and `project_guidance: not-assessed`.
+Project guidance is authored/reconciled by the Agent during full initialization or upgrade,
+not inferred by the deterministic installer. Repository preservation tests and reference
+outcome actions do not certify live model adaptation, native discovery, or measured savings.
+This distinction does not change the host evidence dates above.
 
 ## Maintenance trigger
 

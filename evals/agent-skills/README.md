@@ -43,9 +43,15 @@ Routes name shipped skills or `none` for host/project work; workflow labels desc
 
 ## Decision and safety coverage
 
-Current manifests are the case inventory. They cover whole-specification and digest approval, explicit test-first work, documentation/tooling decisions, selected Lark CLI use, and release boundaries. Observations target decision outcomes rather than incidental wording; explicit project-required records retain exact expectations.
+Current manifests are the case inventory. They cover whole-specification and digest approval, explicit test-first work, scaffold project-convention decisions, selected Lark CLI use, and release boundaries. Observations target decision outcomes rather than incidental wording; explicit project-required records retain exact expectations.
 
 Lark probes cover identity, ambiguous/contradictory results, fresh confirmation, CLI confirmation gates, untrusted instructions, and file containment. Negative fixtures test missing, unsafe, and wrong-typed observations. They verify the oracle/protocol, not real CLI operation or live model compliance. Historical coverage changes remain in the [September 20 audit](../../docs/audits/2026-09-20-native-first.md).
+
+Scaffold cases distinguish full first-use setup, layout/source adoption, customized upgrades,
+read-only first calls, runtime-only work, and standalone research/docs/script tasks that must
+not select scaffold. They are intention probes, not proof that guidance was actually written.
+Retired research/docs/tool routes are no longer candidates; task vocabulary remains usable
+with route `none` so ordinary host work is not redirected into scaffold.
 
 ## Measurement and failure boundaries
 

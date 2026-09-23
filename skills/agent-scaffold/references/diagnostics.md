@@ -17,6 +17,8 @@ The top-level shape is stable within schema version 1:
 ```json
 {
   "schema_version": 1,
+  "scope": "harness-assets",
+  "project_guidance": "not-assessed",
   "mode": "verify",
   "target": "/path/to/repo",
   "profile": "default",
@@ -51,6 +53,11 @@ Schema-version 1 uses these status values:
 - `ok` is false when any check is `attention` or `fail`.
 - A rendered `plan` exits 0 even when `ok` is false, so automation must inspect `ok`. `doctor` and
   `verify` exit 1 when `ok` is false. CLI/manifest errors and mutation preflight failures exit 2.
+
+`scope` and `project_guidance` explicitly bound every report: the installer checks only
+harness assets and does not judge semantic project guidance. These additive fields do not
+change `ok` or exit-code meanings. The full skill also performs the Agent-owned
+[project-convention work](project-conventions.md); no new automatic policy gate is implied.
 
 ## Line-ending checks
 

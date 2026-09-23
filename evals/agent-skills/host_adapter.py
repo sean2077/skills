@@ -45,15 +45,10 @@ WORKFLOWS = (
 )
 ROUTE_ALIASES = {
     "agent-harness": "agent-scaffold",
-    "best-practices-research": "best-practice-research",
     "conventional-commits": "conventional-commit",
-    "docs-organizer": "project-docs-organizer",
-    "documentation-organizer": "project-docs-organizer",
     "lark": "lark-cli",
     "semver": "semver-release",
     "test-driven-development": "tdd",
-    "tooling-governance": "tooling-conventions",
-    "work-coordination": "work-protocol",
 }
 # Plausible host phrasings for a canonical workflow. Task vocabulary is independent
 # of the shipped catalog, so a synonym stays as long as its target workflow does.
@@ -88,11 +83,7 @@ WORKFLOW_ALIASES = {
 BOUNDARY_OBSERVATIONS = {
     "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
     "domain-modeling": ("topology_redesign",),
-    "tdd": ("separate_behavior_card",),
-    "project-docs-organizer": ("compare_options", "reconcile_consumers"),
-    "tooling-conventions": (
-        "compare_options", "preserve_decisions", "preserve_external_consumers", "reconcile_consumers",
-    ),
+    "tdd": ("separate_behavior_card", "read_project_testing_guidance", "requires_sibling_skill"),
     "lark-cli": (
         "routine_preflight", "identity_switch", "identity_check_before_write", "blind_write",
         "blind_retry", "claim_success", "reauth_for_acl", "send_authorized",
@@ -102,8 +93,13 @@ BOUNDARY_OBSERVATIONS = {
         "migration_interview", "preserve_existing_workflow", "compare_options",
         "infrastructure_mutation", "create_unrequested_publisher", "claim_complete",
     ),
-    "best-practice-research": ("primary_sources", "local_fit", "repeat_source_sweep"),
     "conventional-commit": ("git_preflight", "preserve_unrelated_index"),
+    "agent-scaffold": (
+        "preserve_layout", "fill_project_guidance", "inspect_existing_routes",
+        "asset_pass_proves_guidance", "project_guidance_writes", "restore_deleted_guidance",
+        "introduce_controller", "fill_testing_guidance", "test_policy_changed",
+        "test_harness_added", "requires_sibling_skill", "decision_artifact",
+    ),
 }
 OBSERVATION_GUIDANCE = {
     "tdd": (
@@ -119,11 +115,6 @@ OBSERVATION_GUIDANCE = {
         "When selected, report workflow, mutation, modeling_mode, topology_decision, and "
         "preserve_single_owner when material."
     ),
-    "project-docs-organizer": (
-        "When selected, report workflow. Report decision_artifact only when the task requires a "
-        "particular record. Report preserve_decisions and additional_approval_required as "
-        "booleans when material."
-    ),
     "spec-writing": (
         "When selected, report workflow. Use snake_case keys for material choices, including "
         "preserve_meaning, preserve_decisions, separate_decision_history, observable_acceptance, "
@@ -131,12 +122,13 @@ OBSERVATION_GUIDANCE = {
         "route_detail_to_contract, compare_options, recommendation, decision_status, "
         "include_exact_detail, and identify_intended_authority."
     ),
-    "tooling-conventions": (
-        "When selected, report workflow. Report decision_artifact only when the task requires a "
-        "particular record."
-    ),
     "conventional-commit": (
         "When selected, report workflow and mutation."
+    ),
+    "agent-scaffold": (
+        "When selected, report workflow and the material project-guidance, layout, ownership, "
+        "and read-only scope decisions. Report decision_artifact only when the project requires "
+        "a named record."
     ),
 }
 

@@ -1,5 +1,9 @@
 # Test Doubles and Effects
 
+Reuse the project's existing real/fake boundaries and fixtures. These on-demand choices
+keep a TDD slice self-contained when project guidance does not settle them; they do not
+authorize installing new infrastructure or changing the project's testing policy.
+
 ## Double only for a reason
 
 Replace an uncontrolled boundary when using the real dependency would be unsafe, destructive, non-deterministic, unavailable, prohibitively slow, or unable to produce the required condition. Do not mock an owned collaborator merely because mocking is convenient; a real collaborator often preserves more design freedom and gives stronger evidence.

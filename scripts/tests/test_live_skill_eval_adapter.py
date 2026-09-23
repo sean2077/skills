@@ -50,6 +50,10 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             "autopilot": "delivery", "analyze": "analysis", "prototype": "prototype",
             "ai-slop-cleaner": "implementation", "code-review": "code-review",
             "ralph": "iteration", "bounded-iteration": "iteration",
+            "work-protocol": "coordination", "work-coordination": "coordination",
+            "best-practice-research": "research", "best-practices-research": "research",
+            "tooling-conventions": "tooling-governance", "tooling-governance": "tooling-governance",
+            "project-docs-organizer": "documentation-organization", "docs-organizer": "documentation-organization",
         }
         for route, workflow in retired.items():
             with self.subTest(route=route):
@@ -118,13 +122,13 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                 "workflow": "docs-organization",
                 "decision-depth": "compact",
             },
-            "project-docs-organizer",
+            "spec-writing",
             True,
-            ("project-docs-organizer", "spec-writing"),
+            ("spec-writing", "tdd"),
         )
         self.assertEqual(
             {
-                "route": "project-docs-organizer",
+                "route": "spec-writing",
                 "workflow": "documentation-organization",
                 "decision_depth": "compact",
             },
@@ -134,12 +138,12 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
     def test_rejected_treatment_preserves_nearest_valid_route(self) -> None:
         actual = self.adapter.canonicalize_behavior(
             {"mode": "treatment"},
-            {"route": "docs-organizer", "workflow": "docs-organization"},
-            "tooling-conventions",
+            {"route": "spec-writing", "workflow": "docs-organization"},
+            "tdd",
             False,
-            ("project-docs-organizer", "tooling-conventions"),
+            ("spec-writing", "tdd"),
         )
-        self.assertEqual("project-docs-organizer", actual["route"])
+        self.assertEqual("spec-writing", actual["route"])
         self.assertEqual("documentation-organization", actual["workflow"])
 
     def test_prompt_uses_catalog_vocabulary_without_case_metadata(self) -> None:
@@ -153,11 +157,11 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         prompt = self.adapter.make_prompt(
             request,
             "candidate instructions",
-            "project-docs-organizer",
-            ("project-docs-organizer", "spec-writing"),
+            "spec-writing",
+            ("spec-writing", "tdd"),
         )
-        self.assertIn("project-docs-organizer, spec-writing", prompt)
-        self.assertIn("decision_artifact", prompt)
+        self.assertIn("spec-writing, tdd", prompt)
+        self.assertIn("preserve_meaning", prompt)
         self.assertNotIn("decision_depth=compact or full", prompt)
         self.assertNotIn("decision_artifact=none", prompt)
         self.assertNotIn("DO_NOT_LEAK_THIS_SENTINEL", prompt)
@@ -432,51 +436,23 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             self.assertEqual(0, self.verifier.main())
         return json.loads(output.getvalue())["passed"]
 
-    def test_governance_outcomes_not_representation_are_required(self) -> None:
-        scenarios = (
-            ("project-docs-organizer", "positive-material-information-architecture",
-             {"compare_options": True}),
-            ("project-docs-organizer", "positive-bounded-document-maintenance",
-             {"preserve_decisions": True, "reconcile_consumers": True}),
-            ("tooling-conventions", "positive-material-command-redesign",
-             {"compare_options": True, "preserve_external_consumers": True}),
-            ("tooling-conventions", "positive-bounded-private-helper-rename",
-             {"preserve_decisions": True, "reconcile_consumers": True}),
-        )
-        for candidate, case_id, required in scenarios:
-            suite = json.loads((ROOT / "evals" / "agent-skills" / candidate / "suite.json").read_text(encoding="utf-8"))
-            case = next(case for case in suite["cases"] if case["id"] == case_id)
+    def test_scaffold_guidance_observations_are_not_asset_success(self) -> None:
+        suite = json.loads((ROOT / "evals/agent-skills/agent-scaffold/suite.json").read_text(encoding="utf-8"))
+        for case in suite["cases"]:
+            if case["kind"] != "positive":
+                continue
             expected = case["metadata"]["expected_behavior"]["treatment"]
-            behavior = {"route": expected["route"], "workflow": expected["workflow"], **required}
-            with self.subTest(case=case_id):
-                self.assertTrue(self.verify_case(case, behavior))
-                for key in required:
-                    for bad in (None, False, 1):
-                        actual = dict(behavior)
-                        if bad is None:
-                            del actual[key]
-                        else:
-                            actual[key] = bad
-                        self.assertFalse(self.verify_case(case, actual), (case_id, key, bad))
-                for form in ("none", "existing-context", "inline-delta", "optional-record"):
-                    self.assertTrue(self.verify_case(case, dict(behavior, decision_artifact=form)))
-                self.assertFalse(self.verify_case(case, behavior, status="failed"))
-                self.assertFalse(self.verify_case(case, behavior, selected=False))
-
-    def test_required_governance_records_remain_required(self) -> None:
-        for candidate, record in (
-            ("project-docs-organizer", "documentation-ia-decision-record"),
-            ("tooling-conventions", "tool-governance-decision-record"),
-        ):
-            suite = json.loads((ROOT / "evals" / "agent-skills" / candidate / "suite.json").read_text(encoding="utf-8"))
-            case = next(case for case in suite["cases"] if case["id"] == "positive-required-design-record")
-            behavior = dict(case["metadata"]["expected_behavior"]["treatment"])
-            with self.subTest(candidate=candidate):
-                self.assertEqual(record, behavior["decision_artifact"])
-                self.assertTrue(self.verify_case(case, behavior))
-                del behavior["decision_artifact"]
-                self.assertFalse(self.verify_case(case, behavior))
-                self.assertFalse(self.verify_case(case, dict(behavior, decision_artifact="none")))
+            with self.subTest(case=case["id"]):
+                self.assertTrue(self.verify_case(case, dict(expected)))
+                for key, value in expected.items():
+                    if key in ("route", "workflow"):
+                        continue
+                    wrong = dict(expected)
+                    wrong[key] = not value if isinstance(value, bool) else "none"
+                    self.assertFalse(self.verify_case(case, wrong), key)
+                    del wrong[key]
+                    self.assertFalse(self.verify_case(case, wrong), key)
+                self.assertFalse(self.verify_case(case, dict(expected), status="failed"))
 
     def test_lark_safety_outcomes_reject_unsafe_or_missing_observations(self) -> None:
         suite = json.loads((ROOT / "evals" / "agent-skills" / "lark-cli" / "suite.json").read_text(encoding="utf-8"))

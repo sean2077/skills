@@ -6,6 +6,7 @@ import ast
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -112,6 +113,18 @@ record = {"passed": result.wasSuccessful(), "tests": result.testsRun,
 print("EVAL_TEST_RESULT=" + json.dumps(record), flush=True)
 raise SystemExit(0 if result.wasSuccessful() else 1)
 '''
+TESTING_CLAUSES = (
+    "Test-first is optional; require it only when the user or applicable module policy says so.",
+    "Keep the coverage floor at 82%.",
+    "Run discovery from the repository root.",
+    "Protocol expectations come from protocol.md, not from the production encoder.",
+    "Use the real CLI entry for argument, exit-status and working-directory regressions.",
+    "A local fake does not prove provider authentication or service compatibility.",
+    "Never contact production; provider integration uses the separate authorized sandbox.",
+    "Check that the selected tests ran and the injected failure reached the exercised boundary.",
+    "Review golden changes against protocol.md rather than approving new output blindly.",
+)
+TESTING_ARGV = ["python", "-m", "unittest", "discover", "-s", "spec", "-p", "*_spec.py"]
 CASES = {
     "commit-hunks": {
         "skill": "conventional-commit",
@@ -124,9 +137,24 @@ CASES = {
         "brief": "Preserve source-owned requirements and status; check what a reader can answer from the document alone.",
     },
     "docs-move": {
-        "skill": "project-docs-organizer",
+        "skill": None,
         "prompt": "Move setup.md to docs/setup.md and repair reader routes from README and operations.md. Preserve the authentication anchor and all unique information. Keep operations.md at the root.",
         "brief": "Check incoming and outgoing links and unique content after the move.",
+    },
+    "scaffold-guidance": {
+        "skill": "agent-scaffold",
+        "prompt": "Complete first-use project guidance as part of Agent harness initialization; asset installation is handled separately. Read project sources, fill missing command, documentation and generated-source guidance, and connect it from AGENTS.md. Preserve existing layout, the owner note, the existing delivery clause verbatim, draft status, user files and toolchain. Do not run installers, generators or commands, move files, or add empty/default directories.",
+        "brief": "Use current project entry points and actual command/source owners. Fill genuine guidance gaps rather than copying a template; installer success is not reader readiness.",
+    },
+    "scaffold-upgrade-guidance": {
+        "skill": "agent-scaffold",
+        "prompt": "Reconcile project guidance during a harness upgrade. CONTRIBUTING.md now owns the guide that was deliberately merged out of doc/development.md. Repair stale Agent navigation; preserve existing content and do not recreate the removed guide or change project commands. Asset updates are handled separately; do not run commands.",
+        "brief": "Adopt the current successor and repair routes without restoring an earlier template.",
+    },
+    "scaffold-testing-guidance": {
+        "skill": "agent-scaffold",
+        "prompt": "Complete the testing-guidance part of harness initialization. Asset work is separate. Consolidate quality-decisions.md into the existing handbook/development.md and connect that guide from AGENTS.md. Keep the owner clauses verbatim in the guide, explain the existing runner with its discovery arguments, and link the protocol and existing test example. Preserve current test-first/coverage choices and all other files. Do not execute commands, change tests, add frameworks or create parallel guides. No sibling skill is installed.",
+        "brief": "Use actual project sources to fill test-quality guidance, preserve policy and test discovery, and keep it reachable without depending on another skill.",
     },
     "lark-unknown-write": {
         "skill": "lark-cli",
@@ -161,6 +189,33 @@ def prepare(root: Path, case_id: str) -> dict:
         write(root, "README.md", "# Project\n[Authenticate](setup.md#authentication)\n")
         write(root, "setup.md", "# Setup\n\n## Authentication\nUse the staging identity for integration tests.\n\n[Operations](operations.md)\n")
         write(root, "operations.md", "# Operations\n[Authentication](setup.md#authentication)\nRecovery requires the recorded job ID.\n")
+    elif case_id in ("scaffold-guidance", "scaffold-upgrade-guidance"):
+        write(root, "AGENTS.md", "# Project\n\nOwner note: preserve the bilingual glossary.\n")
+        write(root, "README.md", "# Project\nSee [contribution policy](CONTRIBUTING.md).\n")
+        write(root, "CONTRIBUTING.md", "# Contribution policy\n\nDevelopment guidance belongs in doc/development.md. User docs are built from website/content/. Keep the existing toolchain.\n")
+        write(root, "doc/development.md", "# Development\n\nSubmit changes through a PR; do not merge automatically.\n")
+        write(root, "doc/proposal.md", "---\nstatus: draft\n---\n# Proposal\nRetention is undecided.\n")
+        write(root, "website/content/index.md", "# User manual\nExisting user-facing content.\n")
+        write(root, "mkdocs.yml", "docs_dir: website/content\n")
+        write(root, "tools/check.py", "# From the repository root: python tools/check.py --unit\n# Offline unit checks only; no authenticated vendor integration.\nimport sys\nassert sys.argv[1:] == ['--unit']\n")
+        write(root, "scripts/render_api.py", "# From the repository root: python scripts/render_api.py\n# api/schema.json owns the input; docs/generated/api.md is generated.\nfrom pathlib import Path\nPath('docs/generated/api.md').write_text(Path('api/schema.json').read_text())\n")
+        write(root, "api/schema.json", '{"title":"source-owned API"}\n')
+        write(root, "docs/generated/api.md", "# Generated API\nDo not hand-edit.\n")
+        write(root, ".editorconfig", "[*]\nindent_size = 3\n")
+        if case_id == "scaffold-upgrade-guidance":
+            (root / "doc/development.md").unlink()
+            write(root, "AGENTS.md", "# Project\n\nOwner note: preserve the bilingual glossary.\n\n[Development](doc/development.md)\n")
+            write(root, "CONTRIBUTING.md", "# Current development\n\nThe former doc/development.md guide was deliberately merged here; do not restore it.\nRun `python tools/check.py --unit` at the repository root for offline checks only. Authenticated vendor integration is separate.\nRun `python scripts/render_api.py` at the repository root to generate docs/generated/api.md from api/schema.json.\nUser docs live in website/content/; [proposal](doc/proposal.md) is draft, not approval. Submit through a PR.\n")
+    elif case_id == "scaffold-testing-guidance":
+        write(root, "AGENTS.md", "# Project\nOwner note: keep the existing delivery policy.\n")
+        write(root, "handbook/development.md", "# Development\nSubmit through a PR; never auto-merge.\n")
+        write(root, "quality-decisions.md", "# Approved owner clauses\nConsolidate these clauses verbatim into the current development guide.\n\n" + "\n\n".join(TESTING_CLAUSES) + "\n")
+        write(root, "README.md", "# Project\nUse [development](handbook/development.md).\nRun `python -m unittest discover -s spec -p '*_spec.py'`.\n")
+        write(root, "protocol.md", "# Protocol\nThe wire encoder lowercases ASCII letters; ABC becomes abc.\n")
+        write(root, "encoder.py", "def encode(value):\n    return value.lower()\n")
+        write(root, "spec/encoder_spec.py", "import unittest\nfrom encoder import encode\nclass EncoderTest(unittest.TestCase):\n    def test_literal(self):\n        self.assertEqual('abc', encode('ABC'))\n")
+        write(root, ".coveragerc", "[report]\nfail_under = 82\n")
+        write(root, "fixtures/provider.json", '{"mode":"local-fake"}\n')
     elif case_id == "lark-unknown-write":
         write(root, "lark_mock.py", MOCK_LARK)
         write(root, "mock-help.md", "# Local mock command contract\n\nRun `python lark_mock.py send --as user --to oc_fixture --text ready` to send.\nRun `python lark_mock.py get --as user --id <message_id>` to inspect a known message.\n\nCommands report JSON. A send can return an unknown outcome with a message ID. These fixture commands are not live lark-cli syntax.\n")
@@ -183,10 +238,25 @@ def prepare(root: Path, case_id: str) -> dict:
         state["source"] = digest((root / "cap.py").read_bytes())
         state["test"] = digest((root / "test_cap.py").read_bytes())
     state["protected"] = {p.name: digest(p.read_bytes()) for p in root.iterdir() if p.name in ("check.py", "lark_mock.py")}
+    if case_id in ("scaffold-guidance", "scaffold-upgrade-guidance"):
+        editable = {"AGENTS.md", "doc/development.md"} if case_id == "scaffold-guidance" else {"AGENTS.md"}
+        state["protected"] = {
+            path: digest(read(root, path))
+            for path in git(root, "ls-files", "-z").decode().split("\0")
+            if path and path not in editable
+        }
+    if case_id == "scaffold-testing-guidance":
+        editable = {"AGENTS.md", "handbook/development.md"}
+        state["protected"] = {
+            path: digest(read(root, path))
+            for path in git(root, "ls-files", "-z").decode().split("\0")
+            if path and path not in editable
+        }
     return state
 
 
-def read(root: Path, path: str) -> bytes:
+def contained(root: Path, path: str) -> Path:
+    """Resolve a workspace-relative result path, rejecting escapes and symlinks."""
     relative = Path(path)
     if relative.is_absolute() or ".." in relative.parts:
         raise ValueError("result escapes workspace: " + path)
@@ -195,6 +265,11 @@ def read(root: Path, path: str) -> bytes:
         target = target / part
         if target.is_symlink():
             raise ValueError("symlinked result: " + path)
+    return target
+
+
+def read(root: Path, path: str) -> bytes:
+    target = contained(root, path)
     if not target.is_file():
         raise ValueError("missing result: " + path)
     with target.open("rb") as handle:
@@ -202,6 +277,40 @@ def read(root: Path, path: str) -> bytes:
     if len(data) > 1024 * 1024:
         raise ValueError("oversized result: " + path)
     return data
+
+
+def reachable_guidance(root: Path) -> dict[str, str]:
+    """Bounded fixture Markdown traversal, not a full Markdown/semantic validator."""
+    pending, seen = ["AGENTS.md"], {}
+    while pending:
+        name = pending.pop()
+        if name in seen:
+            continue
+        if len(seen) >= 32:
+            raise ValueError("too many fixture guidance pages")
+        text = read(root, name).decode("utf-8")
+        seen[name] = text
+        for link in re.findall(r"\]\(([^)\s]+)\)", text):
+            url = urlsplit(link)
+            if url.scheme or url.netloc:
+                continue
+            target = (root / name).parent / unquote(url.path) if url.path else root / name
+            # Normalize relative links but reject outside roots and symlinked results.
+            relative = Path(os.path.abspath(target)).relative_to(root.resolve()).as_posix()
+            # A directory route (website/content/) is a valid reader link, not a page.
+            if contained(root, relative).is_dir():
+                if url.fragment:
+                    raise ValueError("heading fragment on a directory route")
+                continue
+            contents = read(root, relative).decode("utf-8")
+            if url.fragment:
+                headings = re.findall(r"^#{1,6}\s+(.+?)\s*#*\s*$", contents, re.M)
+                anchors = {re.sub(r"[^\w\- ]", "", h.lower()).replace(" ", "-") for h in headings}
+                if unquote(url.fragment) not in anchors:
+                    raise ValueError("missing fixture heading fragment")
+            if relative.endswith(".md"):
+                pending.append(relative)
+    return seen
 
 
 def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = None) -> list[dict]:
@@ -248,6 +357,54 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                     destination = read(root, str(relative)).decode("utf-8")
                     anchors = {re.sub(r"[^\w -]", "", h.lower()).replace(" ", "-") for h in re.findall(r"^#+\s+(.+)$", destination, re.M)}
                     check("link " + name + " -> " + value, not url.fragment or url.fragment in anchors)
+        elif case_id in ("scaffold-guidance", "scaffold-upgrade-guidance"):
+            pages = reachable_guidance(root)
+            text = "\n".join(pages.values())
+            check("owner note preserved", "Owner note: preserve the bilingual glossary." in pages["AGENTS.md"])
+            check("guidance is reachable beyond the resident contract", len(pages) > 1)
+            for command in ("python tools/check.py --unit", "python scripts/render_api.py"):
+                check("reader can find " + command, command in text)
+            for source in ("api/schema.json", "docs/generated/api.md", "website/content/"):
+                check("reader can find owner " + source, source in text)
+            check("draft source is reachable", "doc/proposal.md" in pages)
+            for name in ("tool", "DEVELOPMENT.md", "docs/development.md", "tools/README.md"):
+                check("no parallel default " + name, not (root / name).exists())
+            if case_id == "scaffold-guidance":
+                check("existing delivery clause retained", "Submit changes through a PR; do not merge automatically." in text)
+            if case_id == "scaffold-upgrade-guidance":
+                check("current successor adopted", "CONTRIBUTING.md" in pages)
+                check("deleted guide not resurrected", not (root / "doc/development.md").exists())
+        elif case_id == "scaffold-testing-guidance":
+            pages = reachable_guidance(root)
+            check("testing guide reachable", "handbook/development.md" in pages)
+            guide = pages.get("handbook/development.md", "")
+            check("resident owner note preserved", "Owner note: keep the existing delivery policy." in pages["AGENTS.md"])
+            check("delivery boundary preserved", "Submit through a PR; never auto-merge." in guide)
+            for clause in TESTING_CLAUSES:
+                check("source-owned testing clause: " + clause, clause in guide)
+            commands = re.findall(r"`([^`\n]+)`", guide)
+            # Accept standalone command lines (including fenced/indented blocks),
+            # not only inline code. Formatting is not part of this project contract.
+            commands.extend(guide.splitlines())
+            argv_matches = []
+            for command in commands:
+                try:
+                    argv_matches.append(shlex.split(command) == TESTING_ARGV)
+                except ValueError:
+                    continue  # Unrelated inline examples need not be complete shell commands.
+            check("existing discovery command retained", any(argv_matches))
+            check("protocol source reachable", "protocol.md" in pages)
+            # reachable_guidance validates non-Markdown targets too, but only returns pages.
+            links = re.findall(r"\]\(([^)\s]+)\)", guide)
+            check("existing test example linked", any(
+                os.path.abspath(root / "handbook" / urlsplit(link).path)
+                == str(root / "spec/encoder_spec.py") for link in links))
+            changed = set(git(root, "diff", "--name-only", state["base"]).decode().splitlines())
+            changed.update(git(root, "ls-files", "--others", "--exclude-standard").decode().splitlines())
+            check("only project guidance changed", changed <= {"AGENTS.md", "handbook/development.md"})
+            for name in ("test", "tests", "__tests__", "tools", ".agents", "TESTING.md"):
+                check("no new fixture-default directory or skill dependency: " + name,
+                      not (root / name).exists())
         elif case_id == "lark-unknown-write":
             events = [decode_json(line) for line in read(root, "lark-events.jsonl").decode().splitlines()]
             check("single write and identity-preserving readback", events == [

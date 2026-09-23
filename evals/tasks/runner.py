@@ -87,6 +87,8 @@ def prepare_run(case_id: str, output: Path, condition: str, revision: str = "HEA
     else:
         raise ValueError("prepare outside the source checkout")
     case = CASES[case_id]
+    if condition == "skill" and case["skill"] is None:
+        raise ValueError("this host-workflow fixture supports none/brief conditions only")
     full = git(ROOT, "rev-parse", "--verify", revision + "^{commit}").decode().strip()
     output.mkdir(parents=True)
     state = prepare(output / "workspace", case_id)

@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Generate/check P0 runtime payloads for public and project-private skills.
+"""Generate/check the project-private skill-eval runtime payload.
 
-Published and project-local skills must not import repository-local maintainer
-modules at runtime. This generator copies the shared standard-library source
-into each payload with a stable generated header, then emits a tiny direct CLI
+The project skill must not import repository-local maintainer modules at runtime.
+Copy the standard-library source with a stable generated header and a direct CLI
 entry point.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 from typing import Dict
@@ -27,13 +25,6 @@ TARGETS = {
         "package_scope": "project-private",
         "target": ".agents/skills/skill-eval",
     },
-    "work-protocol": {
-        "module": "workctl",
-        "entry": "workctl.py",
-        "package": "work_protocol_runtime",
-        "package_scope": "independently installable",
-        "target": "skills/work-protocol",
-    },
 }
 
 
@@ -43,7 +34,7 @@ def _render_sources(package: str, module: str, package_scope: str, target_root: 
     init_text = HEADER + '"""Generated, %s runtime package."""\n' % package_scope
     common_text = HEADER + (SOURCE / "common.py").read_text(encoding="utf-8")
     module_text = HEADER + (SOURCE / (module + ".py")).read_text(encoding="utf-8")
-    entry_name = "skill_eval.py" if module == "skill_eval" else "workctl.py"
+    entry_name = module + ".py"
     entry_text = "#!/usr/bin/env python3\n" + HEADER + """from pathlib import Path
 import sys
 
@@ -85,7 +76,7 @@ def main(argv=None) -> int:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w", encoding="utf-8", newline="\n") as handle:
                 handle.write(expected)
-            if path.name in ("skill_eval.py", "workctl.py") and path.parent.name == "scripts":
+            if path.name == "skill_eval.py" and path.parent.name == "scripts":
                 try:
                     path.chmod(path.stat().st_mode | 0o111)
                 except OSError:

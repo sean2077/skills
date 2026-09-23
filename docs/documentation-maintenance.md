@@ -25,7 +25,7 @@ Choose organization from reader tasks and existing conventions. Entry points sum
 
 Update changed guidance and its consumers together: links, backlinks, templates, generated projections, manifests, and command examples. Keep catalog-skill references inside their installable payload; repository-level manuals can link across the repository. Edit a generated document's source and regenerate rather than patching its projection.
 
-Use metadata only when it helps interpret status or freshness. Follow the project's convention; flat `status` and `updated` are useful starting fields, not a required schema or approval gate. Formats that own their frontmatter, including `SKILL.md`, keep that contract. See [document metadata](../skills/project-docs-organizer/references/document-metadata.md).
+Use metadata only when it helps interpret status or freshness. Follow the project's convention; flat `status` and `updated` are useful starting fields, not a required schema or approval gate. Formats that own their frontmatter, including `SKILL.md`, keep that contract. See the scaffold's [project conventions](../skills/agent-scaffold/references/project-conventions.md) for first-use setup and upgrade ownership; ordinary document maintenance does not require invoking scaffold.
 
 ## Evidence and verification
 

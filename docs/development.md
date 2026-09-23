@@ -36,8 +36,8 @@ For a PR/MR, publish the task branch and verify the created change request; do *
 |---|---|
 | Repository documentation only | Unstaged and staged whitespace checks; changed local links/anchors and reader routes; `python scripts/validate_skills.py`; inspect or execute changed commands and identify unverified external claims |
 | Skill entry point, references, frontmatter, route, manifest, or layout | Catalog health/validation and fixtures; official `skills-ref`; applicable payload/contract checks; installer smoke tests when distribution changes |
-| Shared/generated runtimes | Both generator `--check` commands and affected workflow, P0, hardening, private-skill, and protocol tests |
-| Scaffold source or managed projections | Core/workspace tests, static shell gate, full throwaway E2E, real-symlink checks, and platform matrix |
+| Shared/generated runtimes | Both generator `--check` commands and affected workflow, P0, hardening, private-skill, and evaluation tests |
+| Scaffold source or managed projections | Core/workspace/layout-preservation tests, static shell gate, full throwaway E2E, real-symlink checks, and platform matrix |
 | Shell scripts | Targeted behavior tests and ShellCheck |
 | Evaluation manifests/adapters | Suite/result validation, adapter/oracle regressions, scope/cost/isolation checks; live execution only when separately configured and authorized |
 | Release/version logic | Planner/extractor fixtures, release execution tests, and review of the exact tagged snapshot/workflow |
@@ -70,7 +70,6 @@ Run from the task checkout in Bash. The subshell stops on failure without replac
   python scripts/tests/test_workflow_runtimes.py
   python -m unittest -v scripts.tests.test_p0_agent_workflows
   python -m unittest -v scripts.tests.test_p0_hardening
-  python scripts/tests/test_protocol_primitives.py
 
   python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
   for suite in evals/agent-skills/*/suite.json; do
@@ -91,8 +90,8 @@ Run from the task checkout in Bash. The subshell stops on failure without replac
 
   python scripts/tests/test_agent_scaffold_core.py
   python scripts/tests/test_workspace_entry.py
+  python scripts/tests/test_project_conventions.py
   bash scripts/check-agent-scaffold.sh
-  bash scripts/tests/test-tooling-inventory.sh
   AGENT_SCAFFOLD_E2E_REQUIRE_SYMLINKS=1 bash scripts/e2e-agent-scaffold.sh
 
   NO_COLOR=1 DISABLE_TELEMETRY=1 npx --yes skills@1.5.17 add . -l
@@ -128,6 +127,27 @@ For substantive skill changes or uncertain evidence, pass the project `skill-ver
 Claude's configured allowlist is Read/Grep/Glob; Codex requests `read-only`, but effective parent overrides must be checked. Neither configuration nor the no-execution instruction establishes live-host enforcement. The parent runs proposed checks in a separately authorized environment. Linked worktrees, separate clones, and temporary directories are not process sandboxes; filesystem/network/credential isolation must be effective when required. See [dated host evidence](compatibility.md#project-subagent-definitions-2026-09-22).
 
 Use a fresh instance with only task, acceptance, and anonymized artifacts for an explicitly blind/cold-reader comparison. Do not reuse a source-review instance or claim blindness when project context leaks identities. Keep baseline/treatment execution separate from this evaluator. The parent evaluates findings and owns fixes and delivery.
+
+## Scaffold testing conventions
+
+Testing-quality guidance is established by the full scaffold skill and owned by the consumer
+project. `tdd` retains explicit test-first execution and independent fallback references.
+The testing-guidance fixture checks source-owned clauses, runner discovery arguments, links
+and preservation of tests/coverage configuration. It does not infer prose quality from keywords
+or prove live model effectiveness. Installer preservation and TDD RED/GREEN traces remain
+separate checks; isolated payload/reference tests protect independent skill installation.
+
+## Scaffold project-guidance changes
+
+The full skill must adopt and fill real project guidance during an authorized initialization
+or upgrade, while the installer never guesses project layout or rewrites project-owned prose.
+`test_project_conventions.py` executes the installer against doc/tool variants, generated and
+external docs, customizations, read-only modes, repeated runs, and staged/dirty state.
+The scaffold routing suite probes intended decisions; task-outcome fixtures inspect reachable
+project guidance and rejection of stale/default routes. Reference actions validate those
+oracles, not live Agent adaptation or host discovery. Do not treat installer `ok` as semantic
+onboarding acceptance. Existing doc ownership in this repository already covers its layout;
+update the owning pages rather than create a second scaffold manual.
 
 ## Generated files
 

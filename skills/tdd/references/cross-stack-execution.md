@@ -1,5 +1,8 @@
 # Cross-Stack Execution
 
+Apply existing project testing guidance first; use these discovery and RED checks only
+for facts it does not establish. No scaffold installation or sibling skill is required.
+
 ## Derive commands from repository evidence
 
 Derive commands from applicable project instructions, contributor documentation, CI, task runners, manifests, and neighboring tests. Inspect exact tool help where needed. Use the repository's toolchain and package manager; assess adding a test harness through [legacy and hard cases](legacy-and-hard-cases.md).

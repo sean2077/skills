@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "scope": "harness-assets",
+  "project_guidance": "not-assessed",
   "mode": "plan",
   "target": "<target>",
   "profile": "light",

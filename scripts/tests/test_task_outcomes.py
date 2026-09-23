@@ -75,6 +75,110 @@ class OutcomeTests(unittest.TestCase):
         path.write_text(path.read_text().replace("## Authentication", "## Login"))
         self.assertFalse(self.passed(workspace, "docs-move", state)[0])
 
+    def test_scaffold_guidance_needs_real_routes_and_project_commands(self):
+        workspace, state = self.fixture("scaffold-guidance")
+        self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        cases.write(workspace, "AGENTS.md", (workspace / "AGENTS.md").read_text() + "\n[Start here](doc/development.md)\n")
+        self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        page = "# Working on this project\nRun `python tools/check.py --unit` from the repository root for offline checks; vendor integration is separate.\nGenerate docs/generated/api.md with `python scripts/render_api.py` from api/schema.json.\nUser docs live in website/content/. [Draft proposal](proposal.md).\nSubmit changes through a PR; do not merge automatically.\n"
+        cases.write(workspace, "doc/development.md", page)
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        for original, replacement in (("tools/check.py", "tools/fake.py"), ("api/schema.json", "unknown.json"),
+                                      ("do not merge automatically", "merge automatically"),
+                                      ("(proposal.md)", "(missing.md)"), ("(proposal.md)", "(proposal.md#missing)")):
+            with self.subTest(original=original):
+                cases.write(workspace, "doc/development.md", page.replace(original, replacement))
+                self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        cases.write(workspace, "doc/development.md", page.replace("# Working on this project", "# 开发入口"))
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        # A directory route is a valid way to name a docs owner; only a fragment on it is not.
+        linked = page.replace("website/content/.", "[website/content/](../website/content/).")
+        cases.write(workspace, "doc/development.md", linked)
+        self.assertTrue(*self.passed(workspace, "scaffold-guidance", state))
+        cases.write(workspace, "doc/development.md", linked.replace("../website/content/)", "../website/content/#top)"))
+        self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+        cases.write(workspace, "doc/development.md", page)
+        cases.write(workspace, "docs/generated/api.md", "modified output\n")
+        self.assertFalse(self.passed(workspace, "scaffold-guidance", state)[0])
+
+    def test_scaffold_upgrade_repairs_routes_not_deleted_templates(self):
+        workspace, state = self.fixture("scaffold-upgrade-guidance")
+        self.assertFalse(self.passed(workspace, "scaffold-upgrade-guidance", state)[0])
+        path = workspace / "AGENTS.md"
+        cases.write(workspace, "AGENTS.md", path.read_text().replace("(doc/development.md)", "(CONTRIBUTING.md)"))
+        self.assertTrue(*self.passed(workspace, "scaffold-upgrade-guidance", state))
+        cases.write(workspace, "doc/development.md", "recreated old template\n")
+        self.assertFalse(self.passed(workspace, "scaffold-upgrade-guidance", state)[0])
+
+    def test_retired_docs_fixture_rejects_skill_condition_before_writes(self):
+        out = self.root / "retired-treatment"
+        with self.assertRaisesRegex(ValueError, "none/brief"):
+            runner.prepare_run("docs-move", out, "skill")
+        self.assertFalse(out.exists())
+        for condition in ("none", "brief"):
+            result = runner.prepare_run("docs-move", self.root / condition, condition)
+            self.assertIsNone(result["skill_digest"])
+
+    def test_testing_guidance_preserves_policy_sources_and_discovery(self):
+        workspace, state = self.fixture("scaffold-testing-guidance")
+        def result():
+            return self.passed(workspace, "scaffold-testing-guidance", state)
+        self.assertFalse(result()[0])
+        entry = (workspace / "AGENTS.md").read_text() + "\n[Testing](handbook/development.md)\n"
+        cases.write(workspace, "AGENTS.md", entry)
+        self.assertFalse(result()[0])  # A new link alone is not completed guidance.
+        guide = ("# 开发与测试\nSubmit through a PR; never auto-merge.\n\n"
+                 + "\n\n".join(cases.TESTING_CLAUSES)
+                 + "\nRun `python -m unittest discover -s spec -p '*_spec.py'`.\n"
+                 + "[Contract](../protocol.md) · [Example](../spec/encoder_spec.py)\n")
+        cases.write(workspace, "handbook/development.md", guide)
+        self.assertTrue(*result())
+        # Each owner-defined requirement has its own falsifying example.
+        for clause in cases.TESTING_CLAUSES:
+            with self.subTest(clause=clause):
+                cases.write(workspace, "handbook/development.md", guide.replace(clause, ""))
+                self.assertFalse(result()[0])
+        for old, new in (("-s spec", "-s tests"), ("*_spec.py", "test_*.py"),
+                         ("../protocol.md", "../protocol.md#missing"),
+                         ("../spec/encoder_spec.py", "../missing.py"),
+                         ("never auto-merge", "auto-merge")):
+            with self.subTest(old=old):
+                cases.write(workspace, "handbook/development.md", guide.replace(old, new))
+                self.assertFalse(result()[0])
+        # Equivalent headings/quote style are not the test contract.
+        cases.write(workspace, "handbook/development.md", guide.replace("# 开发与测试", "# Test guide").replace("'*_spec.py'", '\"*_spec.py\"'))
+        self.assertTrue(*result())
+        for fence in ("```bash", "~~~sh"):
+            with self.subTest(command_format=fence):
+                command = "python -m unittest discover -s spec -p '*_spec.py'"
+                formatted = guide.replace("`" + command + "`", "\n" + fence + "\n" + command + "\n" + fence[:3] + "\n")
+                cases.write(workspace, "handbook/development.md", formatted)
+                self.assertTrue(*result())
+                cases.write(workspace, "handbook/development.md", formatted.replace("-s spec", "-s tests"))
+                self.assertFalse(result()[0])
+        cases.write(workspace, "handbook/development.md", guide)
+        for relative in ("TESTING.md", "tests/placeholder.py", "tools/test.sh"):
+            with self.subTest(added=relative):
+                cases.write(workspace, relative, "unrequested content\n")
+                self.assertFalse(result()[0])
+                (workspace / relative).unlink()
+                parent = (workspace / relative).parent
+                if parent != workspace:
+                    parent.rmdir()
+        (workspace / "tests").mkdir()
+        self.assertFalse(result()[0])
+        (workspace / "tests").rmdir()
+        # Unrelated inline code is not another malformed test command.
+        cases.write(workspace, "handbook/development.md", "A lone quote is `\"`.\n" + guide)
+        self.assertTrue(*result())
+        path = workspace / ".coveragerc"
+        original = path.read_bytes()
+        cases.write(workspace, ".coveragerc", "[report]\nfail_under = 1\n")
+        self.assertFalse(result()[0])
+        path.write_bytes(original)
+        cases.write(workspace, "spec/encoder_spec.py", "# silently removed existing tests\n")
+        self.assertFalse(result()[0])
+
     def test_mock_unknown_write_is_observed_without_blind_retry(self):
         workspace, state = self.fixture("lark-unknown-write")
         def invoke(*args):
