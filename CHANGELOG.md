@@ -8,7 +8,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking
 
+- Retire `work-protocol`, `best-practice-research`, `tooling-conventions`, and `project-docs-organizer` (12 → 8 catalog skills), including coordination runtime, inventory checker, generated payloads, contracts, and retired routing candidates. Preserve existing consumer installations/state until their owner completes or explicitly migrates them; no aliases, automatic uninstall, state migration, or replacement controller is introduced.
+
 - Retire `ralph` from the catalog (13 → 12 skills), including its loop runtime, references, source, contract, generator target, and route alias. Use native goals or the host/project workflow for new continuation tasks; exact attempt/stall/plateau semantics remain project-owned, not claimed as native-goal parity. Finish or explicitly abort active runs with the original installed runtime before removing it; preserve existing state and evidence, with no automatic migration or consumer uninstall.
+
+### Added
+
+- Expand `agent-scaffold` full initialization/upgrade to adopt and fill project-owned documentation, command, verification, source, and environment guidance. Respect existing layouts and project customizations; use current successors instead of recreating deleted/merged templates, without growing the managed AGENTS block or adding a layout registry.
+- Add explicit installer-report scope (`harness-assets`, project guidance `not-assessed`), real installer layout/read-only/idempotence preservation tests, scaffold decision probes, and bounded task-outcome fixtures. These checks distinguish runtime installation from Agent-authored guidance and do not claim live-host/model effectiveness.
 
 ### Changed
 

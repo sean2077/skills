@@ -98,10 +98,6 @@ leave the review branch and checkout available until their owner authorizes clea
 Before removal, release processes using the directory; changing a child shell's cwd
 cannot release an Agent or terminal's Windows directory handle.
 
-`work-protocol` is a separate opt-in durable controller, not something to start just
-because a workbench exists. It does not automatically adopt external worktrees. Keep its
-managed workspace/lease/review contract distinct and transfer ownership explicitly before
-allowing another controller to manage the same workspace.
 
 ## User choice and migration
 

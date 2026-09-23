@@ -8,7 +8,9 @@ These opt-in fixtures inspect what an Agent actually changes, separately from [r
 |---|---|---|
 | `commit-hunks` | Commit tree/parent, same-file staged hunk, another staged file, unstaged changes | One bounded Git scenario |
 | `spec-preservation` | Owned clauses, exact values, draft status, unresolved question, revised overview | Not complete semantic accuracy or reader comprehension |
-| `docs-move` | Unique content and incoming/outgoing relative links/anchors | The fixture's Markdown subset, not a general repository link validator |
+| `docs-move` (none/brief only) | Unique content and incoming/outgoing relative links/anchors | The fixture's Markdown subset, not a general repository link validator |
+| `scaffold-guidance` | Reader routes to project commands, source owners and draft docs; preserved user/generated files | Bounded Markdown and command-presence oracle, not complete semantic quality or live asset/host validation |
+| `scaffold-upgrade-guidance` | Redirect to the current guide without restoring deliberately removed templates | Asset upgrades are covered separately by installer tests |
 | `lark-unknown-write` | Local mock: one send and same-identity readback | No network or live CLI/service certification; writable logs are not tamper-proof |
 | `lark-invented-syntax` | Mock calls, collection observation, and correct awaiting-reply count in `answer.json`; rejects unsupported flags/identities/IDs | Cooperative mock evidence, not adversarial execution proof or model effectiveness |
 | `tdd-negative-input` | Captured missing-behavior RED at original source, then GREEN with unchanged tests/final hashes and an independent behavior check | Final answers and Agent-authored logs cannot replace missing sequence evidence |
@@ -19,7 +21,7 @@ CI's `scripts/tests/test_task_outcomes.py` exercises good/bad reference actions 
 
 ## Prepare a matched experiment
 
-Use an authorized, disposable, credential-limited environment outside this checkout. Each run creates a separate Git repository and refuses an existing output directory. Choose `none` (task only), `brief` (task plus short instruction), or `skill` (task plus a pinned complete skill payload, including references). This measures explicit application, not native discovery.
+Use an authorized, disposable, credential-limited environment outside this checkout. Each run creates a separate Git repository and refuses an existing output directory. Choose `none` (task only), `brief` (task plus short instruction), or `skill` (task plus a pinned complete skill payload, including references). This measures explicit application, not native discovery. `docs-move` retains its host-workflow oracle with only `none` and `brief`; its former catalog skill is retired, so `skill` is rejected before creating a run.
 
 ```bash
 python evals/tasks/runner.py prepare commit-hunks /absolute/eval/commit-none --condition none
@@ -30,6 +32,14 @@ python evals/tasks/runner.py prepare commit-hunks /absolute/eval/commit-skill --
 Run these commands from the evaluator's checkout. Commit intended skill changes before using `HEAD`: payloads come from Git, not dirty files. For old/new comparisons, use two full skill commit IDs with the same fixture/evaluator; the evaluator hash is recorded separately. Match run order, model, effort, permissions, plugin/memory configuration, cache conditions, and interventions, recording deviations. A brief request is a legitimate control. Repeated held-out tasks are needed for a stable-advantage claim.
 
 Give the subject only `prompt.txt`, the fixture workspace, and named guidance. Keep `fixture.json`, evaluator source, expected checks, transcripts, and results out of its workspace/context. The runner, a worktree, or a separate Git repository is **not an OS sandbox**. Use effective filesystem/network/credential isolation when required; never evaluate against production resources.
+
+The scaffold fixtures focus on the Agent-owned guidance step after separate asset installation:
+a correct result is usable project-specific navigation and content, not extra default folders.
+Their oracles reject missing command/source routes, broken anchors, altered protected inputs,
+and resurrected templates. They do not prove all meaning, cwd/effect explanations, or that the
+host obeyed a no-execution instruction; inspect actual traces and use an independent reader
+for those claims. `test_project_conventions.py` separately executes real installer lifecycle
+operations. Neither fixture is a general Markdown validator or evidence of measured gains.
 
 ## Execute with an existing host
 
@@ -102,11 +112,10 @@ Reuse existing checks rather than duplicating them in another runtime:
 
 | Skills | Evidence / next useful observation |
 |---|---|
-| `agent-scaffold` | Core/workspace/E2E files, profiles, moves, and simulated host payloads; authenticated discovery/hooks need separate versioned runs |
-| `conventional-commit`, `spec-writing`, `project-docs-organizer`, `lark-cli`, `tdd` | Outcome fixtures above; decision probes remain separate |
+| `agent-scaffold` | Core/workspace/layout/E2E asset tests plus project-guidance outcome fixtures; semantic adaptation and authenticated discovery/hooks need separate observed runs |
+| `conventional-commit`, `spec-writing`, `lark-cli`, `tdd` | Outcome fixtures above; decision probes remain separate |
 | `semver-release` | Planner/extractor tests and real release shell execution with a mock publisher; real publication is never an evaluation side effect |
-| `deep-interview`, `work-protocol` | Revision, digest, lease, recovery, scope, and evidence tests; not proof of task quality |
+| `deep-interview` | Revision, digest approval, recovery, and exact-file tests; not proof of task quality |
 | `domain-modeling` | Contextual examples and routing probes; inspect definitions and migrated consumers before efficacy claims |
-| `best-practice-research`, `tooling-conventions` | Probes and applicable inventory tests; compare actual recommendations/commands with a brief control before further pruning |
 
-This fixture set does not certify a host or establish gains for all 12 skills.
+This fixture set does not certify a host or establish gains for all catalog skills.

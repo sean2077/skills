@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "suite_id": "agent-scaffold-project-conventions",
+  "skill_path": "skills/agent-scaffold",
+  "fixture": "evals/agent-skills/fixture",
+  "adapter": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/host_adapter.py"
+    ],
+    "timeout_seconds": 300,
+    "max_output_bytes": 1048576
+  },
+  "verifier": {
+    "command": [
+      "{python}",
+      "{repo}/evals/agent-skills/verifier.py"
+    ],
+    "timeout_seconds": 30,
+    "max_output_bytes": 262144
+  },
+  "scope": {
+    "allow": [],
+    "deny": [
+      ".agents/**",
+      ".agent-workflows/**",
+      ".git/**"
+    ]
+  },
+  "budgets": {
+    "absolute": {
+      "interventions": 0
+    },
+    "relative": {
+      "input_tokens": {
+        "max_ratio": 4.0,
+        "max_additive": 2000
+      },
+      "output_tokens": {
+        "max_ratio": 2.5,
+        "max_additive": 500
+      },
+      "tool_calls": {
+        "max_ratio": 2.0,
+        "max_additive": 3
+      },
+      "wall_time_seconds": {
+        "max_ratio": 3.0,
+        "max_additive": 10
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "positive-existing-layout",
+      "kind": "positive",
+      "prompt": "Initialize the Agent harness and usable project guidance. This repository already uses doc/ for hand-written docs, tools/ for developer commands, scripts/ for internal build helpers and a Makefile. Preserve these responsibilities and fill missing onboarding guidance.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "preserve_layout": true,
+            "fill_project_guidance": true,
+            "inspect_existing_routes": true,
+            "asset_pass_proves_guidance": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-generated-docs",
+      "kind": "positive",
+      "prompt": "Set up our Agent harness. docs/ is generated API output; website/content/ owns hand-written docs according to the docs configuration. We have no tools directory because package scripts already provide our commands.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "preserve_layout": true,
+            "inspect_existing_routes": true,
+            "fill_project_guidance": true
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-upgrade-customized",
+      "kind": "positive",
+      "prompt": "Upgrade agent-scaffold and reconcile project guidance. We renamed doc/ to handbook/, changed its language to Chinese, and merged the old setup guide into CONTRIBUTING.md. Do not restore the old guide or directory.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "preserve_layout": true,
+            "restore_deleted_guidance": false,
+            "inspect_existing_routes": true
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-first-preview",
+      "kind": "positive",
+      "prompt": "This is my first call to agent-scaffold. Show a read-only plan for the harness and project conventions; do not initialize, run setup commands, or edit files.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "project_guidance_writes": false,
+            "inspect_existing_routes": true
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-runtime-only",
+      "kind": "positive",
+      "prompt": "Upgrade only scaffold-managed runtime assets, then verify them. Do not edit any project-owned document, command or configuration; report its unchecked guidance separately.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "project_guidance_writes": false,
+            "asset_pass_proves_guidance": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-minimal-project",
+      "kind": "positive",
+      "prompt": "Initialize the harness and essential project guidance for this tiny new repository. Use concise meaningful content; no empty docs/tools directories, unnecessary wrappers, or task-state controller.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "fill_project_guidance": true,
+            "preserve_layout": true,
+            "introduce_controller": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-required-design-record",
+      "kind": "positive",
+      "prompt": "Initialize the harness, preserving our layout. This project explicitly requires a project-conventions-decision record for any new onboarding guidance. Use that record, not a different template.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "decision_artifact": "project-conventions-decision",
+            "fill_project_guidance": true,
+            "preserve_layout": true
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-module-scope",
+      "kind": "positive",
+      "prompt": "Initialize the harness only for the assigned linked task checkout in a multi-repository workspace. Preserve module-local docs/commands and existing worktree ownership. Do not initialize sibling repos or impose a central docs/tool root.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "preserve_layout": true,
+            "inspect_existing_routes": true,
+            "introduce_controller": false
+          }
+        }
+      }
+    },
+    {
+      "id": "positive-complete-existing",
+      "kind": "positive",
+      "prompt": "Check and upgrade the harness. The existing CONTRIBUTING guide already covers documentation ownership, command cwd/effects, verification limits and source generators. Reuse it without duplicating policy or rewriting timestamps.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "harness-management"
+          },
+          "treatment": {
+            "route": "agent-scaffold",
+            "workflow": "harness-management",
+            "preserve_layout": true,
+            "inspect_existing_routes": true,
+            "restore_deleted_guidance": false
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-docs-move",
+      "kind": "negative",
+      "prompt": "Move one setup page and repair its backlinks. No harness initialization, upgrade, or project-convention setup is requested.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "documentation-organization"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "documentation-organization"
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-research",
+      "kind": "negative",
+      "prompt": "Compare external database approaches for our workload using current primary sources. Leave the repository harness untouched.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "research"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "research"
+          }
+        }
+      }
+    },
+    {
+      "id": "confusable-command-edit",
+      "kind": "confusable",
+      "prompt": "Rename an internal script and update its Makefile caller. Preserve the current command contract; do not modify the Agent harness.",
+      "metadata": {
+        "expected_behavior": {
+          "baseline": {
+            "route": "none",
+            "workflow": "tooling-governance"
+          },
+          "treatment": {
+            "route": "none",
+            "workflow": "tooling-governance"
+          }
+        }
+      }
+    }
+  ]
+}

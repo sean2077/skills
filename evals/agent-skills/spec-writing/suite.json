@@ -194,7 +194,7 @@
             "workflow": "documentation-organization"
           },
           "treatment": {
-            "route": "project-docs-organizer",
+            "route": "none",
             "workflow": "documentation-organization"
           }
         }
@@ -279,7 +279,7 @@
             "workflow": "research"
           },
           "treatment": {
-            "route": "best-practice-research",
+            "route": "none",
             "workflow": "research"
           }
         }

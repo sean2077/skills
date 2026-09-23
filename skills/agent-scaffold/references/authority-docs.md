@@ -27,7 +27,7 @@ Use this signal to find redundant or misplaced content; retain guidance whose va
 
 ## Project-owned guidance
 
-Add sections that help this project: an overview, recurring development commands, important boundaries, and links to architecture or terminology. The scaffold preserves that prose rather than filling or judging it.
+Add sections that help this project: an overview, recurring development commands, important boundaries, and links to architecture or terminology. The installer preserves that prose; during an authorized full initialization or upgrade, the Agent adopts and fills missing project guidance using [project conventions](project-conventions.md). Initial authorship does not make it a managed template.
 
 Interpret document metadata alongside repository evidence and user intent. Follow an established convention; flat `status` and `updated` are useful starting fields where status/freshness needs to be recorded. The project owns metadata and any extensions.
 

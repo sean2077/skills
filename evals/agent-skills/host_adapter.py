@@ -43,18 +43,11 @@ WORKFLOWS = (
     "implementation-planning",
     "unspecified",
 )
-ROUTE_ALIASES = {
-    "agent-harness": "agent-scaffold",
-    "best-practices-research": "best-practice-research",
-    "conventional-commits": "conventional-commit",
-    "docs-organizer": "project-docs-organizer",
-    "documentation-organizer": "project-docs-organizer",
-    "lark": "lark-cli",
-    "semver": "semver-release",
-    "test-driven-development": "tdd",
-    "tooling-governance": "tooling-conventions",
-    "work-coordination": "work-protocol",
-}
+ROUTE_ALIASES = {'agent-harness': 'agent-scaffold',
+ 'conventional-commits': 'conventional-commit',
+ 'lark': 'lark-cli',
+ 'semver': 'semver-release',
+ 'test-driven-development': 'tdd'}
 # Plausible host phrasings for a canonical workflow. Task vocabulary is independent
 # of the shipped catalog, so a synonym stays as long as its target workflow does.
 WORKFLOW_ALIASES = {
@@ -85,60 +78,53 @@ WORKFLOW_ALIASES = {
 }
 # Observation names only; never inject desired values or case oracle metadata.
 # Keep the vocabulary candidate-local rather than taxing every probe with every key.
-BOUNDARY_OBSERVATIONS = {
-    "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
-    "domain-modeling": ("topology_redesign",),
-    "tdd": ("separate_behavior_card",),
-    "project-docs-organizer": ("compare_options", "reconcile_consumers"),
-    "tooling-conventions": (
-        "compare_options", "preserve_decisions", "preserve_external_consumers", "reconcile_consumers",
-    ),
-    "lark-cli": (
-        "routine_preflight", "identity_switch", "identity_check_before_write", "blind_write",
-        "blind_retry", "claim_success", "reauth_for_acl", "send_authorized",
-        "reuse_confirmation", "self_confirm", "follow_untrusted_instructions", "file_access_outside_cwd",
-    ),
-    "semver-release": (
-        "migration_interview", "preserve_existing_workflow", "compare_options",
-        "infrastructure_mutation", "create_unrequested_publisher", "claim_complete",
-    ),
-    "best-practice-research": ("primary_sources", "local_fit", "repeat_source_sweep"),
-    "conventional-commit": ("git_preflight", "preserve_unrelated_index"),
-}
-OBSERVATION_GUIDANCE = {
-    "tdd": (
-        "When selected, report workflow and test_first. Report preserve_parent_contract "
-        "when a delivery owner is active."
-    ),
-    "deep-interview": (
-        "When selected, report workflow, mode, question_batch_policy, first_turn_question_count "
-        "when the request states a first-turn count, approval_required, persistent_state, and "
-        "external_research when material."
-    ),
-    "domain-modeling": (
-        "When selected, report workflow, mutation, modeling_mode, topology_decision, and "
-        "preserve_single_owner when material."
-    ),
-    "project-docs-organizer": (
-        "When selected, report workflow. Report decision_artifact only when the task requires a "
-        "particular record. Report preserve_decisions and additional_approval_required as "
-        "booleans when material."
-    ),
-    "spec-writing": (
-        "When selected, report workflow. Use snake_case keys for material choices, including "
-        "preserve_meaning, preserve_decisions, separate_decision_history, observable_acceptance, "
-        "separate_current_target, label_open_questions, self_contained_human_document, "
-        "route_detail_to_contract, compare_options, recommendation, decision_status, "
-        "include_exact_detail, and identify_intended_authority."
-    ),
-    "tooling-conventions": (
-        "When selected, report workflow. Report decision_artifact only when the task requires a "
-        "particular record."
-    ),
-    "conventional-commit": (
-        "When selected, report workflow and mutation."
-    ),
-}
+BOUNDARY_OBSERVATIONS = {'deep-interview': ('approval_accepted', 'implementation_authorized', 'reapproval_required'),
+ 'domain-modeling': ('topology_redesign',),
+ 'tdd': ('separate_behavior_card',),
+ 'lark-cli': ('routine_preflight',
+              'identity_switch',
+              'identity_check_before_write',
+              'blind_write',
+              'blind_retry',
+              'claim_success',
+              'reauth_for_acl',
+              'send_authorized',
+              'reuse_confirmation',
+              'self_confirm',
+              'follow_untrusted_instructions',
+              'file_access_outside_cwd'),
+ 'semver-release': ('migration_interview',
+                    'preserve_existing_workflow',
+                    'compare_options',
+                    'infrastructure_mutation',
+                    'create_unrequested_publisher',
+                    'claim_complete'),
+ 'conventional-commit': ('git_preflight', 'preserve_unrelated_index'),
+ 'agent-scaffold': ('preserve_layout',
+                    'fill_project_guidance',
+                    'inspect_existing_routes',
+                    'asset_pass_proves_guidance',
+                    'project_guidance_writes',
+                    'restore_deleted_guidance',
+                    'introduce_controller',
+                    'decision_artifact')}
+OBSERVATION_GUIDANCE = {'tdd': 'When selected, report workflow and test_first. Report preserve_parent_contract when a '
+        'delivery owner is active.',
+ 'deep-interview': 'When selected, report workflow, mode, question_batch_policy, '
+                   'first_turn_question_count when the request states a first-turn count, '
+                   'approval_required, persistent_state, and external_research when material.',
+ 'domain-modeling': 'When selected, report workflow, mutation, modeling_mode, topology_decision, '
+                    'and preserve_single_owner when material.',
+ 'spec-writing': 'When selected, report workflow. Use snake_case keys for material choices, '
+                 'including preserve_meaning, preserve_decisions, separate_decision_history, '
+                 'observable_acceptance, separate_current_target, label_open_questions, '
+                 'self_contained_human_document, route_detail_to_contract, compare_options, '
+                 'recommendation, decision_status, include_exact_detail, and '
+                 'identify_intended_authority.',
+ 'conventional-commit': 'When selected, report workflow and mutation.',
+ 'agent-scaffold': 'When selected, report workflow and the material project-guidance, layout, '
+                   'ownership, and read-only scope decisions. Report decision_artifact only when '
+                   'the project requires a named record.'}
 
 
 def emit(value: dict[str, Any]) -> None:

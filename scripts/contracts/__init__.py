@@ -27,8 +27,6 @@ REQUIRED_SKILLS = frozenset(
         "lark-cli",
         "semver-release",
         "tdd",
-        "tooling-conventions",
-        "work-protocol",
     }
 )
 

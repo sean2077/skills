@@ -18,6 +18,8 @@
 #
 # Run from anywhere inside the target project. Requires git, Python 3.8+, and
 # Bash 3.2+. Windows support is Git Bash with native symlink privilege.
+# This command manages harness assets only. The Agent running SKILL.md also
+# adopts/fills project guidance during a full authorized setup.
 # ---8<--- help ends here
 set -euo pipefail
 
@@ -314,7 +316,8 @@ do_install() {
   log "project-owned subagent drift guard: wire 'python .agents/tools/generate-subagents.py --check' only when useful"
 
   echo
-  ok "harness $MODE complete."
+  ok "harness assets $MODE complete."
+  log "Full skill setup also requires the Agent to reconcile project guidance; see $SKILL_DIR/references/project-conventions.md."
   log "EOL: run verify for tracked-file migration and effective runtime attributes; no files were renormalized."
   log "Existing .editorconfig remains project-owned; align its EOL exceptions with .gitattributes."
   log "Codex trust: project-level .codex/ loads only for a trusted project."

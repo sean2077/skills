@@ -98,7 +98,6 @@ jobs:
           python scripts/tests/test_workflow_runtimes.py
           python -m unittest -v scripts.tests.test_p0_agent_workflows
           python -m unittest -v scripts.tests.test_p0_hardening
-          python scripts/tests/test_protocol_primitives.py
           python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/tdd/suite.json
           for suite in evals/agent-skills/*/suite.json; do
             python .agents/skills/skill-eval/scripts/skill_eval.py validate "$suite"
@@ -118,11 +117,8 @@ jobs:
         run: |
           python scripts/tests/test_agent_scaffold_core.py
           python scripts/tests/test_workspace_entry.py
+          python scripts/tests/test_project_conventions.py
           bash scripts/check-agent-scaffold.sh
-
-      - name: Exercise tooling inventory reconciliation
-        if: ${{ !cancelled() }}
-        run: bash scripts/tests/test-tooling-inventory.sh
 
       - name: E2E installer test with mandatory real links
         if: ${{ !cancelled() }}
@@ -212,7 +208,7 @@ jobs:
           python -m compileall -q \
             scripts/workflow_runtime scripts/p0_runtime \
             skills/deep-interview/scripts \
-            .agents/skills/skill-eval/scripts skills/work-protocol/scripts \
+            .agents/skills/skill-eval/scripts \
             evals/agent-skills evals/tasks
           python -m unittest -v \
             scripts.tests.test_workflow_runtimes.RuntimeTests.test_generated_runtimes_are_current_and_compile \
@@ -220,4 +216,3 @@ jobs:
             scripts.tests.test_workflow_runtimes.RuntimeTests.test_approval_requires_unchanged_original_bytes_including_eol
           python -m unittest -v scripts.tests.test_p0_agent_workflows
           python -m unittest -v scripts.tests.test_p0_hardening
-          python scripts/tests/test_protocol_primitives.py

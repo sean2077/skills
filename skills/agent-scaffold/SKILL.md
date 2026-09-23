@@ -1,80 +1,88 @@
 ---
 name: agent-scaffold
-description: 'Use to plan, install, retrofit, diagnose, verify, or upgrade a Claude Code + Codex harness with .agents/ SSOT, real-symlink projections, hooks, authority docs, subagents, or repository LF/CRLF policy. Not for one commit, a standalone authority file, or third-party skill installation.'
+description: "Use to initialize, inspect, or upgrade a Claude Code + Codex project harness and its document, command, verification, and source-ownership guidance. Preserve existing layouts. Not for routine research, docs reorganization, scripting, delivery, or third-party skill installation."
 ---
 
 # Agent Scaffold
 
-Converge a target repository on one vendored Claude Code + Codex harness.
-`.agents/` owns project skills, subagents, and runtime tools; `.claude/` and
-`.codex/` are host projections. Run the bundled installer from inside the
-target repository:
+Establish or incrementally maintain a project's Agent harness **and usable project guidance**.
+The installer owns deterministic harness assets; the Agent adopts and fills project-specific
+conventions. A successful installer run alone does not complete project onboarding.
 
 ```bash
 bash <skill-dir>/agent-scaffold.sh <mode> [--profile default|light] [--json]
 ```
 
-The harness requires **git, Python 3.8+, and Bash 3.2+**. The installer installs
-and runs the subagent generator in every mutating mode.
+Run inside the authorized target checkout. The runtime requires git, Python 3.8+, Bash 3.2+,
+and real file/directory symlinks. `.agents/` owns harness sources; `.claude/` and `.codex/`
+contain host projections/configuration, and `CLAUDE.md` links to the lean `AGENTS.md`.
 
-## Invariants
+## Boundaries
 
-- Treat `.agents/` as the SSOT; never hand-edit generated host-agent files.
-- Require real file and directory symlinks; never fall back to copies.
-- Keep `CLAUDE.md` as a symlink to the lean `AGENTS.md` entry point.
-- Reconcile only exact scaffold-owned hook identities; preserve unrelated host config.
-- Keep formatter, hook-manager, package, CI, nested-contract, and example-agent
-  choices project-owned.
-- Keep project terminology project-owned; route every Agent to its applicable
-  glossary from the managed contract.
-- Separate session entry, task checkout, and worktree lifecycle ownership. Honor
-  user/host placement, reuse assigned worktrees, and keep preferences in project prose.
+- Discussion, preview, `plan`, `doctor`, and `verify` are read-only. A first invocation is
+  not automatically permission to initialize; use the requested scope.
+- Preserve project layout, language, build tools, CI, permissions, external-worktree ownership,
+  and third-party entries. Directory names are clues, not authority or a migration request.
+- Never hand-edit generated projections or resolve ownership conflicts by overwriting them.
+  Reconcile only exact scaffold-owned hook identities.
+- Newly authored project guidance belongs to the project, outside the managed AGENTS block.
+  Do not expand that block with generic research, docs/tool governance, or task controllers.
 - Keep repository EOL defaults in `.gitattributes`; preserve project exceptions and existing
-  `.editorconfig`. Never renormalize, stage, or rewrite user files as an installation side effect.
-- Leave document metadata conventions to project Agents; the managed block adds
-  reading principles, not a schema or lifecycle gate.
+  `.editorconfig`. Installation never renormalizes, stages, or rewrites unrelated user files.
+- Existing guidance is an input, not untouchable: repair confirmed drift within scope without
+  imposing a new layout, metadata schema, inventory, or approval process.
 
 ## Modes
 
-| Mode | Use |
+| Mode | Installer responsibility |
 |---|---|
-| `apply` | Add or reconcile the harness; refuse runtime drift that requires `upgrade` |
-| `plan` | Preview create, merge, adopt, refresh, and attention states without writes |
+| `apply` | Add/reconcile harness assets; refuse runtime drift requiring `upgrade` |
+| `plan` | Preview asset create, merge, adopt, refresh, and attention states without writes |
 | `doctor` | Check prerequisites and real-symlink capability |
-| `verify` | Check the selected current contract, runtime drift, hooks, and projections |
-| `upgrade` | Refresh current managed runtime files, then reconcile the contract |
+| `verify` | Check active harness assets, managed drift, hooks, and projections |
+| `upgrade` | Refresh current managed runtime and reconcile the contract |
 
-Use `--profile default` for worktree/trunk-guard governance or `--profile light`
-to omit it. Without `--profile`, reuse an identifiable installed choice; fresh installations use `default`. An ambiguous older installation requires an explicit choice. Use `--json` with `plan`, `doctor`, or `verify` when another tool
-needs stable check IDs and statuses.
+`default` includes worktree/trunk-guard governance; `light` omits it. An omitted profile reuses
+an identifiable installed choice; a fresh install uses `default`, and ambiguous legacy state
+needs an explicit choice. JSON reports describe harness checks, not project-guidance acceptance.
 
 ## Workflow
 
-1. Confirm the target checkout with `git rev-parse --show-toplevel`; this is not
-   necessarily the primary worktree. Honor an explicit task path and inspect its
-   local authority chain before planning changes; do not install into another checkout.
-2. Run `plan`; use its `apply_mode` (`apply` or `upgrade`) and selected profile.
-3. Resolve any `attention` item before mutation. Mutating modes preflight AGENTS
-   and line-ending markers, hook-config, runtime-shape, subagent-import, and
-   symlink conflicts before the first target write.
-4. Run the selected mutating mode, then `verify` with the same profile.
-5. Report created or refreshed assets, preserved project-owned state, Codex project/hook trust steps, and any symlink-checkpoint caveat relevant to the changed files.
+1. Resolve the task checkout, revision, applicable authority chain, and existing lifecycle
+   owner; do not infer them from session cwd or create a second worktree manager.
+2. For initialization or upgrade, read [project conventions](references/project-conventions.md).
+   Inspect relevant entry points and actual configurations/callers before expanding the scan.
+   Reuse existing answers; identify missing document, command, verification, source, and safety
+   guidance. This assessment also applies to previews, without writing or running setup commands.
+3. Run `plan` for assets; combine its `apply_mode` and profile with the needed project-guidance
+   changes. Resolve material scope/ownership conflicts. Follow existing authorization instead
+   of demanding a new approval round for every routine, already authorized step.
+4. For an authorized initialization/upgrade, run the indicated mutating mode. Then **write or
+   reconcile the missing project guidance** in its existing homes, and link it from the Agent
+   entry point. Respect an explicitly runtime-only request. Do not stop at suggestions or copy
+   this skill's manual into the target; choose the minimum useful project-specific additions.
+5. Verify harness assets with the same profile. Separately walk a new-Agent reader task using
+   only the resulting entry points: find the applicable docs, real commands/cwd/effects,
+   generated-source owners, verification limits, and delivery boundary. Check changed links and
+   affected commands safely; preserve unavailable evidence as a gap rather than inventing it.
+6. Report adopted locations, material additions/repairs, observed checks, and unresolved gaps.
+   Distinguish asset installation, project-guidance coverage, and actual host trust/discovery.
+   Equivalent existing coverage can require no project edits; repeated runs must not duplicate
+   prose or resurrect deliberately merged/deleted guidance just to match an earlier template.
 
 ## On-demand references
 
-Read only the category needed for the current task:
-
-| Task | Reference |
+| Need | Reference |
 |---|---|
-| Session entry choice, task paths, external worktrees, and lifecycle handoff | [`workspace-context.md`](references/workspace-context.md) |
-| LF/CRLF defaults, editor alignment, exceptions, and safe existing-file migration | [`line-endings.md`](references/line-endings.md) |
-| Installed assets, profiles, SSOT, third-party coexistence | [`harness-layout.md`](references/harness-layout.md) |
-| Scaffold-owned host hooks, merge ownership, Codex project/hook trust | [`host-integration.md`](references/host-integration.md) |
-| Project-owned format-on-edit integration | [`format-hooks.md`](references/format-hooks.md) |
-| Root and nested authority-document policy | [`authority-docs.md`](references/authority-docs.md) |
-| Project terminology SSOT, multilingual equivalents, progressive context topology, and active-modeling boundary | [`terminology.md`](references/terminology.md) |
-| Subagent authoring, projection, and drift integration | [`subagents.md`](references/subagents.md) |
-| Importing hand-authored Claude/Codex agents | [`subagent-import.md`](references/subagent-import.md) |
-| Adopting an existing AGENTS/CLAUDE or host-agent setup | [`retrofit.md`](references/retrofit.md) |
-| Runtime prerequisites, Windows/Git Bash, symlink repair, Claude checkpoint boundary | [`platform-support.md`](references/platform-support.md) |
-| Structured plan/doctor/verify output and target troubleshooting | [`diagnostics.md`](references/diagnostics.md) |
+| First-use project guidance, layout adoption, docs/tools, and incremental maintenance | [Project conventions](references/project-conventions.md) |
+| Session entry, task paths, external worktrees, and lifecycle handoff | [Workspace context](references/workspace-context.md) |
+| EOL defaults, exceptions, and authorized migration | [Line endings](references/line-endings.md) |
+| Installed assets, profiles, SSOT, and third-party coexistence | [Harness layout](references/harness-layout.md) |
+| Hook ownership and host trust | [Host integration](references/host-integration.md) |
+| Project-owned format-on-edit integration | [Format hooks](references/format-hooks.md) |
+| Lean root/nested authority documents | [Authority documents](references/authority-docs.md) |
+| Existing glossaries, language equivalents, and terminology ownership | [Terminology](references/terminology.md) |
+| Subagent authoring/projection and existing-agent import | [Subagents](references/subagents.md) · [Import](references/subagent-import.md) |
+| Adopting existing authority documents or host agents | [Retrofit](references/retrofit.md) |
+| Platforms, symlink repair, and checkpoint limitations | [Platform support](references/platform-support.md) |
+| Structured reports and troubleshooting | [Diagnostics](references/diagnostics.md) |

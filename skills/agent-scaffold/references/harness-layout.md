@@ -36,7 +36,7 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 
 Project prose, terminology files, nested authority-document structure, subagent examples,
 Codex settings, package scripts, and CI/hook-manager integration are reference recipes rather than
-installed templates. Existing project-owned copies are preserved on upgrade. Formatter, linter, test, and
+installed templates. The installer preserves project-owned content; the Agent must adopt and fill its relevant gaps during a full setup under [project conventions](project-conventions.md). Project choices remain authoritative on later upgrades. Formatter, linter, test, and
 code-generation hooks likewise stay outside `.agents/tools/`; see
 [format hooks](format-hooks.md) and
 [subagents](subagents.md#project-owned-drift-integration).

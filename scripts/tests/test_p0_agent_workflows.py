@@ -6,8 +6,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import threading
-import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -16,10 +14,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from p0_runtime.common import (  # noqa: E402
-    FileMutex,
     HarnessError,
+    changed_paths,
     match_any,
-    patterns_overlap,
     read_json,
     repository_snapshot,
     safe_child,
@@ -34,19 +31,6 @@ from p0_runtime.skill_eval import (  # noqa: E402
     run_suite,
     validate_manifest,
     validate_result,
-)
-from p0_runtime.workctl import (  # noqa: E402
-    TaskStore,
-    acquire_owner,
-    claim_paths,
-    create_workspace,
-    handoff_owner,
-    init_task,
-    release_owner,
-    remove_workspace,
-    transition_task,
-    verify_task,
-    workspace_changed_paths,
 )
 from p0_runtime.common import discover_git_context, run_git  # noqa: E402
 
@@ -75,37 +59,33 @@ def init_repo(path: Path) -> str:
 
 
 class CommonSecurityTest(unittest.TestCase):
-    def test_overlap_parent_child_and_glob(self) -> None:
-        self.assertTrue(patterns_overlap("src/**", "src/api/file.py"))
-        self.assertTrue(patterns_overlap("src/api", "src/api/file.py"))
-        self.assertTrue(patterns_overlap("src/*/models.py", "src/api/**"))
-        self.assertFalse(patterns_overlap("src/api/**", "tests/**"))
+
+    def test_atomic_json_failure_preserves_original_and_removes_candidate(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "result.json"
+            write_json_atomic(path, {"value": "original"})
+            original = path.read_bytes()
+            with mock.patch("p0_runtime.common.os.replace", side_effect=OSError("injected failure")):
+                with self.assertRaises(OSError):
+                    write_json_atomic(path, {"value": "new"})
+            self.assertEqual(original, path.read_bytes())
+            self.assertEqual([path], list(Path(temp).iterdir()))
 
     def test_recursive_glob_matches_nested_paths_only_when_requested(self) -> None:
         self.assertTrue(match_any("src/api/internal/model.py", ["src/**"]))
         self.assertTrue(match_any("src/model.py", ["src/*"]))
         self.assertFalse(match_any("src/api/model.py", ["src/*"]))
 
-    def test_live_process_lock_is_not_recovered_only_because_it_is_old(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            lock = Path(temp) / "live.lock"
-            write_json_atomic(
-                lock,
-                {"schema_version": 1, "token": "held", "pid": os.getpid(), "created_epoch": 0},
-            )
-            with self.assertRaises(HarnessError):
-                with FileMutex(lock, timeout=0.02, stale_after=0):
-                    pass
-            self.assertTrue(lock.exists())
 
     def test_rename_reports_source_and_destination_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             repo = Path(temp) / "repo"
-            base = init_repo(repo)
+            init_repo(repo)
+            before = repository_snapshot(repo)
             (repo / "allowed").mkdir()
             git(repo, "mv", "README.md", "allowed/README.md")
             git(repo, "commit", "-m", "rename")
-            self.assertEqual(workspace_changed_paths(repo, base), ["README.md", "allowed/README.md"])
+            self.assertEqual(changed_paths(before, repository_snapshot(repo)), ["README.md", "allowed/", "allowed/README.md"])
 
     @unittest.skipIf(not hasattr(os, "symlink"), "symlink unsupported")
     def test_safe_child_rejects_symlink_escape(self) -> None:
@@ -376,197 +356,6 @@ json.dump({'schema_version':1,'contract':'agent-skill-eval/v1','run_id':r['run_i
             compare_pair(baseline, treatment, {"absolute": {}, "relative": {}})
 
 
-class WorkProtocolTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.temp = tempfile.TemporaryDirectory()
-        self.repo = Path(self.temp.name) / "repo"
-        self.commit = init_repo(self.repo)
-        self.context = discover_git_context(self.repo)
-        self.store, self.state = init_task(self.context, "task-1", "Test task")
-
-    def tearDown(self) -> None:
-        # Make reviewer directories writable so TemporaryDirectory can clean as an unprivileged user.
-        for current, dirs, files in os.walk(self.temp.name):
-            try:
-                Path(current).chmod(0o700)
-            except OSError:
-                pass
-            for name in files:
-                try:
-                    (Path(current) / name).chmod(0o600)
-                except OSError:
-                    pass
-        self.temp.cleanup()
-
-    def acquire(self, owner: str = "delivery", version: int = 1):
-        return acquire_owner(self.store, version, owner, 60, "test")
-
-    def test_artifacts_and_linked_worktree_share_common_authority(self) -> None:
-        task_dir = self.repo / ".agents" / "work" / "task-1"
-        self.assertEqual({p.name for p in task_dir.iterdir()}, {"state.json", "evidence.jsonl"})
-        self.assertEqual(self.state["title"], "Test task")
-        linked = Path(self.temp.name) / "linked"
-        git(self.repo, "worktree", "add", "-b", "linked-test", str(linked), self.commit)
-        linked_store = TaskStore.for_existing(linked, "task-1")
-        self.assertEqual(linked_store.context.common_dir, self.store.context.common_dir)
-        state, _ = linked_store.read()
-        self.assertEqual(state["version"], 1)
-
-    def test_single_owner_cas_and_token_handoff(self) -> None:
-        results = []
-        barrier = threading.Barrier(2)
-
-        def contender(owner: str) -> None:
-            barrier.wait()
-            try:
-                state, token = acquire_owner(self.store, 1, owner, 60, owner)
-                results.append(("ok", owner, state["version"], token))
-            except HarnessError as exc:
-                results.append(("error", owner, exc.code, ""))
-
-        threads = [threading.Thread(target=contender, args=(owner,)) for owner in ("delivery", "worker-b")]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-        self.assertEqual(sum(1 for item in results if item[0] == "ok"), 1)
-        winner = next(item for item in results if item[0] == "ok")
-        old_token = winner[3]
-        with mock.patch("p0_runtime.workctl.secrets.token_urlsafe", return_value="-leading-option"):
-            state, new_token = handoff_owner(self.store, 2, old_token, "pairroom", 60, "test")
-        self.assertEqual(state["loop_owner"], "pairroom")
-        self.assertEqual(new_token, "workctl_-leading-option")
-        with self.assertRaises(HarnessError):
-            transition_task(self.store, 3, old_token, "planned", "test", "old token")
-        state = release_owner(self.store, 3, new_token, "test")
-        self.assertIsNone(state["loop_owner"])
-
-    def test_expired_lease_requires_explicit_recovery(self) -> None:
-        state, token = self.acquire()
-        with FileMutex(self.store.lock_path):
-            registry = self.store._read_registry()
-            registry["lease"]["expires_epoch"] = time.time() - 1
-            write_json_atomic(self.store.registry_path, registry)
-        with self.assertRaises(HarnessError):
-            acquire_owner(self.store, 2, "worker-b", 60, "test", recover=False)
-        state, recovered = acquire_owner(self.store, 2, "worker-b", 60, "test", recover=True)
-        self.assertEqual(state["loop_owner"], "worker-b")
-        self.assertNotEqual(token, recovered)
-
-    def test_caller_owned_stages_without_retry_policy(self) -> None:
-        state, token = self.acquire()
-        for phase in ("design", "human-approval", "audit", "implement", "audit", "implement", "audit"):
-            state = transition_task(self.store, state["version"], token, phase, "test", "caller decision")
-            self.assertEqual(state["phase"], phase)
-        self.assertNotIn("verify_retry_count", state)
-        with self.assertRaises(HarnessError):
-            transition_task(self.store, state["version"], token, "../invalid", "test", "bad phase")
-        with self.assertRaises(HarnessError):
-            transition_task(self.store, state["version"], token, "done", "test", "no verification")
-
-    def test_evidence_tamper_is_detected(self) -> None:
-        state, token = self.acquire()
-        path = self.store.evidence_path()
-        lines = path.read_text(encoding="utf-8").splitlines()
-        event = json.loads(lines[0])
-        event["payload"]["title"] = "tampered"
-        path.write_text(json.dumps(event) + "\n", encoding="utf-8")
-        result = verify_task(self.store)
-        self.assertFalse(result["ok"])
-        self.assertTrue(any("hash" in issue for issue in result["issues"]))
-
-    def test_reviewer_requires_exact_commit_and_is_fixed(self) -> None:
-        state, token = self.acquire()
-        with self.assertRaises(HarnessError):
-            create_workspace(
-                self.store,
-                2,
-                token,
-                "review-bad",
-                "reviewer",
-                Path(self.temp.name) / "review-bad",
-                "test",
-                "HEAD",
-                None,
-                "HEAD",
-            )
-        record = create_workspace(
-            self.store,
-            2,
-            token,
-            "review",
-            "reviewer",
-            Path(self.temp.name) / "review",
-            "test",
-            self.commit,
-            None,
-            "HEAD",
-        )
-        self.assertEqual(record["snapshot_commit"], self.commit)
-        self.assertTrue(verify_task(self.store)["ok"])
-        # Simulate a policy violation even when running as root, which can bypass mode bits.
-        source = Path(record["path"]) / "README.md"
-        source.chmod(0o600)
-        source.write_text("dirty\n", encoding="utf-8")
-        result = verify_task(self.store)
-        self.assertFalse(result["ok"])
-        self.assertTrue(any("dirty" in issue for issue in result["issues"]))
-        remove_workspace(self.store, 3, token, "review", "test", "HEAD", True, "discard dirty review")
-
-    def test_parallel_writers_require_claims_not_an_integrator(self) -> None:
-        state, token = self.acquire()
-        first = create_workspace(
-            self.store,
-            2,
-            token,
-            "worker-a",
-            "writer",
-            Path(self.temp.name) / "worker-a",
-            "test",
-            None,
-            "task-1-a",
-            "HEAD",
-        )
-        second = create_workspace(
-            self.store,
-            3,
-            token,
-            "worker-b",
-            "writer",
-            Path(self.temp.name) / "worker-b",
-            "test",
-            None,
-            "task-1-b",
-            "HEAD",
-        )
-        claim_paths(self.store, 4, token, "worker-a", ["src/api/**"], "test")
-        with self.assertRaises(HarnessError):
-            claim_paths(self.store, 5, token, "worker-b", ["src/**"], "test")
-        claim_paths(self.store, 5, token, "worker-b", ["tests/**"], "test")
-        self.assertTrue(verify_task(self.store)["ok"])
-
-    def test_dirty_unmerged_cleanup_requires_explicit_reason(self) -> None:
-        state, token = self.acquire()
-        record = create_workspace(
-            self.store,
-            2,
-            token,
-            "writer",
-            "writer",
-            Path(self.temp.name) / "writer",
-            "test",
-            None,
-            "task-1-worker",
-            "HEAD",
-        )
-        (Path(record["path"]) / "dirty.txt").write_text("dirty", encoding="utf-8")
-        with self.assertRaises(HarnessError):
-            remove_workspace(self.store, 3, token, "writer", "test", "HEAD", False, "")
-        with self.assertRaises(HarnessError):
-            remove_workspace(self.store, 3, token, "writer", "test", "HEAD", True, "")
-        remove_workspace(self.store, 3, token, "writer", "test", "HEAD", True, "explicit discard")
-
-
 class GeneratedPayloadTest(unittest.TestCase):
     def test_generated_payloads_are_current_and_compile(self) -> None:
         result = subprocess.run(
@@ -581,7 +370,6 @@ class GeneratedPayloadTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         for entry in (
             ROOT / ".agents" / "skills" / "skill-eval" / "scripts" / "skill_eval.py",
-            ROOT / "skills" / "work-protocol" / "scripts" / "workctl.py",
         ):
             help_result = subprocess.run(
                 [sys.executable, str(entry), "--help"],
@@ -593,29 +381,6 @@ class GeneratedPayloadTest(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(help_result.returncode, 0, help_result.stdout + help_result.stderr)
-
-    def test_workctl_doctor_entrypoint_is_side_effect_free(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            repo = Path(temp) / "repo"
-            init_repo(repo)
-            before = {p.relative_to(repo): p.read_bytes() for p in repo.rglob("*") if p.is_file()}
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(ROOT / "skills" / "work-protocol" / "scripts" / "workctl.py"),
-                    "doctor",
-                ],
-                cwd=str(repo),
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-            )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            payload = json.loads(result.stdout)
-            self.assertFalse(payload["runtime_exists"])
-            self.assertEqual(before, {p.relative_to(repo): p.read_bytes() for p in repo.rglob("*") if p.is_file()})
 
 
 if __name__ == "__main__":

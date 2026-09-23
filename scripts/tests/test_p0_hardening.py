@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import contextlib
-import io
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -17,20 +14,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from p0_runtime.common import HarnessError, discover_git_context  # noqa: E402
 from p0_runtime.skill_eval import EXIT_ADAPTER, EXIT_VERIFIER, ProtocolFailure, run_suite  # noqa: E402
-from p0_runtime.workctl import (  # noqa: E402
-    TaskStore,
-    acquire_owner,
-    check_owner,
-    claim_paths,
-    create_workspace,
-    heartbeat_owner,
-    init_task,
-    remove_workspace,
-    transition_task,
-    verify_workspace_record,
-    workspace_changed_paths,
-    main as workctl_main,
-)
 
 
 def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -210,138 +193,6 @@ json.dump({'schema_version':1,'contract':'agent-skill-eval/v1','run_id':r['run_i
         )
         self.assertTrue(result["passed"])
         self.assertTrue(result["cases"][0]["treatment"]["adapter"]["metadata"]["absolute_paths"])
-
-
-class WorkProtocolHardeningTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.temp = tempfile.TemporaryDirectory()
-        self.repo = Path(self.temp.name) / "repo"
-        self.commit = init_repo(self.repo)
-        self.store, _ = init_task(discover_git_context(self.repo), "task-1", "Hardening task")
-
-    def tearDown(self) -> None:
-        for current, dirs, files in os.walk(self.temp.name):
-            try:
-                Path(current).chmod(0o700)
-            except OSError:
-                pass
-            for name in files:
-                try:
-                    (Path(current) / name).chmod(0o600)
-                except OSError:
-                    pass
-        self.temp.cleanup()
-
-    def test_owner_check_and_heartbeat_preserve_generation(self) -> None:
-        state, token = acquire_owner(self.store, 1, "delivery", 60, "test")
-        checked, lease = check_owner(self.store, token)
-        self.assertEqual(checked["version"], 2)
-        generation = lease["generation"]
-        old_expiry = lease["expires_epoch"]
-        state = heartbeat_owner(self.store, 2, token, 120, "test")
-        self.assertEqual(state["version"], 3)
-        _, refreshed = check_owner(self.store, token)
-        self.assertEqual(refreshed["generation"], generation)
-        self.assertGreater(refreshed["expires_epoch"], old_expiry)
-
-    def test_done_requires_latest_verification_in_current_cycle(self) -> None:
-        _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
-        transition_task(self.store, 2, token, "planned", "test", "ready")
-        transition_task(self.store, 3, token, "executing", "test", "start")
-        transition_task(self.store, 4, token, "verifying", "test", "verify")
-        self.store.append_evidence(5, "test", "test", {"passed": True}, token)
-        self.store.append_evidence(6, "test", "test", {"passed": False}, token)
-        with self.assertRaises(HarnessError):
-            transition_task(self.store, 7, token, "done", "test", "stale success must not count")
-        self.store.append_evidence(7, "test", "test", {"passed": True}, token)
-        state = transition_task(self.store, 8, token, "done", "test", "latest verification passes")
-        self.assertEqual(state["phase"], "done")
-
-    @unittest.skipIf(not hasattr(os, "symlink"), "symlink unsupported")
-    def test_writable_workspace_enforces_claims_and_symlink_boundary(self) -> None:
-        _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
-        workspace = Path(self.temp.name) / "worker-a"
-        record = create_workspace(
-            self.store,
-            2,
-            token,
-            "worker-a",
-            "writer",
-            workspace,
-            "test",
-            None,
-            "task-1/worker-a",
-            self.commit,
-        )
-        self.assertEqual(record["base_commit"], self.commit)
-        record = claim_paths(self.store, 3, token, "worker-a", ["src/**"], "test")
-        (workspace / "src").mkdir()
-        (workspace / "src" / "allowed.py").write_text("ok = True\n", encoding="utf-8")
-        self.assertIn("src/allowed.py", workspace_changed_paths(workspace, self.commit))
-        self.assertEqual(verify_workspace_record(self.store, record), [])
-
-        (workspace / "outside.txt").write_text("not owned\n", encoding="utf-8")
-        issues = verify_workspace_record(self.store, record)
-        self.assertTrue(any("outside ownership" in issue for issue in issues), issues)
-        (workspace / "outside.txt").unlink()
-
-        outside = Path(self.temp.name) / "outside"
-        outside.mkdir()
-        os.symlink(str(outside), str(workspace / "src" / "escape"), target_is_directory=True)
-        issues = verify_workspace_record(self.store, record)
-        self.assertTrue(any("symlink escapes" in issue for issue in issues), issues)
-        remove_workspace(self.store, 4, token, "worker-a", "test", "HEAD", True, "hardening cleanup")
-
-    def test_workspace_cannot_be_nested_in_worktree_or_git_common_dir(self) -> None:
-        _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
-        forbidden = [
-            self.repo / "nested-worker",
-            self.store.context.common_dir / "nested-worker",
-        ]
-        for index, path in enumerate(forbidden):
-            with self.assertRaises(HarnessError) as caught:
-                create_workspace(
-                    self.store,
-                    2,
-                    token,
-                    "forbidden-%d" % index,
-                    "writer",
-                    path,
-                    "test",
-                    None,
-                    "task-1/forbidden-%d" % index,
-                    self.commit,
-                )
-            self.assertEqual(caught.exception.code, 13)
-        state, _ = self.store.read()
-        self.assertEqual(state["version"], 2)
-
-    def test_secret_like_evidence_payload_is_rejected_by_cli(self) -> None:
-        with mock.patch("p0_runtime.workctl.secrets.token_urlsafe", return_value="-leading-option"):
-            _, token = acquire_owner(self.store, 1, "delivery", 60, "test")
-        self.assertEqual(token, "workctl_-leading-option")
-        stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout):
-            code = workctl_main(
-                [
-                    "evidence",
-                    "task-1",
-                    "--repo",
-                    str(self.repo),
-                    "--kind",
-                    "test",
-                    "--payload",
-                    '{"nested":{"password":"bad"}}',
-                    "--expect-version",
-                    "2",
-                    "--token",
-                    token,
-                ]
-            )
-        self.assertEqual(code, 3)
-        result = json.loads(stdout.getvalue())
-        self.assertFalse(result["ok"])
-        self.assertIn("secret-like", result["error"])
 
 
 if __name__ == "__main__":
