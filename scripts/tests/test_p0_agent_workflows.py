@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import errno
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -57,6 +59,32 @@ def init_repo(path: Path) -> str:
     return git(path, "rev-parse", "HEAD").stdout.strip()
 
 
+# A fixture teardown removes a live Git repository: `run_suite` materializes a
+# detached worktree whose administration stays in the fixture repository's `.git`,
+# and Python 3.8's POSIX `rmtree` lists a directory before removing each entry, so
+# an entry that appears in that window makes the final `rmdir` report ENOTEMPTY.
+# The assertions have already run by then, so retry a bounded number of times
+# (the mitigation `worktree.sh` uses for the same removal race) instead of failing
+# a passing test; a tree that is really not removable still raises.
+TRANSIENT_REMOVAL_ERRNOS = (errno.ENOTEMPTY, errno.EBUSY)
+REMOVAL_ATTEMPTS = 3
+REMOVAL_RETRY_DELAY_SECONDS = 0.2
+
+
+def cleanup_fixture(directory: tempfile.TemporaryDirectory) -> None:
+    for attempt in range(1, REMOVAL_ATTEMPTS + 1):
+        try:
+            directory.cleanup()
+            if not os.path.exists(directory.name):
+                return
+        except OSError as exc:
+            if getattr(exc, "errno", None) not in TRANSIENT_REMOVAL_ERRNOS or attempt == REMOVAL_ATTEMPTS:
+                raise
+        if attempt < REMOVAL_ATTEMPTS:
+            time.sleep(REMOVAL_RETRY_DELAY_SECONDS)
+    raise OSError(errno.ENOTEMPTY, "fixture directory survived cleanup attempts", directory.name)
+
+
 class CommonSecurityTest(unittest.TestCase):
     def test_atomic_json_failure_preserves_original_and_removes_candidate(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -106,6 +134,37 @@ class CommonSecurityTest(unittest.TestCase):
             self.assertIn("tracked.txt", snapshot)
 
 
+class FixtureCleanupTest(unittest.TestCase):
+    def test_transient_removal_race_is_retried(self) -> None:
+        real_rmtree = shutil.rmtree
+        removals = []
+
+        def flaky_rmtree(path, *args, **kwargs):
+            removals.append(str(path))
+            if len(removals) == 1:
+                raise OSError(errno.ENOTEMPTY, "Directory not empty")
+            return real_rmtree(path, *args, **kwargs)
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        with mock.patch("shutil.rmtree", side_effect=flaky_rmtree):
+            cleanup_fixture(directory)
+        self.assertEqual(len(removals), 2)
+        self.assertFalse(os.path.exists(directory.name))
+
+    def test_unremovable_fixture_still_fails_the_test(self) -> None:
+        def broken_rmtree(path, *args, **kwargs):
+            raise OSError(errno.ENOTEMPTY, "Directory not empty")
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        with mock.patch("shutil.rmtree", side_effect=broken_rmtree), mock.patch("time.sleep"):
+            with self.assertRaises(OSError) as caught:
+                cleanup_fixture(directory)
+        self.assertEqual(caught.exception.errno, errno.ENOTEMPTY)
+        self.assertTrue(os.path.exists(directory.name))
+
+
 class SkillEvalTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -123,7 +182,7 @@ class SkillEvalTest(unittest.TestCase):
         self.manifest = self.repo / "evals" / "examples" / "tdd" / "suite.json"
 
     def tearDown(self) -> None:
-        self.temp.cleanup()
+        cleanup_fixture(self.temp)
 
     def load_manifest(self) -> dict:
         return json.loads(self.manifest.read_text(encoding="utf-8"))
