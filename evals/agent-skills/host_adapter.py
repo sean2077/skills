@@ -46,7 +46,6 @@ WORKFLOWS = (
 ROUTE_ALIASES = {
     "agent-harness": "agent-scaffold",
     "best-practices-research": "best-practice-research",
-    "bounded-iteration": "ralph",
     "conventional-commits": "conventional-commit",
     "docs-organizer": "project-docs-organizer",
     "documentation-organizer": "project-docs-organizer",

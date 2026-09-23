@@ -9,7 +9,6 @@ import contextlib
 import datetime as dt
 import hashlib
 import json
-import math
 import os
 import re
 import secrets
@@ -152,14 +151,6 @@ def require_timestamp(value: Any, field: str) -> str:
     if parse_time(text) is None:
         raise WorkflowError(6, "corrupt_state", "%s must be an offset-aware timestamp" % field, field=field)
     return text
-
-
-def require_number(value: Any, field: str, *, nullable: bool = False) -> Optional[float]:
-    if value is None and nullable:
-        return None
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
-        raise WorkflowError(6, "corrupt_state", "%s must be a finite number" % field, field=field)
-    return float(value)
 
 
 def safe_path_segment(value: str) -> bool:

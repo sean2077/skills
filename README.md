@@ -1,8 +1,8 @@
 # skills
 
-A curated catalog of 13 reusable [Agent Skills](https://agentskills.io/specification) for requirements, documentation, repository operations, release, and productivity.
+A curated catalog of 12 reusable [Agent Skills](https://agentskills.io/specification) for requirements, documentation, repository operations, release, and productivity.
 
-Install the skills that add something to your host or project. Ordinary investigation, experiments, cleanup, review, and delivery use the host/project workflow; there is no mandatory skill chain. The [selection guide](docs/skill-composition.md) explains adjacent routes and retired installations.
+Install the skills that add something to your host or project. Ordinary investigation, experiments, cleanup, review, and delivery use the host/project workflow (including native goals where available); there is no mandatory skill chain. The [selection guide](docs/skill-composition.md) explains adjacent routes and retired installations.
 
 ## Install
 
@@ -36,7 +36,6 @@ Each catalog skill is independently installable from `skills/<name>/`. The linke
 | [domain-modeling](skills/domain-modeling/) | Define and evolve project terminology, context boundaries, and multilingual equivalents. |
 | [lark-cli](skills/lark-cli/) | Perform selected 飞书/Feishu/Lark CLI operations with identity and side-effect safeguards. |
 | [project-docs-organizer](skills/project-docs-organizer/) | Organize documentation, consolidate ownership, and repair navigation. |
-| [ralph](skills/ralph/) | Run a mechanically bounded verifier loop with explicit attempts and recovery state. |
 | [semver-release](skills/semver-release/) | Analyze a version and complete an authorized repository-owned release. |
 | [spec-writing](skills/spec-writing/) | Write or revise requirements/design documents while preserving settled meaning. |
 | [tdd](skills/tdd/) | Perform user- or project-required test-first implementation with RED/GREEN evidence. |

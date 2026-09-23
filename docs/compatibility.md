@@ -43,6 +43,19 @@ Check the installed host's actual menus and organization policy. Plugin namespac
 
 Sources reviewed 2026-09-20: [OpenAI skills](https://learn.chatgpt.com/docs/build-skills), [OpenAI prompt/skill adaptation](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra), [Claude skills](https://code.claude.com/docs/en/skills), and [Claude best practices](https://code.claude.com/docs/en/best-practices).
 
+## Native goals (2026-09-23)
+
+Documentation review only; no authenticated goal execution or measured quality/cost comparison was performed.
+
+| Host | Documented interface | Boundary |
+|---|---|---|
+| Codex | `/goal <objective>` sets a durable objective; `/goal` shows status, with `pause`, `resume`, and `clear` actions. If unavailable, check the documented `features.goals` setting. | Verify availability and policy in the installed host; this catalog does not enable features or change global configuration. |
+| Claude Code | v2.1.139+ supports `/goal <condition>`, status via `/goal`, and `/goal clear`; unmet conditions continue after each turn. | The evaluator judges conversation evidence, not independent tool runs. Active conditions survive session resume, but turn/time/spend counters reset. Workspace trust and enabled hooks are required; permissions do not expand. |
+
+Sources reviewed 2026-09-23: [Codex goals](https://learn.chatgpt.com/use-cases/follow-goals) and [Claude Code goals](https://code.claude.com/docs/en/goal), with the `/goal` version floor read from that host's [changelog entry for v2.1.139](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md). Their interfaces are not interchangeable, and this review makes no corresponding Grok claim.
+
+The catalog decision is to retire `ralph`, not certify feature parity. Goal continuation does not replace real tests, exact persisted attempt/stall/plateau rules, ownership, or external-delivery checks. Claude's turn/time clause is model-evaluated, not a substitute for a hard limit. Use the host/project workflow when goals are unavailable; see [retirement and existing-state handling](skill-composition.md#retiring-ralph).
+
 ## Project subagent definitions (2026-09-22)
 
 The documentation review recorded Claude project definitions at `.claude/agents/<name>.md` with `name`, `description`, and an optional comma-separated `tools` allowlist; omitting `tools` inherits all subagent tools. Codex project definitions are `.codex/agents/<name>.toml` with `name`, `description`, and `developer_instructions`; `sandbox_mode` requests an agent permission level. Both use trusted project layers. Codex parent-turn overrides can affect the effective child sandbox, so configured `read-only` is not enforcement evidence.

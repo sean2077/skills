@@ -424,7 +424,7 @@ class WorkProtocolTest(unittest.TestCase):
             except HarnessError as exc:
                 results.append(("error", owner, exc.code, ""))
 
-        threads = [threading.Thread(target=contender, args=(owner,)) for owner in ("delivery", "ralph")]
+        threads = [threading.Thread(target=contender, args=(owner,)) for owner in ("delivery", "worker-b")]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -448,9 +448,9 @@ class WorkProtocolTest(unittest.TestCase):
             registry["lease"]["expires_epoch"] = time.time() - 1
             write_json_atomic(self.store.registry_path, registry)
         with self.assertRaises(HarnessError):
-            acquire_owner(self.store, 2, "ralph", 60, "test", recover=False)
-        state, recovered = acquire_owner(self.store, 2, "ralph", 60, "test", recover=True)
-        self.assertEqual(state["loop_owner"], "ralph")
+            acquire_owner(self.store, 2, "worker-b", 60, "test", recover=False)
+        state, recovered = acquire_owner(self.store, 2, "worker-b", 60, "test", recover=True)
+        self.assertEqual(state["loop_owner"], "worker-b")
         self.assertNotEqual(token, recovered)
 
     def test_caller_owned_stages_without_retry_policy(self) -> None:

@@ -30,7 +30,7 @@ Discovery metadata contributes routing context; selected instructions and resour
 | Edit here | Produces or reconciles | Update path |
 |---|---|---|
 | `skills/<name>/SKILL.md`, references, and non-generated scripts/assets | Catalog skill payload | Edit directly, except for the generated payloads listed below. Reconcile routes, manifests, tests, and notices when affected. |
-| `scripts/workflow_runtime/{common,deep_interview,ralph}.py` | Approval and bounded-loop runtimes shipped by `deep-interview` and `ralph` | `python scripts/generate_workflow_runtimes.py` |
+| `scripts/workflow_runtime/{common,deep_interview}.py` | Exact-file approval runtime shipped by `deep-interview` | `python scripts/generate_workflow_runtimes.py` |
 | `scripts/p0_runtime/{common,skill_eval,workctl}.py` | Project `skill-eval` and catalog `work-protocol` runtime packages | `python scripts/generate_p0_runtimes.py` |
 | `.agents/skills/<name>/` | `.claude/skills/<name>` symlink projections; Codex uses the project skill source | `bash .agents/relink-skills.sh`; preserve unrelated entries and reject ownership conflicts |
 | `.agents/subagents/<name>/` | `.claude/agents/*.md` and `.codex/agents/*.toml` | `python .agents/tools/generate-subagents.py` |
@@ -44,7 +44,6 @@ Discovery metadata contributes routing context; selected instructions and resour
 | Component | Owned semantics |
 |---|---|
 | `deep-interview` | Optional approval bound to the exact specification bytes and revision; conversation and document structure remain caller-owned. |
-| `ralph` | Fixed attempts and mechanical pass, stall, plateau, exhaustion, abort, and resume state. |
 | Project `skill-eval` | Comparable evaluation execution and repository-isolated evidence; isolation is not an OS sandbox. |
 | `work-protocol` | Optional CAS revisions, leases, integrity-protected evidence, and commit-fixed review workspaces. Owner IDs and nonterminal phases remain caller-owned; completion checks still apply. |
 

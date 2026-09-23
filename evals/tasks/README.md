@@ -105,8 +105,8 @@ Reuse existing checks rather than duplicating them in another runtime:
 | `agent-scaffold` | Core/workspace/E2E files, profiles, moves, and simulated host payloads; authenticated discovery/hooks need separate versioned runs |
 | `conventional-commit`, `spec-writing`, `project-docs-organizer`, `lark-cli`, `tdd` | Outcome fixtures above; decision probes remain separate |
 | `semver-release` | Planner/extractor tests and real release shell execution with a mock publisher; real publication is never an evaluation side effect |
-| `deep-interview`, `ralph`, `work-protocol` | Revision, digest, loop, lease, recovery, scope, and evidence tests; not proof of task quality |
+| `deep-interview`, `work-protocol` | Revision, digest, lease, recovery, scope, and evidence tests; not proof of task quality |
 | `domain-modeling` | Contextual examples and routing probes; inspect definitions and migrated consumers before efficacy claims |
 | `best-practice-research`, `tooling-conventions` | Probes and applicable inventory tests; compare actual recommendations/commands with a brief control before further pruning |
 
-This fixture set does not certify a host or establish gains for all 13 skills.
+This fixture set does not certify a host or establish gains for all 12 skills.
