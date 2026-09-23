@@ -39,19 +39,16 @@ jobs:
           text = path.read_text()
           needle = '        for relative in ("TESTING.md", "tests/placeholder.py", "tools/test.sh"):\n'
           assert text.count(needle) == 1
-          addition = '''        for fence in ("```bash", "~~~sh"):
-                      with self.subTest(command_format=fence):
-                          command = "python -m unittest discover -s spec -p '*_spec.py'"
-                          formatted = guide.replace("`" + command + "`", "\\n" + fence + "\\n" + command + "\\n" + fence[:3] + "\\n")
-                          cases.write(workspace, "handbook/development.md", formatted)
-                          self.assertTrue(*result())
-                          cases.write(workspace, "handbook/development.md", formatted.replace("-s spec", "-s tests"))
-                          self.assertFalse(result()[0])
-                  cases.write(workspace, "handbook/development.md", guide)
-          '''
-          # The embedded lines above carry 6 extra source-indentation spaces except the first.
-          lines = addition.splitlines(True)
-          addition = lines[0] + ''.join(line[6:] for line in lines[1:])
+          addition = (
+              '        for fence in ("```bash", "~~~sh"):\n'
+              '            with self.subTest(command_format=fence):\n'
+              '                command = "python -m unittest discover -s spec -p \'*_spec.py\'"\n'
+              '                formatted = guide.replace("`" + command + "`", "\\n" + fence + "\\n" + command + "\\n" + fence[:3] + "\\n")\n'
+              '                cases.write(workspace, "handbook/development.md", formatted)\n'
+              '                self.assertTrue(*result())\n'
+              '                cases.write(workspace, "handbook/development.md", formatted.replace("-s spec", "-s tests"))\n'
+              '                self.assertFalse(result()[0])\n'
+              '        cases.write(workspace, "handbook/development.md", guide)\n')
           path.write_text(text.replace(needle, addition + needle))
           paths = ['evals/tasks/cases.py', 'scripts/tests/test_task_outcomes.py']
           subprocess.run(['git', 'add', '--'] + paths, check=True)
