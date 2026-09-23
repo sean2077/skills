@@ -5,25 +5,108 @@ on:
     paths: ['.github/workflows/task-source-snapshot.yml']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  prepare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/lean-scaffold-retire-four-skills'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 8c616ffc0db73018725ea18baa6bdaeaa6aed3f4
+          ref: a2d1dff098bde59588227dcc0f7a528a816a5ce9
           fetch-depth: 0
           persist-credentials: false
-      - name: Export tracked objects only
+      - name: Verify the complete candidate and prepare immutable blobs only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONDONTWRITEBYTECODE: '1'
         shell: bash
-        run: git bundle create "$RUNNER_TEMP/skills.bundle" --all
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: lean-scaffold-source
-          path: ${{ runner.temp }}/skills.bundle
-          retention-days: 1
-          if-no-files-found: error
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, os, subprocess, tempfile, urllib.request, zlib
+          from pathlib import Path, PurePosixPath
+
+          base = 'a2d1dff098bde59588227dcc0f7a528a816a5ce9'
+          expected_tree = 'bafb694c4aa854fdd0031c3358eaf78d042d896a'
+          expected_transport = 'ed4457b5a072ff3f92a7711ab445c8544faf3b15f16ffac40a433c736e62eb7d'
+          parts = [
+              'e91a537d4dcd860ca7295406d9769f9dc1d1f9ca',
+              '44e218eee1f1a0a58ce2b3a59c58b14e6a2f0725',
+              '172b8c123233a18dd7988c6545db9896f63c58f8',
+              '34a5f4a2c6bc8184012eee97b3cb3146202555b1',
+              'c725d5c2863d876d624c009789aa23938a1493a2',
+              'e55bc55a6a283d22e81bdb1fb1530af874b23456',
+              '1d056766ee98d853d69508756da0271dcae810cc',
+              '903b56e5aaccc5faaae686cc7897a4763d84f872',
+              '2f033ca381c108ce8ace24a142257279992e5ecb',
+          ]
+          api_root = 'https://api.github.com/repos/sean2077/skills/git/blobs'
+          headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                     'Accept': 'application/vnd.github+json', 'User-Agent': 'verified-task-transport'}
+
+          def api(suffix='', data=None):
+              body = None if data is None else json.dumps(data).encode()
+              request = urllib.request.Request(api_root + suffix, data=body, headers=headers,
+                                               method='GET' if body is None else 'POST')
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  return json.load(response)
+
+          def blob_sha(raw):
+              return hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+
+          compressed = []
+          for sha in parts:
+              result = api('/' + sha)
+              assert result['encoding'] == 'base64'
+              raw = base64.b64decode(result['content'])
+              assert blob_sha(raw) == sha
+              compressed.append(raw)
+          raw = zlib.decompress(b''.join(compressed))
+          assert hashlib.sha256(raw).hexdigest() == expected_transport
+          payload = json.loads(raw)
+          assert payload['base'] == base and payload['tree'] == expected_tree
+          assert len(payload['files']) == 71
+
+          checkout = Path(tempfile.mkdtemp(prefix='scaffold-task-objects-')) / 'checkout'
+          subprocess.run(['git', 'worktree', 'add', '--detach', str(checkout), base], check=True)
+          blobs = {}
+          for change in payload['files']:
+              relative = PurePosixPath(change['path'])
+              assert not relative.is_absolute() and '..' not in relative.parts and '.git' not in relative.parts
+              assert change['mode'] in ('100644', '100755')
+              path = checkout.joinpath(*relative.parts)
+              assert not any(parent.is_symlink() for parent in (path, *path.parents))
+              if change['old'] is None:
+                  assert not path.exists()
+                  previous = b''
+              else:
+                  previous = subprocess.check_output(['git', 'show', base + ':' + relative.as_posix()], cwd=checkout)
+                  assert blob_sha(previous) == change['old'] and path.read_bytes() == previous
+              if change['new'] is None:
+                  path.unlink()
+                  continue
+              text = previous.decode('utf-8')
+              last_end = 0
+              for start, end, replacement in change['edits']:
+                  assert last_end <= start <= end <= len(text)
+                  last_end = end
+              for start, end, replacement in reversed(change['edits']):
+                  text = text[:start] + replacement + text[end:]
+              content = text.encode('utf-8')
+              assert blob_sha(content) == change['new'], str(relative)
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(content)
+              path.chmod(int(change['mode'], 8))
+              blobs[change['new']] = content
+          subprocess.run(['git', 'add', '-A'], cwd=checkout, check=True)
+          actual = subprocess.check_output(['git', 'write-tree'], cwd=checkout, text=True).strip()
+          assert actual == expected_tree, (actual, expected_tree)
+          for sha, content in blobs.items():
+              result = api(data={'encoding': 'base64', 'content': base64.b64encode(content).decode()})
+              assert result['sha'] == sha
+          print('Verified complete tree:', actual)
+          print('Prepared immutable blobs:', len(blobs))
+          print('No branches, tags, commits, releases, or main were updated by this job.')
+          PY
