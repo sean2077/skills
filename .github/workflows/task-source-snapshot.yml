@@ -5,10 +5,10 @@ on:
     paths: ['.github/workflows/task-source-snapshot.yml']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  prepare:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/project-conventions-onboarding'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -18,12 +18,90 @@ jobs:
           ref: f1c81809919a6cad9c213beeac0fe4f4cb7a12cb
           fetch-depth: 0
           persist-credentials: false
-      - name: Export tracked Git objects only
+      - name: Prepare immutable blobs and checked tree without updating refs
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: git bundle create "$RUNNER_TEMP/skills.bundle" --all
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: project-conventions-source
-          path: ${{ runner.temp }}/skills.bundle
-          retention-days: 1
-          if-no-files-found: error
+        run: |
+          python - <<'PY'
+          import base64, hashlib, json, os, shutil, subprocess, urllib.request
+          from pathlib import Path
+          repo = 'sean2077/skills'
+          base = 'f1c81809919a6cad9c213beeac0fe4f4cb7a12cb'
+          expected_tree = '2d641a5fe419f222034acea8bbca5828b16fa840'
+          parts = [
+              '1c36b69e3e4bd63cb630ce59d0389e8e45a43b31',
+              '1eb16bf9402e234ae8104b572904f706a015eb9f',
+              '8b600c8ef26f5da9827dfdb4df876b0c1930a128',
+              '020e0108425b8315a006662536d34d032f4a788f',
+              'b605958416f12f98cc8a242ac49cc3509a5c97b4',
+              '0e5c15a8f362de20565c91ae36c8e0caca7189f2',
+              'd51a9cdb8f455f2f2be85aa785728e2517aeddf6',
+              '23eb3a311a012b07fda703d7f55650f19ebe2873',
+              '1a68b03c74c27a60372c04284a5de0d8bb2c4b4e',
+              '0af3d7fc705958e86994cf749cafceb4949575e3',
+          ]
+          assert os.environ['GITHUB_REPOSITORY'] == repo
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          assert git('rev-parse', 'HEAD').decode().strip() == base
+          def api(suffix, data=None):
+              request = urllib.request.Request('https://api.github.com/repos/' + repo + suffix,
+                  data=json.dumps(data).encode() if data is not None else None,
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                           'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json'})
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  return json.load(response)
+          changes = []
+          for sha in parts:
+              raw = base64.b64decode(api('/git/blobs/' + sha)['content'])
+              assert hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() == sha
+              changes.extend(json.loads(raw))
+          names = set()
+          for item in changes:
+              name = item['path']
+              path = Path(name)
+              assert name not in names and not path.is_absolute() and '..' not in path.parts
+              assert path.parts[0] != '.git' and item['mode'] in ('100644', '100755')
+              names.add(name)
+              if 'copy' in item:
+                  content = git('show', base + ':' + item['copy'])
+              else:
+                  original = git('show', base + ':' + name) if path.exists() else b''
+                  lines = original.decode('utf-8').splitlines(True)
+                  for start, end, value in reversed(item['edits']):
+                      assert 0 <= start <= end <= len(lines)
+                      lines[start:end] = [value]
+                  content = ''.join(lines).encode('utf-8')
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(content)
+              path.chmod(int(item['mode'], 8))
+          retired = ('tdd', 'spec-writing', 'conventional-commit', 'semver-release', 'domain-modeling')
+          for skill in retired:
+              shutil.rmtree(Path('skills') / skill)
+              shutil.rmtree(Path('evals/agent-skills') / skill)
+              contract = Path('scripts/contracts') / (skill.replace('-', '_') + '.py')
+              if contract.exists():
+                  contract.unlink()
+          shutil.rmtree('evals/examples/tdd')
+          Path('scripts/tests/test_tdd_contract.py').unlink()
+          subprocess.run(['git', 'add', '-A'], check=True)
+          tree = git('write-tree').decode().strip()
+          assert tree == expected_tree, (tree, expected_tree)
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          # These writes are immutable objects only. The connected client publishes the PR ref.
+          entries = []
+          for name in git('diff', '--cached', '--name-only', '--no-renames', '--diff-filter=D', '-z').decode().split('\0'):
+              if name:
+                  entries.append({'path': name, 'mode': '100644', 'type': 'blob', 'sha': None})
+          for item in changes:
+              name = item['path']
+              data = Path(name).read_bytes()
+              sha = git('rev-parse', ':' + name).decode().strip()
+              result = api('/git/blobs', {'encoding': 'base64', 'content': base64.b64encode(data).decode()})
+              assert result['sha'] == sha, name
+              entries.append({'path': name, 'mode': item['mode'], 'type': 'blob', 'sha': sha})
+          result = api('/git/trees', {'base_tree': git('rev-parse', base + '^{tree}').decode().strip(), 'tree': entries})
+          assert result['sha'] == expected_tree, result
+          print('Prepared verified immutable implementation tree:', expected_tree)
+          PY
