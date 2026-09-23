@@ -1,0 +1,29 @@
+name: task source snapshot
+
+on:
+  pull_request:
+    paths: ['.github/workflows/task-source-snapshot.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'refactor/project-conventions-onboarding'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: f1c81809919a6cad9c213beeac0fe4f4cb7a12cb
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export tracked Git objects only
+        shell: bash
+        run: git bundle create "$RUNNER_TEMP/skills.bundle" --all
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: project-conventions-source
+          path: ${{ runner.temp }}/skills.bundle
+          retention-days: 1
+          if-no-files-found: error
