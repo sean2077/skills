@@ -297,6 +297,126 @@ class OutcomeTests(unittest.TestCase):
         cases.write(workspace, "answer.json", '{"awaiting_reply_count":2}')
         self.assertTrue(*self.passed(workspace, "lark-invented-syntax", state))
 
+    def invoke_stateful_mock(self, workspace, *arguments):
+        return subprocess.run([sys.executable, "lark_mock.py", *arguments], cwd=workspace,
+                              capture_output=True, text=True, env=cases.environment(), timeout=20)
+
+    def replace_task(self, workspace, payload):
+        result = self.invoke_stateful_mock(workspace, "replace", "--as", "user", "--id",
+                                           "task_fixture", "--json", json.dumps(payload))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIs(json.loads(result.stdout)["ok"], True)
+        return result
+
+    def test_stateful_update_reads_then_preserves_real_stored_object(self):
+        workspace, state = self.fixture("lark-stateful-update")
+        self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+        result = self.invoke_stateful_mock(workspace, "read", "--as", "user", "--id", "task_fixture")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)["data"]
+        payload["description"] += "\nReviewed."
+        self.replace_task(workspace, payload)
+        self.assertTrue(*self.passed(workspace, "lark-stateful-update", state))
+        # A focused readback is allowed, but is not a mandatory extra call.
+        self.invoke_stateful_mock(workspace, "read", "--as", "user", "--id", "task_fixture")
+        self.assertTrue(*self.passed(workspace, "lark-stateful-update", state))
+        stored = workspace / "task-state.json"
+        stored.write_text(json.dumps({**payload, "assignee": "ou_someone_else"}))
+        self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+
+    def test_stateful_update_rejects_blind_write_even_with_later_read(self):
+        workspace, state = self.fixture("lark-stateful-update")
+        payload = copy.deepcopy(state["initial_task"])
+        payload["description"] += "\nReviewed."
+        self.replace_task(workspace, payload)
+        self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+        self.invoke_stateful_mock(workspace, "read", "--as", "user", "--id", "task_fixture")
+        self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+
+    def test_stateful_update_rejects_successful_but_destructive_replacements(self):
+        workspace, state = self.fixture("lark-stateful-update")
+        expected = copy.deepcopy(state["initial_task"])
+        expected["description"] += "\nReviewed."
+        variants = []
+        for key in ("assignee", "due", "settings"):
+            missing = copy.deepcopy(expected); missing.pop(key)
+            variants.append(missing)
+        for key, value in (("assignee", "ou_other"), ("due", "2026-12-01"),
+                           ("description", "Reviewed.")):
+            variants.append({**expected, key: value})
+        changed_type = copy.deepcopy(expected)
+        changed_type["settings"]["notify"] = 1  # Python True == 1 is not JSON type preservation.
+        variants.append(changed_type)
+        reordered = copy.deepcopy(expected)
+        reordered["settings"]["labels"].reverse()
+        variants.append(reordered)
+        for payload in variants:
+            with self.subTest(payload=payload):
+                cases.write(workspace, "task-state.json", json.dumps(state["initial_task"]))
+                (workspace / "lark-events.jsonl").unlink(missing_ok=True)
+                self.invoke_stateful_mock(workspace, "read", "--as", "user", "--id", "task_fixture")
+                self.replace_task(workspace, payload)  # Accepted by the mock; wrong business result.
+                self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+                self.replace_task(workspace, expected)
+                self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+
+    def test_stateful_cached_update_does_not_require_redundant_read(self):
+        workspace, state = self.fixture("lark-stateful-update-cached")
+        payload = json.loads((workspace / "cached-state.json").read_text())
+        payload["description"] += "\nReviewed."
+        # Semantically identical object key order is irrelevant.
+        self.replace_task(workspace, dict(reversed(list(payload.items()))))
+        self.assertTrue(*self.passed(workspace, "lark-stateful-update-cached", state))
+        events = (workspace / "lark-events.jsonl").read_text().splitlines()
+        self.assertEqual(len(events), 1)
+        original = (workspace / "cached-state.json").read_bytes()
+        cases.write(workspace, "cached-state.json", "{}")
+        self.assertFalse(self.passed(workspace, "lark-stateful-update-cached", state)[0])
+        (workspace / "cached-state.json").write_bytes(original)
+        cases.write(workspace, "mock-help.md", "invented contract")
+        self.assertFalse(self.passed(workspace, "lark-stateful-update-cached", state)[0])
+
+    def test_stateful_update_rejects_noop_unsupported_calls_and_tampering(self):
+        workspace, state = self.fixture("lark-stateful-update")
+        self.invoke_stateful_mock(workspace, "read", "--as", "user", "--id", "task_fixture")
+        cases.write(workspace, "answer.json", '{"success":true}')
+        self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+        payload = copy.deepcopy(state["initial_task"])
+        payload["description"] += "\nReviewed."
+        self.replace_task(workspace, payload)
+        self.assertTrue(*self.passed(workspace, "lark-stateful-update", state))
+        log = workspace / "lark-events.jsonl"
+        clean = log.read_bytes()
+        for args in (("read", "--as", "bot", "--id", "task_fixture"),
+                     ("read", "--as", "user", "--id", "invented"),
+                     ("replace", "--as", "user", "--id", "task_fixture", "--data", "{}")):
+            with self.subTest(args=args):
+                log.write_bytes(clean)
+                self.assertEqual(self.invoke_stateful_mock(workspace, *args).returncode, 2)
+                self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+        log.write_bytes(clean)
+        cases.write(workspace, "lark_mock.py", "print('pretend success')\n")
+        self.assertFalse(self.passed(workspace, "lark-stateful-update", state)[0])
+
+    def test_stateful_update_rejects_ambiguous_payloads_and_logs(self):
+        workspace, state = self.fixture("lark-stateful-update-cached")
+        payload = copy.deepcopy(state["initial_task"])
+        payload["description"] += "\nReviewed."
+        self.replace_task(workspace, payload)
+        log = workspace / "lark-events.jsonl"
+        clean = log.read_bytes()
+        for value in ('{}', 'null', '[]', '{"x":1,"x":2}', 'NaN'):
+            with self.subTest(log=value):
+                log.write_bytes(clean + value.encode() + b"\n")
+                self.assertFalse(self.passed(workspace, "lark-stateful-update-cached", state)[0])
+        log.write_bytes(clean)
+        for body in ('{"x":1,"x":2}', '{"x":NaN}'):
+            with self.subTest(payload=body):
+                log.write_bytes(clean)
+                self.invoke_stateful_mock(workspace, "replace", "--as", "user", "--id",
+                                          "task_fixture", "--json", body)
+                self.assertFalse(self.passed(workspace, "lark-stateful-update-cached", state)[0])
+
     def test_actual_red_green_requires_trace_and_same_tests(self):
         workspace, state = self.fixture("tdd-negative-input")
         tests = cases.BASE_TEST + '\n    def test_negative_value(self):\n        with self.assertRaises(ValueError):\n            cap(-1, 10)\n'

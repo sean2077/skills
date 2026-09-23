@@ -1,6 +1,6 @@
 ---
 name: lark-cli
-description: "Use lark-cli for 飞书, Feishu, Lark, or Larksuite operations, including cross-service identity and permissions. Not merely because text contains a Lark URL, and not when the user selected another available interface."
+description: "Use lark-cli for 飞书/Feishu/Lark/Larksuite operations (messages, mail, docs, Sheets/Base/多维表格, calendar/日程, tasks), including cross-service identity and permissions. Not for quoted URLs alone or when the user selected another available interface."
 ---
 
 # Unified Lark CLI
@@ -12,6 +12,8 @@ Operate Feishu/Lark through the installed `lark-cli` when that is the selected i
 Identify the requested outcome, target, recipients, time range, and supplied IDs. Reuse applicable command knowledge and resolve missing or ambiguous inputs. Prefer shortcuts, then registered APIs, then raw OpenAPI where their capabilities fit.
 
 Check the installed command's help/schema when flags, identity, or target semantics are uncertain. Use service help to locate unfamiliar operations. Refresh affected command knowledge when the installed interface changes. Never invent flags, methods, enums, IDs, URLs, or parameter shapes.
+
+Before a state-dependent edit, read the smallest affected scope unless sufficiently current, complete state is already available in context. Preserve unrelated fields and content; a known target ID does not establish its current contents.
 
 For raw `lark-cli api <METHOD> <path>`, use the known endpoint contract: a bare `/open-apis/...` path, query values through `--params`, and bodies through `--data`.
 
