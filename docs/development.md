@@ -38,7 +38,7 @@ For a PR/MR, publish the task branch and verify the actual change request. Do no
 
 Shared routing, validators, generators, installers, scaffold, contracts, or CI changes require the complete applicable suite. Wording-only changes do not acquire an evaluation or independent-review gate. [Documentation verification](documentation-maintenance.md#evidence-and-verification) explains the limits of catalog link checks.
 
-## Core local verification
+## Starting local checks
 
 From the task checkout in Bash, this is a **starting check**, not the full suite:
 

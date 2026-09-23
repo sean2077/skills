@@ -9,7 +9,7 @@ This page maps product surfaces, source/generated ownership, and validation owne
 | Published skill catalog | `skills/<name>/` | Independently installable payloads containing regular files and directories only. |
 | Catalog metadata | `.claude-plugin/plugin.json` and README catalog rows | Installer grouping and navigation, not universal host certification or a native Codex plugin package. |
 | Project Agent harness | `.agents/` | This repository's project skills, subagents, and scaffold runtime; `.claude/` and `.codex/` contain host projections/configuration. |
-| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time conventions, read-only version analysis, and changelog extraction, installed for the selected `release` domain. |
+| Release runtime | `skills/agent-scaffold/assets/runtime/release/` → `.agents/tools/release/` | Task-time conventions, read-only version analysis, and changelog extraction, installed only for the selected `release` domain and never resident. |
 | Maintainer tooling | `scripts/`, `evals/`, `.github/workflows/` | Validation, generation, evaluation fixtures, installer tests, and release automation. |
 
 The catalog is consumed directly; it has no generated `.claude/skills` or `.codex/skills` copies. `.agents/skills/` holds project skills, including `skill-eval`; `.claude/skills/` projects only those project skills. Project subagent `skill-verifier` reviews source and captured evidence, with [execution and delivery owned by its parent](development.md#optional-skill-verifier). Neither evaluator is installed for catalog/scaffold consumers.
