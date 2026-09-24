@@ -1393,7 +1393,7 @@ def hook_interpreters(manifest: Dict[str, Any], profile: str) -> List[str]:
 
 def hook_python_check(manifest: Dict[str, Any], profile: str) -> Dict[str, Any]:
     # The installer may fall back to python3 or py -3, but host hooks run the literal
-    # command word; an unresolvable word exits 127, which hosts treat as non-blocking.
+    # command word; an unresolvable word exits 127, which Claude Code treats as non-blocking.
     boundary = "resolved from this process's PATH; a host may launch hooks with a different PATH"
     problems: List[str] = []
     resolved: List[str] = []
