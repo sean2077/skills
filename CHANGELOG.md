@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Shorten the managed `AGENTS.md` start marker to `<!-- agent-scaffold:start (managed; edit outside) -->`. HTML comments in `AGENTS.md` are read into every Agent session; this was the only marker carrying prose. Parsing matches the `agent-scaffold:start` prefix, so installed blocks keep working and `upgrade` refreshes the line.
+
 ### Fixed
 
 - Keep deep-interview runtime state out of Git status when possible by adding a self-ignoring `.gitignore` to its state directory without replacing an existing file or blocking state creation if the ignore path is unwritable.
