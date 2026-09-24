@@ -6,6 +6,8 @@ Reuse command recipes and observed help/schema while they remain applicable to t
 
 Use exact shortcut help when its name is known, or service/resource help to locate an unfamiliar operation. Registered methods expose their schema through `lark-cli schema <service.resource.method>`. Raw OpenAPI requires the official endpoint contract.
 
+The CLI bundles domain skills at build time. Use `lark-cli skills list` to find the exact `lark-<domain>` name and `lark-cli skills read <name>` (or `lark-cli skills read <name> references/<file>.md`) for version-matched workflow details when a local recipe is incomplete or differs from the installed CLI. This skill supplies routing and safety guidance; the installed command's help/schema resolves executable flags and parameters. Read only the relevant bundled domain and file.
+
 Command knowledge is reusable; each transaction still needs its own target, payload, identity, and applicable confirmation. Keep a write's original idempotency key for retries of that same logical action.
 
 Correct a rejected local argument before retrying. For an unknown server-side write outcome, inspect the returned object or query by its ID before retrying. Permission, ACL, rate-limit, and business-rule errors need the corresponding diagnosis.

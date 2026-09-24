@@ -318,6 +318,13 @@ def workflow_root(context: Dict[str, str], workflow: str, session: str, *, creat
     base = Path(context["repository_root"]) / STATE_ROOT_NAME
     if not ensure_safe_directory(base, create=create):
         return base / workflow / session
+    if create:
+        ignore = base / ".gitignore"
+        try:
+            with ignore.open("x", encoding="utf-8", newline="\n") as stream:
+                stream.write("*\n")
+        except FileExistsError:
+            pass
     root = base / workflow
     if not ensure_safe_directory(root, create=create):
         return root / session

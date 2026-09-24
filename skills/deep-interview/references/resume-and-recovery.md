@@ -2,6 +2,8 @@
 
 State is stored at `.agent-workflows/deep-interview/<session>/<id>.json`. Git worktrees share discovery through the common repository root while mutation ownership stays bound to one worktree and branch. Outside Git, invoke every command with the same `--root <directory>`.
 
+On a state-creating command, the runtime adds `.agent-workflows/.gitignore` containing `*` if it is missing, so the state directory does not appear in Git status. It preserves an existing ignore file. Read-only discovery does not create it.
+
 Use read-only discovery first:
 
 ```bash
