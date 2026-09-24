@@ -243,6 +243,14 @@ PLAN_TASK = {
 CASES["plan-retirement"] = dict(PLAN_TASK)
 CASES["plan-retirement-installed-guide"] = dict(PLAN_TASK)
 PLAN_RATIONALE = "We chose write-through because readers must never observe a stale balance."
+
+
+def prose_text(markdown: str) -> str:
+    """Lower-case prose with inline code/emphasis markers removed and spaces collapsed."""
+    lines = [re.sub(r"[ \t]+", " ", re.sub(r"[`*_]", "", line)).strip() for line in markdown.splitlines()]
+    return "\n".join(lines).lower()
+
+
 PLAN_MEASUREMENT = "Measured 2026-08-01 on the staging ledger: p95 balance read fell from 41 ms to 3.1 ms."
 PLAN_STEPS = ("1. Implement the write-through cache in src/cache.py.",
               "2. After deployment, purge all cached balances with `python tools/purge.py --all`.")
@@ -690,7 +698,12 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                     for p in sorted((root / "docs").rglob("*.md"))}
             reachable = reachable_guidance(root)
             corpus = "\n".join(text for name, text in reachable.items() if name.startswith("docs/"))
-            check("rationale retained", PLAN_RATIONALE in corpus)
+            # The docs guide asks to keep the rationale, not its exact words; dated
+            # measurements stay verbatim. Match the decision and its reason in one
+            # paragraph after dropping inline Markdown formatting.
+            check("rationale retained", any(
+                "write-through" in paragraph and "never observe a stale balance" in paragraph
+                for paragraph in re.split(r"\n\s*\n", prose_text(corpus))))
             check("dated measurement retained verbatim", PLAN_MEASUREMENT in corpus)
             for name, text in docs.items():
                 # The retained plan needs a retirement status even when its instructions
@@ -703,7 +716,7 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                            for link in re.findall(r"\]\(([^)\s]+)\)", plan) if not urlsplit(link).scheme}
                 check("retained plan routes to the current owner", "docs/ARCHITECTURE.md" in targets)
             check("current architecture owner intact",
-                  "Balances are cached write-through by src/cache.py." in docs.get("docs/ARCHITECTURE.md", ""))
+                  "balances are cached write-through by src/cache.py." in prose_text(docs.get("docs/ARCHITECTURE.md", "")))
             reachable_guidance(root)  # raises on a broken reader route or anchor
             check("reader routes resolve", True)
         else:

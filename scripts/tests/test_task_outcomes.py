@@ -201,6 +201,21 @@ class OutcomeTests(unittest.TestCase):
                 self.assertTrue(*result())  # Equivalent explicit completion wording remains valid.
                 plan.write_text(marked.replace("Status: implemented", "This plan is implemented"), encoding="utf-8")
                 self.assertTrue(*result())  # Ordinary prose needs no prescribed field or heading.
+                # The rationale's meaning must survive; its exact words need not.
+                plan.write_text(marked.replace(cases.PLAN_RATIONALE, "Write-through was chosen because readers "
+                                               "must *never* observe a stale balance."), encoding="utf-8")
+                self.assertTrue(*result())
+                plan.write_text(marked.replace(cases.PLAN_RATIONALE, "We chose write-through for speed.\n\n"
+                                               "Readers must never observe a stale balance."), encoding="utf-8")
+                self.assertFalse(result()[0])  # Decision and reason split apart lose the rationale.
+                architecture = workspace / "docs/ARCHITECTURE.md"
+                owner = architecture.read_text(encoding="utf-8")
+                plan.write_text(marked, encoding="utf-8")
+                architecture.write_text(owner.replace("src/cache.py.", "`src/cache.py`."), encoding="utf-8")
+                self.assertTrue(*result())  # Code formatting does not change the owner's statement.
+                architecture.write_text(owner.replace("write-through", "write-back"), encoding="utf-8")
+                self.assertFalse(result()[0])
+                architecture.write_text(owner, encoding="utf-8")
                 # Moving the history to the owner and removing the plan is also valid.
                 plan.unlink(); plan.parent.rmdir()
                 self.assertFalse(result()[0])  # Rationale and dated evidence were lost.
