@@ -179,7 +179,9 @@ if [[ "$candidate" == py ]]; then
   shift
 fi
 kind=exec
-if [[ "${1:-}" == -c && "${2:-}" == *version_info* ]]; then
+if [[ "${1:-}" == -c && "${2:-}" == *agent-scaffold-hook-python-ok* ]]; then
+  kind=hook-probe   # doctor/verify probing the literal hook command word
+elif [[ "${1:-}" == -c && "${2:-}" == *version_info* ]]; then
   kind=probe
 fi
 printf '%s:%s\n' "$candidate" "$kind" >> "${PYTHON_RESOLVER_LOG:?}"
@@ -276,7 +278,8 @@ resolver_log="$work/harness-explicit-precedence.log"; : > "$resolver_log"
 check "compatible explicit interpreter keeps precedence" test "$rc" = 1
 check "explicit interpreter path with spaces is probed" grep -qxF "explicit python:probe" "$resolver_log"
 check "explicit interpreter path with spaces is executed" grep -qxF "explicit python:exec" "$resolver_log"
-check "lower-priority candidates stay untouched" test -z "$(grep -v '^explicit python:' "$resolver_log" || true)"
+check "lower-priority candidates stay untouched" test -z "$(grep -v -e '^explicit python:' -e '^python:hook-probe$' "$resolver_log" || true)"
+check "verify probes the literal hook interpreter word" grep -qxF "python:hook-probe" "$resolver_log"
 
 resolver_log="$work/harness-no-python.log"; : > "$resolver_log"
 (
