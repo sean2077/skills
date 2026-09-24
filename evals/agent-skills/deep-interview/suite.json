@@ -64,10 +64,9 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "adaptive",
-            "question_batch_policy": "adaptive",
             "approval_required": true,
-            "external_research": "conditional"
+            "external_research": false,
+            "persistent_state": false
           }
         }
       }
@@ -85,11 +84,10 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "adaptive",
-            "question_batch_policy": "adaptive",
             "first_turn_question_count": 5,
             "approval_required": true,
-            "external_research": "conditional"
+            "external_research": false,
+            "persistent_state": false
           }
         }
       }
@@ -107,11 +105,10 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "adaptive",
-            "question_batch_policy": "adaptive",
             "first_turn_question_count": 1,
             "approval_required": true,
-            "external_research": "conditional"
+            "external_research": false,
+            "persistent_state": false
           }
         }
       }
@@ -129,7 +126,6 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "persistent",
             "persistent_state": true,
             "approval_required": true
           }
@@ -183,9 +179,9 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "adaptive",
             "approval_accepted": true,
-            "implementation_authorized": false
+            "implementation_authorized": false,
+            "persistent_state": false
           }
         }
       }
@@ -221,8 +217,8 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "adaptive",
-            "reapproval_required": false
+            "reapproval_required": false,
+            "persistent_state": false
           }
         }
       }
@@ -240,8 +236,8 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "adaptive",
-            "reapproval_required": true
+            "reapproval_required": true,
+            "persistent_state": false
           }
         }
       }
@@ -259,8 +255,8 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "persistent",
-            "reapproval_required": true
+            "reapproval_required": true,
+            "persistent_state": true
           }
         }
       }
@@ -278,7 +274,6 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "mode": "adaptive",
             "persistent_state": false
           }
         }

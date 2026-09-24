@@ -17,6 +17,8 @@ from typing import Any, Iterable
 
 CONTRACT = "agent-skill-eval/v1"
 MAX_BUDGET_USD = os.environ.get("SKILL_EVAL_MAX_BUDGET_USD", "0.10")
+# An exact model ID; without it the host's configured default (which a gateway may remap) runs.
+MODEL = os.environ.get("SKILL_EVAL_MODEL", "")
 WORKFLOWS = (
     "analysis",
     "code-review",
@@ -43,6 +45,14 @@ WORKFLOWS = (
     "implementation-planning",
     "unspecified",
 )
+# Labels whose boundary with a neighbor is not self-evident. Bare labels made the live
+# probes grade taxonomy guesses (a scaffold preview as "analysis") instead of decisions.
+WORKFLOW_MEANINGS = {
+    "harness-management": "establishing, previewing, diagnosing, or upgrading an Agent harness or its project conventions, read-only or not",
+    "tooling-governance": "changing a project's commands, scripts, or their callers while preserving the command contract",
+    "domain-modeling": "deciding or renaming project concepts and their glossary terms",
+    "analysis": "investigating or explaining something outside the more specific workflows",
+}
 ROUTE_ALIASES = {
     "agent-harness": "agent-scaffold",
     "lark": "lark-cli",
@@ -88,7 +98,7 @@ BOUNDARY_OBSERVATIONS = {
         "preserve_layout", "fill_project_guidance", "inspect_existing_routes",
         "asset_pass_proves_guidance", "project_guidance_writes", "restore_deleted_guidance",
         "introduce_controller", "fill_testing_guidance", "test_policy_changed",
-        "test_harness_added", "requires_sibling_skill", "decision_artifact",
+        "test_harness_added", "requires_sibling_skill",
         "ask_domain_exclusions", "reuse_domain_selection", "write_domain_selection",
         "selected_domains", "restore_excluded_domains", "default_all_domains",
         "selected_domain_changes_policy",
@@ -96,14 +106,15 @@ BOUNDARY_OBSERVATIONS = {
 }
 OBSERVATION_GUIDANCE = {
     "deep-interview": (
-        "When selected, report workflow, mode, question_batch_policy, first_turn_question_count "
-        "when the request states a first-turn count, approval_required, persistent_state, and "
-        "external_research when material."
+        "When selected, report workflow, first_turn_question_count when the request states a "
+        "first-turn count, approval_required, persistent_state (whether the bundled runtime keeps "
+        "state, not whether the conversation continues), and external_research when material."
     ),
     "agent-scaffold": (
         "When selected, report workflow and the material project-guidance, layout, ownership, "
-        "and read-only scope decisions. Report decision_artifact only when the project requires "
-        "a named record."
+        "and read-only scope decisions. Report write decisions for what happens before the user "
+        "answers any question you ask. Report decision_artifact, as the record's name, only when "
+        "the project requires a named record."
     ),
 }
 
@@ -228,6 +239,9 @@ def make_prompt(
     skill_section = skill_text or "(No candidate skill is loaded in baseline mode.)"
     route_vocabulary = ", ".join(("none", *routes))
     workflow_vocabulary = ", ".join(WORKFLOWS)
+    workflow_meanings = "; ".join(
+        "{0} = {1}".format(label, meaning) for label, meaning in WORKFLOW_MEANINGS.items()
+    )
     observation_guide = OBSERVATION_GUIDANCE.get(
         candidate,
         "Report only request-visible behavior needed to explain the routing decision; "
@@ -237,7 +251,8 @@ def make_prompt(
     if observations:
         observation_guide += (
             " When material, report these as booleans, deriving values from the task and "
-            "instructions rather than this vocabulary: " + ", ".join(observations) + "."
+            "instructions rather than this vocabulary: " + ", ".join(observations) + ". Each "
+            "describes what you would do, not a property of the request."
         )
     return f"""You are a read-only routing evaluator for the agent-skill-eval/v1 protocol.
 Do not edit files, run commands, call tools, browse, or perform the user's requested work.
@@ -257,6 +272,7 @@ User request:
 
 Use one exact route value from: {route_vocabulary}.
 Use one exact workflow value from: {workflow_vocabulary}.
+Where labels border each other: {workflow_meanings}.
 Use snake_case behavior keys. Always include route and workflow; include other properties only
 when the request and candidate instructions support them. {observation_guide}
 
@@ -337,6 +353,15 @@ def canonicalize_behavior(
     return canonical
 
 
+def host_model(host: dict[str, Any]) -> str | None:
+    """Name the model(s) that actually served the call; a gateway may remap the request."""
+    models = host.get("modelUsage")
+    if isinstance(models, dict) and models:
+        return ",".join(sorted(str(name) for name in models))
+    model = host.get("model")
+    return model if isinstance(model, str) else None
+
+
 def main() -> int:
     request: dict[str, Any] = {}
     started = time.monotonic()
@@ -348,7 +373,9 @@ def main() -> int:
         repository_root = Path(request["repository_root"]).resolve(strict=True)
         routes = catalog_routes(repository_root)
         candidate, skill_text = load_candidate(request.get("skill_path"), repository_root)
-        claude = os.environ.get("CLAUDE_BIN") or shutil.which("claude")
+        # The runner forwards only the SKILL_EVAL_ namespace, so CLAUDE_BIN works only for direct calls.
+        claude = (os.environ.get("SKILL_EVAL_CLAUDE_BIN") or os.environ.get("CLAUDE_BIN")
+                  or shutil.which("claude"))
         if not claude:
             raise FileNotFoundError("Claude Code executable not found")
         stage = "host"
@@ -359,7 +386,7 @@ def main() -> int:
                 "--disable-slash-commands", "--tools", "",
                 "--permission-mode", "dontAsk", "--setting-sources", "user",
                 "--max-budget-usd", MAX_BUDGET_USD,
-            ],
+            ] + (["--model", MODEL] if MODEL else []),
             cwd=str(repository_root), stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace", timeout=240, check=False,
@@ -384,7 +411,7 @@ def main() -> int:
             "schema_version": 1, "contract": CONTRACT,
             "run_id": request["run_id"], "mode": request["mode"],
             "selected": selected, "status": "completed", "metrics": observed,
-            "metadata": {"behavior": behavior, "host_model": host.get("model"),
+            "metadata": {"behavior": behavior, "host_model": host_model(host),
                          "usage_available": True},
         })
         return 0

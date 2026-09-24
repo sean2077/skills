@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from p0_runtime.common import HarnessError  # noqa: E402
-from p0_runtime.skill_eval import EXIT_ADAPTER, EXIT_VERIFIER, ProtocolFailure, run_suite  # noqa: E402
+from p0_runtime.skill_eval import EXIT_ADAPTER, EXIT_VERIFIER, ProtocolFailure, _minimal_env, run_suite  # noqa: E402
+from unittest import mock  # noqa: E402
 
 
 def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
@@ -105,6 +106,16 @@ class SkillEvalHardeningTest(unittest.TestCase):
         path = self.repo / "evals" / name
         path.write_text(source, encoding="utf-8")
         return path
+
+    def test_reduced_environment_passes_only_the_eval_namespace(self) -> None:
+        ambient = {"PATH": os.environ.get("PATH", ""), "SKILL_EVAL_MODEL": "exact-model",
+                   "ANTHROPIC_AUTH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}
+        with mock.patch.dict(os.environ, ambient, clear=True):
+            env = _minimal_env({"MANIFEST_KEY": "1"})
+        self.assertEqual("exact-model", env["SKILL_EVAL_MODEL"])
+        self.assertEqual("1", env["MANIFEST_KEY"])
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", env)
+        self.assertNotIn("GITHUB_TOKEN", env)
 
     def test_adapter_repository_mutation_fails_closed(self) -> None:
         self.write_script(

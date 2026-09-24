@@ -1,0 +1,55 @@
+{
+  "contract": "skill-task-outcome/1",
+  "case": "lark-invented-syntax",
+  "condition": "none",
+  "evaluator_digest": "1f6e8203ddb807c3302f825e0eb161e194a817a2db61ba50c58b66f94a7b3fe4",
+  "skill_revision": null,
+  "skill_digest": null,
+  "state": {
+    "base": "fce87119c8a91cf822a1df91b2feae003e019954",
+    "protected": {
+      "lark_mock.py": "ea105fd49b45360802ae8bb061812806a20f8c91d013bd46429bca6f16f5f37f"
+    }
+  },
+  "fixture_digest": "6eb346b4c61b47d327be10e944dbdbc058af8b220139de7c37b188050bcdd602",
+  "platform": "Windows",
+  "python": "3.14.7",
+  "prompt_digest": "561efd6c65f548badb1319860998a8dd460a126dd461a4de5194a10a64035517",
+  "checks": [
+    {
+      "name": "unchanged fixture lark_mock.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "documented mock arguments",
+      "passed": true,
+      "detail": "Unsupported invocations: []"
+    },
+    {
+      "name": "observed the message collection",
+      "passed": true,
+      "detail": "Reading help or one known message cannot establish a collection count."
+    },
+    {
+      "name": "correct awaiting-reply count",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "passed": true,
+  "execution": "completed",
+  "host": {
+    "name": "claude",
+    "version": "2.1.280 (Claude Code)",
+    "model": "claude-opus-5-5",
+    "configuration": "bare-local-tools",
+    "cache": "uncontrolled: gateway prompt caching, sequential runs"
+  },
+  "metrics": {
+    "input_tokens": 203772.0,
+    "output_tokens": 1767.0,
+    "tool_calls": 9,
+    "wall_time_seconds": 45.76182969997171
+  }
+}

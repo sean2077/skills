@@ -10,6 +10,7 @@ Track each interface independently. A repository change does not invalidate ever
 | Claude / Codex scaffold | Layout review 2026-08-25; overlap review 2026-09-20; subagent review 2026-09-22 | Core/workspace/E2E tests cover source/projection ownership and simulated hook payloads. Authenticated discovery, trust, and effective permissions need actual host observations. |
 | Grok-compatible payloads | Explicit branches in the shared hook parser | Simulated payload/expansion tests, not independent Grok installation or live-host certification. |
 | Lark CLI | Recipes reviewed against v1.0.93 on 2026-09-04 | Domain references and mock task cases are not live CLI/service certification. Preserve recipe-specific evidence when changing syntax. |
+| Live model runs | [2026-09-24 evaluation](audits/2026-09-24-live-evaluation.md): Claude Code 2.1.280, `claude-opus-5-5` and `deepseek-v4.1-flash` through a gateway | Routing probes and bounded task outcomes at named revisions; uncontrolled cache accounting makes token budgets unreliable there. Not a certification of other models, hosts, or native discovery. |
 | Task capture | Claude CLI/stream documentation reviewed 2026-09-22 | Importer/negative-fixture tests; actual host runs require a configured CLI and retained results. Unknown usage stays unknown. |
 
 For a new observation retain version, platform, relevant configuration, operation, source revision, command/result, and the supported claim in its existing result or review record. Recheck the changed interface, not every interface on a recurring schedule.

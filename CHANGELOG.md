@@ -6,20 +6,26 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Record the first live evaluation, on `claude-opus-5-5` and `deepseek-v4.1-flash`, of all routing probes, selected task outcomes and the installed-guide pair in `docs/audits/2026-09-24-live-evaluation.md`, with its result files.
+
 ### Changed
 
 - Shorten the managed `AGENTS.md` start marker to `<!-- agent-scaffold:start (managed; edit outside) -->`. HTML comments in `AGENTS.md` are read into every Agent session; this was the only marker carrying prose. Parsing matches the `agent-scaffold:start` prefix, so installed blocks keep working and `upgrade` refreshes the line.
+- Direct lark-cli agents to the CLI-bundled domain skills for version-matched workflow details while retaining the catalog skill's identity and safety rules.
+- Exercise the scaffold core, installed runtime and a real `plan`/`apply`/`doctor`/`verify` run plus a blocked trunk-guard edit on the Python 3.8 CI floor. Only the release runtime was compiled there before, so floor compatibility of the core and hooks was unguarded.
 
 ### Fixed
 
+- Keep an unanswered convention-domain selection pending in `agent-scaffold`'s entry point, and exempt previews, `doctor`/`verify` and runtime-only requests from asking. The rule lived only in the onboarding reference; a live Opus probe that saw only `SKILL.md` planned to record the selection and write guidance while still asking, and asked during a preview.
+- Let live routing probes pin an exact model with `SKILL_EVAL_MODEL` and record the serving model in `host_model`. The runner's reduced environment now forwards only `SKILL_EVAL_*` variables, so `SKILL_EVAL_MAX_BUDGET_USD` and the new `SKILL_EVAL_CLAUDE_BIN` actually reach the adapter; previously neither the budget knob nor `CLAUDE_BIN` did, `host_model` was always null, and a gateway could silently substitute another model.
+- State in `deep-interview`'s entry point that any byte change to an approved runtime specification, even whitespace or line endings, needs re-crystallizing and fresh approval. A live deepseek-v4.1-flash probe judged a whitespace-only edit as needing no reapproval; the rule lived only in the runtime reference.
+- Judge the `plan-retirement` pair's rationale and architecture-owner checks by meaning after removing inline code, emphasis and link syntax; the dated measurement stays verbatim. Exact-sentence matching failed live runs that did what the docs guide asks.
+- Assert deep-interview probe decisions (`persistent_state`, stated research need, question counts, approval) instead of the retired runtime's `mode`/`question_batch_policy` labels, define the four workflow labels whose boundaries live probes were guessing, and state that boolean observations describe the agent's own action (`decision_artifact` asks for the record's name).
 - Keep deep-interview runtime state out of Git status when possible by adding a self-ignoring `.gitignore` to its state directory without replacing an existing file or blocking state creation if the ignore path is unwritable.
 - Report `prerequisite.hook-python` in `agent-scaffold doctor` and `verify`. The installer falls back from `python` to `python3` or `py -3`, but the managed host hooks run the literal `python`, so on a `python3`-only `PATH` installation, `doctor` and `verify` all passed while every hook exited 127. Claude Code documents only exit 2 as blocking, so there the trunk guard silently allowed primary-worktree edits; other hosts' handling of that failure was not verified. The check resolves the hook command word and probes it for Python 3.8+, and states that a host may launch hooks with a different `PATH`. The committed hook command stays `python`, so the shared config keeps working for collaborators on other platforms.
 - State that the trunk guard sees only its matched file-edit tools; writes made through shell commands do not pass through it, and the `AGENTS.md` worktree rule still covers them.
-
-### Changed
-
-- Direct lark-cli agents to the CLI-bundled domain skills for version-matched workflow details while retaining the catalog skill's identity and safety rules.
-- Exercise the scaffold core, installed runtime and a real `plan`/`apply`/`doctor`/`verify` run plus a blocked trunk-guard edit on the Python 3.8 CI floor. Only the release runtime was compiled there before, so floor compatibility of the core and hooks was unguarded.
 
 ## [v10.0.0] — 2026-09-24
 
