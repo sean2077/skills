@@ -716,7 +716,7 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                            for link in re.findall(r"\]\(([^)\s]+)\)", plan) if not urlsplit(link).scheme}
                 check("retained plan routes to the current owner", "docs/ARCHITECTURE.md" in targets)
             check("current architecture owner intact",
-                  "balances are cached write-through by src/cache.py." in prose_text(docs.get("docs/ARCHITECTURE.md", "")))
+                  "balances are cached write-through by src/cache.py" in prose_text(docs.get("docs/ARCHITECTURE.md", "")))
             reachable_guidance(root)  # raises on a broken reader route or anchor
             check("reader routes resolve", True)
         else:

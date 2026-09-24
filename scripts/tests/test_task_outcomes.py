@@ -213,6 +213,9 @@ class OutcomeTests(unittest.TestCase):
                 plan.write_text(marked, encoding="utf-8")
                 architecture.write_text(owner.replace("src/cache.py.", "`src/cache.py`."), encoding="utf-8")
                 self.assertTrue(*result())  # Code formatting does not change the owner's statement.
+                architecture.write_text(owner.replace("src/cache.py.", "src/cache.py, so readers never "
+                                                      "observe a stale balance."), encoding="utf-8")
+                self.assertTrue(*result())  # Extending the owner's sentence keeps its statement.
                 architecture.write_text(owner.replace("write-through", "write-back"), encoding="utf-8")
                 self.assertFalse(result()[0])
                 architecture.write_text(owner, encoding="utf-8")
