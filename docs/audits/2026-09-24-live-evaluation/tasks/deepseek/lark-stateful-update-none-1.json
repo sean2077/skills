@@ -1,0 +1,84 @@
+{
+  "contract": "skill-task-outcome/1",
+  "case": "lark-stateful-update",
+  "condition": "none",
+  "evaluator_digest": "9dcb9deff49ae77ad1d735b3a6d9b535bc142d432acdffb774e6be745aede97c",
+  "skill_revision": null,
+  "skill_digest": null,
+  "state": {
+    "base": "83536d4ef4300721586fa9d9939d3dc89dad5522",
+    "protected": {
+      "lark_mock.py": "1b1700a0aa7f71c6818a21b4eef50c57d939ff264bda5b2c0dd3e284721116a4",
+      "mock-help.md": "c53493dc4536d0707a47f1839be8bd0028fb73ae9fca140a29c78bd4439b842f"
+    },
+    "initial_task": {
+      "description": "Ship the patch.",
+      "assignee": "ou_owner",
+      "due": "2026-10-01",
+      "settings": {
+        "notify": true,
+        "labels": [
+          "release",
+          "review"
+        ]
+      }
+    },
+    "cached": false
+  },
+  "fixture_digest": "277ed044eab8688e8652ed2e34301edd306f0ed43a507a34e16c03e9358ee231",
+  "platform": "Windows",
+  "python": "3.14.7",
+  "prompt_digest": "9ac65782aca23136906c84596108fe391a803a25c64a72abfb09d79d6ed3ed0a",
+  "checks": [
+    {
+      "name": "unchanged fixture lark_mock.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture mock-help.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "state known before write 1",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "authorized full replacement 1",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "observed a replacement command",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "requested change and unrelated state preserved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "stored state matches last write",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "passed": true,
+  "execution": "completed",
+  "host": {
+    "name": "claude",
+    "version": "2.1.280 (Claude Code)",
+    "model": "deepseek-v4.1-flash",
+    "configuration": "bare-local-tools",
+    "cache": "uncontrolled: gateway prompt caching, sequential runs"
+  },
+  "metrics": {
+    "input_tokens": 16087.0,
+    "output_tokens": 1846.0,
+    "tool_calls": 7,
+    "wall_time_seconds": 27.427562099997886
+  }
+}

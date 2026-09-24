@@ -1,0 +1,80 @@
+{
+  "contract": "skill-task-outcome/1",
+  "case": "scaffold-testing-guidance",
+  "condition": "skill",
+  "evaluator_digest": "9dcb9deff49ae77ad1d735b3a6d9b535bc142d432acdffb774e6be745aede97c",
+  "skill_revision": "d8bda7535c83b612eefc383821374f54cbe2d65f",
+  "skill_digest": "1df3751ba3a689f381bf2a10116994bbac5848c217e2ef02c624e5016027d79b",
+  "state": {
+    "base": "c427dd1c9698c5fabfc08f2d800bada2c168f6c4",
+    "protected": {
+      ".coveragerc": "2c56c2a260848d66474d0d32e8cd7aea90e731b31479d376f4eb7e8d86f26205",
+      "README.md": "d14a2ca95c398e42269703e69e7398d142740a57e8751eabc5bc8516601939e4",
+      "encoder.py": "e6fc03bcdcfe4f1f1e52cbe65f1b8fd8049ce569d2a56f3e991dbd08b5c1ebd2",
+      "fixtures/provider.json": "755700c02243f98a36b3b09c96c55478b9be4198d8e1c678b2ff01c2cdea8d69",
+      "protocol.md": "9ba36c9caedbadee8500cece7697c692dcd1d4ee28c7faec2d9fe529825ec67b",
+      "quality-decisions.md": "af0fcc5494e657c3c4caca7311f9e9fededbef3bfcdc489f98f8508335e4e8cb",
+      "spec/encoder_spec.py": "5f8805c31a12f6780f76d60cec7e029d2cd014a572e9753b67aada47a5081e69"
+    },
+    "editable": [
+      "AGENTS.md",
+      "handbook/development.md"
+    ],
+    "dirs": [
+      "fixtures",
+      "handbook",
+      "spec"
+    ]
+  },
+  "fixture_digest": "bcc007c49103debb4ef086d1fc0d0355ba0926fd02631be753c7eda09df733ea",
+  "platform": "Windows",
+  "python": "3.14.7",
+  "prompt_digest": "bcfc13565270a8341907cd50df7960e1cac6abc85e97b51ef481ec9303087f14",
+  "checks": [
+    {
+      "name": "unchanged fixture .coveragerc",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture README.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture encoder.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture fixtures/provider.json",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture protocol.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "valid observable artifacts",
+      "passed": false,
+      "detail": "ValueError: missing result: quality-decisions.md"
+    }
+  ],
+  "passed": false,
+  "execution": "completed",
+  "host": {
+    "name": "claude",
+    "version": "2.1.280 (Claude Code)",
+    "model": "deepseek-v4.1-flash",
+    "configuration": "bare-local-tools",
+    "cache": "uncontrolled: gateway prompt caching, sequential runs"
+  },
+  "metrics": {
+    "input_tokens": 97532.0,
+    "output_tokens": 6137.0,
+    "tool_calls": 12,
+    "wall_time_seconds": 106.62459859997034
+  }
+}

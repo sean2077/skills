@@ -1,75 +1,96 @@
 # Live model evaluation — 2026-09-24
 
-Historical record. The numbers below describe the revisions, host, and gateway named here; they are not a standing certification. Current measurement procedure lives in [routing probes](../../evals/agent-skills/README.md) and [task outcomes](../../evals/tasks/README.md).
+Historical record. The numbers below describe the revisions, host, gateway and models named here; they are not a standing certification. Current measurement procedure lives in [routing probes](../../evals/agent-skills/README.md) and [task outcomes](../../evals/tasks/README.md).
 
 ## Setup
 
 | Item | Value |
 |---|---|
 | Host | Claude Code 2.1.280, Windows 11, Git Bash |
-| Model | `claude-opus-5-5`, pinned with `SKILL_EVAL_MODEL` / `--model`; every result records it as the serving model |
+| Models | `claude-opus-5-5` and `deepseek-v4.1-flash`, each pinned with `SKILL_EVAL_MODEL` / `--model`; every result records the model that actually served it |
 | Gateway | Third-party Anthropic-compatible gateway configured in user settings. Its default model is not Claude, so an unpinned run silently evaluates another model. Prompt-cache accounting through it is uncontrolled |
 | Routing probes | `skill_eval.py run` over all three `evals/agent-skills/*/suite.json`, per-call cap `SKILL_EVAL_MAX_BUDGET_USD=0.50` |
-| Task outcomes | `runner.py prepare` + `claude --bare -p` as in the task README; bare mode loaded only bundled host skills, not the catalog |
-| Initial revision | `442fac5` (main `8fe752b` plus the adapter fix below) |
-| Final revision | `c28c1b7` (all fixes below) |
+| Task outcomes | `runner.py prepare` plus `claude --bare -p`, following the task README. Bare mode loaded only bundled host skills, not the catalog |
 
-Evidence: [`2026-09-24-live-evaluation/`](2026-09-24-live-evaluation/) holds every routing result and task `result.json`. Session transcripts were retained locally and not committed.
+Evidence is in [`2026-09-24-live-evaluation/`](2026-09-24-live-evaluation/). Folders are named by model and the revision each run evaluated. `routing/rechecks/` holds targeted reruns; `122c13b` was an experimental lark wording change that was discarded after these reruns. `tasks/summary.json` re-scores every task run with the final evaluator and counts `Bash` calls. Session transcripts were retained locally and are not committed.
 
 ## Routing probes
 
-A case passes only when both runs complete, selection/trigger and the expected-behavior subset match, scope holds, and the baseline/treatment cost comparison stays inside the suite budget.
+A case passes when both runs complete, the treatment's selection and expected behavior match, scope holds, and the baseline/treatment cost comparison stays inside the suite budget. A baseline's workflow label is reported but does not fail a case.
 
-| Suite | Initial pass | Initial decisions correct | Final pass | Final decisions correct |
-|---|---|---|---|---|
-| agent-scaffold | 19/29 | 21/29 | 19/29 | 28/29 |
-| deep-interview | 5/12 | 5/12 | 8/12 | 12/12 |
-| lark-cli | 16/17 | 17/17 | 15/17 | 17/17 |
+Treatment decisions correct at each revision:
 
-"Decisions correct" excludes cases that failed only a cost budget.
+| Suite | Opus `442fac5` | Opus `c28c1b7` | deepseek `d8bda75` | Opus final `86fcf5c` | deepseek final `86fcf5c` |
+|---|---|---|---|---|---|
+| agent-scaffold (29) | 23 | 28 | 27 | 27 → 28¹ | 28 → 29¹ |
+| deep-interview (12) | 5 | 12 | 7 | 12 | 11 |
+| lark-cli (17) | 17 | 17 | 15 | 17 | 15 |
 
-Initial decision failures:
+¹ After `00e360e` corrected the `decision_artifact` observation; see the rechecks.
 
-- **agent-scaffold, real skill gap (3 cases).** Without an answer to the one-time domain question, the treatment planned to record the selection and write project guidance in the same turn (first setup and legacy upgrade), and it asked the question during a read-only preview. Both rules existed only in `references/onboarding-selection.md`, which the probe does not load. After the entry point stated them (`c28c1b7`), a targeted rerun and the final run passed all three.
-- **agent-scaffold, omitted observation (1 case).** For a recorded empty selection, the treatment reused the selection correctly but did not report `project_guidance_writes`; this persists in the final run.
-- **agent-scaffold, label taxonomy (4 cases).** Both arms, or the baseline alone, chose a neighboring workflow label (`analysis` for a scaffold preview or diagnosis, `implementation` for a script rename, `documentation` for a glossary rename). The probe listed 24 bare labels. It now defines the four labels whose boundaries were being guessed; the final run had no label failures.
-- **deep-interview, stale expectations (7 cases).** Every substantive decision was correct: approval, persistence, first-turn question counts, and reapproval after edits. The suite still demanded the retired scoring runtime's labels (`mode: adaptive`, `question_batch_policy: adaptive`, `external_research: conditional`), which the current skill does not teach. It now asserts `persistent_state` and the stated research need.
+Remaining final failures:
 
-All remaining failures are cost budgets. In the final run, baseline `input_tokens` ranged from about 3.5k to 21k and treatment from about 4k to 24k in every suite, because cache reads and creation are counted and this gateway sometimes reports the cached host prompt and sometimes does not. The fixed `max_additive` of 2,000 input tokens is below that noise, so input-budget failures here are not evidence of skill cost. Treatment outputs are longer mainly because selected runs report many more observation keys.
+| Model | Case | Nature |
+|---|---|---|
+| Opus | agent-scaffold `positive-recorded-none` | Correct reuse of an empty selection, but it omits the `project_guidance_writes` observation |
+| deepseek | deep-interview `positive-adaptive-material-edit` | Reports `persistent_state: true` for a conversational interview despite the clarified meaning |
+| deepseek | lark-cli `positive-file-containment` | Reports `file_access_outside_cwd: true`. Asked directly with the same `SKILL.md` (original wording, three times; clarified wording, three times), it refused the `../` path and proposed running from the file's directory every time. This is how it reads the observation label, not its decision |
+| deepseek | lark-cli `positive-identity-permission-boundary` | Chooses the `analysis` workflow label instead of `lark` |
+
+Other failing cases failed only cost budgets. Baseline `input_tokens` ranged from about 3.5k to 21k, and treatment from about 4k to 24k, in every suite and for both models. That spread comes from cache reads and cache creation being counted, and from the gateway sometimes reporting the cached host prompt and sometimes not. The fixed `max_additive` of 2,000 input tokens is smaller than that noise, so input-budget failures here are not evidence of skill cost. Treatment outputs are longer mainly because selected runs report many more observation keys.
+
+### What the probes found
+
+- **agent-scaffold: pending selection (fixed in `c28c1b7`).** Without an answer to the one-time domain question, both models planned to record the selection and write project guidance while asking. Opus also asked during a read-only preview. The rules existed only in `references/onboarding-selection.md`, which the probe does not load. The entry point now states them. deepseek still planned the writes until the probe said that write decisions describe what happens before the user answers.
+- **deep-interview: byte-exact reapproval (fixed in `af3cd91`).** deepseek judged that a whitespace-only edit to an approved runtime specification needed no reapproval. The exact-bytes rule lived only in the runtime reference. The entry point now states it, and the case passes for both models.
+- **deep-interview: stale probe labels (fixed in `c28c1b7`).** Opus made every substantive decision correctly but failed on the retired runtime's labels (`mode: adaptive`, `question_batch_policy: adaptive`, `external_research: conditional`), which the current skill no longer teaches. The suite now asserts `persistent_state` and the stated research need.
+- **Probe vocabulary (fixed in `c28c1b7` and later).** Both models guessed between neighboring workflow labels, read boolean observations as properties of the request rather than their own action, and read `persistent_state` as "the conversation continues". The adapter now defines four workflow labels, says that booleans describe the agent's own action, and defines `persistent_state`. Making the boolean rule explicit briefly turned `decision_artifact`, which expects a record name, into `true` for both models. `00e360e` removed it from the boolean list.
 
 ## Task outcomes
 
-Single runs, except three per arm for the installed-guide pair. All passed except where the table shows the pair's original oracle result.
+Opus ran each case once, except three runs per arm for the installed-guide pair. deepseek did the same, and its host-failed run was retried once.
 
-| Case | Condition | Pass | Input tok | Output tok | Tools | Seconds |
-|---|---|---|---|---|---|---|
-| lark-invented-syntax | none / skill | ✓ / ✓ | 204k / 144k | 1.8k / 1.5k | 9 / 8 | 46 / 27 |
-| lark-stateful-update | none / skill | ✓ / ✓ | 141k / 117k | 0.9k / 1.3k | 6 / 6 | 31 / 24 |
-| scaffold-testing-guidance | none / skill | ✓ / ✓ | 58k / 276k | 5.5k / 37.0k | 16 / 45 | 97 / 393 |
+| Case | Condition | Opus | deepseek |
+|---|---|---|---|
+| lark-invented-syntax | none / skill | ✓ / ✓ | ✓ / ✓ |
+| lark-stateful-update | none / skill | ✓ / ✓ | ✓ / ✓ |
+| scaffold-testing-guidance | none / skill | ✓ / ✓ | ✓² / ✗³ |
 
-With Opus, every task passed without the catalog skill. In its single run, the pinned scaffold skill used about 7× the output tokens, 3× the tool calls and 4× the time of the task-only run for the same verified result.
+² The first none run ended with a truncated host stream after the model started a background task; the retry passed.
+³ The skill run merged `quality-decisions.md` into the development guide, then deleted it. The oracle protects that file. The prompt says to "consolidate" it and to "preserve … all other files", which allows either reading, so this is a fixture ambiguity rather than a clear skill defect.
+
+With Opus, the pinned scaffold skill's single guidance run used about 7× the output tokens, 3× the tool calls and 4× the time of the task-only run, for the same verified result.
+
+The scaffold guidance and plan-retirement prompts say not to execute commands. Opus made no `Bash` calls in any of those runs. deepseek ran commands (`ls`, `find`, `cat >`, `rm`) in 5 of its 9 such runs. The oracles cannot observe this; transcript review found it.
 
 ### v10 installed convention guide pair
 
-`plan-retirement` and `plan-retirement-installed-guide` differ only in `.agents/conventions/docs.md` and its managed route. Both used condition `none`.
+`plan-retirement` and `plan-retirement-installed-guide` differ only in `.agents/conventions/docs.md` and its managed route. Both arms used condition `none`, with three runs per arm per model.
 
-| Arm | Run 1 | Run 2 | Run 3 | Read the guide | Mean input tok |
-|---|---|---|---|---|---|
-| Without guide, original oracle | ✗ | ✗ | ✓ | — | 73k |
-| With guide, original oracle | ✓ | ✗ | ✗ | 3/3 | 125k |
-| Without guide, corrected oracle | ✓ | ✓ | ✓ | — | |
-| With guide, corrected oracle | ✓ | ✓ | ✓ | 3/3 | |
+| Model / arm | Passed at run | Passed re-scored | Read the guide |
+|---|---|---|---|
+| Opus without guide | 1/3 | 3/3 | — |
+| Opus with guide | 1/3 | 3/3 | 3/3 |
+| deepseek without guide | 1/3 | 3/3 | — |
+| deepseek with guide | 3/3 | 3/3 | 3/3 |
 
-Every original failure was an oracle false negative. The oracle required the retired plan's rationale sentence byte for byte, and the architecture owner's sentence unchanged, including its closing period and no code formatting. Runs that moved the rationale into the owner with light rewording, extended the owner sentence with its reason, or wrapped a path in backticks failed although they did what the guide asks. The corrected oracle judges the rationale and owner statement by meaning after removing inline formatting, and the dated measurement remains verbatim. The retained workspaces were re-scored offline with the corrected oracle; see `tasks/summary.json`.
+Every failure at run time was an oracle false negative. Opus runs failed because the oracle demanded the rationale sentence and the architecture owner's sentence byte for byte. deepseek runs had the earlier fixes but failed because the owner sentence's source path had become a Markdown link. The runs had preserved the rationale with light rewording, extended the owner sentence with its reason, or formatted or linked the path, which is what the guide asks. The final oracle compares prose after removing inline code, emphasis and link syntax. It still requires the rationale's decision and reason in one paragraph, the owner statement, and the dated measurement verbatim.
 
-The route worked: every treatment read the installed guide. The guide produced no measurable improvement on this task for this model, because the baseline already succeeded. Input volume is noisy here and is not a reliable cost estimate. This is one task with three runs per arm; a weaker model or a task whose correct answer depends on a guide-only rule is needed before claiming a benefit or its absence.
+The route worked: every treatment run read the installed guide. On this task neither model improved measurably, because both already succeeded without the guide. The deepseek run-time difference came only from link formatting. This pair cannot show a benefit. That needs a task whose correct result depends on a rule only the guide states.
 
 ## Defects found and fixed
 
-- Evaluation plumbing: the runner's reduced environment dropped `SKILL_EVAL_MAX_BUDGET_USD` and `CLAUDE_BIN`, so those documented knobs never reached the adapter. `host_model` read a field the CLI does not emit. There was no way to pin a model through a remapping gateway.
-- Oracles: the plan-retirement exact-wording checks and the stale deep-interview labels above.
-- Catalog: agent-scaffold's entry point now keeps an unanswered selection pending and exempts previews.
+- **Catalog.** agent-scaffold's entry point keeps an unanswered selection pending and exempts previews. deep-interview's entry point states that any byte change to an approved runtime specification needs fresh approval.
+- **Evaluation plumbing.** The runner's reduced environment dropped `SKILL_EVAL_MAX_BUDGET_USD` and `CLAUDE_BIN`, so those documented knobs never reached the adapter. `host_model` read a field the CLI does not emit. There was no way to pin a model through a remapping gateway.
+- **Oracles and probes.** The plan-retirement exact-wording checks, the stale deep-interview labels, and the ambiguous probe vocabulary described above.
+
+## Open
+
+- The installed-guide pair needs a discriminating task.
+- The `scaffold-testing-guidance` prompt should say whether the consolidated source file stays.
+- Input-token budgets need an allowance that reflects cache-accounting noise, or a cache-controlled host.
+- Task oracles cannot see command execution that a prompt forbids.
 
 ## Limits
 
-One model, one host, one gateway, and uncontrolled caching. Routing probes show stated decisions from the entry point alone, not native discovery or executed work. Task outcomes are single or triple runs of bounded fixtures. Operator-supplied labels are not attestation.
+This covers two models on one host and one gateway, with uncontrolled caching. Routing probes show decisions stated from the entry point alone, not native discovery or executed work. Task outcomes are one or three runs of bounded fixtures. Operator-supplied labels are not attestation.

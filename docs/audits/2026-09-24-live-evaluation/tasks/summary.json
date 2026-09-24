@@ -1,158 +1,364 @@
 {
-  "rescored_with": "evaluator at feat/live-eval-20260924 (plan-retirement oracle fixed); original results were produced by the evaluator at 442fac5",
+  "rescored_with": "evaluator at 00e360e (plan-retirement oracle ignores inline code, emphasis and link syntax); run-time results used the evaluator of their run",
   "runs": {
-    "lark-invented-syntax-none-1": {
+    "opus/lark-invented-syntax-none-1": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 203772.0,
         "output_tokens": 1767.0,
         "tool_calls": 9,
         "wall_time_seconds": 45.76182969997171
-      }
+      },
+      "bash_calls": 8,
+      "read_installed_docs_guide": false
     },
-    "lark-invented-syntax-skill-1": {
+    "opus/lark-invented-syntax-skill-1": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 143566.0,
         "output_tokens": 1549.0,
         "tool_calls": 8,
         "wall_time_seconds": 26.870811000000685
-      }
+      },
+      "bash_calls": 3,
+      "read_installed_docs_guide": false
     },
-    "lark-stateful-update-none-1": {
+    "opus/lark-stateful-update-none-1": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 140947.0,
         "output_tokens": 939.0,
         "tool_calls": 6,
         "wall_time_seconds": 30.742091299965978
-      }
+      },
+      "bash_calls": 4,
+      "read_installed_docs_guide": false
     },
-    "lark-stateful-update-skill-1": {
+    "opus/lark-stateful-update-skill-1": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 116828.0,
         "output_tokens": 1309.0,
         "tool_calls": 6,
         "wall_time_seconds": 23.882694500032812
-      }
+      },
+      "bash_calls": 3,
+      "read_installed_docs_guide": false
     },
-    "plan-retirement-installed-guide-none-1": {
+    "opus/plan-retirement-installed-guide-none-1": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": true,
       "metrics": {
         "input_tokens": 133170.0,
         "output_tokens": 3372.0,
         "tool_calls": 12,
         "wall_time_seconds": 63.003526699962094
       },
+      "bash_calls": 0,
+      "read_installed_docs_guide": true,
       "passed_rescored": true,
       "failed_rescored": []
     },
-    "plan-retirement-installed-guide-none-2": {
+    "opus/plan-retirement-installed-guide-none-2": {
       "passed_at_run": false,
+      "status": null,
       "failed_at_run": [
         "current architecture owner intact"
       ],
-      "read_installed_docs_guide": true,
       "metrics": {
         "input_tokens": 178415.0,
         "output_tokens": 3764.0,
         "tool_calls": 15,
         "wall_time_seconds": 53.03551800001878
       },
+      "bash_calls": 0,
+      "read_installed_docs_guide": true,
       "passed_rescored": true,
       "failed_rescored": []
     },
-    "plan-retirement-installed-guide-none-3": {
+    "opus/plan-retirement-installed-guide-none-3": {
       "passed_at_run": false,
+      "status": null,
       "failed_at_run": [
         "current architecture owner intact"
       ],
-      "read_installed_docs_guide": true,
       "metrics": {
         "input_tokens": 63859.0,
         "output_tokens": 5813.0,
         "tool_calls": 14,
         "wall_time_seconds": 87.13025589997414
       },
+      "bash_calls": 0,
+      "read_installed_docs_guide": true,
       "passed_rescored": true,
       "failed_rescored": []
     },
-    "plan-retirement-none-1": {
+    "opus/plan-retirement-none-1": {
       "passed_at_run": false,
+      "status": null,
       "failed_at_run": [
         "rationale retained",
         "current architecture owner intact"
       ],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 35236.0,
         "output_tokens": 5517.0,
         "tool_calls": 15,
         "wall_time_seconds": 78.28396859997883
       },
+      "bash_calls": 0,
+      "read_installed_docs_guide": false,
       "passed_rescored": true,
       "failed_rescored": []
     },
-    "plan-retirement-none-2": {
+    "opus/plan-retirement-none-2": {
       "passed_at_run": false,
+      "status": null,
       "failed_at_run": [
         "current architecture owner intact"
       ],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 33622.0,
         "output_tokens": 2999.0,
         "tool_calls": 9,
         "wall_time_seconds": 44.7921477999771
       },
+      "bash_calls": 0,
+      "read_installed_docs_guide": false,
       "passed_rescored": true,
       "failed_rescored": []
     },
-    "plan-retirement-none-3": {
+    "opus/plan-retirement-none-3": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 149862.0,
         "output_tokens": 3288.0,
         "tool_calls": 14,
         "wall_time_seconds": 35.965045399963856
       },
+      "bash_calls": 0,
+      "read_installed_docs_guide": false,
       "passed_rescored": true,
       "failed_rescored": []
     },
-    "scaffold-testing-guidance-none-1": {
+    "opus/scaffold-testing-guidance-none-1": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 58349.0,
         "output_tokens": 5523.0,
         "tool_calls": 16,
         "wall_time_seconds": 97.31833859998733
-      }
+      },
+      "bash_calls": 0,
+      "read_installed_docs_guide": false
     },
-    "scaffold-testing-guidance-skill-1": {
+    "opus/scaffold-testing-guidance-skill-1": {
       "passed_at_run": true,
+      "status": null,
       "failed_at_run": [],
-      "read_installed_docs_guide": false,
       "metrics": {
         "input_tokens": 275892.0,
         "output_tokens": 37036.0,
         "tool_calls": 45,
         "wall_time_seconds": 392.6725542000495
-      }
+      },
+      "bash_calls": 0,
+      "read_installed_docs_guide": false
+    },
+    "deepseek/lark-invented-syntax-none-1": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 13734.0,
+        "output_tokens": 743.0,
+        "tool_calls": 6,
+        "wall_time_seconds": 18.18765950005036
+      },
+      "bash_calls": 4,
+      "read_installed_docs_guide": false
+    },
+    "deepseek/lark-invented-syntax-skill-1": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 38124.0,
+        "output_tokens": 2155.0,
+        "tool_calls": 10,
+        "wall_time_seconds": 41.38506180001423
+      },
+      "bash_calls": 8,
+      "read_installed_docs_guide": false
+    },
+    "deepseek/lark-stateful-update-none-1": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 16087.0,
+        "output_tokens": 1846.0,
+        "tool_calls": 7,
+        "wall_time_seconds": 27.427562099997886
+      },
+      "bash_calls": 4,
+      "read_installed_docs_guide": false
+    },
+    "deepseek/lark-stateful-update-skill-1": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 31900.0,
+        "output_tokens": 1810.0,
+        "tool_calls": 11,
+        "wall_time_seconds": 39.93260559998453
+      },
+      "bash_calls": 5,
+      "read_installed_docs_guide": false
+    },
+    "deepseek/plan-retirement-installed-guide-none-1": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 35217.0,
+        "output_tokens": 4787.0,
+        "tool_calls": 12,
+        "wall_time_seconds": 67.37709189997986
+      },
+      "bash_calls": 0,
+      "read_installed_docs_guide": true,
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "deepseek/plan-retirement-installed-guide-none-2": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 23351.0,
+        "output_tokens": 4709.0,
+        "tool_calls": 10,
+        "wall_time_seconds": 66.61220560001675
+      },
+      "bash_calls": 0,
+      "read_installed_docs_guide": true,
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "deepseek/plan-retirement-installed-guide-none-3": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 36251.0,
+        "output_tokens": 4390.0,
+        "tool_calls": 12,
+        "wall_time_seconds": 66.43699830002151
+      },
+      "bash_calls": 0,
+      "read_installed_docs_guide": true,
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "deepseek/plan-retirement-none-1": {
+      "passed_at_run": false,
+      "status": null,
+      "failed_at_run": [
+        "current architecture owner intact"
+      ],
+      "metrics": {
+        "input_tokens": 18121.0,
+        "output_tokens": 5989.0,
+        "tool_calls": 10,
+        "wall_time_seconds": 90.76445619994774
+      },
+      "bash_calls": 1,
+      "read_installed_docs_guide": false,
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "deepseek/plan-retirement-none-2": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 28938.0,
+        "output_tokens": 4071.0,
+        "tool_calls": 12,
+        "wall_time_seconds": 66.59007879998535
+      },
+      "bash_calls": 2,
+      "read_installed_docs_guide": false,
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "deepseek/plan-retirement-none-3": {
+      "passed_at_run": false,
+      "status": null,
+      "failed_at_run": [
+        "current architecture owner intact"
+      ],
+      "metrics": {
+        "input_tokens": 31748.0,
+        "output_tokens": 8310.0,
+        "tool_calls": 15,
+        "wall_time_seconds": 105.97203639999498
+      },
+      "bash_calls": 0,
+      "read_installed_docs_guide": false,
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "deepseek/scaffold-testing-guidance-none-1": {
+      "passed_at_run": null,
+      "status": "failed",
+      "failed_at_run": [],
+      "metrics": null,
+      "bash_calls": 14,
+      "read_installed_docs_guide": true
+    },
+    "deepseek/scaffold-testing-guidance-none-2": {
+      "passed_at_run": true,
+      "status": null,
+      "failed_at_run": [],
+      "metrics": {
+        "input_tokens": 56947.0,
+        "output_tokens": 5879.0,
+        "tool_calls": 22,
+        "wall_time_seconds": 74.1698612999171
+      },
+      "bash_calls": 8,
+      "read_installed_docs_guide": false
+    },
+    "deepseek/scaffold-testing-guidance-skill-1": {
+      "passed_at_run": false,
+      "status": null,
+      "failed_at_run": [
+        "valid observable artifacts"
+      ],
+      "metrics": {
+        "input_tokens": 97532.0,
+        "output_tokens": 6137.0,
+        "tool_calls": 12,
+        "wall_time_seconds": 106.62459859997034
+      },
+      "bash_calls": 7,
+      "read_installed_docs_guide": false
     }
   }
 }
