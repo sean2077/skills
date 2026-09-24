@@ -235,7 +235,11 @@ jobs:
             bash "$GITHUB_WORKSPACE/skills/agent-scaffold/agent-scaffold.sh" apply --domains all
             bash "$GITHUB_WORKSPACE/skills/agent-scaffold/agent-scaffold.sh" doctor
             bash "$GITHUB_WORKSPACE/skills/agent-scaffold/agent-scaffold.sh" verify
+            # The guard must block (exit 2); 127 or another failure would let hosts allow the edit.
+            rc=0
             printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/README.md"}}' "$PWD" \
-              | python -X utf8 .agents/tools/hooks/hook-paths.py --guard && exit 1
+              | python -X utf8 .agents/tools/hooks/hook-paths.py --guard 2> guard.err || rc=$?
+            test "$rc" -eq 2 || { cat guard.err; exit 1; }
+            grep -qF 'trunk_edit_guard: BLOCKED' guard.err
             python .agents/tools/generate-subagents.py --check
           )
