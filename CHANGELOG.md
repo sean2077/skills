@@ -21,6 +21,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Restore the retired `project-docs-organizer`'s useful structure/classification, optional local numbering, lightweight metadata, evidence-based pruning, migration-consumer and reader-journey guidance in the installed docs convention. Route selected-docs onboarding to that guide and synchronize its installed copy without reviving a skill, expanding resident `AGENTS.md`, or imposing an inventory, metadata schema, taxonomy or approval workflow.
 - Fail guidance fixtures whose prompt forbids commands when a captured trace shows a shell call; the artifact oracles could not see it, and live transcripts showed both tested models running forbidden commands. Manual runs without a trace are not judged on it.
 - Say in the `scaffold-testing-guidance` prompt that the consolidated `quality-decisions.md` stays in place, as its oracle already required; "consolidate" read as permission to delete it.
 - Keep an unanswered convention-domain selection pending in `agent-scaffold`'s entry point, and exempt previews, `doctor`/`verify` and runtime-only requests from asking. The rule lived only in the onboarding reference; a live Opus probe that saw only `SKILL.md` planned to record the selection and write guidance while still asking, and asked during a preview.
@@ -257,7 +258,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Documented `autopilot`'s `abort --reason` path to the `aborted` terminal in the persistent-runtime reference.
 - Fixed a stale `semver-release` pointer that sent readers to `SKILL.md` for created tag forms now defined by the prerelease increment rules, added the missing alpha increment rule, and surfaced the extractor's fail-closed contract in its `--help` text.
 - Added a `code-review` routing exclusion so read-only explanation or causal investigation without a change set routes to `analyze` on the always-resident surface.
-
 
 ## [v6.0.0] — 2026-08-25
 
@@ -586,7 +586,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `harness-init.sh` name is removed without an alias.
 - Old runtime-path migration, retired formatter cleanup, package/Husky caller rewrites,
   deprecated no-op selection flags, and their verification fixtures are removed outright.
-  Current modes inspect and reconcile only the current harness contract.
+- Current modes inspect and reconcile only the current harness contract.
 - `agent-scaffold` installs only harness-owned runtime and contract content. Formatter,
   example-agent, hook-manager, package, CI, project prose, nested-contract, and Codex
   settings choices remain project-owned reference recipes.
