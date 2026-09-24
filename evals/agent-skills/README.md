@@ -53,6 +53,8 @@ CLI and decision responses must each be exactly one finite JSON object. Duplicat
 
 `input_tokens` includes uncached input, cache reads, and cache creation. Prefer whole-call `modelUsage`, otherwise require complete `usage`; never add overlapping reports. This is token volume, not dollars. Sources reviewed 2026-09-06: [Claude cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [whole-call usage](https://code.claude.com/docs/en/agent-sdk/cost-tracking). Results predating that correction need matched reruns, not relaxed budgets.
 
+The routing suites record token and time metrics but gate only interventions and tool calls. In the [2026-09-24 live evaluation](../../docs/audits/2026-09-24-live-evaluation.md), 112 of 680 calls, in both arms, reported roughly 18k more input tokens than their neighbors, which is consistent with an extra host request, and gateway latency varied several-fold. Treatment runs also report more observation keys than baselines. So token and time budgets measured host noise and output format, not skill cost. Use task outcomes for cost comparisons.
+
 Wall time is measured monotonically around adapter invocation; the outer runner enforces its own lower bound. Local tools are disabled. Reported server-tool counts overlap and are not a complete tool audit.
 
 Failures retain available usage/time. `metadata.usage_available=false` means unknown: v1's numeric zero placeholders are **not free execution** and must not enter spend comparisons. Crash-time usage may be incomplete. Error type/stage/host-exit fields support diagnosis without retaining raw output, credentials, or request text in results.

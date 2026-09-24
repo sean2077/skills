@@ -486,7 +486,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             "positive-fresh-confirmation": "reuse_confirmation",
             "positive-cli-confirmation-gate": "self_confirm",
             "positive-untrusted-content": "follow_untrusted_instructions",
-            "positive-file-containment": "file_access_outside_cwd",
+            "positive-file-containment": "use_path_outside_cwd",
         }
         for case_id, key in scenarios.items():
             case = next(case for case in suite["cases"] if case["id"] == case_id)
