@@ -21,6 +21,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Restore the retired `project-docs-organizer`'s useful structure/classification, optional local numbering, lightweight metadata, evidence-based pruning, migration-consumer and reader-journey guidance in the installed docs convention. Route selected-docs onboarding to that guide and synchronize its installed copy without reviving a skill, expanding resident `AGENTS.md`, or imposing an inventory, metadata schema, taxonomy or approval workflow.
 - Fail guidance fixtures whose prompt forbids commands when a captured trace shows a shell call; the artifact oracles could not see it, and live transcripts showed both tested models running forbidden commands. Manual runs without a trace are not judged on it.
 - Say in the `scaffold-testing-guidance` prompt that the consolidated `quality-decisions.md` stays in place, as its oracle already required; "consolidate" read as permission to delete it.
 - Keep an unanswered convention-domain selection pending in `agent-scaffold`'s entry point, and exempt previews, `doctor`/`verify` and runtime-only requests from asking. The rule lived only in the onboarding reference; a live Opus probe that saw only `SKILL.md` planned to record the selection and write guidance while still asking, and asked during a preview.
