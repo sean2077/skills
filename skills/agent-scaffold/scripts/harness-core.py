@@ -1391,6 +1391,31 @@ def hook_interpreters(manifest: Dict[str, Any], profile: str) -> List[str]:
     return words
 
 
+HOOK_PYTHON_SENTINEL = "agent-scaffold-hook-python-ok"
+
+
+def probe_hook_python(executable: str) -> Optional[str]:
+    """Return why ``executable`` cannot run the hooks, or None when it is Python 3.8+."""
+    code = "import sys; print({0!r} if sys.version_info[:2] >= (3, 8) else 'old')".format(
+        HOOK_PYTHON_SENTINEL
+    )
+    try:
+        completed = subprocess.run(
+            [executable, "-c", code],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        return "did not answer within 15 seconds"
+    except OSError as exc:
+        return "could not be started ({0})".format(exc.__class__.__name__)
+    if completed.returncode == 0 and completed.stdout.strip() == HOOK_PYTHON_SENTINEL:
+        return None
+    return "is not Python 3.8+"
+
+
 def hook_python_check(manifest: Dict[str, Any], profile: str) -> Dict[str, Any]:
     # The installer may fall back to python3 or py -3, but host hooks run the literal
     # command word; an unresolvable word exits 127, which Claude Code treats as non-blocking.
@@ -1402,9 +1427,9 @@ def hook_python_check(manifest: Dict[str, Any], profile: str) -> Dict[str, Any]:
         if not found:
             problems.append("{0}: not found on PATH".format(word))
             continue
-        code, _ = run_tool([found, "-c", "import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)"])
-        if code != 0:
-            problems.append("{0}: {1} is not Python 3.8+".format(word, found))
+        problem = probe_hook_python(found)
+        if problem:
+            problems.append("{0}: {1} {2}".format(word, found, problem))
         else:
             resolved.append("{0} -> {1}".format(word, found))
     if problems:
