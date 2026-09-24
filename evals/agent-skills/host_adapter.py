@@ -251,7 +251,8 @@ def make_prompt(
     if observations:
         observation_guide += (
             " When material, report these as booleans, deriving values from the task and "
-            "instructions rather than this vocabulary: " + ", ".join(observations) + "."
+            "instructions rather than this vocabulary: " + ", ".join(observations) + ". Each "
+            "describes what you would do, not a property of the request."
         )
     return f"""You are a read-only routing evaluator for the agent-skill-eval/v1 protocol.
 Do not edit files, run commands, call tools, browse, or perform the user's requested work.
