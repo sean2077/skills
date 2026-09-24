@@ -98,7 +98,7 @@ BOUNDARY_OBSERVATIONS = {
         "preserve_layout", "fill_project_guidance", "inspect_existing_routes",
         "asset_pass_proves_guidance", "project_guidance_writes", "restore_deleted_guidance",
         "introduce_controller", "fill_testing_guidance", "test_policy_changed",
-        "test_harness_added", "requires_sibling_skill", "decision_artifact",
+        "test_harness_added", "requires_sibling_skill",
         "ask_domain_exclusions", "reuse_domain_selection", "write_domain_selection",
         "selected_domains", "restore_excluded_domains", "default_all_domains",
         "selected_domain_changes_policy",
@@ -113,8 +113,8 @@ OBSERVATION_GUIDANCE = {
     "agent-scaffold": (
         "When selected, report workflow and the material project-guidance, layout, ownership, "
         "and read-only scope decisions. Report write decisions for what happens before the user "
-        "answers any question you ask. Report decision_artifact only when the project requires "
-        "a named record."
+        "answers any question you ask. Report decision_artifact, as the record's name, only when "
+        "the project requires a named record."
     ),
 }
 
