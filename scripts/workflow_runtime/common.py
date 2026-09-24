@@ -323,7 +323,9 @@ def workflow_root(context: Dict[str, str], workflow: str, session: str, *, creat
         try:
             with ignore.open("x", encoding="utf-8", newline="\n") as stream:
                 stream.write("*\n")
-        except FileExistsError:
+        except OSError:
+            # Ignore-file maintenance is best effort; state transitions must
+            # remain available when the name is occupied or unwritable.
             pass
     root = base / workflow
     if not ensure_safe_directory(root, create=create):

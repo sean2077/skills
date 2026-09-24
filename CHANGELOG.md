@@ -8,7 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Keep deep-interview runtime state out of Git status by adding a self-ignoring `.gitignore` to its state directory without replacing an existing file.
+- Keep deep-interview runtime state out of Git status when possible by adding a self-ignoring `.gitignore` to its state directory without replacing an existing file or blocking state creation if the ignore path is unwritable.
 
 ### Changed
 

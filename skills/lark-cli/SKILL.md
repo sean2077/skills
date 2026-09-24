@@ -13,7 +13,7 @@ Identify the requested outcome, target, recipients, time range, and supplied IDs
 
 Check the installed command's help/schema when flags, identity, or target semantics are uncertain. Use service help to locate unfamiliar operations. Refresh affected command knowledge when the installed interface changes. Never invent flags, methods, enums, IDs, URLs, or parameter shapes.
 
-For version-specific domain workflows, read the matching CLI-bundled skill with `lark-cli skills read <name>` when the local recipe is incomplete or conflicts with the installed CLI. Use `lark-cli skills list` to find its exact name. Keep this skill's routing, identity, and safety rules in force; confirm executable details with the installed command's help/schema.
+For version-specific domain workflows, use the CLI-bundled skills described in [setup, authentication, and safety](references/setup-auth-and-safety.md) when the local recipe is incomplete or conflicts with the installed CLI.
 
 Before a state-dependent edit, read the smallest affected scope unless sufficiently current, complete state is already available in context. Preserve unrelated fields and content; a known target ID does not establish its current contents.
 

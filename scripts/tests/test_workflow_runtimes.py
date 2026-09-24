@@ -176,6 +176,16 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(ignore.read_text(encoding="utf-8"), "*\n")
         self.assertEqual(self.git("status", "--short", "--untracked-files=all"), "")
 
+    def test_unwritable_ignore_name_does_not_block_state_creation(self) -> None:
+        state_root = self.repo / ".agent-workflows"
+        state_root.mkdir()
+        ignore = state_root / ".gitignore"
+        ignore.mkdir()
+        started, _ = self.run_cli(INTERVIEW, "start", "--idea", "approval must remain available")
+        self.assertEqual(started["stage"], "drafting")
+        self.assertTrue(self.state_path("deep-interview").is_file())
+        self.assertTrue(ignore.is_dir())
+
     def test_compact_output_and_bounded_history_avoid_context_growth(self) -> None:
         payload, cp = self.run_cli(INTERVIEW, "start", "--id", "compact", "--idea", "a" * 2000)
         outputs = [cp.stdout]
