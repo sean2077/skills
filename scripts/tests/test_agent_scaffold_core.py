@@ -1130,6 +1130,63 @@ class StructuredReportTests(unittest.TestCase):
             self.assertEqual("fail", content["status"])
             self.assertEqual("fail", attributes["status"])
 
+    def test_hook_interpreters_are_the_managed_command_words(self):
+        manifest = CORE.load_manifest()
+        self.assertEqual(["python"], CORE.hook_interpreters(manifest, "default"))
+        self.assertEqual(["python"], CORE.hook_interpreters(manifest, "light"))
+
+    def test_doctor_fails_when_the_hook_command_word_is_missing(self):
+        # A python3-only PATH passes the installer's own fallback, but the hosts
+        # run the literal `python`; exit 127 there would silently skip the guard.
+        manifest = CORE.load_manifest()
+        manager = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "runtime.symlink-manager")["source"]
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(CORE.shutil, "which", return_value=None), \
+                    mock.patch.object(CORE, "run_tool", return_value=(0, "")):
+                data = CORE.build_doctor(Path(directory), "default", manifest, manager)
+        check = next(item for item in data["checks"] if item["id"] == "prerequisite.hook-python")
+        self.assertEqual("fail", check["status"])
+        self.assertIn("python: not found", check["detail"])
+        self.assertIsNotNone(check["fix"])
+        self.assertFalse(data["ok"])
+
+    def test_hook_python_check_rejects_an_old_interpreter_and_accepts_a_current_one(self):
+        manifest = CORE.load_manifest()
+        with mock.patch.object(CORE.shutil, "which", return_value="/usr/bin/python"):
+            with mock.patch.object(CORE, "probe_hook_python", return_value="is not Python 3.8+") as probe:
+                old = CORE.hook_python_check(manifest, "default")
+            with mock.patch.object(CORE, "probe_hook_python", return_value=None):
+                current = CORE.hook_python_check(manifest, "default")
+        probe.assert_called_with("/usr/bin/python")
+        self.assertEqual("fail", old["status"])
+        self.assertIn("is not Python 3.8+", old["detail"])
+        self.assertEqual("pass", current["status"])
+        self.assertEqual("python -> /usr/bin/python", current["path"])
+
+    def test_probe_accepts_only_a_real_current_interpreter(self):
+        self.assertIsNone(CORE.probe_hook_python(sys.executable))
+        with tempfile.TemporaryDirectory() as directory:
+            missing = str(Path(directory) / "no-such-python")
+            self.assertIn("could not be started", CORE.probe_hook_python(missing))
+
+    def test_probe_reports_a_hung_or_silent_interpreter_without_raising(self):
+        hung = subprocess.TimeoutExpired(cmd="python", timeout=15)
+        with mock.patch.object(CORE.subprocess, "run", side_effect=hung):
+            self.assertIn("did not answer", CORE.probe_hook_python("python"))
+        silent = subprocess.CompletedProcess(args=[], returncode=0, stdout="")
+        with mock.patch.object(CORE.subprocess, "run", return_value=silent):
+            self.assertEqual("is not Python 3.8+", CORE.probe_hook_python("python"))
+
+    def test_verify_includes_the_hook_python_check(self):
+        manifest = CORE.load_manifest()
+        manager = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "runtime.symlink-manager")["source"]
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(CORE.shutil, "which", return_value=None), \
+                    mock.patch.object(CORE, "run_tool", return_value=(0, "")):
+                data = CORE.build_verify(Path(directory), "light", manifest, manager)
+        ids = {item["id"]: item["status"] for item in data["checks"]}
+        self.assertEqual("fail", ids["prerequisite.hook-python"])
+
 
 class LineEndingPolicyTests(unittest.TestCase):
     def setUp(self):

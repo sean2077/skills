@@ -80,6 +80,10 @@ Raw apply/upgrade without a choice stays asset-only until the Agent completes th
 selection and selected guidance. The CLI never blocks on stdin or prompts. See
 [selection](onboarding-selection.md) for explicit updates and interruption behavior.
 
+## Hook interpreter check
+
+`prerequisite.hook-python` appears in both `doctor` and `verify`. The installer falls back from `python` to `python3` or `py -3`, but host hooks run the literal command word in the managed hook JSON (`python`). The check resolves that word on the current `PATH` and probes it for Python 3.8+. A missing or old interpreter fails: the hook then exits 127, which Claude Code treats as a non-blocking error, so the trunk guard would silently allow edits there; how another host handles that failure is its own semantics. A pass is evidence for this process's `PATH` only; a host launched from a desktop shortcut or another shell may use a different one.
+
 ## Line-ending checks
 
 - `contract.line-endings`: the prepended managed `.gitattributes` defaults match the asset.
