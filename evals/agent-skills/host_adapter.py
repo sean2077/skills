@@ -45,6 +45,14 @@ WORKFLOWS = (
     "implementation-planning",
     "unspecified",
 )
+# Labels whose boundary with a neighbor is not self-evident. Bare labels made the live
+# probes grade taxonomy guesses (a scaffold preview as "analysis") instead of decisions.
+WORKFLOW_MEANINGS = {
+    "harness-management": "establishing, previewing, diagnosing, or upgrading an Agent harness or its project conventions, read-only or not",
+    "tooling-governance": "changing a project's commands, scripts, or their callers while preserving the command contract",
+    "domain-modeling": "deciding or renaming project concepts and their glossary terms",
+    "analysis": "investigating or explaining something outside the more specific workflows",
+}
 ROUTE_ALIASES = {
     "agent-harness": "agent-scaffold",
     "lark": "lark-cli",
@@ -98,9 +106,8 @@ BOUNDARY_OBSERVATIONS = {
 }
 OBSERVATION_GUIDANCE = {
     "deep-interview": (
-        "When selected, report workflow, mode, question_batch_policy, first_turn_question_count "
-        "when the request states a first-turn count, approval_required, persistent_state, and "
-        "external_research when material."
+        "When selected, report workflow, first_turn_question_count when the request states a "
+        "first-turn count, approval_required, persistent_state, and external_research when material."
     ),
     "agent-scaffold": (
         "When selected, report workflow and the material project-guidance, layout, ownership, "
@@ -230,6 +237,9 @@ def make_prompt(
     skill_section = skill_text or "(No candidate skill is loaded in baseline mode.)"
     route_vocabulary = ", ".join(("none", *routes))
     workflow_vocabulary = ", ".join(WORKFLOWS)
+    workflow_meanings = "; ".join(
+        "{0} = {1}".format(label, meaning) for label, meaning in WORKFLOW_MEANINGS.items()
+    )
     observation_guide = OBSERVATION_GUIDANCE.get(
         candidate,
         "Report only request-visible behavior needed to explain the routing decision; "
@@ -259,6 +269,7 @@ User request:
 
 Use one exact route value from: {route_vocabulary}.
 Use one exact workflow value from: {workflow_vocabulary}.
+Where labels border each other: {workflow_meanings}.
 Use snake_case behavior keys. Always include route and workflow; include other properties only
 when the request and candidate instructions support them. {observation_guide}
 
