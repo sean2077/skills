@@ -1,0 +1,87 @@
+{
+  "contract": "skill-task-outcome/1",
+  "case": "plan-retirement",
+  "condition": "none",
+  "evaluator_digest": "1f6e8203ddb807c3302f825e0eb161e194a817a2db61ba50c58b66f94a7b3fe4",
+  "skill_revision": null,
+  "skill_digest": null,
+  "state": {
+    "base": "5fd2e804a7d03552cc2f35a9f63be6bd1a8f2550",
+    "protected": {
+      "AGENTS.md": "5d99c07f14a773f834c9ed74a785525a80cc3fa27422fccfa362d0e15776713f",
+      "src/cache.py": "f8f21444402378dfa6e20e01110b4b5f2e6783a9d9049802d92fa1f202659cdf",
+      "tools/purge.py": "066905da1df3187a96fbe413c623e4a8e089172b02eef42cf2e20c233fe3f8ea"
+    }
+  },
+  "fixture_digest": "8f120133443d841fa3560a8586d9db2073fb343db07b8ed439d7d8d75b7da184",
+  "platform": "Windows",
+  "python": "3.14.7",
+  "prompt_digest": "05b0ea16d275698aeee80503d4ae86118fafaaff3cda11656413b6da3f5989dd",
+  "checks": [
+    {
+      "name": "unchanged fixture AGENTS.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture src/cache.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture tools/purge.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "only documentation changed",
+      "passed": true,
+      "detail": "docs/ARCHITECTURE.md, docs/README.md, docs/plans/balance-cache.md"
+    },
+    {
+      "name": "rationale retained",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "dated measurement retained verbatim",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "remaining plan steps marked historical in docs/plans/balance-cache.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "retained plan routes to the current owner",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "current architecture owner intact",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reader routes resolve",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "passed": true,
+  "execution": "completed",
+  "host": {
+    "name": "claude",
+    "version": "2.1.280 (Claude Code)",
+    "model": "claude-opus-5-5",
+    "configuration": "bare-local-tools",
+    "cache": "uncontrolled: gateway prompt caching, sequential runs"
+  },
+  "metrics": {
+    "input_tokens": 149862.0,
+    "output_tokens": 3288.0,
+    "tool_calls": 14,
+    "wall_time_seconds": 35.965045399963856
+  }
+}

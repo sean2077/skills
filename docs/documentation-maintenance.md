@@ -37,6 +37,6 @@ For a material reorganization, walk a realistic reader task from the resulting e
 
 ## Historical records
 
-The [2026-09-20 native-first audit](audits/2026-09-20-native-first.md) and [2026-09-06 harness audit](audits/2026-09-06-harness.md) retain review-time evidence and rationale. Their catalog counts, paths, recommendations, and host observations may have been superseded. Use current architecture, compatibility, and skill guidance for new work.
+The [2026-09-24 live evaluation](audits/2026-09-24-live-evaluation.md), [2026-09-20 native-first audit](audits/2026-09-20-native-first.md), and [2026-09-06 harness audit](audits/2026-09-06-harness.md) retain review-time evidence and rationale. Their catalog counts, paths, recommendations, and host observations may have been superseded. Use current architecture, compatibility, and skill guidance for new work.
 
 Preserve released changelog sections and useful audit evidence. Put corrections in the owning current document and Unreleased; do not rewrite history to look like current-main behavior. Keep old paths only when they still serve a reader or compatibility need, not as parallel current manuals.

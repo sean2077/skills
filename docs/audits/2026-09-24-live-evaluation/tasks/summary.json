@@ -1,0 +1,158 @@
+{
+  "rescored_with": "evaluator at feat/live-eval-20260924 (plan-retirement oracle fixed); original results were produced by the evaluator at 442fac5",
+  "runs": {
+    "lark-invented-syntax-none-1": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 203772.0,
+        "output_tokens": 1767.0,
+        "tool_calls": 9,
+        "wall_time_seconds": 45.76182969997171
+      }
+    },
+    "lark-invented-syntax-skill-1": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 143566.0,
+        "output_tokens": 1549.0,
+        "tool_calls": 8,
+        "wall_time_seconds": 26.870811000000685
+      }
+    },
+    "lark-stateful-update-none-1": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 140947.0,
+        "output_tokens": 939.0,
+        "tool_calls": 6,
+        "wall_time_seconds": 30.742091299965978
+      }
+    },
+    "lark-stateful-update-skill-1": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 116828.0,
+        "output_tokens": 1309.0,
+        "tool_calls": 6,
+        "wall_time_seconds": 23.882694500032812
+      }
+    },
+    "plan-retirement-installed-guide-none-1": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 133170.0,
+        "output_tokens": 3372.0,
+        "tool_calls": 12,
+        "wall_time_seconds": 63.003526699962094
+      },
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "plan-retirement-installed-guide-none-2": {
+      "passed_at_run": false,
+      "failed_at_run": [
+        "current architecture owner intact"
+      ],
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 178415.0,
+        "output_tokens": 3764.0,
+        "tool_calls": 15,
+        "wall_time_seconds": 53.03551800001878
+      },
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "plan-retirement-installed-guide-none-3": {
+      "passed_at_run": false,
+      "failed_at_run": [
+        "current architecture owner intact"
+      ],
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 63859.0,
+        "output_tokens": 5813.0,
+        "tool_calls": 14,
+        "wall_time_seconds": 87.13025589997414
+      },
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "plan-retirement-none-1": {
+      "passed_at_run": false,
+      "failed_at_run": [
+        "rationale retained",
+        "current architecture owner intact"
+      ],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 35236.0,
+        "output_tokens": 5517.0,
+        "tool_calls": 15,
+        "wall_time_seconds": 78.28396859997883
+      },
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "plan-retirement-none-2": {
+      "passed_at_run": false,
+      "failed_at_run": [
+        "current architecture owner intact"
+      ],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 33622.0,
+        "output_tokens": 2999.0,
+        "tool_calls": 9,
+        "wall_time_seconds": 44.7921477999771
+      },
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "plan-retirement-none-3": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 149862.0,
+        "output_tokens": 3288.0,
+        "tool_calls": 14,
+        "wall_time_seconds": 35.965045399963856
+      },
+      "passed_rescored": true,
+      "failed_rescored": []
+    },
+    "scaffold-testing-guidance-none-1": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 58349.0,
+        "output_tokens": 5523.0,
+        "tool_calls": 16,
+        "wall_time_seconds": 97.31833859998733
+      }
+    },
+    "scaffold-testing-guidance-skill-1": {
+      "passed_at_run": true,
+      "failed_at_run": [],
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 275892.0,
+        "output_tokens": 37036.0,
+        "tool_calls": 45,
+        "wall_time_seconds": 392.6725542000495
+      }
+    }
+  }
+}
