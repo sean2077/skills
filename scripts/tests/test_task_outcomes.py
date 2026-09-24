@@ -18,6 +18,8 @@ import cases
 import runner
 import import_claude
 
+GUIDE_PATHS = {".agents/conventions/" + name for name in cases.DOCS_GUIDE_FILES}
+
 
 class OutcomeTests(unittest.TestCase):
     def setUp(self):
@@ -160,8 +162,9 @@ class OutcomeTests(unittest.TestCase):
         guided, guided_state = self.fixture("plan-retirement-installed-guide")
         self.assertEqual(cases.CASES["plan-retirement"], cases.CASES["plan-retirement-installed-guide"])
         skill = ROOT / "skills/agent-scaffold"
-        self.assertEqual((skill / "assets/conventions/docs.md").read_bytes(),
-                         (guided / ".agents/conventions/docs.md").read_bytes())
+        for name in cases.DOCS_GUIDE_FILES:
+            self.assertEqual((skill / "assets/conventions" / name).read_bytes(),
+                             (guided / ".agents/conventions" / name).read_bytes())
         contract = (guided / "AGENTS.md").read_text(encoding="utf-8")
         self.assertEqual(1, contract.count("`.agents/conventions/docs.md`"))
         self.assertIn("<!-- agent-scaffold:domains=docs -->", contract)
@@ -174,10 +177,10 @@ class OutcomeTests(unittest.TestCase):
         self.assertNotIn("`.agents/conventions/docs.md`", bare_contract)
         self.assertIn("<!-- agent-scaffold:domains=docs -->", bare_contract)
         tracked = lambda root: set(cases.git(root, "ls-files").decode().splitlines())
-        self.assertEqual({".agents/conventions/docs.md"}, tracked(guided) - tracked(bare))
+        self.assertEqual(GUIDE_PATHS, tracked(guided) - tracked(bare))
         self.assertEqual({"AGENTS.md"}, {p for p in tracked(bare)
                                          if (bare / p).read_bytes() != (guided / p).read_bytes()})
-        self.assertIn(".agents/conventions/docs.md", guided_state["protected"])
+        self.assertLessEqual(GUIDE_PATHS, set(guided_state["protected"]))
         self.assertFalse([p for p in bare_state["protected"] if p.startswith("docs/")])
 
     def test_plan_retirement_keeps_history_and_stops_instructions(self):
@@ -260,7 +263,7 @@ class OutcomeTests(unittest.TestCase):
         guided, _ = self.fixture("timeout-docs-installed-guide")
         self.assertEqual(cases.CASES["timeout-docs"], cases.CASES["timeout-docs-installed-guide"])
         tracked = lambda root: set(cases.git(root, "ls-files").decode().splitlines())
-        self.assertEqual({".agents/conventions/docs.md"}, tracked(guided) - tracked(bare))
+        self.assertEqual(GUIDE_PATHS, tracked(guided) - tracked(bare))
         for case in ("timeout-docs", "timeout-docs-installed-guide"):
             with self.subTest(case=case):
                 workspace = self.root / (case + "-run")

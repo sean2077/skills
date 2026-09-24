@@ -47,7 +47,7 @@ The accepted list of **Convention domains** recorded by the domains marker in th
 _Avoid_: completion record, settings file
 
 **Convention guide**:
-The generic daily guide for one selected **Convention domain**, installed by **agent-scaffold** at `.agents/conventions/<domain>.md` (release: `.agents/tools/release/README.md`) and routed from the managed `AGENTS.md` block. It is scaffold runtime refreshed on upgrade; project documentation wins where more specific and holds project facts.
+The generic daily guide for one selected **Convention domain**, installed by **agent-scaffold** at `.agents/conventions/<domain>.md` (release: `.agents/tools/release/README.md`) and routed from the managed `AGENTS.md` block. A guide may link an installed task-time companion for rarer work, such as `docs-reorganization.md` for `docs`. It is scaffold runtime refreshed on upgrade; project documentation wins where more specific and holds project facts.
 _Avoid_: project guide, template
 
 ### Agent authority
