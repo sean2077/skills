@@ -18,6 +18,7 @@ These opt-in fixtures inspect what an Agent actually changes, separately from [r
 | `lark-stateful-update` | Read before a dependent whole-object replacement, preserved unrelated fields/types and existing text, actual stored result | Cooperative local mock; no live command syntax, concurrent-change, or tamper-proof execution claim |
 | `lark-stateful-update-cached` | Same preservation checks with an explicitly complete/current supplied observation; direct safe write can pass without a redundant read | Controlled no-external-change fixture, not proof of cache freshness in a live service |
 | `plan-retirement` / `plan-retirement-installed-guide` (none/brief only) | Retained rationale and verbatim dated measurement, no remaining unmarked plan steps, route to the current owner, resolvable reader routes, docs-only changes | A matched pair: the installed scaffold docs guide and its managed route are the only fixture difference. Bounded oracle, not a measured gain |
+| `timeout-docs` / `timeout-docs-installed-guide` (none/brief only) | Current configuration says 10 s, the dated validation record keeps its 30 s evidence and source revision, the record stays reachable, docs-only changes | Same route ablation as the retirement pair; only the guide states that dated evidence stays history |
 | `tdd-negative-input` | Captured missing-behavior RED at original source, then GREEN with unchanged tests/final hashes and an independent behavior check | Final answers and Agent-authored logs cannot replace missing sequence evidence |
 
 The syntax task-only prompt states the task and points to command documentation; the brief condition adds syntax guidance separately. Reading help or one message is insufficient: valid mock use must also produce the requested count.
@@ -51,11 +52,11 @@ traces and use an independent reader for those claims. `test_project_conventions
 executes real installer lifecycle operations. Neither fixture is a general Markdown validator or
 evidence of measured gains.
 
-## Installed-guide pair
+## Installed-guide pairs
 
-Both cases have identical project instructions and the same rendered light harness with `docs`
-selected. `plan-retirement-installed-guide` includes the current `assets/conventions/docs.md`
-and its rendered convention-route section; `plan-retirement` omits only that file and section.
+The retirement and timeout pairs are built the same way. In each pair, both cases have identical project instructions and the same rendered light harness with `docs`
+selected. The `-installed-guide` case includes the current `assets/conventions/docs.md`
+and its rendered convention-route section; its partner omits only that file and section.
 The control is a deliberate route ablation, not a valid installation to pass scaffold `verify`.
 This keeps unrelated harness rules out of the treatment difference.
 
@@ -73,6 +74,10 @@ rejects cues negated or deferred earlier in the same clause (`not implemented`, 
 completed`); a later warning such as "must not be run" does not cancel an earlier completion
 status, since that warning is what the docs guide asks for. Ordinary prose counts without a
 prescribed label or heading.
+
+In the [2026-09-24 live evaluation](../../docs/audits/2026-09-24-live-evaluation.md), both tested models retired the plan correctly without the guide, so the retirement pair could not show whether following the route changes an outcome. The timeout pair asks for a documentation update where a plausible edit also rewrites a dated validation record. Only the guide says to keep such evidence as history, so the pair can discriminate. Its oracle accepts an added note in the record and a "was 30 s" remark in the current page.
+
+Guidance fixtures whose prompt forbids commands fail when a captured trace shows a `Bash` or `PowerShell` call. A manual run without a trace is not judged on this.
 Rewording the plan steps does not bypass that check. This is a bounded oracle, not general
 semantic validation or a mandated project format. One pair is descriptive; repeat on held-out tasks before claiming an improvement.
 

@@ -73,7 +73,7 @@ Use temporary real Git repositories, the actual installer, and real symlinks for
 | Does installation preserve existing layouts, project prose, staged/dirty state, and read-only modes? | `scripts/tests/test_project_conventions.py`, core/workspace tests, and E2E |
 | Are pending/recorded/none selection markers, legacy migration and conflicts, opt-outs, invalid inputs, and repeated runs handled correctly? | `scripts/tests/test_guidance_selection.py` and real installation tests |
 | Are selected convention guides installed, routed from the managed block, and byte-checked by verify? | `scripts/tests/test_guidance_selection.py` installer tests, including edited guides and removed routes |
-| Does an Agent without the skill find and follow an installed guide during ordinary work? | The `plan-retirement` [task pair](../evals/tasks/README.md#installed-guide-pair); its reference actions test the oracle, not live behavior |
+| Does an Agent without the skill find and follow an installed guide during ordinary work? | The `plan-retirement` and `timeout-docs` [task pairs](../evals/tasks/README.md#installed-guide-pairs); its reference actions test the oracle, not live behavior |
 | Is project guidance usable and linked without reviving retired templates? | [Task outcome fixtures](../evals/tasks/README.md); bounded artifact/reader-route oracles |
 | Does a model choose the intended route or report a selection decision? | [Routing probes](../evals/agent-skills/README.md); not actual onboarding dialogue or completed guidance |
 

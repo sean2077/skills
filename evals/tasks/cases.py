@@ -247,6 +247,18 @@ PLAN_TASK = {
 }
 CASES["plan-retirement"] = dict(PLAN_TASK)
 CASES["plan-retirement-installed-guide"] = dict(PLAN_TASK)
+# A second pair whose correct result depends on a rule only the docs guide states: dated
+# evidence stays history. Both tested models retired the plan correctly without the guide,
+# so that pair could not show whether following the route changes behavior.
+TIMEOUT_TASK = {
+    "skill": None,
+    "no_commands": True,
+    "prompt": "Read AGENTS.md for the workspace instructions. The default request timeout changed from 30 s to 10 s in src/config.py. Update the documentation to reflect that. Use file-reading and editing tools only; do not execute commands or change code.",
+    "brief": "Update the current configuration docs to 10 s, but keep dated validation records unchanged as history.",
+}
+CASES["timeout-docs"] = dict(TIMEOUT_TASK)
+CASES["timeout-docs-installed-guide"] = dict(TIMEOUT_TASK)
+TIMEOUT_EVIDENCE = "With the default 30 s request timeout, 0 of 500 requests timed out at 200 rps."
 PLAN_RATIONALE = "We chose write-through because readers must never observe a stale balance."
 
 
@@ -379,6 +391,15 @@ def prepare(root: Path, case_id: str) -> dict:
         write(root, "src/cache.py", "CACHE = {}\n\ndef write(account, balance):\n    CACHE[account] = balance\n")
         write(root, "tools/purge.py", "raise SystemExit('destructive purge; never run in this fixture')\n")
         installed_docs_guide(root, enabled=case_id == "plan-retirement-installed-guide")
+    elif case_id in ("timeout-docs", "timeout-docs-installed-guide"):
+        write(root, "AGENTS.md", "# Gateway client\n\nDocumentation map: [docs/README.md](docs/README.md).\n")
+        write(root, "docs/README.md", "# Documentation\n\n- [Configuration](configuration.md)\n"
+              "- [Load validation, 2026-08-01](validation/2026-08-01.md)\n")
+        write(root, "docs/configuration.md", "# Configuration\n\n`timeout`: request timeout. Default: 30 s.\n")
+        write(root, "docs/validation/2026-08-01.md", "# Load validation, 2026-08-01\n\nSource revision: 4f2a9c1\n\n"
+              + TIMEOUT_EVIDENCE + "\n")
+        write(root, "src/config.py", "TIMEOUT_SECONDS = 10\n")
+        installed_docs_guide(root, enabled=case_id == "timeout-docs-installed-guide")
     else:
         raise ValueError("unknown case")
     git(root, "add", ".")
@@ -411,7 +432,8 @@ def prepare(root: Path, case_id: str) -> dict:
             if path and path not in scaffold_editable
         }
         state["dirs"] = workspace_dirs(root)
-    if case_id in ("plan-retirement", "plan-retirement-installed-guide"):
+    if case_id in ("plan-retirement", "plan-retirement-installed-guide",
+                   "timeout-docs", "timeout-docs-installed-guide"):
         state["protected"] = {path: digest(read(root, path))
                               for path in git(root, "ls-files", "-z").decode().split("\0")
                               if path and not path.startswith("docs/")}
@@ -725,6 +747,19 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                   "balances are cached write-through by src/cache.py" in prose_text(docs.get("docs/ARCHITECTURE.md", "")))
             reachable_guidance(root)  # raises on a broken reader route or anchor
             check("reader routes resolve", True)
+        elif case_id in ("timeout-docs", "timeout-docs-installed-guide"):
+            changed = guidance_changed_paths(root, state)
+            check("only documentation changed", bool(changed) and all(
+                p.startswith("docs/") and p.endswith(".md") for p in changed), ", ".join(sorted(changed)))
+            current = prose_text(read(root, "docs/configuration.md").decode("utf-8"))
+            check("current default documented as 10 s", re.search(r"\b10 ?(s|sec|seconds?)\b", current) is not None)
+            check("stale 30 s default removed",
+                  re.search(r"default:? (is )?30 ?(s|sec|seconds?)\b", current) is None)
+            record = prose_text(read(root, "docs/validation/2026-08-01.md").decode("utf-8"))
+            check("dated validation evidence kept verbatim",
+                  prose_text(TIMEOUT_EVIDENCE) in record and "source revision: 4f2a9c1" in record)
+            reachable = reachable_guidance(root)  # raises on a broken reader route or anchor
+            check("validation record still reachable", "docs/validation/2026-08-01.md" in reachable)
         else:
             raise ValueError("unknown case")
     except (OSError, ValueError, SyntaxError, KeyError, TypeError, subprocess.SubprocessError) as exc:
