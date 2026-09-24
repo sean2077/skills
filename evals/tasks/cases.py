@@ -246,8 +246,9 @@ PLAN_RATIONALE = "We chose write-through because readers must never observe a st
 
 
 def prose_text(markdown: str) -> str:
-    """Lower-case prose with inline code/emphasis markers removed and spaces collapsed."""
-    lines = [re.sub(r"[ \t]+", " ", re.sub(r"[`*_]", "", line)).strip() for line in markdown.splitlines()]
+    """Lower-case prose without link targets or inline code/emphasis markers, spaces collapsed."""
+    lines = [re.sub(r"[ \t]+", " ", re.sub(r"[`*_]", "", re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", line))).strip()
+             for line in markdown.splitlines()]
     return "\n".join(lines).lower()
 
 

@@ -216,6 +216,9 @@ class OutcomeTests(unittest.TestCase):
                 architecture.write_text(owner.replace("src/cache.py.", "src/cache.py, so readers never "
                                                       "observe a stale balance."), encoding="utf-8")
                 self.assertTrue(*result())  # Extending the owner's sentence keeps its statement.
+                architecture.write_text(owner.replace("src/cache.py.", "[`src/cache.py`](../src/cache.py)."),
+                                        encoding="utf-8")
+                self.assertTrue(*result())  # Linking the source file keeps the statement.
                 architecture.write_text(owner.replace("write-through", "write-back"), encoding="utf-8")
                 self.assertFalse(result()[0])
                 architecture.write_text(owner, encoding="utf-8")
