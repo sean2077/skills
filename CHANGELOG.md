@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Shorten the managed `AGENTS.md` start marker to `<!-- agent-scaffold:start (managed; edit outside) -->`. HTML comments in `AGENTS.md` are read into every Agent session; this was the only marker carrying prose. Parsing matches the `agent-scaffold:start` prefix, so installed blocks keep working and `upgrade` refreshes the line.
+
 ### Fixed
 
 - Keep an unanswered convention-domain selection pending in `agent-scaffold`'s entry point, and exempt previews, `doctor`/`verify` and runtime-only requests from asking. The rule lived only in the onboarding reference; a live Opus probe that saw only `SKILL.md` planned to record the selection and write guidance while still asking, and asked during a preview.

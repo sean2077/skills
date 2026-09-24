@@ -24,7 +24,7 @@ Skills target Linux, macOS, and Windows through Git Bash, with LF source and rea
 | Canonical project terminology | [CONTEXT.md](CONTEXT.md) |
 | Pending and historical release changes | [CHANGELOG.md](CHANGELOG.md) |
 
-<!-- agent-scaffold:start — managed; keep project prose outside; upgrade refreshes this block. -->
+<!-- agent-scaffold:start (managed; edit outside) -->
 <!-- agent-scaffold:profile=default -->
 <!-- agent-scaffold:domains=docs,tools,testing,specs,terminology,git,release,environment -->
 ## Agent Harness
