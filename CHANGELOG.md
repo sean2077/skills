@@ -112,7 +112,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Remove inventory validator dependencies on fixture captions, local variable names, and exact syntax-check prose. Keep payload/retirement checks and require the inventory suite in an enabled CI step, so a statically disabled job or step no longer satisfies the gate; the shell suite owns behavior verification and now covers the `PYTHON_BIN` override, an incompatible override, and every conventional directory name of the neutral reverse scan.
 - Replace tag-name/year guessing with explicit local-analysis boundaries in `semver-release`. JSON schema 2 reports `analyzed` rather than `ready`, inventories out-of-model tags without assigning meaning, declines to infer an initial target from unmatched history, and checks a release branch only when supplied from repository policy. Consumers of schema 1 must update their success-status handling.
-- Make the Lark syntax fixture check its requested count as well as mock argument validity. Keep the task-only prompt neutral, reject help-only and single-message evidence, cover invalid flags/identities/IDs, and remove catalog checks that merely matched oracle wording and test names. Writable mock logs remain bounded evidence, not tamper-proof execution records or model-performance measurements.
+- Make the Lark syntax fixture check its requested count as well as mock argument validity. Keep the task-only prompt neutral, reject help-only, single-message evidence, cover invalid flags/identities/IDs, and remove catalog checks that merely matched oracle wording and test names. Writable mock logs remain bounded evidence, not tamper-proof execution records or model-performance measurements.
 - Replace the Python hook resolver's source-string assertions with behavior tests for host-root precedence, primary and linked-worktree install layouts, real Git fallback, and resolution failures. Managed host-hook parity remains checked by the scaffold gate.
 - Name the `round_pending` stage in the `ralph` result list, state that the `project-docs-organizer` metadata convention does not apply to a format that owns its frontmatter (such as `SKILL.md`), and point a route inside a managed block at its generator in `domain-modeling`'s migration steps.
 - Replace wording/heading-based skill checks with payload inventories and actual Git/mock-release outcome tests. Workflow display names and comments no longer determine publication or installer validation.
@@ -258,6 +258,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Documented `autopilot`'s `abort --reason` path to the `aborted` terminal in the persistent-runtime reference.
 - Fixed a stale `semver-release` pointer that sent readers to `SKILL.md` for created tag forms now defined by the prerelease increment rules, added the missing alpha increment rule, and surfaced the extractor's fail-closed contract in its `--help` text.
 - Added a `code-review` routing exclusion so read-only explanation or causal investigation without a change set routes to `analyze` on the always-resident surface.
+
 
 ## [v6.0.0] — 2026-08-25
 
@@ -586,7 +587,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `harness-init.sh` name is removed without an alias.
 - Old runtime-path migration, retired formatter cleanup, package/Husky caller rewrites,
   deprecated no-op selection flags, and their verification fixtures are removed outright.
-- Current modes inspect and reconcile only the current harness contract.
+  Current modes inspect and reconcile only the current harness contract.
 - `agent-scaffold` installs only harness-owned runtime and contract content. Formatter,
   example-agent, hook-manager, package, CI, project prose, nested-contract, and Codex
   settings choices remain project-owned reference recipes.
