@@ -6,6 +6,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep deep-interview runtime state out of Git status when possible by adding a self-ignoring `.gitignore` to its state directory without replacing an existing file or blocking state creation if the ignore path is unwritable.
+
+### Changed
+
+- Direct lark-cli agents to the CLI-bundled domain skills for version-matched workflow details while retaining the catalog skill's identity and safety rules.
+
 ## [v10.0.0] — 2026-09-24
 
 ### Breaking
