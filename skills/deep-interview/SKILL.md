@@ -23,7 +23,7 @@ For conversational specifications, reconfirm material changes to approved scope,
 
 ## Persistent sessions
 
-Use host continuation or the bundled runtime according to the required handoff and audit semantics. The optional runtime records specification revisions, exact-file digests, and explicit approval; the conversation owns questions and readiness. Stored artifacts follow its exact revision and approval rules.
+Use host continuation or the bundled runtime according to the required handoff and audit semantics. The optional runtime records specification revisions, exact-file digests, and explicit approval; the conversation owns questions and readiness. Stored artifacts follow its exact revision and approval rules: any byte change to an approved file, even whitespace or line endings, needs re-crystallizing and fresh approval.
 
 ## References
 

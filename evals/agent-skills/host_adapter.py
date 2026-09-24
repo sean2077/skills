@@ -107,11 +107,13 @@ BOUNDARY_OBSERVATIONS = {
 OBSERVATION_GUIDANCE = {
     "deep-interview": (
         "When selected, report workflow, first_turn_question_count when the request states a "
-        "first-turn count, approval_required, persistent_state, and external_research when material."
+        "first-turn count, approval_required, persistent_state (whether the bundled runtime keeps "
+        "state, not whether the conversation continues), and external_research when material."
     ),
     "agent-scaffold": (
         "When selected, report workflow and the material project-guidance, layout, ownership, "
-        "and read-only scope decisions. Report decision_artifact only when the project requires "
+        "and read-only scope decisions. Report write decisions for what happens before the user "
+        "answers any question you ask. Report decision_artifact only when the project requires "
         "a named record."
     ),
 }
