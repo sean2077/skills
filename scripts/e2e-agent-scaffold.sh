@@ -279,7 +279,12 @@ check "compatible explicit interpreter keeps precedence" test "$rc" = 1
 check "explicit interpreter path with spaces is probed" grep -qxF "explicit python:probe" "$resolver_log"
 check "explicit interpreter path with spaces is executed" grep -qxF "explicit python:exec" "$resolver_log"
 check "lower-priority candidates stay untouched" test -z "$(grep -v -e '^explicit python:' -e '^python:hook-probe$' "$resolver_log" || true)"
-check "verify probes the literal hook interpreter word" grep -qxF "python:hook-probe" "$resolver_log"
+# Native Windows Python resolves `python` through PATHEXT, which never matches the
+# extensionless shim, so only POSIX hosts can observe this probe through the shim.
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*) ;;
+  *) check "verify probes the literal hook interpreter word" grep -qxF "python:hook-probe" "$resolver_log" ;;
+esac
 
 resolver_log="$work/harness-no-python.log"; : > "$resolver_log"
 (
