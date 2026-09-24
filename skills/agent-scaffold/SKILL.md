@@ -50,14 +50,7 @@ needs an explicit choice. JSON reports describe harness checks, not project-guid
 
 1. Resolve the task checkout, revision, applicable authority chain, and existing lifecycle
    owner; do not infer them from session cwd or create a second worktree manager.
-2. For full initialization or upgrade, follow [one-time selection](references/onboarding-selection.md).
-   Offer all domains by default on first use or legacy migration; ask which to exclude once,
-   reusing an explicit answer already given. Reuse a recorded selection on later runs without
-   asking again. Read [project conventions](references/project-conventions.md) for selected domains.
-   Inspect relevant entry points and actual configurations/callers before expanding the scan.
-   Reuse existing answers; identify missing document, command, test-quality, verification,
-   source, and safety guidance within the accepted selection. Use the relevant references below;
-   selected testing does not impose TDD, nor does selected release authorize publication. This assessment also applies to previews, without writing or running setup commands.
+2. For full initialization or upgrade, follow [one-time selection](references/onboarding-selection.md). Offer all domains by default on first use or legacy migration; ask which to exclude once, reusing an explicit answer already given. Until the user answers, the selection stays pending: do not record it or write project guidance. Previews, `doctor`/`verify`, and runtime-only requests neither ask nor record. Reuse a recorded selection on later runs without asking again. Read [project conventions](references/project-conventions.md) for selected domains. Inspect relevant entry points and actual configurations/callers before expanding the scan. Reuse existing answers; identify missing document, command, test-quality, verification, source, and safety guidance within the accepted selection. Use the relevant references below; selected testing does not impose TDD, nor does selected release authorize publication. This assessment also applies to previews, without writing or running setup commands.
 3. Run `plan` for assets; combine its `apply_mode` and profile with the needed project-guidance
    changes. Resolve material scope/ownership conflicts. Follow existing authorization instead
    of demanding a new approval round for every routine, already authorized step.
