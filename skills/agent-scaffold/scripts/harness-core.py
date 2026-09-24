@@ -65,6 +65,7 @@ REQUIRED_ASSETS = {
     "runtime.release-plan": ("copy", ".agents/tools/release/release-plan.py"),
     "runtime.release-changelog": ("copy", ".agents/tools/release/extract-changelog.py"),
     "convention.docs": ("copy", ".agents/conventions/docs.md"),
+    "convention.docs-reorganization": ("copy", ".agents/conventions/docs-reorganization.md"),
     "convention.tools": ("copy", ".agents/conventions/tools.md"),
     "convention.testing": ("copy", ".agents/conventions/testing.md"),
     "convention.specs": ("copy", ".agents/conventions/specs.md"),

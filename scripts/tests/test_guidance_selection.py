@@ -16,6 +16,8 @@ CORE = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(CORE)
 TEMPLATE = ROOT / "skills/agent-scaffold/assets/scaffold/AGENTS.harness.md"
 RELEASE_ASSETS = ("runtime.release-guide", "runtime.release-plan", "runtime.release-changelog")
+# Linked from the docs guide rather than routed from AGENTS.md; installed only with `docs`.
+DOCS_COMPANION = ("convention.docs-reorganization",)
 GUIDE_DOMAINS = ("docs", "tools", "testing", "specs", "terminology", "git", "environment")
 GUIDE_ROUTES = {domain: ".agents/conventions/%s.md" % domain for domain in GUIDE_DOMAINS}
 GUIDE_ROUTES["release"] = ".agents/tools/release/README.md"
@@ -173,7 +175,7 @@ class GuidanceSelectionTests(unittest.TestCase):
 
     def test_convention_ownership_does_not_come_from_the_directory_name(self):
         manifest = CORE.load_manifest()
-        for asset_id in ("convention.docs", "convention.notice"):
+        for asset_id in ("convention.docs", "convention.docs-reorganization", "convention.notice"):
             with self.subTest(asset=asset_id):
                 item = CORE.asset_by_id(manifest, asset_id)
                 source = CORE.SKILL_DIR / item["source"]
@@ -262,6 +264,8 @@ class GuidanceSelectionTests(unittest.TestCase):
                 self.assertEqual("release" in selected, "contract.gitattributes-release" in lines)
                 self.assertEqual(bool(selected - {"release"}), "contract.gitattributes-conventions" in lines)
                 self.assertEqual(bool(selected & {"testing", "terminology"}), "convention.notice" in ids)
+                self.assertEqual("docs" in selected, set(DOCS_COMPANION) <= ids)
+                self.assertFalse("docs" not in selected and set(DOCS_COMPANION) & ids)
                 self.assertIn("runtime.subagent-generator", ids)
 
     def test_manifest_rejects_invalid_domain_scope(self):
@@ -303,9 +307,9 @@ class InstallerSelectionTests(unittest.TestCase):
         self.assertEqual(["docs", "testing", "git"], routes(contract))
         self.assertNotIn("### Project terminology", contract)
         self.assertIn("工程约定", contract)
-        self.assert_installed(fixture, ("convention.docs", "convention.testing", "convention.git",
-                                        "convention.notice"))
-        self.assertEqual(["NOTICE.md", "docs.md", "git.md", "testing.md"],
+        self.assert_installed(fixture, ("convention.docs", "convention.docs-reorganization",
+                                        "convention.testing", "convention.git", "convention.notice"))
+        self.assertEqual(["NOTICE.md", "docs-reorganization.md", "docs.md", "git.md", "testing.md"],
                          sorted(p.name for p in (fixture.root / ".agents/conventions").iterdir()))
         self.assertFalse((fixture.root / CORE.LEGACY_GUIDANCE_FILE).exists())
         verified = fixture.invoke("verify")
@@ -323,7 +327,7 @@ class InstallerSelectionTests(unittest.TestCase):
         # Release keeps its task-time guide; the resident contract only routes to it.
         self.assertEqual(list(CORE.GUIDANCE_DOMAINS), routes(contract))
         self.assertNotIn("release-plan.py", contract)
-        self.assert_installed(fixture, RELEASE_ASSETS + tuple("convention." + d for d in GUIDE_DOMAINS))
+        self.assert_installed(fixture, RELEASE_ASSETS + DOCS_COMPANION + tuple("convention." + d for d in GUIDE_DOMAINS))
         self.assertTrue(fixture.invoke("verify")["ok"])
         # Deselecting stops maintenance and routing; dormant copies stay project files.
         fixture.invoke("upgrade", extra=("--domains", "docs"))
@@ -377,6 +381,7 @@ class InstallerSelectionTests(unittest.TestCase):
 
     def test_foreign_convention_files_block_upgrade_before_any_writes(self):
         for path, domains in ((".agents/conventions/docs.md", "docs"),
+                              (".agents/conventions/docs-reorganization.md", "docs"),
                               (".agents/conventions/NOTICE.md", "testing")):
             with self.subTest(path=path):
                 fixture = self.fixture()

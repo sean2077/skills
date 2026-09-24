@@ -55,8 +55,9 @@ evidence of measured gains.
 ## Installed-guide pairs
 
 The retirement and timeout pairs are built the same way. In each pair, both cases have identical project instructions and the same rendered light harness with `docs`
-selected. The `-installed-guide` case includes the current `assets/conventions/docs.md`
-and its rendered convention-route section; its partner omits only that file and section.
+selected. The `-installed-guide` case includes the current `assets/conventions/docs.md`, its
+linked `docs-reorganization.md` and the rendered convention-route section; its partner omits
+only those files and that section.
 The control is a deliberate route ablation, not a valid installation to pass scaffold `verify`.
 This keeps unrelated harness rules out of the treatment difference.
 

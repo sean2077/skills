@@ -13,6 +13,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Split the installed docs convention: `.agents/conventions/docs.md` keeps the daily rules (63 lines, down from 151), and structure, numbering, metadata, pruning, migration and reader-journey methods move to `.agents/conventions/docs-reorganization.md`, installed with `docs` and linked from `docs.md` rather than routed from `AGENTS.md`. An ordinary documentation edit no longer loads the reorganization methods; upgrade installs the new file.
 - Gate the live routing suites only on interventions and tool calls. Token and time metrics are still recorded, but in the live runs 112 of 680 probe calls reported about 18k extra input tokens and gateway latency varied several-fold, so those budgets measured host noise and output format rather than skill cost; task outcomes carry cost comparisons.
 - Rename the probe observations `persistent_state` to `use_bundled_runtime` and `file_access_outside_cwd` to `use_path_outside_cwd`, request listed booleans including false values, and define the `lark` workflow label; a weaker model read the old names as properties of the request.
 - Shorten the managed `AGENTS.md` start marker to `<!-- agent-scaffold:start (managed; edit outside) -->`. HTML comments in `AGENTS.md` are read into every Agent session; this was the only marker carrying prose. Parsing matches the `agent-scaffold:start` prefix, so installed blocks keep working and `upgrade` refreshes the line.

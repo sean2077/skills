@@ -28,6 +28,7 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/runtime/generate-subagents.py` | `.agents/tools/generate-subagents.py` | subagent projection + `--check` drift mode |
 | `assets/runtime/release/` | `.agents/tools/release/` | only while `release` is selected: task-time release conventions, read-only analyzer and changelog extractor |
 | `assets/conventions/<domain>.md` | `.agents/conventions/<domain>.md` | only while that domain is selected: generic daily guide for docs, tools, testing, specs, terminology, git or environment work |
+| `assets/conventions/docs-reorganization.md` | `.agents/conventions/docs-reorganization.md` | only while `docs` is selected: task-time restructuring, metadata and migration methods, linked from `docs.md` rather than routed from the managed block |
 | `NOTICE.md` | `.agents/conventions/NOTICE.md` | only while `testing` or `terminology` is selected: attribution for their adapted guides |
 | `assets/host/claude.settings.json` | merged into `.claude/settings.json` | Claude Code scaffold-owned hook source |
 | `assets/host/codex.hooks.json` | merged into `.codex/hooks.json` | Codex scaffold-owned hook source |
@@ -48,7 +49,7 @@ the guides are refreshed on upgrade and byte-checked by verify, so project facts
 project docs. See [one-time selection](onboarding-selection.md).
 
 Each managed convention file carries its own `agent-scaffold:convention=<domain>` comment
-(`notice` for attribution). An existing same-name file without that ownership marker is a
+(`notice` for attribution, `docs-reorganization` for the docs companion). An existing same-name file without that ownership marker is a
 conflict, not an upgrade target; preserve it and resolve placement/ownership explicitly before
 installation. The exact, unchanged unmarked guide from the pre-release implementation can be
 adopted by byte comparison. This does not claim ownership of unrelated directory entries or

@@ -289,6 +289,10 @@ def retired_plan_header(text: str) -> bool:
                for status in PLAN_STATUS.finditer(clause))
 
 
+# The docs domain installs its daily guide and the on-demand reorganization guide it links to.
+DOCS_GUIDE_FILES = ("docs.md", "docs-reorganization.md")
+
+
 def installed_docs_guide(root: Path, enabled: bool = True) -> None:
     """Keep the same harness context in both arms; toggle only the docs route and guide."""
     skill = Path(__file__).resolve().parents[2] / "skills/agent-scaffold"
@@ -308,9 +312,9 @@ def installed_docs_guide(root: Path, enabled: bool = True) -> None:
     write(root, "AGENTS.md", read(root, "AGENTS.md").decode("utf-8") + "\n" + block)
     if not enabled:
         return
-    target = root / ".agents/conventions/docs.md"
-    target.parent.mkdir(parents=True)
-    target.write_bytes((skill / "assets/conventions/docs.md").read_bytes())
+    (root / ".agents/conventions").mkdir(parents=True)
+    for name in DOCS_GUIDE_FILES:
+        (root / ".agents/conventions" / name).write_bytes((skill / "assets/conventions" / name).read_bytes())
 
 
 def prepare(root: Path, case_id: str) -> dict:

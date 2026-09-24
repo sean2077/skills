@@ -150,6 +150,15 @@
       "executable": false
     },
     {
+      "id": "convention.docs-reorganization",
+      "source": "assets/conventions/docs-reorganization.md",
+      "target": ".agents/conventions/docs-reorganization.md",
+      "strategy": "copy",
+      "profiles": ["default", "light"],
+      "domains": ["docs"],
+      "executable": false
+    },
+    {
       "id": "convention.tools",
       "source": "assets/conventions/tools.md",
       "target": ".agents/conventions/tools.md",
