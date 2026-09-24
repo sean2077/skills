@@ -13,6 +13,8 @@ Identify the requested outcome, target, recipients, time range, and supplied IDs
 
 Check the installed command's help/schema when flags, identity, or target semantics are uncertain. Use service help to locate unfamiliar operations. Refresh affected command knowledge when the installed interface changes. Never invent flags, methods, enums, IDs, URLs, or parameter shapes.
 
+For version-specific domain workflows, use the CLI-bundled skills described in [setup, authentication, and safety](references/setup-auth-and-safety.md) when the local recipe is incomplete or conflicts with the installed CLI.
+
 Before a state-dependent edit, read the smallest affected scope unless sufficiently current, complete state is already available in context. Preserve unrelated fields and content; a known target ID does not establish its current contents.
 
 For raw `lark-cli api <METHOD> <path>`, use the known endpoint contract: a bare `/open-apis/...` path, query values through `--params`, and bodies through `--data`.

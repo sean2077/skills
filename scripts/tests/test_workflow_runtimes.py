@@ -154,6 +154,38 @@ class RuntimeTests(unittest.TestCase):
             self.assertFalse(unlocked["changed"])
         self.assertFalse((self.repo / ".agent-workflows").exists())
 
+    def test_state_root_self_ignores_without_changing_repository_ignore(self) -> None:
+        self.run_cli(INTERVIEW, "start", "--id", "first", "--idea", "keep Git clean")
+        state_root = self.repo / ".agent-workflows"
+        self.assertEqual((state_root / ".gitignore").read_text(encoding="utf-8"), "*\n")
+        self.assertTrue(self.state_path("deep-interview", "first").is_file())
+        self.assertEqual(self.git("status", "--short", "--untracked-files=all"), "")
+        self.run_cli(INTERVIEW, "start", "--id", "second", "--idea", "repeat")
+        self.assertEqual((state_root / ".gitignore").read_text(encoding="utf-8"), "*\n")
+        self.assertEqual(self.git("status", "--short", "--untracked-files=all"), "")
+
+    def test_state_root_preserves_existing_ignore_and_repairs_missing_one(self) -> None:
+        state_root = self.repo / ".agent-workflows"
+        state_root.mkdir()
+        ignore = state_root / ".gitignore"
+        ignore.write_text("custom rule\n", encoding="utf-8")
+        self.run_cli(INTERVIEW, "start", "--id", "existing", "--idea", "preserve")
+        self.assertEqual(ignore.read_text(encoding="utf-8"), "custom rule\n")
+        ignore.unlink()
+        self.run_cli(INTERVIEW, "start", "--id", "repaired", "--idea", "repair")
+        self.assertEqual(ignore.read_text(encoding="utf-8"), "*\n")
+        self.assertEqual(self.git("status", "--short", "--untracked-files=all"), "")
+
+    def test_unwritable_ignore_name_does_not_block_state_creation(self) -> None:
+        state_root = self.repo / ".agent-workflows"
+        state_root.mkdir()
+        ignore = state_root / ".gitignore"
+        ignore.mkdir()
+        started, _ = self.run_cli(INTERVIEW, "start", "--idea", "approval must remain available")
+        self.assertEqual(started["stage"], "drafting")
+        self.assertTrue(self.state_path("deep-interview").is_file())
+        self.assertTrue(ignore.is_dir())
+
     def test_compact_output_and_bounded_history_avoid_context_growth(self) -> None:
         payload, cp = self.run_cli(INTERVIEW, "start", "--id", "compact", "--idea", "a" * 2000)
         outputs = [cp.stdout]
