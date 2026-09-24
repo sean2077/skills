@@ -23,11 +23,9 @@ For reusable structure, numbering, metadata, pruning, and migration methods, use
 
 ## Editing and reorganization
 
-Choose organization from reader tasks and existing conventions. Entry points summarize and route; do not copy full skill descriptions, command manuals, or test inventories into every page. Preserve useful unique content when merging or removing material. A source-backed paragraph that remains accurate needs no rewrite just to refresh its date.
+Entry points summarize and route; do not copy full skill descriptions, command manuals, or test inventories into every page. A source-backed paragraph that remains accurate needs no rewrite just to refresh its date.
 
-Update changed guidance and its consumers together: links, backlinks, templates, generated projections, manifests, and command examples. Keep catalog-skill references inside their installable payload; repository-level manuals can link across the repository. Edit a generated document's source and regenerate rather than patching its projection.
-
-Use metadata only when it helps interpret status or freshness. Follow the project's convention; flat `status` and `updated` are useful starting fields, not a required schema or approval gate. Formats that own their frontmatter, including `SKILL.md`, keep that contract. See the scaffold's [project conventions](../skills/agent-scaffold/references/project-conventions.md) for first-use setup and upgrade ownership; ordinary document maintenance does not require invoking scaffold.
+Consumers of changed guidance here include templates, generated projections, and manifests as well as links and command examples. Keep catalog-skill references inside their installable payload; repository-level manuals can link across the repository. See the scaffold's [project conventions](../skills/agent-scaffold/references/project-conventions.md) for first-use setup and upgrade ownership; ordinary document maintenance does not require invoking scaffold.
 
 ## Evidence and verification
 
@@ -35,7 +33,7 @@ Derive repository facts from the inspected revision: paths, flags, generators, p
 
 Use the [changed-surface checks](development.md#select-checks-by-changed-surface). Catalog reference validation checks contained Markdown file targets and reachability; it does not validate every repository document or heading fragment. Review those links and anchors separately, including incoming links after a move. Verify working directory, scope, quoting, identity, effects, confirmation, and expected result for changed commands; keep preview, authorization, mutation, and verification distinct for consequential writes. Distinguish commands inspected from commands executed.
 
-For a material reorganization, walk a realistic reader task from the resulting entry point without relying on the editing conversation. Record material gaps in the PR rather than adding a permanent audit page for routine maintenance. Add user- or maintainer-visible changes under Unreleased.
+Record reader-journey gaps from a material reorganization in the PR rather than adding a permanent audit page for routine maintenance. Add user- or maintainer-visible changes under Unreleased.
 
 ## Historical records
 
