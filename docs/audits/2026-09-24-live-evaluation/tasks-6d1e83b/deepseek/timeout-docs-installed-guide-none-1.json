@@ -1,0 +1,82 @@
+{
+  "contract": "skill-task-outcome/1",
+  "case": "timeout-docs-installed-guide",
+  "condition": "none",
+  "evaluator_digest": "dd1aa754b2237d0ec5697ab12783467127324c429c0c324b721a53a67d1749c3",
+  "skill_revision": null,
+  "skill_digest": null,
+  "state": {
+    "base": "4bb3488f02c454f64c1fb086ae4a326a8e2f57d5",
+    "protected": {
+      ".agents/conventions/docs.md": "7105cc5074d17508d6f0021a54bf0407a0d650b037fbdcf9f9a569026441fcc2",
+      "AGENTS.md": "b020f315ae05f8fc5c93136ab02e8ce28c711bae4e9d52f52a627f05c42a377c",
+      "src/config.py": "b25a6d87915a337f41c228bade2bfde38d2312453cc06f1b5e2d81cc01faabd0"
+    }
+  },
+  "fixture_digest": "786ff8f739dc06daf4d97f24e370de7909e997526d16074227ed76d70c1db470",
+  "platform": "Windows",
+  "python": "3.14.7",
+  "prompt_digest": "6c7e47f8154a3cdfd3da31339cb0d48cc1277184a600f104c7bf5c211cfe6173",
+  "checks": [
+    {
+      "name": "unchanged fixture .agents/conventions/docs.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture AGENTS.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture src/config.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "only documentation changed",
+      "passed": true,
+      "detail": "docs/configuration.md"
+    },
+    {
+      "name": "current default documented as 10 s",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "stale 30 s default removed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "dated validation evidence kept verbatim",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "validation record still reachable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no commands executed",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "passed": true,
+  "execution": "completed",
+  "host": {
+    "name": "claude",
+    "version": "2.1.280 (Claude Code)",
+    "model": "deepseek-v4.1-flash",
+    "configuration": "bare-local-tools",
+    "cache": "uncontrolled: gateway prompt caching"
+  },
+  "metrics": {
+    "input_tokens": 14356.0,
+    "output_tokens": 1116.0,
+    "tool_calls": 7,
+    "wall_time_seconds": 20.14471149991732
+  }
+}

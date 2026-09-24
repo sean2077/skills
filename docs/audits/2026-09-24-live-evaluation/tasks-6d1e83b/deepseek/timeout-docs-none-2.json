@@ -1,0 +1,76 @@
+{
+  "contract": "skill-task-outcome/1",
+  "case": "timeout-docs",
+  "condition": "none",
+  "evaluator_digest": "dd1aa754b2237d0ec5697ab12783467127324c429c0c324b721a53a67d1749c3",
+  "skill_revision": null,
+  "skill_digest": null,
+  "state": {
+    "base": "2eadef21fc4c69032014bf5367187fb03543c697",
+    "protected": {
+      "AGENTS.md": "7bd660259db51f0d6003e8cea9ad55933e219fe8ec80a490c4762489fbc24c4a",
+      "src/config.py": "b25a6d87915a337f41c228bade2bfde38d2312453cc06f1b5e2d81cc01faabd0"
+    }
+  },
+  "fixture_digest": "9d6b5ff14d4791541a291a5a267512855b8d6630d213789d66dc6a7e0c146daf",
+  "platform": "Windows",
+  "python": "3.14.7",
+  "prompt_digest": "6c7e47f8154a3cdfd3da31339cb0d48cc1277184a600f104c7bf5c211cfe6173",
+  "checks": [
+    {
+      "name": "unchanged fixture AGENTS.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture src/config.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "only documentation changed",
+      "passed": true,
+      "detail": "docs/configuration.md"
+    },
+    {
+      "name": "current default documented as 10 s",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "stale 30 s default removed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "dated validation evidence kept verbatim",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "validation record still reachable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no commands executed",
+      "passed": false,
+      "detail": "cat src/config.py 2>/dev/null || echo \"NOT FOUND\"; cat AGENTS.md 2>/dev/null || echo \"NOT FOUND\"; ls -la"
+    }
+  ],
+  "passed": false,
+  "execution": "completed",
+  "host": {
+    "name": "claude",
+    "version": "2.1.280 (Claude Code)",
+    "model": "deepseek-v4.1-flash",
+    "configuration": "bare-local-tools",
+    "cache": "uncontrolled: gateway prompt caching"
+  },
+  "metrics": {
+    "input_tokens": 16092.0,
+    "output_tokens": 1535.0,
+    "tool_calls": 10,
+    "wall_time_seconds": 35.83342690009158
+  }
+}

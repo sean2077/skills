@@ -8,16 +8,21 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add the `timeout-docs` / `timeout-docs-installed-guide` task pair, where a plausible documentation update also rewrites a dated validation record and only the installed docs guide says to keep it. In live runs neither Opus nor deepseek rewrote the record even without the guide, so it does not discriminate either; the audit records this.
 - Record the first live evaluation, on `claude-opus-5-5` and `deepseek-v4.1-flash`, of all routing probes, selected task outcomes and the installed-guide pair in `docs/audits/2026-09-24-live-evaluation.md`, with its result files.
 
 ### Changed
 
+- Gate the live routing suites only on interventions and tool calls. Token and time metrics are still recorded, but in the live runs 112 of 680 probe calls reported about 18k extra input tokens and gateway latency varied several-fold, so those budgets measured host noise and output format rather than skill cost; task outcomes carry cost comparisons.
+- Rename the probe observations `persistent_state` to `use_bundled_runtime` and `file_access_outside_cwd` to `use_path_outside_cwd`, request listed booleans including false values, and define the `lark` workflow label; a weaker model read the old names as properties of the request.
 - Shorten the managed `AGENTS.md` start marker to `<!-- agent-scaffold:start (managed; edit outside) -->`. HTML comments in `AGENTS.md` are read into every Agent session; this was the only marker carrying prose. Parsing matches the `agent-scaffold:start` prefix, so installed blocks keep working and `upgrade` refreshes the line.
 - Direct lark-cli agents to the CLI-bundled domain skills for version-matched workflow details while retaining the catalog skill's identity and safety rules.
 - Exercise the scaffold core, installed runtime and a real `plan`/`apply`/`doctor`/`verify` run plus a blocked trunk-guard edit on the Python 3.8 CI floor. Only the release runtime was compiled there before, so floor compatibility of the core and hooks was unguarded.
 
 ### Fixed
 
+- Fail guidance fixtures whose prompt forbids commands when a captured trace shows a shell call; the artifact oracles could not see it, and live transcripts showed both tested models running forbidden commands. Manual runs without a trace are not judged on it.
+- Say in the `scaffold-testing-guidance` prompt that the consolidated `quality-decisions.md` stays in place, as its oracle already required; "consolidate" read as permission to delete it.
 - Keep an unanswered convention-domain selection pending in `agent-scaffold`'s entry point, and exempt previews, `doctor`/`verify` and runtime-only requests from asking. The rule lived only in the onboarding reference; a live Opus probe that saw only `SKILL.md` planned to record the selection and write guidance while still asking, and asked during a preview.
 - Let live routing probes pin an exact model with `SKILL_EVAL_MODEL` and record the serving model in `host_model`. The runner's reduced environment now forwards only `SKILL_EVAL_*` variables, so `SKILL_EVAL_MAX_BUDGET_USD` and the new `SKILL_EVAL_CLAUDE_BIN` actually reach the adapter; previously neither the budget knob nor `CLAUDE_BIN` did, `host_model` was always null, and a gateway could silently substitute another model.
 - State in `deep-interview`'s entry point that any byte change to an approved runtime specification, even whitespace or line endings, needs re-crystallizing and fresh approval. A live deepseek-v4.1-flash probe judged a whitespace-only edit as needing no reapproval; the rule lived only in the runtime reference.

@@ -1,0 +1,229 @@
+{
+  "note": "Artifact verdict excludes the trace-based 'no commands executed' check; run verdict includes it.",
+  "runs": {
+    "opus/scaffold-testing-guidance-none-1": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "cd /Users/user/project && git ls-files && echo --- && cat AGENTS.md && echo --- && cat handbook/development.md && echo --- && find . -name 'quality-decisions.md' -not -path './.git/*'",
+      "validation_record_untouched": null,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 223149.0,
+        "output_tokens": 6052.0,
+        "tool_calls": 22,
+        "wall_time_seconds": 83.58481889998075
+      }
+    },
+    "opus/scaffold-testing-guidance-skill-1": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "cd /Users/user/project && git ls-files && echo --- && ls -la; cd \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-opus\\scaffold-testing-guidance-skill-1\\workspace\" && find . -path ./.git -prune -o -type f -print -o -type l -print; cd \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-opus\\scaf",
+      "validation_record_untouched": null,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 250928.0,
+        "output_tokens": 5228.0,
+        "tool_calls": 16,
+        "wall_time_seconds": 73.18871290003881
+      }
+    },
+    "opus/timeout-docs-installed-guide-none-1": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 151169.0,
+        "output_tokens": 1597.0,
+        "tool_calls": 11,
+        "wall_time_seconds": 25.31184369989205
+      }
+    },
+    "opus/timeout-docs-installed-guide-none-2": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 151169.0,
+        "output_tokens": 1638.0,
+        "tool_calls": 11,
+        "wall_time_seconds": 24.804083799943328
+      }
+    },
+    "opus/timeout-docs-installed-guide-none-3": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 151169.0,
+        "output_tokens": 1531.0,
+        "tool_calls": 11,
+        "wall_time_seconds": 23.415825300035067
+      }
+    },
+    "opus/timeout-docs-none-1": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 124139.0,
+        "output_tokens": 1618.0,
+        "tool_calls": 10,
+        "wall_time_seconds": 32.751857599942014
+      }
+    },
+    "opus/timeout-docs-none-2": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 123736.0,
+        "output_tokens": 1184.0,
+        "tool_calls": 8,
+        "wall_time_seconds": 31.283615400083363
+      }
+    },
+    "opus/timeout-docs-none-3": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 123784.0,
+        "output_tokens": 1245.0,
+        "tool_calls": 8,
+        "wall_time_seconds": 33.0882676000474
+      }
+    },
+    "deepseek/scaffold-testing-guidance-none-1": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "ls -la; find . -type f -not -path './.git/*' | head -100; git status --short && echo \"---DIFF---\" && git diff",
+      "validation_record_untouched": null,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 19027.0,
+        "output_tokens": 3561.0,
+        "tool_calls": 16,
+        "wall_time_seconds": 48.01953239995055
+      }
+    },
+    "deepseek/scaffold-testing-guidance-skill-1": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "cd \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-deepseek\\scaffold-testing-guidance-skill-1\" && find . -type f -not -path '*/.git/*' | head -100; cd \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-deepseek\\scaffold-testing-guidance-skill-1\\workspace\" && git status --short && ls -la && ls",
+      "validation_record_untouched": null,
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 171494.0,
+        "output_tokens": 8812.0,
+        "tool_calls": 26,
+        "wall_time_seconds": 118.42095989990048
+      }
+    },
+    "deepseek/timeout-docs-installed-guide-none-1": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 14356.0,
+        "output_tokens": 1116.0,
+        "tool_calls": 7,
+        "wall_time_seconds": 20.14471149991732
+      }
+    },
+    "deepseek/timeout-docs-installed-guide-none-2": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "ls -la; find . -path ./.git -prune -o -type f -print",
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 15406.0,
+        "output_tokens": 1146.0,
+        "tool_calls": 9,
+        "wall_time_seconds": 19.47654009994585
+      }
+    },
+    "deepseek/timeout-docs-installed-guide-none-3": {
+      "passed": true,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": null,
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": true,
+      "metrics": {
+        "input_tokens": 19031.0,
+        "output_tokens": 1745.0,
+        "tool_calls": 9,
+        "wall_time_seconds": 27.57751970004756
+      }
+    },
+    "deepseek/timeout-docs-none-1": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "cd \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-deepseek\\timeout-docs-none-1\\workspace\" && find . -type f -not -path './.git/*' | sort",
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 14772.0,
+        "output_tokens": 1497.0,
+        "tool_calls": 7,
+        "wall_time_seconds": 38.69729749998078
+      }
+    },
+    "deepseek/timeout-docs-none-2": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "cat src/config.py 2>/dev/null || echo \"NOT FOUND\"; cat AGENTS.md 2>/dev/null || echo \"NOT FOUND\"; ls -la",
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 16092.0,
+        "output_tokens": 1535.0,
+        "tool_calls": 10,
+        "wall_time_seconds": 35.83342690009158
+      }
+    },
+    "deepseek/timeout-docs-none-3": {
+      "passed": false,
+      "artifacts_passed": true,
+      "failed_artifact_checks": [],
+      "forbidden_commands": "ls -R \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-deepseek\\timeout-docs-none-3\\workspace\"",
+      "validation_record_untouched": true,
+      "read_installed_docs_guide": false,
+      "metrics": {
+        "input_tokens": 12229.0,
+        "output_tokens": 956.0,
+        "tool_calls": 7,
+        "wall_time_seconds": 29.12336490000598
+      }
+    }
+  }
+}
