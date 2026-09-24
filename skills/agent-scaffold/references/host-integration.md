@@ -22,6 +22,7 @@ Quoting only a project-root placeholder (`"${ROOT}"/.agents/...`) is valid bash 
 - Installed and wired only by `--profile default`; `--profile light` removes the scaffold-owned wiring.
 - **Exit 0** allow · **exit 2** block (message on stderr). Invalid hook transport/input also exits 2; other unexpected host errors are reported according to host semantics.
 - Blocks non-ignored project edits in the **primary worktree**; its checked-out branch is the active trunk regardless of branch name. Linked worktrees pass unless another guard applies.
+- Sees only the file-edit tools in its matcher (`Edit|MultiEdit|Write|NotebookEdit` in Claude Code, `Edit|Write|apply_patch` in Codex). Writes made through a shell command (redirection, `sed -i`, scripts, `git checkout`) do not pass through it; the worktree rule in `AGENTS.md` still applies to them.
 - **Escape hatches** (only when the user explicitly authorizes a trunk edit):
   - `WORKTREE_ALLOW_TRUNK_EDIT=1` — one-shot env bypass.
   - `touch <repo>/.claude/allow-trunk-edit` — flag file, auto-expires **2 h** (mtime check `now - mtime <= 7200`); re-touch to renew.
@@ -115,6 +116,13 @@ Codex applies two independent gates to this scaffold:
 - **`can't find '__main__' module in '<project root>'`**: Windows PowerShell split a `"${CLAUDE_PROJECT_DIR:-.}"/.agents/...` command so Python received the repository directory as the script. The managed command quotes the entire anchored path. Run `upgrade` and restart the host session.
 - **Hooks don't fire in Claude Code**: validate `.claude/settings.json`, confirm the command path,
   and restart the host session after changing settings.
+- **Hooks fail with `python: command not found` (exit 127)**: the host `PATH` has only `python3`
+  or `py`. Installation still succeeds because the installer falls back to those names, but hosts
+  treat exit 127 as a non-blocking error, so the trunk guard is skipped. `doctor`/`verify` report
+  this as `prerequisite.hook-python`. Make `python` resolve to Python 3.8+ for the host (for
+  example the `python-is-python3` package or a `python` shim on its `PATH`) and restart the host
+  session; do not edit the managed command to `python3`, which the committed config shares with
+  collaborators on other platforms.
 - **`can't open file 'C:\\.agents\\tools\\hooks\\hook-paths.py'`**: a command reached Windows PowerShell with `${CLAUDE_PROJECT_DIR:-.}` or a bare `$VAR` still in it, and PowerShell emptied the reference, leaving `/.agents/...` on drive `C:`. The managed Claude/Grok command keeps only `${CLAUDE_PROJECT_DIR}`, which both hosts expand themselves; the managed Codex command carries no `$` at all. Run `upgrade` and restart the host session.
 - **`can't open file '.../.agents/tools/hooks/hook-paths.py': No such file or directory`**: the host's hook `cwd` drifted off the project root (a `cd`, a worktree, or a temp directory) and a command that depends on `cwd` resolved against it. The managed Claude/Grok command anchors on the host-expanded `${CLAUDE_PROJECT_DIR}` and is cwd-independent; only the Codex command is cwd-relative, and it expects Codex's project-root hook `cwd`. If an older `python -c`, `${CLAUDE_PROJECT_DIR:-.}`, or bare relative command is still installed, run `upgrade` to converge it. A host that injects no project-root variable leaves `/.agents/...`, which fails loudly rather than resolving elsewhere.
 - **The installer rejects an existing hook config**: repair the named JSON file. Mutating modes

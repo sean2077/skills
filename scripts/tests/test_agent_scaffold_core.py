@@ -1130,6 +1130,49 @@ class StructuredReportTests(unittest.TestCase):
             self.assertEqual("fail", content["status"])
             self.assertEqual("fail", attributes["status"])
 
+    def test_hook_interpreters_are_the_managed_command_words(self):
+        manifest = CORE.load_manifest()
+        self.assertEqual(["python"], CORE.hook_interpreters(manifest, "default"))
+        self.assertEqual(["python"], CORE.hook_interpreters(manifest, "light"))
+
+    def test_doctor_fails_when_the_hook_command_word_is_missing(self):
+        # A python3-only PATH passes the installer's own fallback, but the hosts
+        # run the literal `python`; exit 127 there would silently skip the guard.
+        manifest = CORE.load_manifest()
+        manager = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "runtime.symlink-manager")["source"]
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(CORE.shutil, "which", return_value=None), \
+                    mock.patch.object(CORE, "run_tool", return_value=(0, "")):
+                data = CORE.build_doctor(Path(directory), "default", manifest, manager)
+        check = next(item for item in data["checks"] if item["id"] == "prerequisite.hook-python")
+        self.assertEqual("fail", check["status"])
+        self.assertIn("python: not found", check["detail"])
+        self.assertIsNotNone(check["fix"])
+        self.assertFalse(data["ok"])
+
+    def test_hook_python_check_rejects_an_old_interpreter_and_accepts_a_current_one(self):
+        manifest = CORE.load_manifest()
+        with mock.patch.object(CORE.shutil, "which", return_value="/usr/bin/python"):
+            with mock.patch.object(CORE, "run_tool", return_value=(1, "")) as probe:
+                old = CORE.hook_python_check(manifest, "default")
+            with mock.patch.object(CORE, "run_tool", return_value=(0, "")):
+                current = CORE.hook_python_check(manifest, "default")
+        self.assertEqual("/usr/bin/python", probe.call_args[0][0][0])
+        self.assertEqual("fail", old["status"])
+        self.assertIn("is not Python 3.8+", old["detail"])
+        self.assertEqual("pass", current["status"])
+        self.assertEqual("python -> /usr/bin/python", current["path"])
+
+    def test_verify_includes_the_hook_python_check(self):
+        manifest = CORE.load_manifest()
+        manager = CORE.SKILL_DIR / CORE.asset_by_id(manifest, "runtime.symlink-manager")["source"]
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(CORE.shutil, "which", return_value=None), \
+                    mock.patch.object(CORE, "run_tool", return_value=(0, "")):
+                data = CORE.build_verify(Path(directory), "light", manifest, manager)
+        ids = {item["id"]: item["status"] for item in data["checks"]}
+        self.assertEqual("fail", ids["prerequisite.hook-python"])
+
 
 class LineEndingPolicyTests(unittest.TestCase):
     def setUp(self):

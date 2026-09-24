@@ -209,7 +209,8 @@ jobs:
           python -m compileall -q \
             scripts/workflow_runtime scripts/p0_runtime \
             skills/deep-interview/scripts \
-            skills/agent-scaffold/assets/runtime/release \
+            skills/agent-scaffold/scripts \
+            skills/agent-scaffold/assets/runtime \
             .agents/skills/skill-eval/scripts \
             evals/agent-skills evals/tasks
           python -m unittest -v \
@@ -220,3 +221,21 @@ jobs:
           python -m unittest -v scripts.tests.test_p0_hardening
           # The release runtime is an installed scaffold asset, so it must run on the scaffold floor.
           python scripts/tests/test_semver_release_plan.py
+
+      - name: Install and verify the scaffold on the Python 3.8 floor
+        run: |
+          fixture="$(mktemp -d)"
+          trap 'rm -rf "$fixture"' EXIT
+          git -C "$fixture" init -q -b main
+          git -C "$fixture" -c user.email=ci@example.invalid -c user.name=ci commit -q --allow-empty -m init
+          (
+            cd "$fixture"
+            python -c 'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 8) else 1)'
+            bash "$GITHUB_WORKSPACE/skills/agent-scaffold/agent-scaffold.sh" plan --json > /dev/null
+            bash "$GITHUB_WORKSPACE/skills/agent-scaffold/agent-scaffold.sh" apply --domains all
+            bash "$GITHUB_WORKSPACE/skills/agent-scaffold/agent-scaffold.sh" doctor
+            bash "$GITHUB_WORKSPACE/skills/agent-scaffold/agent-scaffold.sh" verify
+            printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/README.md"}}' "$PWD" \
+              | python -X utf8 .agents/tools/hooks/hook-paths.py --guard && exit 1
+            python .agents/tools/generate-subagents.py --check
+          )

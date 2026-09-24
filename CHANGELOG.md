@@ -6,6 +6,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Report `prerequisite.hook-python` in `agent-scaffold doctor` and `verify`. The installer falls back from `python` to `python3` or `py -3`, but the managed host hooks run the literal `python`, so on a `python3`-only `PATH` installation, `doctor` and `verify` all passed while every hook exited 127, which hosts treat as a non-blocking error: the trunk guard silently allowed primary-worktree edits. The check resolves the hook command word and probes it for Python 3.8+, and states that a host may launch hooks with a different `PATH`. The committed hook command stays `python`, so the shared config keeps working for collaborators on other platforms.
+- State that the trunk guard sees only its matched file-edit tools; writes made through shell commands do not pass through it, and the `AGENTS.md` worktree rule still covers them.
+
+### Changed
+
+- Exercise the scaffold core, installed runtime and a real `plan`/`apply`/`doctor`/`verify` run plus a blocked trunk-guard edit on the Python 3.8 CI floor. Only the release runtime was compiled there before, so floor compatibility of the core and hooks was unguarded.
+
 ## [v10.0.0] — 2026-09-24
 
 ### Breaking
