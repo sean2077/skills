@@ -173,6 +173,7 @@ SELECTED_BLOCK = (
 )
 CASES = {
     "scaffold-selected-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
         "prompt": "Initialize the project-owned conventions after asset work. The installer already recorded my explicit one-time choice, all domains except git and release, in the AGENTS.md managed block; do not ask again or edit that block. Consolidate the owner clauses from decisions.md verbatim into the existing guide/development.md, link that guide from AGENTS.md and link the actual test, specification and terminology sources. Do not run commands, change source policies or tools, touch existing Git/release rules or add parallel documents. Assets are handled separately.",
         "brief": "Preserve the recorded selection, explicit exclusions and existing policies; the record does not certify guidance, so connect meaningful project guidance to its sources.",
@@ -193,18 +194,21 @@ CASES = {
         "brief": "Check incoming and outgoing links and unique content after the move.",
     },
     "scaffold-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
         "prompt": "Complete first-use project guidance as part of Agent harness initialization; asset installation is handled separately. Read project sources, fill missing command, documentation and generated-source guidance, and connect it from AGENTS.md. Preserve existing layout, the owner note, the existing delivery clause verbatim, draft status, user files and toolchain. The owner already selected all domains. Do not run installers, generators or commands, move files, or add empty/default directories.",
         "brief": "Use current project entry points and actual command/source owners. Fill genuine guidance gaps rather than copying a template; installer success is not reader readiness.",
     },
     "scaffold-upgrade-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
         "prompt": "Reconcile project guidance during a harness upgrade. CONTRIBUTING.md now owns the guide that was deliberately merged out of doc/development.md. Repair stale Agent navigation; preserve existing content and do not recreate the removed guide or change project commands. Asset updates are handled separately; the owner already selected all domains. Do not run commands.",
         "brief": "Adopt the current successor and repair routes without restoring an earlier template.",
     },
     "scaffold-testing-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
-        "prompt": "Complete the testing-guidance part of harness initialization. Asset work is separate. Consolidate quality-decisions.md into the existing handbook/development.md and connect that guide from AGENTS.md. Keep the owner clauses verbatim in the guide, explain the existing runner with its discovery arguments, and link the protocol and existing test example. Preserve current test-first/coverage choices and all other files. Do not execute commands, change tests, add frameworks or create parallel guides. The owner already selected testing; asset/selection-record work is separate. No sibling skill is installed.",
+        "prompt": "Complete the testing-guidance part of harness initialization. Asset work is separate. Consolidate the clauses from quality-decisions.md into the existing handbook/development.md, leaving quality-decisions.md itself in place, and connect that guide from AGENTS.md. Keep the owner clauses verbatim in the guide, explain the existing runner with its discovery arguments, and link the protocol and existing test example. Preserve current test-first/coverage choices and all other files. Do not execute commands, change tests, add frameworks or create parallel guides. The owner already selected testing; asset/selection-record work is separate. No sibling skill is installed.",
         "brief": "Use actual project sources to fill test-quality guidance, preserve policy and test discovery, and keep it reachable without depending on another skill.",
     },
     "lark-unknown-write": {
@@ -237,6 +241,7 @@ CASES = {
 # Compare the pair under matched host conditions; the guide is the only fixture difference.
 PLAN_TASK = {
     "skill": None,
+    "no_commands": True,
     "prompt": "Read AGENTS.md for the workspace instructions. The balance-cache plan in docs/plans/balance-cache.md is now implemented in src/cache.py and deployed. Update the documentation to reflect that. Use file-reading and editing tools only; do not execute commands or change code.",
     "brief": "Stop the completed plan from instructing readers while keeping its rationale and dated measurement verbatim, and route readers to the current architecture owner.",
 }
@@ -724,4 +729,9 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
             raise ValueError("unknown case")
     except (OSError, ValueError, SyntaxError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         check("valid observable artifacts", False, type(exc).__name__ + ": " + str(exc)[:300])
+    # Artifacts cannot show commands the prompt forbade; a captured trace can. Manual runs
+    # without one (trace is None) are not judged on this.
+    if CASES[case_id].get("no_commands") and trace is not None:
+        ran = [event.get("command", "") for event in trace if event.get("tool") in ("Bash", "PowerShell")]
+        check("no commands executed", not ran, "; ".join(ran)[:300])
     return checks

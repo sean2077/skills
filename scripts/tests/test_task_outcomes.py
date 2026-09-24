@@ -237,6 +237,24 @@ class OutcomeTests(unittest.TestCase):
                 cases.write(workspace, "src/cache.py", "CACHE = None\n")
                 self.assertFalse(result()[0])
 
+    def test_forbidden_commands_fail_only_with_a_captured_trace(self):
+        workspace, state = self.fixture("plan-retirement")
+        plan = workspace / "docs/plans/balance-cache.md"
+        plan.write_text(plan.read_text(encoding="utf-8").replace(
+            "# Plan: balance cache\n", "# Plan: balance cache\n\nStatus: implemented; the current design is in "
+            "[Architecture](../ARCHITECTURE.md).\n"), encoding="utf-8")
+        read = [{"tool": "Read", "command": "", "output": "docs"}]
+        shell = [{"tool": "Bash", "command": "ls docs", "output": "README.md"}]
+        self.assertTrue(*self.passed(workspace, "plan-retirement", state, read))
+        self.assertTrue(*self.passed(workspace, "plan-retirement", state, None))  # Manual: not judged.
+        passed, checks = self.passed(workspace, "plan-retirement", state, shell)
+        self.assertFalse(passed)
+        self.assertIn("ls docs", next(c for c in checks if c["name"] == "no commands executed")["detail"])
+        # Cases whose prompt allows commands are not judged on them.
+        workspace, state = self.fixture("lark-stateful-update")
+        names = [c["name"] for c in cases.verify(workspace, "lark-stateful-update", state, shell)]
+        self.assertNotIn("no commands executed", names)
+
     def test_retirement_status_reads_negation_and_deferral_per_clause(self):
         retired = ("Status: completed. The steps below are historical and must not be run.",
                    "Status: implemented and deployed; do not follow the next steps.",
