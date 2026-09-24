@@ -13,6 +13,11 @@ again on updates. The rows below are coverage areas for selected domains, not a 
 create one file per area. Do not maintain excluded domains or delete their existing guidance.
 Core safety, permissions and source/projection ownership always apply.
 
+For selected `docs`, read the [documentation conventions](../assets/conventions/docs.md) when
+assessing structure, metadata, pruning, or migration. The same guide is installed for ordinary
+documentation tasks; setup establishes project-specific owners and reader routes, not a copy
+of its generic rules or a revived documentation-management skill.
+
 ## Discover the actual project
 
 Resolve the authorized checkout and its applicable instructions first. Read existing entry
