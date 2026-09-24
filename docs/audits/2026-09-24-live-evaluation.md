@@ -84,13 +84,37 @@ The route worked: every treatment run read the installed guide. On this task nei
 - **Evaluation plumbing.** The runner's reduced environment dropped `SKILL_EVAL_MAX_BUDGET_USD` and `CLAUDE_BIN`, so those documented knobs never reached the adapter. `host_model` read a field the CLI does not emit. There was no way to pin a model through a remapping gateway.
 - **Oracles and probes.** The plan-retirement exact-wording checks, the stale deep-interview labels, and the ambiguous probe vocabulary described above.
 
+## Follow-up round at `6d1e83b`
+
+This round addressed the open items from the first rounds, then reran all three routing suites and the affected tasks on both models. Evidence is in `routing/final-6d1e83b/` and `tasks-6d1e83b/`, where `summary.json` separates artifact correctness from forbidden command use.
+
+| Open item | Change | Result |
+|---|---|---|
+| Token and time budgets tracked noise | 112 of 680 probe calls, in both arms, reported roughly 18k extra input tokens, and gateway latency varied several-fold. Routing suites now gate only interventions and tool calls; the metrics are still recorded | Opus passed 29/29, 12/12 and 17/17. deepseek passed 27/29, 10/12 and 17/17 |
+| Ambiguous observation names | `persistent_state` → `use_bundled_runtime`, `file_access_outside_cwd` → `use_path_outside_cwd`; listed booleans are requested including false values; `lark` workflow defined | deepseek's file-containment and lark workflow cases now pass. It still reported `use_bundled_runtime: true` once for a conversational interview. Its other two failures were malformed JSON replies, which the adapter correctly rejects |
+| Forbidden commands invisible to oracles | Guidance fixtures whose prompt forbids commands fail when the captured trace shows a shell call | Both models broke the rule. Opus ran read-only shell commands in both scaffold-testing runs, including a `cd` to an invented path; it had made no shell calls in the first round. deepseek ran commands in 6 of 8 runs |
+| Ambiguous consolidation prompt | The prompt now says `quality-decisions.md` stays | All four scaffold-testing runs produced correct artifacts. Every run failed only on forbidden commands |
+| Guide pair could not discriminate | New `timeout-docs` pair: a plausible update also rewrites a dated validation record, and only the guide says to keep it | See below |
+
+### `timeout-docs` pair
+
+| Model / arm | Passed | Correct artifacts | Validation record untouched | Read the guide |
+|---|---|---|---|---|
+| Opus without guide | 3/3 | 3/3 | 3/3 | — |
+| Opus with guide | 3/3 | 3/3 | 3/3 | 3/3 |
+| deepseek without guide | 0/3 | 3/3 | 3/3 | — |
+| deepseek with guide | 2/3 | 3/3 | 3/3 | 3/3 |
+
+Neither model rewrote the dated record in any run, with or without the guide. The rule this pair isolates is already default behavior for both models, so this pair does not discriminate either. deepseek's difference in pass rate comes only from running forbidden commands (3/3 without the guide, 1/3 with it). Three runs per arm do not support a claim about that difference.
+
+Across both pairs, the installed docs guide was always found and read, and no correct artifact depended on it. Its measurable contribution for these two models is not correctness on these tasks. A future pair would need a rule that models do not follow by default, and this evaluation did not find one among the guide's rules.
+
 ## Open
 
-- The installed-guide pair needs a discriminating task.
-- The `scaffold-testing-guidance` prompt should say whether the consolidated source file stays.
-- Input-token budgets need an allowance that reflects cache-accounting noise, or a cache-controlled host.
-- Task oracles cannot see command execution that a prompt forbids.
+- No discriminating installed-guide pair exists yet (see above).
+- deepseek-v4.1-flash sometimes returns malformed JSON to the probe and still misreads `use_bundled_runtime` once.
+- Both models sometimes run shell commands that a prompt forbids. The oracles now detect this, but the catalog cannot prevent it.
 
 ## Limits
 
-This covers two models on one host and one gateway, with uncontrolled caching. Routing probes show decisions stated from the entry point alone, not native discovery or executed work. Task outcomes are one or three runs of bounded fixtures. Operator-supplied labels are not attestation.
+This covers two models on one host and one gateway, over three rounds, with uncontrolled caching. Routing probes show decisions stated from the entry point alone, not native discovery or executed work. Task outcomes are one or three runs of bounded fixtures. Operator-supplied labels are not attestation.

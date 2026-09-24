@@ -117,7 +117,7 @@ def assess(output: Path, driver: dict | None = None) -> dict:
         raise ValueError("fixture/evaluator mismatch; use the matching evaluator or prepare a new run")
     before = snapshot_digest(repository_snapshot(output / "workspace"))
     checks = verify(output / "workspace", metadata["case"], metadata["state"],
-                    (driver or {}).get("trace", []))
+                    None if driver is None else driver.get("trace", []))
     if before != snapshot_digest(repository_snapshot(output / "workspace")):
         checks.append({"name": "verification did not mutate artifacts", "passed": False, "detail": ""})
     result = {**metadata, "checks": checks, "passed": bool(checks) and all(x["passed"] for x in checks),

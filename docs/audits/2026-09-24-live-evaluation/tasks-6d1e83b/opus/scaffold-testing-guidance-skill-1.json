@@ -1,0 +1,205 @@
+{
+  "contract": "skill-task-outcome/1",
+  "case": "scaffold-testing-guidance",
+  "condition": "skill",
+  "evaluator_digest": "dd1aa754b2237d0ec5697ab12783467127324c429c0c324b721a53a67d1749c3",
+  "skill_revision": "6d1e83b0742f2c363fa7e173403dbcbae03f49a3",
+  "skill_digest": "2ed36ee3ac92cbec74b04f3e5c8240dc0a74eb0ee984518c0393f0eeb4e334a5",
+  "state": {
+    "base": "c427dd1c9698c5fabfc08f2d800bada2c168f6c4",
+    "protected": {
+      ".coveragerc": "2c56c2a260848d66474d0d32e8cd7aea90e731b31479d376f4eb7e8d86f26205",
+      "README.md": "d14a2ca95c398e42269703e69e7398d142740a57e8751eabc5bc8516601939e4",
+      "encoder.py": "e6fc03bcdcfe4f1f1e52cbe65f1b8fd8049ce569d2a56f3e991dbd08b5c1ebd2",
+      "fixtures/provider.json": "755700c02243f98a36b3b09c96c55478b9be4198d8e1c678b2ff01c2cdea8d69",
+      "protocol.md": "9ba36c9caedbadee8500cece7697c692dcd1d4ee28c7faec2d9fe529825ec67b",
+      "quality-decisions.md": "af0fcc5494e657c3c4caca7311f9e9fededbef3bfcdc489f98f8508335e4e8cb",
+      "spec/encoder_spec.py": "5f8805c31a12f6780f76d60cec7e029d2cd014a572e9753b67aada47a5081e69"
+    },
+    "editable": [
+      "AGENTS.md",
+      "handbook/development.md"
+    ],
+    "dirs": [
+      "fixtures",
+      "handbook",
+      "spec"
+    ]
+  },
+  "fixture_digest": "bcc007c49103debb4ef086d1fc0d0355ba0926fd02631be753c7eda09df733ea",
+  "platform": "Windows",
+  "python": "3.14.7",
+  "prompt_digest": "60a4a8f352cf7e549340a05754aede48336b8c5183f9d5d474d743153ddb970e",
+  "checks": [
+    {
+      "name": "unchanged fixture .coveragerc",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture README.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture encoder.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture fixtures/provider.json",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture protocol.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture quality-decisions.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unchanged fixture spec/encoder_spec.py",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "testing guide reachable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "resident owner note preserved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "delivery boundary preserved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Test-first is optional; require it only when the user or applicable module policy says so.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Keep the coverage floor at 82%.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Run discovery from the repository root.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Protocol expectations come from protocol.md, not from the production encoder.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Use the real CLI entry for argument, exit-status and working-directory regressions.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: A local fake does not prove provider authentication or service compatibility.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Never contact production; provider integration uses the separate authorized sandbox.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Check that the selected tests ran and the injected failure reached the exercised boundary.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "source-owned testing clause: Review golden changes against protocol.md rather than approving new output blindly.",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "existing discovery command retained",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "protocol source reachable",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "existing test example linked",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "only project guidance changed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no added fixture directory",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no new fixture-default directory or skill dependency: test",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no new fixture-default directory or skill dependency: tests",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no new fixture-default directory or skill dependency: __tests__",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no new fixture-default directory or skill dependency: tools",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no new fixture-default directory or skill dependency: .agents",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no new fixture-default directory or skill dependency: TESTING.md",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no commands executed",
+      "passed": false,
+      "detail": "cd /Users/user/project && git ls-files && echo --- && ls -la; cd \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-opus\\scaffold-testing-guidance-skill-1\\workspace\" && find . -path ./.git -prune -o -type f -print -o -type l -print; cd \"C:\\Users\\admin\\AppData\\Local\\Temp\\liveeval\\v3\\tasks-opus\\scaf"
+    }
+  ],
+  "passed": false,
+  "execution": "completed",
+  "host": {
+    "name": "claude",
+    "version": "2.1.280 (Claude Code)",
+    "model": "claude-opus-5-5",
+    "configuration": "bare-local-tools",
+    "cache": "uncontrolled: gateway prompt caching"
+  },
+  "metrics": {
+    "input_tokens": 250928.0,
+    "output_tokens": 5228.0,
+    "tool_calls": 16,
+    "wall_time_seconds": 73.18871290003881
+  }
+}

@@ -32,21 +32,9 @@
       "interventions": 0
     },
     "relative": {
-      "input_tokens": {
-        "max_ratio": 4.0,
-        "max_additive": 2000
-      },
-      "output_tokens": {
-        "max_ratio": 2.5,
-        "max_additive": 500
-      },
       "tool_calls": {
         "max_ratio": 2.0,
         "max_additive": 3
-      },
-      "wall_time_seconds": {
-        "max_ratio": 3.0,
-        "max_additive": 10
       }
     }
   },
@@ -66,7 +54,7 @@
             "workflow": "interview",
             "approval_required": true,
             "external_research": false,
-            "persistent_state": false
+            "use_bundled_runtime": false
           }
         }
       }
@@ -87,7 +75,7 @@
             "first_turn_question_count": 5,
             "approval_required": true,
             "external_research": false,
-            "persistent_state": false
+            "use_bundled_runtime": false
           }
         }
       }
@@ -108,7 +96,7 @@
             "first_turn_question_count": 1,
             "approval_required": true,
             "external_research": false,
-            "persistent_state": false
+            "use_bundled_runtime": false
           }
         }
       }
@@ -126,7 +114,7 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "persistent_state": true,
+            "use_bundled_runtime": true,
             "approval_required": true
           }
         }
@@ -181,7 +169,7 @@
             "workflow": "interview",
             "approval_accepted": true,
             "implementation_authorized": false,
-            "persistent_state": false
+            "use_bundled_runtime": false
           }
         }
       }
@@ -218,7 +206,7 @@
             "route": "deep-interview",
             "workflow": "interview",
             "reapproval_required": false,
-            "persistent_state": false
+            "use_bundled_runtime": false
           }
         }
       }
@@ -237,7 +225,7 @@
             "route": "deep-interview",
             "workflow": "interview",
             "reapproval_required": true,
-            "persistent_state": false
+            "use_bundled_runtime": false
           }
         }
       }
@@ -256,7 +244,7 @@
             "route": "deep-interview",
             "workflow": "interview",
             "reapproval_required": true,
-            "persistent_state": true
+            "use_bundled_runtime": true
           }
         }
       }
@@ -274,7 +262,7 @@
           "treatment": {
             "route": "deep-interview",
             "workflow": "interview",
-            "persistent_state": false
+            "use_bundled_runtime": false
           }
         }
       }

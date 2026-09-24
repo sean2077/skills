@@ -32,21 +32,9 @@
       "interventions": 0
     },
     "relative": {
-      "input_tokens": {
-        "max_ratio": 4.0,
-        "max_additive": 2000
-      },
-      "output_tokens": {
-        "max_ratio": 2.5,
-        "max_additive": 500
-      },
       "tool_calls": {
         "max_ratio": 2.0,
         "max_additive": 3
-      },
-      "wall_time_seconds": {
-        "max_ratio": 3.0,
-        "max_additive": 10
       }
     }
   },
@@ -281,7 +269,7 @@
           "treatment": {
             "route": "lark-cli",
             "workflow": "lark",
-            "file_access_outside_cwd": false
+            "use_path_outside_cwd": false
           }
         }
       }

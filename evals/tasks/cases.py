@@ -173,6 +173,7 @@ SELECTED_BLOCK = (
 )
 CASES = {
     "scaffold-selected-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
         "prompt": "Initialize the project-owned conventions after asset work. The installer already recorded my explicit one-time choice, all domains except git and release, in the AGENTS.md managed block; do not ask again or edit that block. Consolidate the owner clauses from decisions.md verbatim into the existing guide/development.md, link that guide from AGENTS.md and link the actual test, specification and terminology sources. Do not run commands, change source policies or tools, touch existing Git/release rules or add parallel documents. Assets are handled separately.",
         "brief": "Preserve the recorded selection, explicit exclusions and existing policies; the record does not certify guidance, so connect meaningful project guidance to its sources.",
@@ -193,18 +194,21 @@ CASES = {
         "brief": "Check incoming and outgoing links and unique content after the move.",
     },
     "scaffold-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
         "prompt": "Complete first-use project guidance as part of Agent harness initialization; asset installation is handled separately. Read project sources, fill missing command, documentation and generated-source guidance, and connect it from AGENTS.md. Preserve existing layout, the owner note, the existing delivery clause verbatim, draft status, user files and toolchain. The owner already selected all domains. Do not run installers, generators or commands, move files, or add empty/default directories.",
         "brief": "Use current project entry points and actual command/source owners. Fill genuine guidance gaps rather than copying a template; installer success is not reader readiness.",
     },
     "scaffold-upgrade-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
         "prompt": "Reconcile project guidance during a harness upgrade. CONTRIBUTING.md now owns the guide that was deliberately merged out of doc/development.md. Repair stale Agent navigation; preserve existing content and do not recreate the removed guide or change project commands. Asset updates are handled separately; the owner already selected all domains. Do not run commands.",
         "brief": "Adopt the current successor and repair routes without restoring an earlier template.",
     },
     "scaffold-testing-guidance": {
+        "no_commands": True,
         "skill": "agent-scaffold",
-        "prompt": "Complete the testing-guidance part of harness initialization. Asset work is separate. Consolidate quality-decisions.md into the existing handbook/development.md and connect that guide from AGENTS.md. Keep the owner clauses verbatim in the guide, explain the existing runner with its discovery arguments, and link the protocol and existing test example. Preserve current test-first/coverage choices and all other files. Do not execute commands, change tests, add frameworks or create parallel guides. The owner already selected testing; asset/selection-record work is separate. No sibling skill is installed.",
+        "prompt": "Complete the testing-guidance part of harness initialization. Asset work is separate. Consolidate the clauses from quality-decisions.md into the existing handbook/development.md, leaving quality-decisions.md itself in place, and connect that guide from AGENTS.md. Keep the owner clauses verbatim in the guide, explain the existing runner with its discovery arguments, and link the protocol and existing test example. Preserve current test-first/coverage choices and all other files. Do not execute commands, change tests, add frameworks or create parallel guides. The owner already selected testing; asset/selection-record work is separate. No sibling skill is installed.",
         "brief": "Use actual project sources to fill test-quality guidance, preserve policy and test discovery, and keep it reachable without depending on another skill.",
     },
     "lark-unknown-write": {
@@ -237,11 +241,24 @@ CASES = {
 # Compare the pair under matched host conditions; the guide is the only fixture difference.
 PLAN_TASK = {
     "skill": None,
+    "no_commands": True,
     "prompt": "Read AGENTS.md for the workspace instructions. The balance-cache plan in docs/plans/balance-cache.md is now implemented in src/cache.py and deployed. Update the documentation to reflect that. Use file-reading and editing tools only; do not execute commands or change code.",
     "brief": "Stop the completed plan from instructing readers while keeping its rationale and dated measurement verbatim, and route readers to the current architecture owner.",
 }
 CASES["plan-retirement"] = dict(PLAN_TASK)
 CASES["plan-retirement-installed-guide"] = dict(PLAN_TASK)
+# A second pair whose correct result depends on a rule only the docs guide states: dated
+# evidence stays history. Both tested models retired the plan correctly without the guide,
+# so that pair could not show whether following the route changes behavior.
+TIMEOUT_TASK = {
+    "skill": None,
+    "no_commands": True,
+    "prompt": "Read AGENTS.md for the workspace instructions. The default request timeout changed from 30 s to 10 s in src/config.py. Update the documentation to reflect that. Use file-reading and editing tools only; do not execute commands or change code.",
+    "brief": "Update the current configuration docs to 10 s, but keep dated validation records unchanged as history.",
+}
+CASES["timeout-docs"] = dict(TIMEOUT_TASK)
+CASES["timeout-docs-installed-guide"] = dict(TIMEOUT_TASK)
+TIMEOUT_EVIDENCE = "With the default 30 s request timeout, 0 of 500 requests timed out at 200 rps."
 PLAN_RATIONALE = "We chose write-through because readers must never observe a stale balance."
 
 
@@ -374,6 +391,15 @@ def prepare(root: Path, case_id: str) -> dict:
         write(root, "src/cache.py", "CACHE = {}\n\ndef write(account, balance):\n    CACHE[account] = balance\n")
         write(root, "tools/purge.py", "raise SystemExit('destructive purge; never run in this fixture')\n")
         installed_docs_guide(root, enabled=case_id == "plan-retirement-installed-guide")
+    elif case_id in ("timeout-docs", "timeout-docs-installed-guide"):
+        write(root, "AGENTS.md", "# Gateway client\n\nDocumentation map: [docs/README.md](docs/README.md).\n")
+        write(root, "docs/README.md", "# Documentation\n\n- [Configuration](configuration.md)\n"
+              "- [Load validation, 2026-08-01](validation/2026-08-01.md)\n")
+        write(root, "docs/configuration.md", "# Configuration\n\n`timeout`: request timeout. Default: 30 s.\n")
+        write(root, "docs/validation/2026-08-01.md", "# Load validation, 2026-08-01\n\nSource revision: 4f2a9c1\n\n"
+              + TIMEOUT_EVIDENCE + "\n")
+        write(root, "src/config.py", "TIMEOUT_SECONDS = 10\n")
+        installed_docs_guide(root, enabled=case_id == "timeout-docs-installed-guide")
     else:
         raise ValueError("unknown case")
     git(root, "add", ".")
@@ -406,7 +432,8 @@ def prepare(root: Path, case_id: str) -> dict:
             if path and path not in scaffold_editable
         }
         state["dirs"] = workspace_dirs(root)
-    if case_id in ("plan-retirement", "plan-retirement-installed-guide"):
+    if case_id in ("plan-retirement", "plan-retirement-installed-guide",
+                   "timeout-docs", "timeout-docs-installed-guide"):
         state["protected"] = {path: digest(read(root, path))
                               for path in git(root, "ls-files", "-z").decode().split("\0")
                               if path and not path.startswith("docs/")}
@@ -720,8 +747,26 @@ def verify(root: Path, case_id: str, state: dict, trace: list[dict] | None = Non
                   "balances are cached write-through by src/cache.py" in prose_text(docs.get("docs/ARCHITECTURE.md", "")))
             reachable_guidance(root)  # raises on a broken reader route or anchor
             check("reader routes resolve", True)
+        elif case_id in ("timeout-docs", "timeout-docs-installed-guide"):
+            changed = guidance_changed_paths(root, state)
+            check("only documentation changed", bool(changed) and all(
+                p.startswith("docs/") and p.endswith(".md") for p in changed), ", ".join(sorted(changed)))
+            current = prose_text(read(root, "docs/configuration.md").decode("utf-8"))
+            check("current default documented as 10 s", re.search(r"\b10 ?(s|sec|seconds?)\b", current) is not None)
+            check("stale 30 s default removed",
+                  re.search(r"default:? (is )?30 ?(s|sec|seconds?)\b", current) is None)
+            record = prose_text(read(root, "docs/validation/2026-08-01.md").decode("utf-8"))
+            check("dated validation evidence kept verbatim",
+                  prose_text(TIMEOUT_EVIDENCE) in record and "source revision: 4f2a9c1" in record)
+            reachable = reachable_guidance(root)  # raises on a broken reader route or anchor
+            check("validation record still reachable", "docs/validation/2026-08-01.md" in reachable)
         else:
             raise ValueError("unknown case")
     except (OSError, ValueError, SyntaxError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         check("valid observable artifacts", False, type(exc).__name__ + ": " + str(exc)[:300])
+    # Artifacts cannot show commands the prompt forbade; a captured trace can. Manual runs
+    # without one (trace is None) are not judged on this.
+    if CASES[case_id].get("no_commands") and trace is not None:
+        ran = [event.get("command", "") for event in trace if event.get("tool") in ("Bash", "PowerShell")]
+        check("no commands executed", not ran, "; ".join(ran)[:300])
     return checks
