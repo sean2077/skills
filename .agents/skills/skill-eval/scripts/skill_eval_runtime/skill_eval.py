@@ -334,6 +334,9 @@ def _minimal_env(extra: Mapping[str, str]) -> Dict[str, str]:
         "LC_CTYPE",
     )
     env = {key: os.environ[key] for key in allowed if key in os.environ}
+    # Evaluation knobs (model, per-call budget) stay run-scoped rather than being
+    # pinned into committed manifests; only this explicit namespace passes through.
+    env.update({key: value for key, value in os.environ.items() if key.startswith("SKILL_EVAL_")})
     env.update(
         {
             "PYTHONIOENCODING": "utf-8",

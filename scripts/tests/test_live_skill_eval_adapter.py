@@ -327,6 +327,30 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         self.assertTrue(payload["metadata"]["usage_available"])
         self.assertEqual(10, payload["metrics"]["input_tokens"])
 
+    def test_host_model_names_the_model_that_served_the_call(self):
+        host = self.successful_host()
+        host["modelUsage"] = {"claude-opus-5-5": {"inputTokens": 10, "outputTokens": 5,
+                                                 "cacheReadInputTokens": 0, "cacheCreationInputTokens": 0}}
+        payload = self.run_host(host)
+        self.assertEqual("completed", payload["status"])
+        self.assertEqual("claude-opus-5-5", payload["metadata"]["host_model"])
+        self.assertIsNone(self.adapter.host_model({}))
+
+    def test_requested_model_is_passed_to_the_host_only_when_set(self):
+        completed = types.SimpleNamespace(stdout=json.dumps(self.successful_host()), returncode=0)
+        request = {"repository_root": str(ROOT), "run_id": "m", "mode": "baseline",
+                   "case": {"prompt": "Explain the flow."}}
+        for model, expected in (("claude-opus-5-5", ["--model", "claude-opus-5-5"]), ("", [])):
+            with contextlib.redirect_stdout(io.StringIO()), mock.patch(
+                "sys.stdin", io.StringIO(json.dumps(request))
+            ), mock.patch.object(self.adapter.shutil, "which", return_value="/fake/claude"), mock.patch.object(
+                self.adapter.subprocess, "run", return_value=completed
+            ) as run, mock.patch.object(self.adapter, "MODEL", model):
+                self.assertEqual(0, self.adapter.main())
+            argv = run.call_args[0][0]
+            tail = argv[argv.index("--max-budget-usd") + 2:]
+            self.assertEqual(expected, tail)
+
     def test_cached_input_is_counted_without_double_counting_model_totals(self):
         host = self.successful_host()
         host["usage"].update(cache_read_input_tokens=200, cache_creation_input_tokens=30)

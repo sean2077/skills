@@ -17,6 +17,8 @@ from typing import Any, Iterable
 
 CONTRACT = "agent-skill-eval/v1"
 MAX_BUDGET_USD = os.environ.get("SKILL_EVAL_MAX_BUDGET_USD", "0.10")
+# An exact model ID; without it the host's configured default (which a gateway may remap) runs.
+MODEL = os.environ.get("SKILL_EVAL_MODEL", "")
 WORKFLOWS = (
     "analysis",
     "code-review",
@@ -337,6 +339,15 @@ def canonicalize_behavior(
     return canonical
 
 
+def host_model(host: dict[str, Any]) -> str | None:
+    """Name the model(s) that actually served the call; a gateway may remap the request."""
+    models = host.get("modelUsage")
+    if isinstance(models, dict) and models:
+        return ",".join(sorted(str(name) for name in models))
+    model = host.get("model")
+    return model if isinstance(model, str) else None
+
+
 def main() -> int:
     request: dict[str, Any] = {}
     started = time.monotonic()
@@ -348,7 +359,9 @@ def main() -> int:
         repository_root = Path(request["repository_root"]).resolve(strict=True)
         routes = catalog_routes(repository_root)
         candidate, skill_text = load_candidate(request.get("skill_path"), repository_root)
-        claude = os.environ.get("CLAUDE_BIN") or shutil.which("claude")
+        # The runner forwards only the SKILL_EVAL_ namespace, so CLAUDE_BIN works only for direct calls.
+        claude = (os.environ.get("SKILL_EVAL_CLAUDE_BIN") or os.environ.get("CLAUDE_BIN")
+                  or shutil.which("claude"))
         if not claude:
             raise FileNotFoundError("Claude Code executable not found")
         stage = "host"
@@ -359,7 +372,7 @@ def main() -> int:
                 "--disable-slash-commands", "--tools", "",
                 "--permission-mode", "dontAsk", "--setting-sources", "user",
                 "--max-budget-usd", MAX_BUDGET_USD,
-            ],
+            ] + (["--model", MODEL] if MODEL else []),
             cwd=str(repository_root), stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace", timeout=240, check=False,
@@ -384,7 +397,7 @@ def main() -> int:
             "schema_version": 1, "contract": CONTRACT,
             "run_id": request["run_id"], "mode": request["mode"],
             "selected": selected, "status": "completed", "metrics": observed,
-            "metadata": {"behavior": behavior, "host_model": host.get("model"),
+            "metadata": {"behavior": behavior, "host_model": host_model(host),
                          "usage_available": True},
         })
         return 0

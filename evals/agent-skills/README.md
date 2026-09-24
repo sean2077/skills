@@ -11,7 +11,7 @@ Run from the intended committed task checkout. Commit candidate/manifests first:
 python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/agent-skills/agent-scaffold/suite.json
 ```
 
-Live execution may incur model usage. Configure/authenticate Claude Code, authorize the experiment, and set `CLAUDE_BIN` when it is not on `PATH`. From Bash/Git Bash:
+Live execution may incur model usage. Configure/authenticate Claude Code and authorize the experiment. The runner's reduced environment forwards only `SKILL_EVAL_*` variables to the adapter: set `SKILL_EVAL_MODEL` to an exact model ID (otherwise the host default runs, which a gateway may remap; results record the serving model in `host_model`), `SKILL_EVAL_MAX_BUDGET_USD` to raise the per-call cap from `0.10`, and `SKILL_EVAL_CLAUDE_BIN` when `claude` is not on `PATH`. From Bash/Git Bash:
 
 ```bash
 (
