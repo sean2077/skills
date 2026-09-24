@@ -2,7 +2,7 @@
 
 Keep durable facts in their authoritative home and maintain the routes readers use to find them. This page owns documentation practice, not a mandatory review workflow.
 
-For reusable structure, numbering, metadata, pruning, and migration methods, use the installed [documentation conventions](../.agents/conventions/docs.md). The rules below supply this repository's owners and verification boundaries rather than duplicate that guide.
+For reusable structure, numbering, metadata, pruning, and migration methods, use the installed [documentation conventions](../.agents/conventions/docs.md). The sections below add this repository's owners and verification boundaries.
 
 ## Ownership
 
