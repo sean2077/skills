@@ -72,10 +72,12 @@ and add an attention/failure check; do not reset or re-onboard them. The `runtim
 each `convention.<domain>` check, `convention.notice` and `contract.gitattributes-conventions`
 likewise follow their domains. `guidance.legacy-record` reports a leftover `.agents/scaffold.json`:
 `refresh` in plan, `fail` in verify until apply/upgrade moves it into the managed block. A legacy
-file that disagrees with the marker makes the selection `invalid`; preserve both and resolve it.
+file that disagrees with the recorded scope makes the selection `invalid`; preserve both and
+resolve it.
 
-The domains marker in the managed `AGENTS.md` block is a coverage preference, not a layout
-schema or completion assertion. `project_guidance` remains `not-assessed`, even with a valid selection.
+The `domains=` field of the managed `AGENTS.md` opening comment is a coverage preference, not a
+layout schema or completion assertion. `project_guidance` remains `not-assessed`, even with a
+valid selection.
 Raw apply/upgrade without a choice stays asset-only until the Agent completes the one-time
 selection and selected guidance. The CLI never blocks on stdin or prompts. See
 [selection](onboarding-selection.md) for explicit updates and interruption behavior.

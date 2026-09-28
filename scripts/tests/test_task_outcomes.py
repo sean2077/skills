@@ -167,7 +167,7 @@ class OutcomeTests(unittest.TestCase):
                              (guided / ".agents/conventions" / name).read_bytes())
         contract = (guided / "AGENTS.md").read_text(encoding="utf-8")
         self.assertEqual(1, contract.count("`.agents/conventions/docs.md`"))
-        self.assertIn("<!-- agent-scaffold:domains=docs -->", contract)
+        self.assertIn("<!-- agent-scaffold:start (managed; edit outside) profile=light domains=docs -->", contract)
         bare_contract = (bare / "AGENTS.md").read_text(encoding="utf-8")
         route = contract.index("`.agents/conventions/docs.md`")
         start = contract.rfind("\n### ", 0, route) + 1
@@ -175,7 +175,7 @@ class OutcomeTests(unittest.TestCase):
         # Only the route section differs, not the rest of the harness/authority rules.
         self.assertEqual(bare_contract, contract[:start] + contract[end:])
         self.assertNotIn("`.agents/conventions/docs.md`", bare_contract)
-        self.assertIn("<!-- agent-scaffold:domains=docs -->", bare_contract)
+        self.assertIn("<!-- agent-scaffold:start (managed; edit outside) profile=light domains=docs -->", bare_contract)
         tracked = lambda root: set(cases.git(root, "ls-files").decode().splitlines())
         self.assertEqual(GUIDE_PATHS, tracked(guided) - tracked(bare))
         self.assertEqual({"AGENTS.md"}, {p for p in tracked(bare)
@@ -346,10 +346,10 @@ class OutcomeTests(unittest.TestCase):
         cases.write(workspace, "guide/development.md", guide)
         self.assertTrue(*result())
         linked = (workspace / "AGENTS.md").read_text()
-        record = "<!-- agent-scaffold:domains=" + ",".join(cases.SELECTED_DOMAINS) + " -->"
+        record = " domains=" + ",".join(cases.SELECTED_DOMAINS)
         for domains in (cases.SELECTED_DOMAINS + ["release"], [], cases.SELECTED_DOMAINS[:-1]):
             with self.subTest(domains=domains):
-                edited = "<!-- agent-scaffold:domains=" + (",".join(domains) or "none") + " -->"
+                edited = " domains=" + (",".join(domains) or "none")
                 cases.write(workspace, "AGENTS.md", linked.replace(record, edited))
                 self.assertFalse(result()[0])
         cases.write(workspace, "AGENTS.md", linked + "\n" + cases.SELECTED_BLOCK)

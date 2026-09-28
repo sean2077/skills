@@ -6,7 +6,7 @@ selection. This selects **guidance coverage**, not new project policies or permi
 ## First setup or older installation
 
 Run the read-only asset `plan --json` and inspect `guidance_selection`. A managed `AGENTS.md`
-block without a domains marker (and no legacy `.agents/scaffold.json`) is `pending`, whether the
+block without a `domains=` field (and no legacy `.agents/scaffold.json`) is `pending`, whether the
 harness is new or already installed.
 Offer all eight domains together as the default and ask **once**, before full setup writes:
 
@@ -48,17 +48,19 @@ actual user choice, not permission for the Agent to choose exclusions on its own
 
 ## Persist scope, not a completion claim
 
-The installer records the accepted list in the managed `AGENTS.md` block, beside the profile
-marker, when it writes that block:
+The installer records the accepted list and profile in the managed `AGENTS.md` opening comment:
 
 ```markdown
-<!-- agent-scaffold:domains=docs,tools,testing,specs,terminology,git,release,environment -->
+<!-- agent-scaffold:start (managed; edit outside) profile=default domains=docs,tools,testing,specs,terminology,git,release,environment -->
 ```
 
-`none` records an empty choice, which is complete, not missing data; an absent marker is
+Existing separate profile/domains comments remain readable; apply/upgrade folds them into this
+one-line header without changing the saved choices or block-external project prose.
+
+`none` records an empty choice, which is complete, not missing data; an absent record is
 pending. The list is always explicit, never `all`, so a later upstream domain stays unselected.
 `AGENTS.md` is tracked, so later sessions and worktrees inherit the decision. The whole block is
-scaffold-owned: hand edits to the marker are drift, and scope changes go through `--domains`.
+scaffold-owned: hand edits to that record are drift, and scope changes go through `--domains`.
 
 The selection gates domain-scoped assets: each selected domain's generic daily guide in
 `.agents/conventions/` with one route in the managed block (release routes to its
@@ -70,12 +72,12 @@ Existing unselected legacy installations retain their old managed contract until
 records a choice.
 
 Earlier releases stored the choice in `.agents/scaffold.json`. A valid legacy file still counts
-as the recorded choice; the next apply/upgrade writes the marker and removes the file. A legacy
-file that disagrees with an existing marker is a conflict to resolve, not something to overwrite.
+as the recorded choice; the next apply/upgrade writes the record and removes the file. A legacy
+file that disagrees with an existing record is a conflict to resolve, not something to overwrite.
 Retirement rechecks the recorded scope before deleting the old file; an explicit `--domains`
 update is carried through that check so an authorized scope change can migrate safely.
 
-The marker is written with the managed block, before guidance authorship, so an interrupted
+The record is written with the managed block, before guidance authorship, so an interrupted
 setup can resume **without asking again**. It does not certify that any guide was written or
 that a host loaded it. Repeat the pending guidance work for selected domains and report gaps
 honestly.

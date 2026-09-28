@@ -134,6 +134,72 @@ class AtomicSymlinkTests(unittest.TestCase):
             self.assertEqual([], list(root.glob(".projection.agent-scaffold-link-*")))
 
 
+class CompactHeaderTests(unittest.TestCase):
+    def test_one_comment_round_trips_profiles_domains_and_legacy_headers(self):
+        source = CORE.SKILL_DIR / "assets/scaffold/AGENTS.harness.md"
+        for profile in ("default", "light"):
+            for domains in (None, [], ["git", "docs"], list(CORE.GUIDANCE_DOMAINS)):
+                selected = None if domains is None else [d for d in CORE.GUIDANCE_DOMAINS if d in domains]
+                record = None if selected is None else ",".join(selected) or "none"
+                header = "<!-- agent-scaffold:start (managed; edit outside) profile=" + profile
+                if record is not None:
+                    header += " domains=" + record
+                header += " -->"
+                rendered = CORE.render_agents_template(source, profile, domains)
+                self.assertEqual([header, "## Agent Harness"], rendered.splitlines()[:2])
+                self.assertEqual(1, header.count("<!--"))
+                legacy = "<!-- agent-scaffold:start (managed; edit outside) -->\n"
+                legacy += "<!-- agent-scaffold:profile=" + profile + " -->"
+                if record is not None:
+                    legacy += "\n<!-- agent-scaffold:domains=" + record + " -->"
+                legacy = rendered.replace(header, legacy, 1)
+                for old, block in ((False, rendered), (True, legacy)):
+                    for eol in ("\n", "\r\n"):
+                        with self.subTest(profile=profile, domains=domains, legacy=old, eol=repr(eol)):
+                            with tempfile.TemporaryDirectory() as directory:
+                                root = Path(directory)
+                                agents = root / "AGENTS.md"
+                                # Metadata-like owner prose outside the block cannot override it.
+                                text = "# Owner\n<!-- agent-scaffold:domains=unknown -->\n" + block
+                                text += "\n<!-- agent-scaffold:profile=unknown -->\nOwner footer.\n"
+                                agents.write_bytes(text.replace("\n", eol).encode("utf-8"))
+                                before = agents.read_bytes()
+                                self.assertEqual(profile, CORE.select_profile(root, source))
+                                self.assertEqual(selected, CORE.load_guidance_selection(root))
+                                self.assertEqual(not old, CORE.managed_block_matches(agents, source, profile))
+                                self.assertEqual(before, agents.read_bytes())
+
+    def test_invalid_or_duplicate_metadata_never_becomes_an_absent_record(self):
+        source = CORE.SKILL_DIR / "assets/scaffold/AGENTS.harness.md"
+        for key, values in (("profile", ("", "unknown", "light light")),
+                            ("domains", ("", "all", "unknown", "docs,docs", "docs git"))):
+            valid = "light" if key == "profile" else "docs"
+            bad_fields = [key + "=" + value for value in values]
+            bad_fields += [key + "=" + valid + " " + key + "=" + valid, key + " =" + valid]
+            blocks = ["<!-- agent-scaffold:start (managed; edit outside) " + field + " -->\n"
+                      for field in bad_fields]
+            blocks += ["<!-- agent-scaffold:start (managed; edit outside) " + key + "=" + valid + " -->\n"
+                       "<!-- agent-scaffold:" + key + "=" + valid + " -->\n"]
+            blocks += ["<!-- agent-scaffold:start (managed; edit outside) " + key + "=" + valid + "\n"]
+            # A legacy standalone comment is still read, so a damaged value there is an
+            # error rather than an absent record and a fresh onboarding question.
+            blocks += ["<!-- agent-scaffold:start (managed; edit outside) -->\n"
+                       "<!-- agent-scaffold:" + key + "=" + value + " -->\n"
+                       for value in values]
+            for block in blocks:
+                with self.subTest(key=key, block=block), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    agents = root / "AGENTS.md"
+                    agents.write_text(block + "## Agent Harness\n<!-- agent-scaffold:end -->\n", encoding="utf-8")
+                    before = agents.read_bytes()
+                    with self.assertRaises(CORE.CoreError):
+                        if key == "profile":
+                            CORE.select_profile(root, source)
+                        else:
+                            CORE.load_guidance_selection(root)
+                    self.assertEqual(before, agents.read_bytes())
+
+
 class TargetInspectionTests(unittest.TestCase):
     def test_agents_render_cli_emits_platform_independent_lf(self):
         manifest = CORE.load_manifest()
@@ -255,7 +321,7 @@ class ProfileSelectionTests(unittest.TestCase):
             self.assertEqual(CORE.select_profile(root, source), "default")
             for profile in ("default", "light"):
                 rendered = CORE.render_agents_template(source, profile)
-                for block in (rendered, rendered.replace("<!-- agent-scaffold:profile=" + profile + " -->\n", "")):
+                for block in (rendered, rendered.replace(" profile=" + profile, "", 1)):
                     with self.subTest(profile=profile, legacy="profile=" not in block):
                         (root / "AGENTS.md").write_text("# Project instructions\n" + block + "\nOwner prose.\n", encoding="utf-8")
                         self.assertEqual(CORE.select_profile(root, source), profile)
@@ -268,7 +334,7 @@ class ProfileSelectionTests(unittest.TestCase):
             for block in (
                 template.replace("profile=light", "profile=unknown"),
                 template.replace("profile=light -->", "profile=light -->\n<!-- agent-scaffold:profile=default -->"),
-                template.replace("<!-- agent-scaffold:profile=light -->\n", "").replace("### Sources and projections", "### Locally altered block"),
+                template.replace(" profile=light", "", 1).replace("### Sources and projections", "### Locally altered block"),
             ):
                 (root / "AGENTS.md").write_text(block, encoding="utf-8")
                 before = (root / "AGENTS.md").read_bytes()

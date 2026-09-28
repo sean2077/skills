@@ -38,8 +38,8 @@ strategy, profile, executable intent, and required `.gitignore` / `.gitattribute
 | `assets/scaffold/agents-skills.README.md` | `.agents/skills/README.md` if missing | lean ownership boundary |
 | `assets/scaffold/agents-subagents.README.md` | `.agents/subagents/README.md` if missing | lean ownership boundary |
 
-Accepted convention coverage is recorded by a `<!-- agent-scaffold:domains=... -->` marker in the
-managed `AGENTS.md` block, written only for an explicit `--domains` answer (or migrated from a
+Accepted convention coverage is recorded by the `domains=...` field in the managed `AGENTS.md`
+opening comment alongside `profile=...`, written only for an explicit `--domains` answer (or migrated from a
 legacy `.agents/scaffold.json`) and preserved on later asset updates. It is not a layout registry
 or automatically generated project guidance. Only domain-scoped assets follow it: the convention
 guides and their managed routes, the managed terminology section and the release runtime. A

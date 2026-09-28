@@ -43,7 +43,7 @@ One named area of project guidance that a full **agent-scaffold** setup can esta
 _Avoid_: feature flag, module
 
 **Convention selection**:
-The accepted list of **Convention domains** recorded by the domains marker in the managed `AGENTS.md` block and reused on later updates. `none` is a choice of none; a missing marker is pending. Earlier releases used `.agents/scaffold.json`, which upgrade migrates into the marker. It records scope, not completed guidance. The report field `guidance_selection` keeps its compatibility name.
+The accepted list of **Convention domains** recorded by the `domains=` field of the managed `AGENTS.md` opening comment and reused on later updates. `none` is a choice of none; an absent record is pending. Earlier releases used `.agents/scaffold.json`, which upgrade folds into the same comment. It records scope, not completed guidance. The report field `guidance_selection` keeps its compatibility name.
 _Avoid_: completion record, settings file
 
 **Convention guide**:
