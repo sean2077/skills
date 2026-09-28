@@ -165,9 +165,9 @@ CONVENTION_CLAUSES = (
     "Test-first is optional; offline checks do not prove provider authentication.",
 )
 SELECTED_BLOCK = (
-    "<!-- agent-scaffold:start (managed; edit outside) -->\n"
-    "<!-- agent-scaffold:profile=light -->\n"
-    "<!-- agent-scaffold:domains=" + ",".join(SELECTED_DOMAINS) + " -->\n"
+    "<!-- agent-scaffold:start (managed; edit outside) profile=light domains="
+    + ",".join(SELECTED_DOMAINS)
+    + " -->\n"
     "## Agent Harness\n\nManaged harness content is elided in this fixture.\n"
     "<!-- agent-scaffold:end -->\n"
 )

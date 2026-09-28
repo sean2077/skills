@@ -346,10 +346,10 @@ class OutcomeTests(unittest.TestCase):
         cases.write(workspace, "guide/development.md", guide)
         self.assertTrue(*result())
         linked = (workspace / "AGENTS.md").read_text()
-        record = "<!-- agent-scaffold:domains=" + ",".join(cases.SELECTED_DOMAINS) + " -->"
+        record = " domains=" + ",".join(cases.SELECTED_DOMAINS)
         for domains in (cases.SELECTED_DOMAINS + ["release"], [], cases.SELECTED_DOMAINS[:-1]):
             with self.subTest(domains=domains):
-                edited = "<!-- agent-scaffold:domains=" + (",".join(domains) or "none") + " -->"
+                edited = " domains=" + (",".join(domains) or "none")
                 cases.write(workspace, "AGENTS.md", linked.replace(record, edited))
                 self.assertFalse(result()[0])
         cases.write(workspace, "AGENTS.md", linked + "\n" + cases.SELECTED_BLOCK)
