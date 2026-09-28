@@ -181,6 +181,11 @@ class CompactHeaderTests(unittest.TestCase):
             blocks += ["<!-- agent-scaffold:start (managed; edit outside) " + key + "=" + valid + " -->\n"
                        "<!-- agent-scaffold:" + key + "=" + valid + " -->\n"]
             blocks += ["<!-- agent-scaffold:start (managed; edit outside) " + key + "=" + valid + "\n"]
+            # A legacy standalone comment is still read, so a damaged value there is an
+            # error rather than an absent record and a fresh onboarding question.
+            blocks += ["<!-- agent-scaffold:start (managed; edit outside) -->\n"
+                       "<!-- agent-scaffold:" + key + "=" + value + " -->\n"
+                       for value in values]
             for block in blocks:
                 with self.subTest(key=key, block=block), tempfile.TemporaryDirectory() as directory:
                     root = Path(directory)

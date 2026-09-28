@@ -294,6 +294,9 @@ class InstallerSelectionTests(unittest.TestCase):
                          "<!-- agent-scaffold:domains=docs,git -->")
         legacy = compact.replace(compact.splitlines()[0], legacy_header, 1).replace("\n", "\r\n")
         agents.write_bytes(agents.read_bytes().replace(compact.encode("utf-8"), legacy.encode("utf-8")))
+        # Guard the precondition: a byte-wise no-op here would let every later assertion
+        # pass on an already-current file without exercising the migration at all.
+        self.assertIn("<!-- agent-scaffold:profile=light -->", agents.read_text(encoding="utf-8"))
         before = fixture.snapshot()
         self.assertEqual(["docs", "git"], fixture.invoke("plan")["guidance_selection"]["domains"])
         self.assertEqual(before, fixture.snapshot())
