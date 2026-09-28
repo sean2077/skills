@@ -206,10 +206,10 @@ def managed_metadata(block: str, key: str, error: str) -> Optional[str]:
 
 
 def load_marker_selection(target: Path) -> Optional[List[str]]:
-    """Read the domains marker from the managed block; an absent marker is no record.
+    """Read the domains field of the managed block; an absent field is no record.
 
     A missing, unreadable or malformed AGENTS.md is reported by the contract checks, so it
-    yields no record here. A damaged domains marker inside a valid block is an error, never
+    yields no record here. A damaged domains record inside a valid block is an error, never
     a first-use signal.
     """
     agents = target / SELECTION_RECORD
@@ -219,7 +219,7 @@ def load_marker_selection(target: Path) -> Optional[List[str]]:
         block = extract_managed_block(agents.read_text(encoding="utf-8")) or ""
     except (OSError, UnicodeError):
         return None
-    error = SELECTION_RECORD + ": invalid domains marker; preserve and repair it, not re-onboard"
+    error = SELECTION_RECORD + ": invalid domains record; preserve and repair it, not re-onboard"
     value = managed_metadata(block, "domains", error)
     if value is None:
         return None
@@ -234,7 +234,7 @@ def load_marker_selection(target: Path) -> Optional[List[str]]:
 
 
 def selection_record(target: Path) -> Tuple[Optional[List[str]], str]:
-    """The accepted selection and where it is recorded; the marker and a leftover legacy file must agree."""
+    """The accepted selection and where it is recorded; the AGENTS.md record and a leftover legacy file must agree."""
     marker = load_marker_selection(target)
     legacy = load_legacy_selection(target)
     if marker is not None and legacy is not None and marker != legacy:
@@ -805,7 +805,7 @@ def select_profile(target: Path, source: Path) -> str:
     block = extract_managed_block(contract.read_text(encoding="utf-8"))
     if block is None:
         return "default"
-    error = "invalid installed profile marker; specify --profile after resolving it"
+    error = "invalid installed profile record; specify --profile after resolving it"
     profile = managed_metadata(block, "profile", error)
     if profile is not None:
         if profile not in PROFILES:
