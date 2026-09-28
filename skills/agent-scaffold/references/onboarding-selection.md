@@ -48,12 +48,14 @@ actual user choice, not permission for the Agent to choose exclusions on its own
 
 ## Persist scope, not a completion claim
 
-The installer records the accepted list in the managed `AGENTS.md` block, beside the profile
-marker, when it writes that block:
+The installer records the accepted list and profile in the managed `AGENTS.md` opening comment:
 
 ```markdown
-<!-- agent-scaffold:domains=docs,tools,testing,specs,terminology,git,release,environment -->
+<!-- agent-scaffold:start (managed; edit outside) profile=default domains=docs,tools,testing,specs,terminology,git,release,environment -->
 ```
+
+Existing separate profile/domains comments remain readable; apply/upgrade folds them into this
+one-line header without changing the saved choices or block-external project prose.
 
 `none` records an empty choice, which is complete, not missing data; an absent marker is
 pending. The list is always explicit, never `all`, so a later upstream domain stays unselected.

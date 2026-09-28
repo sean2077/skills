@@ -25,11 +25,10 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = Path(__file__).with_name("managed-assets.json")
 PROFILES = {"default", "light"}
 GUIDANCE_DOMAINS = ("docs", "tools", "testing", "specs", "terminology", "git", "release", "environment")
-# The accepted selection lives in the managed AGENTS.md block, beside the profile marker.
+# The accepted selection lives in the managed AGENTS.md opening comment.
 SELECTION_RECORD = "AGENTS.md"
 # Pre-marker releases saved it here; upgrade moves it into the block and removes the file.
 LEGACY_GUIDANCE_FILE = ".agents/scaffold.json"
-DOMAINS_MARKER = "agent-scaffold:domains="
 TERMINOLOGY_START = "<!-- agent-scaffold:terminology:start -->"
 TERMINOLOGY_END = "<!-- agent-scaffold:terminology:end -->"
 CONVENTIONS_START = "<!-- agent-scaffold:conventions:start -->"
@@ -185,6 +184,27 @@ def load_legacy_selection(target: Path) -> Optional[List[str]]:
         raise CoreError(LEGACY_GUIDANCE_FILE + ": invalid selection; preserve and repair it, not re-onboard ({0})".format(exc))
 
 
+def managed_metadata(block: str, key: str, error: str) -> Optional[str]:
+    """Read one header field or legacy comment, rejecting damaged or duplicate records."""
+    legacy = "agent-scaffold:" + key + "="
+    first_line = block.partition("\n")[0]
+    inline_count = len(re.findall(r"(?<!\S)" + re.escape(key) + r"\s*=", first_line))
+    count = inline_count + block.count(legacy)
+    if not count:
+        return None
+    marks = re.findall(r"^<!-- " + re.escape(legacy) + r"([^\n]*) -->$", block, re.MULTILINE)
+    if inline_count:
+        header = re.fullmatch(
+            r"<!-- agent-scaffold:start \(managed; edit outside\)((?: (?:profile|domains)=[^\s<>]*)*) -->",
+            first_line,
+        )
+        if header:
+            marks += re.findall(r" " + re.escape(key) + r"=([^ ]*)", header.group(1))
+    if count != 1 or len(marks) != 1:
+        raise CoreError(error + " (expected exactly one metadata value)")
+    return marks[0]
+
+
 def load_marker_selection(target: Path) -> Optional[List[str]]:
     """Read the domains marker from the managed block; an absent marker is no record.
 
@@ -199,15 +219,13 @@ def load_marker_selection(target: Path) -> Optional[List[str]]:
         block = extract_managed_block(agents.read_text(encoding="utf-8")) or ""
     except (OSError, UnicodeError):
         return None
-    if DOMAINS_MARKER not in block:
-        return None
-    marks = re.findall(r"^<!-- " + re.escape(DOMAINS_MARKER) + r"([^\n]*) -->$", block, re.MULTILINE)
     error = SELECTION_RECORD + ": invalid domains marker; preserve and repair it, not re-onboard"
-    if len(marks) != 1 or block.count(DOMAINS_MARKER) != 1:
-        raise CoreError(error + " (expected exactly one marker line)")
-    if marks[0] == "none":
+    value = managed_metadata(block, "domains", error)
+    if value is None:
+        return None
+    if value == "none":
         return []
-    values = marks[0].split(",")
+    values = value.split(",")
     # "all" is never written: a later upstream domain must not become selected silently.
     if (not all(values) or len(values) != len(set(values))
             or any(item not in GUIDANCE_DOMAINS for item in values)):
@@ -766,12 +784,11 @@ def render_agents_template(source: Path, profile: str, domains: Optional[Sequenc
             continue
         if not skip:
             output.append(re.sub(r"[ \t]*" + re.escape(WORKTREE_ONLY), "", line))
-    rendered = "".join(output).replace("agent-scaffold:profile=default", "agent-scaffold:profile=" + profile)
+    header = "<!-- agent-scaffold:start (managed; edit outside) profile=" + profile
     if domains is not None:
-        profile_line = "<!-- agent-scaffold:profile={0} -->\n".format(profile)
         record = ",".join(item for item in GUIDANCE_DOMAINS if item in domains) or "none"
-        rendered = rendered.replace(profile_line, profile_line + "<!-- {0}{1} -->\n".format(DOMAINS_MARKER, record), 1)
-    return rendered
+        header += " domains=" + record
+    return re.sub(r"^<!-- agent-scaffold:start[^\n]* -->", header + " -->", "".join(output), count=1)
 
 
 def select_profile(target: Path, source: Path) -> str:
@@ -788,14 +805,14 @@ def select_profile(target: Path, source: Path) -> str:
     block = extract_managed_block(contract.read_text(encoding="utf-8"))
     if block is None:
         return "default"
-    marks = re.findall(r"^<!-- agent-scaffold:profile=([^\n]+) -->$", block, re.MULTILINE)
-    if "agent-scaffold:profile=" in block:
-        if len(marks) != 1 or block.count("agent-scaffold:profile=") != 1 or marks[0] not in PROFILES:
-            raise CoreError("invalid installed profile marker; specify --profile after resolving it")
-        return marks[0]
+    error = "invalid installed profile marker; specify --profile after resolving it"
+    profile = managed_metadata(block, "profile", error)
+    if profile is not None:
+        if profile not in PROFILES:
+            raise CoreError(error)
+        return profile
     for candidate in sorted(PROFILES):
-        legacy = re.sub(r"^<!-- agent-scaffold:profile=[^\n]+ -->\n", "",
-                        render_agents_template(source, candidate), flags=re.MULTILINE)
+        legacy = re.sub(r" profile=[^\s]+", "", render_agents_template(source, candidate), count=1)
         if block == extract_managed_block(legacy):
             return candidate
     raise CoreError("existing managed block has no unambiguous profile; specify --profile default|light")

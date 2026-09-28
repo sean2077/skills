@@ -24,7 +24,7 @@ GUIDE_ROUTES["release"] = ".agents/tools/release/README.md"
 
 
 def marker(text):
-    found = re.findall(r"^<!-- agent-scaffold:domains=([^\n]*) -->$", text, re.MULTILINE)
+    found = re.findall(r"^<!-- agent-scaffold:start [^\n]* domains=([^\s]+) -->$", text, re.MULTILINE)
     return found[0] if len(found) == 1 else None
 
 
@@ -51,7 +51,7 @@ class GuidanceSelectionTests(unittest.TestCase):
 
     def replace_marker(self, value):
         text = self.agents.read_text(encoding="utf-8")
-        self.agents.write_bytes(re.sub(r"(<!-- agent-scaffold:domains=)[^\n]*( -->)",
+        self.agents.write_bytes(re.sub(r"( domains=)[^\n]*( -->)",
                                        lambda m: m.group(1) + value + m.group(2), text).encode())
 
     def test_absence_is_pending_with_all_defaults_and_no_writes(self):
@@ -112,8 +112,8 @@ class GuidanceSelectionTests(unittest.TestCase):
                 self.assertEqual(before, self.agents.read_bytes())
         self.contract(["docs"])
         text = self.agents.read_text(encoding="utf-8")
-        self.agents.write_bytes(text.replace("<!-- agent-scaffold:domains=docs -->",
-                                             "<!-- agent-scaffold:domains=docs -->\n<!-- agent-scaffold:domains=git -->").encode())
+        self.agents.write_bytes(text.replace(" domains=docs -->",
+                                             " domains=docs -->\n<!-- agent-scaffold:domains=git -->").encode())
         with self.assertRaises(CORE.CoreError):
             CORE.load_guidance_selection(self.root)
 
@@ -282,6 +282,30 @@ class GuidanceSelectionTests(unittest.TestCase):
 
 
 class InstallerSelectionTests(unittest.TestCase):
+    def test_three_line_header_upgrade_preserves_scope_prose_and_is_idempotent(self):
+        fixture = self.fixture()
+        fixture.invoke("apply", extra=("--domains", "docs,git"))
+        agents = fixture.root / "AGENTS.md"
+        installed = fixture.snapshot()
+        compact = CORE.extract_managed_block(agents.read_text(encoding="utf-8"))
+        self.assertIn("profile=light domains=docs,git", compact.splitlines()[0])
+        legacy_header = ("<!-- agent-scaffold:start (managed; edit outside) -->\n"
+                         "<!-- agent-scaffold:profile=light -->\n"
+                         "<!-- agent-scaffold:domains=docs,git -->")
+        legacy = compact.replace(compact.splitlines()[0], legacy_header, 1).replace("\n", "\r\n")
+        agents.write_bytes(agents.read_bytes().replace(compact.encode("utf-8"), legacy.encode("utf-8")))
+        before = fixture.snapshot()
+        self.assertEqual(["docs", "git"], fixture.invoke("plan")["guidance_selection"]["domains"])
+        self.assertEqual(before, fixture.snapshot())
+        # No explicit --profile or --domains: migration must recover both saved choices.
+        for _ in range(2):
+            result = subprocess.run([fixture.bash_bin, preservation.INSTALLER.as_posix(), "upgrade"],
+                                    cwd=str(fixture.root), env=fixture.env, capture_output=True,
+                                    text=True, encoding="utf-8", timeout=180)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual(installed, fixture.snapshot())
+            self.assertTrue(fixture.invoke("verify")["ok"])
+
     def fixture(self):
         fixture = preservation.ProjectConventionPreservationTests("runTest")
         fixture.setUp(); self.addCleanup(fixture.doCleanups)
@@ -362,7 +386,7 @@ class InstallerSelectionTests(unittest.TestCase):
         fixture = self.fixture()
         fixture.invoke("apply", extra=("--domains", "docs"))
         agents = fixture.root / "AGENTS.md"
-        agents.write_bytes(agents.read_bytes().replace(b"<!-- agent-scaffold:domains=docs -->\n", b""))
+        agents.write_bytes(agents.read_bytes().replace(b" domains=docs", b""))
         fixture.write(CORE.LEGACY_GUIDANCE_FILE, '{"schema_version": 1, "domains": ["docs", "git"]}\n')
         planned = fixture.invoke("plan")
         self.assertEqual(("recorded", CORE.LEGACY_GUIDANCE_FILE, ["docs", "git"]),
