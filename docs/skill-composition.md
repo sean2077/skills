@@ -5,6 +5,7 @@ Use the smallest useful route. Ordinary research, testing/TDD, specification wri
 | Requested outcome | Catalog route | Boundary |
 |---|---|---|
 | Establish, diagnose, or update the harness and selected project conventions | [agent-scaffold](../skills/agent-scaffold/SKILL.md) | Adopt existing layout and fill gaps; does not own ordinary delivery or publishing |
+| Communicate from native Claude Code to Codex CLI/Desktop, or back | [claude-codex-messaging](../skills/claude-codex-messaging/SKILL.md) | Existing native sessions only; excludes communication within either product and leaves message content/workflow to the agents |
 | Resolve consequential user-owned requirements into an approved whole specification | [deep-interview](../skills/deep-interview/SKILL.md) | Not mandatory before a draft, one clarification, or already approved implementation |
 | Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Preserve identity, permissions, and transaction-specific authority |
 

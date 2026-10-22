@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of reusable [Agent Skills](https://agentskills.io/specification) for Agent harness setup, requirements interviews, and Feishu/Lark operations.
+A curated catalog of reusable [Agent Skills](https://agentskills.io/specification) for Agent harness setup, native Claude–Codex messaging, requirements interviews, and Feishu/Lark operations.
 
 Install only what adds value to your host or project. Ordinary investigation, testing, cleanup, review, and delivery use the host/project workflow; there is no mandatory skill chain. See the [selection guide](docs/skill-composition.md) for route boundaries and retired installations.
 
@@ -30,6 +30,7 @@ Each skill is independently installable. Its entry point owns the workflow and o
 | Skill | Use |
 |---|---|
 | [agent-scaffold](skills/agent-scaffold/) | Initialize or maintain the harness and selected project conventions; preserve existing layouts and remember one-time exclusions. |
+| [claude-codex-messaging](skills/claude-codex-messaging/) | Message across existing native Claude Code and Codex CLI/Desktop sessions; distinguish queue, steer, start, interrupt, and CC inbox delivery. |
 | [deep-interview](skills/deep-interview/) | Resolve requirements into an approved specification; exact-file approval records are optional. |
 | [lark-cli](skills/lark-cli/) | Perform selected 飞书/Feishu/Lark CLI operations with identity and side-effect safeguards. |
 

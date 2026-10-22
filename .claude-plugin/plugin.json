@@ -3,6 +3,7 @@
   "description": "Reusable agent skills for development, ops, and productivity.",
   "skills": [
     "./skills/agent-scaffold",
+    "./skills/claude-codex-messaging",
     "./skills/deep-interview",
     "./skills/lark-cli"
   ]
