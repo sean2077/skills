@@ -62,7 +62,7 @@ connection.once("finish", () => {
 JS
 ```
 
-Use an address freshly supplied by the intended receiver. On Windows it has the native `\\\\.\\pipe\\...` form; a Unix path is not a Windows pipe address. Read/prepare any slow input before connecting: CC closes connections that do not produce a complete line within its timeout.
+Use an address freshly supplied by the intended receiver. On Windows it has the native `\\.\pipe\...` form; a Unix path is not a Windows pipe address. Read/prepare any slow input before connecting: CC closes connections that do not produce a complete line within its timeout.
 
 ## Delivery semantics
 
