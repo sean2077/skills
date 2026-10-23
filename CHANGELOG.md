@@ -8,11 +8,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add `claude-codex-messaging` for existing native Claude Code ↔ Codex CLI/Desktop sessions only. Document Codex queue/steer/start/interrupt and the CC inbox, with receiver-specific connection requirements, minimal examples, and source/version references. Keep message content and collaboration workflow caller-owned; add no service, registry, or SDK/cloud route.
 - Add the `timeout-docs` / `timeout-docs-installed-guide` task pair, where a plausible documentation update also rewrites a dated validation record and only the installed docs guide says to keep it. In live runs neither Opus nor deepseek rewrote the record even without the guide, so it does not discriminate either; the audit records this.
 - Record the first live evaluation, on `claude-opus-5-5` and `deepseek-v4.1-flash`, of all routing probes, selected task outcomes and the installed-guide pair in `docs/audits/2026-09-24-live-evaluation.md`, with its result files.
 
 ### Changed
 
+- Reduce `claude-codex-messaging` context by routing queue separately from App Server control and loading protocol sources only when needed. Extract the inline CC sender into one Node script using only built-ins, accepting an existing UTF-8 file, stdin, or the existing `MESSAGE` environment input without echoing it. Keep native delivery semantics and make metadata/active-turn reads conditional on the selected operation; verify the sender against disposable Unix sockets and Windows pipes in CI.
 - Fold the managed `AGENTS.md` start/profile/domains comments into one opening comment. Preserve old three-line records on read, migrate them on apply/upgrade without changing saved scope or project prose, and continue rejecting malformed or duplicate metadata. Align the remaining references, the installer's selection messages and the agent-scaffold routing prompts with the field name, since they still described a separate marker.
 - Split the installed docs convention: `.agents/conventions/docs.md` keeps the daily rules (63 lines, down from 151), and structure, numbering, metadata, pruning, migration and reader-journey methods move to `.agents/conventions/docs-reorganization.md`, installed with `docs` and linked from `docs.md` rather than routed from `AGENTS.md`. An ordinary documentation edit no longer loads the reorganization methods; upgrade installs the new file.
 - Gate the live routing suites only on interventions and tool calls. Token and time metrics are still recorded, but in the live runs 112 of 680 probe calls reported about 18k extra input tokens and gateway latency varied several-fold, so those budgets measured host noise and output format rather than skill cost; task outcomes carry cost comparisons.

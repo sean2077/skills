@@ -112,6 +112,9 @@ jobs:
           done
           python -m skills_ref.cli validate .agents/skills/skill-eval
 
+      - name: Test native messaging sender
+        run: python scripts/tests/test_claude_codex_messaging.py
+
       - name: Check agent-scaffold invariants
         if: ${{ !cancelled() }}
         run: |
