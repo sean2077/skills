@@ -5,12 +5,12 @@ description: "Message between existing native Claude Code and Codex CLI/Desktop 
 
 # Claude–Codex messaging
 
-Choose the intended effect and read only its reference. Reuse guidance already in context; refresh stale connection details and active turn IDs. Message text, reply conventions and workflow remain caller-owned.
+Choose the intended effect and read only its reference: steer to affect ongoing work, queue for later handling. Reuse guidance already in context; refresh stale connection details and active turn IDs. Message text, reply conventions and workflow remain caller-owned.
 
 | Direction | Native route | Effect | Details |
 |---|---|---|---|
+| Claude Code → Codex | App Server `turn/steer` | Add input to the active turn, guarded by its turn ID. | [Steer sender](references/codex-steer.md) |
 | Claude Code → Codex | `codex queue` | Queue input for a later turn; a loaded idle target can start it. | [Queue](references/codex-queue.md) |
-| Claude Code → Codex | App Server `turn/steer` | Add input to the active turn, guarded by its turn ID. | [Codex](references/codex.md#steer) |
 | Claude Code → Codex | App Server `turn/start` | Start when idle; the verified implementation can steer when busy. | [Codex](references/codex.md#start) |
 | Claude Code → Codex | App Server `turn/interrupt` | Cancel current work; this operation carries no message. | [Codex](references/codex.md#interrupt) |
 | Codex → Claude Code | Native inbox socket / named pipe | Submit to the running CC process. | [Inbox sender](references/claude-code.md) |
@@ -19,4 +19,4 @@ Use the intended receiver's native environment and endpoint. An ID or shared his
 
 If the required endpoint or operation is unavailable, report it; do not silently substitute another operation or a newly resumed process. No Pairroom service is required.
 
-Read [protocol sources and raw CC frames](references/sources.md) only for verification or an alternate client. Run the bundled sender without reading its implementation unless debugging or modifying it.
+Read [protocol sources and raw CC frames](references/sources.md) only for verification or an alternate client. Run bundled senders without reading their implementation unless debugging or modifying them.

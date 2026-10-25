@@ -56,6 +56,10 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-validation.txt
 
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
       - name: Assert platform shell and real checkout links
         env:
           EXPECTED_OS: ${{ runner.os }}
@@ -112,8 +116,10 @@ jobs:
           done
           python -m skills_ref.cli validate .agents/skills/skill-eval
 
-      - name: Test native messaging sender
-        run: python scripts/tests/test_claude_codex_messaging.py
+      - name: Test native messaging senders
+        run: |
+          python scripts/tests/test_claude_codex_messaging.py
+          python scripts/tests/test_codex_steer.py
 
       - name: Check agent-scaffold invariants
         if: ${{ !cancelled() }}
