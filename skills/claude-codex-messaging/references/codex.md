@@ -1,6 +1,6 @@
 # Claude Code → Codex App Server
 
-Read for steer, start or interrupt. Behavior below was checked against Codex 0.163.0; consult the installed schema if it differs. [Pinned sources](sources.md#codex).
+Read for start, interrupt or an alternate App Server client. For ordinary steer delivery, use the [bundled sender](codex-steer.md). Behavior below was checked against Codex 0.163.0; consult the installed schema if it differs. [Pinned sources](sources.md#codex).
 
 ## Connect to the existing server
 
