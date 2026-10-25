@@ -11,7 +11,7 @@ Require Node.js 22.4+ and export the intended receiver's `TARGET_THREAD_ID`. Als
 
 Use the original live server. The sender never guesses from its own inherited `CODEX_HOME`, starts an app-server or resumes a thread. Container/host and WSL/native Windows paths are not interchangeable.
 
-The local socket route requires `codex app-server proxy --sock PATH`, verified in Codex 0.163.0. The sender uses `codex` on PATH; optionally set `CODEX_BIN` to a native executable or `.js`/`.mjs`/`.cjs` launcher. On Windows use native `codex.exe` or a JS launcher; `.cmd` wrappers are not run through a shell. The proxy relays WebSocket bytes through a temporary local bridge and preserves Codex's native socket transport.
+The local socket route requires `codex app-server proxy --sock PATH`, verified in Codex 0.163.0. The sender uses `codex` on PATH; on Windows it runs `codex.exe` or an npm install's JS launcher, never the `.cmd` shim through a shell. Optionally set `CODEX_BIN` to a native executable or `.js`/`.mjs`/`.cjs` launcher. The proxy relays WebSocket bytes through a temporary local bridge and preserves Codex's native socket transport.
 
 Direct WebSocket connections cannot supply custom authentication headers. Use an authorized alternate client if the endpoint requires them; keep tokens out of endpoint URLs. See [raw App Server requests](codex.md) when needed.
 
@@ -29,9 +29,9 @@ For stdin, use `-`:
 printf '%s' 'Message text' | node "$SKILL_DIR/scripts/steer-codex.mjs" -
 ```
 
-With no argument, use exported `MESSAGE`. A file or stdin takes precedence; text, including BOM and trailing newlines, is preserved and never echoed. Invalid UTF-8 fails before connecting.
+With no argument, use exported `MESSAGE`. A file or stdin takes precedence; text, including BOM and trailing newlines, is preserved and never echoed. Empty text is sent as given. Invalid UTF-8 in a file or stdin fails before connecting; use one of those when exact bytes matter, because the environment may already have replaced invalid bytes.
 
-The sender confirms the thread is loaded, following bounded pages; reads recent turn metadata with item bodies unloaded; then sends one `turn/steer` with `expectedTurnId`. It does not download full conversation history. No active turn or changed/unsteerable turn fails without a queue/start fallback.
+The sender confirms the thread is loaded, following bounded pages; reads recent turn metadata with item bodies unloaded; then sends one `turn/steer` with `expectedTurnId`. It does not download full conversation history. No active turn or changed/unsteerable turn fails without a queue/start fallback. Each request waits at most 5 seconds within a 15-second total budget, so a slow server can produce `not_sent` or `unconfirmed`.
 
 ## Result
 

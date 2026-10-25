@@ -79,7 +79,14 @@ class WebSocketFixture:
         if self.error is not None and exc[0] is None:
             raise self.error
 
-    def send(self, value, opcode=1):
+    def send(self, value, opcode=1, then_close=False):
+        data = self.frame(value, opcode)
+        if then_close:
+            data += self.frame(struct.pack("!H", 1001), opcode=8)
+        self.connection.sendall(data)
+
+    @staticmethod
+    def frame(value, opcode=1):
         payload = value if isinstance(value, bytes) else json.dumps(value).encode("utf-8")
         size = len(payload)
         header = bytes([0x80 | opcode])
@@ -89,7 +96,7 @@ class WebSocketFixture:
             header += b"\x7e" + struct.pack("!H", size)
         else:
             header += b"\x7f" + struct.pack("!Q", size)
-        self.connection.sendall(header + payload)
+        return header + payload
 
     def receive(self, stream):
         chunks = []
@@ -221,6 +228,10 @@ class WebSocketFixture:
         if self.mode == "notifications":
             self.send({"method": "turn/started", "params": {"threadId": "unrelated-thread"}})
             self.send({"id": "unrelated-id", "result": {"turnId": "wrong-turn"}})
+        if self.mode == "close-before-steer" and method == "thread/turns/list":
+            # One write delivers the reply and close together, as a stopping server can.
+            self.send({"id": request_id, "result": result}, then_close=True)
+            return True
         self.send({"id": request_id, "result": result})
         return True
 
@@ -359,6 +370,19 @@ class CodexSteerTests(unittest.TestCase):
                 self.assert_status(self.run_sender(fixture), "unconfirmed", 2)
                 self.assert_trace(fixture)
 
+    def test_connection_closing_before_steer_is_reported_unsent(self):
+        with WebSocketFixture("close-before-steer") as fixture:
+            self.assert_status(self.run_sender(fixture), "not_sent", 1)
+            self.assert_trace(fixture, steers=0)
+
+    @unittest.skipUnless(os.name == "nt", "synchronous spawn failures are Windows-specific")
+    def test_launcher_rejected_by_windows_spawn_still_reports_status(self):
+        launcher = self.work / "codex.ps1"
+        launcher.write_text("exit 9\n", encoding="utf-8")
+        self.env.update(CODEX_BIN=str(launcher), TARGET_CODEX_HOME=str(self.work / "receiver home"))
+        value = self.assert_status(self.run_sender(), "not_sent", 1)
+        self.assertIn("CODEX_BIN", value["error"])
+
     def test_missing_confirmation_times_out_without_resending(self):
         with WebSocketFixture("stall") as fixture:
             self.assert_status(self.run_sender(fixture), "unconfirmed", 2)
@@ -387,6 +411,26 @@ class CodexSteerTests(unittest.TestCase):
                 self.assert_accepted(fixture, self.run_sender(fixture, env=env, set_endpoint=False))
                 self.assertEqual(["app-server", "proxy", "--sock", str(address)],
                                  json.loads(capture.read_text(encoding="utf-8")))
+
+    @unittest.skipUnless(os.name == "nt", "npm .cmd shim resolution is Windows-only")
+    def test_windows_npm_shim_runs_its_js_launcher_without_a_shell(self):
+        bin_dir = self.work / "npm prefix"
+        package = bin_dir / "node_modules/@openai/codex"
+        (package / "bin").mkdir(parents=True)
+        (package / "package.json").write_text('{"type": "module"}', encoding="utf-8")
+        (package / "bin/codex.js").write_text(PROXY, encoding="utf-8")
+        (bin_dir / "codex.cmd").write_text("@exit /b 9\r\n", encoding="utf-8")
+        capture = self.work / "proxy-args.json"
+        with WebSocketFixture() as fixture:
+            env = self.env.copy()
+            env.update(
+                PATH=str(bin_dir) + os.pathsep + env.get("PATH", ""),
+                TARGET_CODEX_HOME=str(self.work / "receiver home"),
+                FIXTURE_PROXY_CAPTURE=str(capture),
+                FIXTURE_PROXY_PORT=str(fixture.listener.getsockname()[1]),
+            )
+            self.assert_accepted(fixture, self.run_sender(fixture, env=env, set_endpoint=False))
+            self.assertEqual("--sock", json.loads(capture.read_text(encoding="utf-8"))[2])
 
     def test_invalid_input_is_rejected_before_connecting(self):
         for case in ("missing-thread", "missing-input", "missing-file", "extra-args"):

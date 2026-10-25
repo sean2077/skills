@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
-import { isAbsolute, join } from "node:path";
+import { delimiter, isAbsolute, join } from "node:path";
 
 const usage = "Usage: node steer-codex.mjs [UTF8_FILE|-]\nNo argument: read MESSAGE. Target: TARGET_THREAD_ID and TARGET_CODEX_ENDPOINT or TARGET_CODEX_HOME. Optional local proxy: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.";
 const [source, ...extra] = process.argv.slice(2);
@@ -34,10 +34,22 @@ function timeout() {
   return Math.min(5000, remaining);
 }
 
+// Windows npm installs expose only a .cmd shim; run its JS launcher without a shell.
+function codexBinary() {
+  if (process.env.CODEX_BIN) return process.env.CODEX_BIN;
+  if (process.platform !== "win32") return "codex";
+  for (const dir of (process.env.PATH || "").split(delimiter).filter(Boolean)) {
+    if (existsSync(join(dir, "codex.exe"))) return join(dir, "codex.exe");
+    const launcher = join(dir, "node_modules", "@openai", "codex", "bin", "codex.js");
+    if (existsSync(join(dir, "codex.cmd")) && existsSync(launcher)) return launcher;
+  }
+  return "codex";
+}
+
 // The native proxy forwards WebSocket bytes, not JSON lines. Keep its temporary
 // loopback bridge private to one connection carrying this unguessable path.
 async function proxyEndpoint(path) {
-  const binary = process.env.CODEX_BIN || "codex";
+  const binary = codexBinary();
   if (/\.(cmd|bat)$/i.test(binary)) throw new Error("Use a native CODEX_BIN executable or JS launcher, not a shell wrapper");
   const secretPath = "/" + randomBytes(24).toString("hex");
   bridge = net.createServer(connection => {
@@ -58,9 +70,15 @@ async function proxyEndpoint(path) {
       bridge.close();
       for (const other of connections) if (other !== connection) other.destroy();
       const args = ["app-server", "proxy", "--sock", path];
-      proxy = /\.[cm]?js$/i.test(binary)
-        ? spawn(process.execPath, [binary, ...args], { stdio: ["pipe", "pipe", "ignore"] })
-        : spawn(binary, args, { stdio: ["pipe", "pipe", "ignore"] });
+      try {
+        proxy = /\.[cm]?js$/i.test(binary)
+          ? spawn(process.execPath, [binary, ...args], { stdio: ["pipe", "pipe", "ignore"] })
+          : spawn(binary, args, { stdio: ["pipe", "pipe", "ignore"] });
+      } catch {
+        // Windows can reject some launchers synchronously (EINVAL/EFTYPE).
+        abort("Cannot launch Codex proxy; check CODEX_BIN");
+        return connection.destroy();
+      }
       proxy.on("error", () => abort("Cannot launch Codex proxy; check CODEX_BIN"));
       proxy.on("exit", () => abort("Codex proxy closed; check the intended live endpoint"));
       proxy.stdin.on("error", () => abort("Codex proxy write failed"));
@@ -88,10 +106,12 @@ class RpcError extends Error {
   }
 }
 
-async function connect(endpoint) {
+async function connect(endpoint, viaProxy) {
   try { ws = new WebSocket(endpoint); }
   catch { throw new Error("Cannot open the supplied WebSocket endpoint"); }
-  ws.addEventListener("error", () => abort("WebSocket connection failed"));
+  ws.addEventListener("error", () => abort(viaProxy
+    ? "Codex proxy connection failed; check the intended live endpoint and CODEX_BIN"
+    : "WebSocket connection failed"));
   ws.addEventListener("close", () => abort("WebSocket connection closed"));
   ws.addEventListener("message", event => {
     try {
@@ -128,6 +148,8 @@ function request(method, params) {
     const id = ++nextId;
     pending = { id, method, resolve, reject, timer: setTimeout(() => abort(`${method} timed out`), wait) };
     try {
+      // A closing socket silently drops frames; that steer was never attempted.
+      if (ws.readyState !== WebSocket.OPEN) throw new Error("WebSocket connection closed");
       if (method === "turn/steer") steerAttempted = true;
       ws.send(JSON.stringify({ id, method, params }));
     } catch { abort("WebSocket send failed"); }
@@ -165,7 +187,7 @@ async function steer() {
   if (text === undefined) throw new Error("Supply a UTF-8 file, - for stdin, or MESSAGE");
 
   deadline = Date.now() + 15000;
-  await connect(localPath === undefined ? endpoint : await proxyEndpoint(localPath));
+  await connect(localPath === undefined ? endpoint : await proxyEndpoint(localPath), localPath !== undefined);
   await request("initialize", { clientInfo: { name: "claude-codex-messaging", version: "0.1.0" } });
   ws.send(JSON.stringify({ method: "initialized", params: {} }));
   const cursors = new Set();
