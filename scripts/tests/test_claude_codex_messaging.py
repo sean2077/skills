@@ -188,6 +188,7 @@ class ClaudeInboxSenderTests(unittest.TestCase):
             result = self.run_sender(self.work / "absent.txt")
             self.assert_failure(result)
             self.assertIn("message input", result.stderr)
+            self.assertNotIn("as UTF-8", result.stderr)
             self.assertFalse(Path(str(capture) + ".connected").exists())
 
     def test_invalid_utf8_file_is_rejected_before_connecting(self):

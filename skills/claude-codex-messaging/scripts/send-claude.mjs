@@ -21,13 +21,19 @@ if (process.platform === "win32" && !token) {
   fail("The native Windows inbox requires TARGET_CC_TOKEN");
 }
 
-let content;
-try {
-  content = source === undefined
-    ? process.env.MESSAGE
-    : new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(readFileSync(source === "-" ? 0 : source));
-} catch {
-  fail("Cannot read the message input as UTF-8");
+let content = process.env.MESSAGE;
+if (source !== undefined) {
+  let bytes;
+  try {
+    bytes = readFileSync(source === "-" ? 0 : source);
+  } catch {
+    fail("Cannot read the message input");
+  }
+  try {
+    content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    fail("Cannot read the message input as UTF-8");
+  }
 }
 if (content === undefined) fail("Supply a UTF-8 file, - for stdin, or MESSAGE");
 
