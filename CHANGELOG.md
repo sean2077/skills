@@ -15,6 +15,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Update Lark recipes for v1.0.97 IM file/stdin inputs and literal input markers, and v1.0.98 Base record NDJSON manifests, explicit pagination and targeted record reads. Keep older-version guidance and distinguish source review from live service verification.
 - Reduce `claude-codex-messaging` context by routing queue separately from App Server control and loading protocol sources only when needed. Extract the inline CC sender into one Node script using only built-ins, accepting an existing UTF-8 file, stdin, or the existing `MESSAGE` environment input without echoing it. Keep native delivery semantics and make metadata/active-turn reads conditional on the selected operation; verify the sender against disposable Unix sockets and Windows pipes in CI.
 - Fold the managed `AGENTS.md` start/profile/domains comments into one opening comment. Preserve old three-line records on read, migrate them on apply/upgrade without changing saved scope or project prose, and continue rejecting malformed or duplicate metadata. Align the remaining references, the installer's selection messages and the agent-scaffold routing prompts with the field name, since they still described a separate marker.
 - Split the installed docs convention: `.agents/conventions/docs.md` keeps the daily rules (63 lines, down from 151), and structure, numbering, metadata, pruning, migration and reader-journey methods move to `.agents/conventions/docs-reorganization.md`, installed with `docs` and linked from `docs.md` rather than routed from `AGENTS.md`. An ordinary documentation edit no longer loads the reorganization methods; upgrade installs the new file.
@@ -26,6 +27,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Reject invalid UTF-8 in the Claude inbox sender's file/stdin input before connecting, instead of silently replacing bytes and submitting altered text. Preserve valid BOM, CRLF/LF and trailing newlines.
+- Probe real symlinks inside the target checkout, allowing scaffold installation when its parent is read-only and testing the intended filesystem. Report probe-allocation failures without a traceback; isolate the missing-repository test from host directory metadata.
+- Require an explicit boolean `is_error: false` before a live routing probe can report completion. Missing or malformed flags fail while retaining observed usage, rather than being accepted as successful evidence.
 - Restore the retired `project-docs-organizer`'s useful structure/classification, optional local numbering, lightweight metadata, evidence-based pruning, migration-consumer and reader-journey guidance in the installed docs convention. Route selected-docs onboarding to that guide and synchronize its installed copy without reviving a skill, expanding resident `AGENTS.md`, or imposing an inventory, metadata schema, taxonomy or approval workflow.
 - Fail guidance fixtures whose prompt forbids commands when a captured trace shows a shell call; the artifact oracles could not see it, and live transcripts showed both tested models running forbidden commands. Manual runs without a trace are not judged on it.
 - Say in the `scaffold-testing-guidance` prompt that the consolidated `quality-decisions.md` stays in place, as its oracle already required; "consolidate" read as permission to delete it.

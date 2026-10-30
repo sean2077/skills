@@ -49,7 +49,7 @@ Negative fixtures reject missing, unsafe, or wrong-typed observations. These che
 
 ## Measurement and failure boundaries
 
-CLI and decision responses must each be exactly one finite JSON object. Duplicate keys, normalized-key collisions, nonzero exits, host failures, missing usage, and malformed/non-integral usage cannot become completed runs. The candidate's final `SKILL.md` target must remain inside the pinned repository, including through symlinks.
+CLI and decision responses must each be exactly one finite JSON object. A completed CLI result requires exit 0 and an explicit boolean [`is_error: false`](https://code.claude.com/docs/en/agent-sdk/typescript#sdkresultmessage); a missing or malformed error flag is not success. Duplicate keys, normalized-key collisions, nonzero exits, host failures, missing usage, and malformed/non-integral usage cannot become completed runs. The candidate's final `SKILL.md` target must remain inside the pinned repository, including through symlinks.
 
 `input_tokens` includes uncached input, cache reads, and cache creation. Prefer whole-call `modelUsage`, otherwise require complete `usage`; never add overlapping reports. This is token volume, not dollars. Sources reviewed 2026-09-06: [Claude cache usage](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [whole-call usage](https://code.claude.com/docs/en/agent-sdk/cost-tracking). Results predating that correction need matched reruns, not relaxed budgets.
 

@@ -15,7 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SENDER = ROOT / "skills/claude-codex-messaging/scripts/send-claude.mjs"
 TOKEN = "fixture-token-never-echo"
-TEXT = '消息 "quotes" \\ backslash `backtick` $literal\r\nsecond line\n'
+# Preserve a literal UTF-8 BOM as well as CRLF and trailing newlines.
+TEXT = '\ufeff消息 "quotes" \\ backslash `backtick` $literal\r\nsecond line\n'
 NODE = shutil.which("node")
 if NODE is None:
     raise RuntimeError("Node.js is required to test the bundled inbox sender")
@@ -67,7 +68,7 @@ class ClaudeInboxSenderTests(unittest.TestCase):
             [NODE, str(script), *map(str, args)],
             cwd=self.work,
             env=self.env if env is None else env,
-            input=None if text is None else text.encode("utf-8"),
+            input=text if text is None or isinstance(text, bytes) else text.encode("utf-8"),
             capture_output=True,
             timeout=15,
         )
@@ -187,6 +188,22 @@ class ClaudeInboxSenderTests(unittest.TestCase):
             result = self.run_sender(self.work / "absent.txt")
             self.assert_failure(result)
             self.assertIn("message input", result.stderr)
+            self.assertFalse(Path(str(capture) + ".connected").exists())
+
+    def test_invalid_utf8_file_is_rejected_before_connecting(self):
+        source = self.work / "invalid-utf8.txt"
+        source.write_bytes(b"before \xff after\n")
+        with self.receiver() as (_, capture):
+            result = self.run_sender(source)
+            self.assert_failure(result)
+            self.assertIn("UTF-8", result.stderr)
+            self.assertFalse(Path(str(capture) + ".connected").exists())
+
+    def test_invalid_utf8_stdin_is_rejected_before_connecting(self):
+        with self.receiver() as (_, capture):
+            result = self.run_sender("-", text=b"before \xff after\n")
+            self.assert_failure(result)
+            self.assertIn("UTF-8", result.stderr)
             self.assertFalse(Path(str(capture) + ".connected").exists())
 
     def test_unavailable_inbox_never_reports_success(self):

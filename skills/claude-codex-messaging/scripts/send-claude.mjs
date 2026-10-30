@@ -25,9 +25,9 @@ let content;
 try {
   content = source === undefined
     ? process.env.MESSAGE
-    : readFileSync(source === "-" ? 0 : source, "utf8");
+    : new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(readFileSync(source === "-" ? 0 : source));
 } catch {
-  fail("Cannot read the message input");
+  fail("Cannot read the message input as UTF-8");
 }
 if (content === undefined) fail("Supply a UTF-8 file, - for stdin, or MESSAGE");
 

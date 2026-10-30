@@ -399,8 +399,8 @@ def main() -> int:
         stage = "usage"
         observed = metrics(host, 0.0)
         stage = "host-status"
-        if exit_code != 0 or host.get("is_error"):
-            raise ValueError("host returned an error")
+        if exit_code != 0 or host.get("is_error") is not False:
+            raise ValueError("host did not report a successful result")
         stage = "decision"
         decision = parse_json(host.get("result", ""))
         if not isinstance(decision.get("behavior"), dict):

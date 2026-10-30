@@ -24,7 +24,7 @@ Pass an existing UTF-8 file directly instead of reading its body into tool outpu
 printf '%s' 'Message text' | node "$SKILL_DIR/scripts/send-claude.mjs" -
 ```
 
-With no argument, the sender uses exported `MESSAGE`. A file or `-` takes precedence over `MESSAGE`; text is preserved, including trailing newlines. Input is read before connecting, sent once, and never echoed. Exit 0 reports **submission only**, without receiver acceptance.
+With no argument, the sender uses exported `MESSAGE`. A file or `-` takes precedence over `MESSAGE`; valid UTF-8 is preserved, including a BOM, CRLF/LF and trailing newlines. Invalid UTF-8 files/stdin fail before connecting. Use those inputs for exact text: the host may already have replaced invalid bytes in environment variables. Input is read before connecting, sent once, and never echoed. Exit 0 reports **submission only**, without receiver acceptance.
 
 ## Delivery
 

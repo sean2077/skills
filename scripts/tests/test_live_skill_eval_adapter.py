@@ -227,6 +227,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                 "case": {"prompt": "Explain the flow."},
             }
             host = {
+                "is_error": False,
                 "usage": {"input_tokens": 10, "output_tokens": 5},
                 "result": json.dumps(
                     {
@@ -313,6 +314,7 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
     @staticmethod
     def successful_host():
         return {
+            "is_error": False,
             "usage": {"input_tokens": 10, "output_tokens": 5},
             "duration_api_ms": 1,
             "result": json.dumps({
@@ -326,6 +328,22 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         self.assertEqual(7, payload["metadata"]["host_exit_code"])
         self.assertTrue(payload["metadata"]["usage_available"])
         self.assertEqual(10, payload["metrics"]["input_tokens"])
+
+    def test_host_success_requires_an_explicit_boolean_error_flag(self):
+        missing = object()
+        for flag in (missing, None, 0, "", [], {}, True, "false"):
+            with self.subTest(flag="missing" if flag is missing else flag):
+                host = self.successful_host()
+                if flag is missing:
+                    del host["is_error"]
+                else:
+                    host["is_error"] = flag
+                payload = self.run_host(host)
+                self.assertEqual("failed", payload["status"])
+                self.assertEqual("host-status", payload["metadata"]["error_stage"])
+                self.assertTrue(payload["metadata"]["usage_available"])
+                self.assertEqual(10, payload["metrics"]["input_tokens"])
+                self.assertEqual(5, payload["metrics"]["output_tokens"])
 
     def test_host_model_names_the_model_that_served_the_call(self):
         host = self.successful_host()
