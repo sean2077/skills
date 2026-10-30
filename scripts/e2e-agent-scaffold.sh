@@ -659,6 +659,7 @@ check "Codex hook command has no shell dollar" no_fixed_text "$S/.codex/hooks.js
 check "original gitignore line stays separate" grep -qxF "dist" "$S/.gitignore"
 check "first gitignore append is separate"     grep -qxF ".claude/settings.local.json" "$S/.gitignore"
 check ".gitignore ignores .worktrees/"       grep -qx ".worktrees/" "$S/.gitignore"
+check ".gitignore ignores symlink probe residue" grep -qxF ".agent-scaffold-symlink-*/" "$S/.gitignore"
 check "original attributes line stays separate" grep -qxF "*.txt text" "$S/.gitattributes"
 check ".gitattributes pins LF on scripts"    grep -qxF ".agents/tools/*.sh text eol=lf" "$S/.gitattributes"
 check ".gitattributes leaves Husky project-owned" no_exact_line "$S/.gitattributes" ".husky/pre-commit text eol=lf"
@@ -1363,6 +1364,7 @@ check "managed AGENTS block omits hard rule"     no_fixed_text "$L/AGENTS.md" "W
 check "light-profile keeps managed contract structure" authority_structure_present "$L/AGENTS.md"
 check "light-profile omits .worktrees ignore"      no_exact_line "$L/.gitignore" ".worktrees/"
 check "light-profile omits escape-hatch ignore"    no_exact_line "$L/.gitignore" ".claude/allow-trunk-edit"
+check "light-profile keeps the symlink probe ignore" grep -qxF ".agent-scaffold-symlink-*/" "$L/.gitignore"
 check "light-profile keeps the real-link contract" test "$(readlink "$L/CLAUDE.md")" = AGENTS.md
 ( cd "$L" && bash "$H" verify --profile light ) >/dev/null 2>&1; rc=$?
 check "light-profile verify accepts light profile" test "$rc" = 0

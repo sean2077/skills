@@ -252,6 +252,12 @@
       "lines": [".worktrees/", ".claude/allow-trunk-edit"]
     },
     {
+      "id": "contract.gitignore-symlink-probe",
+      "target": ".gitignore",
+      "profiles": ["default", "light"],
+      "lines": [".agent-scaffold-symlink-*/"]
+    },
+    {
       "id": "contract.gitattributes",
       "target": ".gitattributes",
       "profiles": ["default", "light"],
