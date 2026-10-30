@@ -36,9 +36,10 @@ or lightweight formatting. Use `--content` for an exact message JSON payload, in
 leading input markers must remain literal.
 
 IM send/reply/edit gained file and stdin inputs in v1.0.97: `--text`, `--markdown`, and `--content`
-interpret `@./path` as file content and the exact value `-` as stdin. Shell quoting does not disable
-that CLI parsing. Use these source forms only when the installed command supports them; an
-existing message file can be passed directly instead of copying its contents into the command:
+interpret `@./path` as file content and the exact value `-` as stdin. `@` paths resolve from the
+current directory; absolute and traversal paths are rejected. Shell quoting does not disable that
+CLI parsing. Use these source forms only when the installed command supports them; an existing
+message file can be passed directly instead of copying its contents into the command:
 
 ```bash
 lark-cli im +messages-send --chat-id "oc_xxx" --markdown @./update.md --as user

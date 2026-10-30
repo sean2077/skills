@@ -122,9 +122,10 @@ lark-cli base +record-list --base-token '<base-token>' --table-id '<table-id>' \
 ```
 
 For small inline reads or environments without file I/O, use `--format json`; list/search can
-also take a bounded `--limit`. This format returns the raw matrix through the usual JSON envelope.
-v1.0.98 rejects `--format markdown`. Preserve working older-version recipes; consult the installed
-command's exact help when its output or supported flags differ.
+also take a bounded `--limit` (inline JSON accepts at most 200 records; NDJSON up to 2000).
+This format returns the raw matrix through the usual JSON envelope. v1.0.98 rejects
+`--format markdown`. Preserve working older-version recipes; consult the installed command's
+exact help when its output or supported flags differ.
 
 In v1.0.98, each list/search call fetches one page, up to 2000 records. A requested preview may
 stop at its bound. When the task requires all matching rows, continue only while `has_more=true`,
