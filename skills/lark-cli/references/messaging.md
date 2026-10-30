@@ -32,7 +32,35 @@ lark-cli contact +search-user --queries "Alice,Bob,张三" --as user
 
 Choose exactly one content input. Use `--text` for literal plain text, logs, code, indentation, or
 Markdown characters that must remain literal. Use `--markdown` for headings, lists, links, summaries,
-or lightweight formatting. Use `--content` only for an exact post/card JSON payload.
+or lightweight formatting. Use `--content` for an exact message JSON payload, including text whose
+leading input markers must remain literal.
+
+IM send/reply/edit gained file and stdin inputs in v1.0.97: `--text`, `--markdown`, and `--content`
+interpret `@./path` as file content and the exact value `-` as stdin. `@` paths resolve from the
+current directory; absolute and traversal paths are rejected. Shell quoting does not disable that
+CLI parsing. Use these source forms only when the installed command supports them; an existing
+message file can be passed directly instead of copying its contents into the command:
+
+```bash
+lark-cli im +messages-send --chat-id "oc_xxx" --markdown @./update.md --as user
+lark-cli im +messages-reply --message-id "om_xxx" --text - --as user < ./reply.txt
+```
+
+With that parser, prefix one extra `@` to preserve an initial literal `@` (`@@name` becomes
+`@name`). A text JSON payload also preserves a leading `@` or a message consisting only of `-`,
+including on older versions without file-input support. Serialize arbitrary text as JSON instead
+of interpolating it unescaped:
+
+```bash
+lark-cli im +messages-send --chat-id "oc_xxx" --msg-type text \
+  --content '{"text":"@./note.txt"}' --as user
+lark-cli im +messages-send --chat-id "oc_xxx" --msg-type text --content '{"text":"-"}' --as user
+```
+
+Input semantics were source-reviewed on 2026-10-30 against
+[v1.0.97's IM input change](https://github.com/larksuite/cli/pull/2760) and its
+[input resolver](https://github.com/larksuite/cli/blob/v1.0.97/shortcuts/common/runner.go).
+That review did not send a live message.
 
 ```bash
 # Group chat

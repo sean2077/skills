@@ -108,6 +108,41 @@ plain row listing that does not need type-aware mutation may skip `+field-list`.
 metadata before writes whose CellValue shape depends on field types, select options, links, formulas,
 or read-only fields.
 
+For known record IDs, use `+record-get` with repeated `--record-id` instead of scanning the table.
+In v1.0.98, `+record-list`, `+record-search`, and `+record-get` default to NDJSON files plus a
+manifest. Stdout contains that manifest directly, without an `ok`/`data` envelope; check exit
+status and the command's result shape, then process `record_file` for the actual rows. The
+manifest's examples and statistics describe this export, not the complete table.
+
+Project only needed fields and choose a new cwd-relative output path:
+
+```bash
+lark-cli base +record-list --base-token '<base-token>' --table-id '<table-id>' \
+  --field-id '<field-name-or-id>' --format ndjson --output ./records.ndjson --as user
+```
+
+For small inline reads or environments without file I/O, use `--format json`; list/search can
+also take a bounded `--limit` (inline JSON accepts at most 200 records; NDJSON up to 2000).
+This format returns the raw matrix through the usual JSON envelope. v1.0.98 rejects
+`--format markdown`. Preserve working older-version recipes; consult the installed command's
+exact help when its output or supported flags differ.
+
+In v1.0.98, each list/search call fetches one page, up to 2000 records. A requested preview may
+stop at its bound. When the task requires all matching rows, continue only while `has_more=true`,
+passing the returned `next_offset` as `--offset`, keeping the same query/projection, and using a
+different output file per page.
+Treat the result as complete only when the last page reports `has_more=false` and the query scope
+matches the question. For a consistent multi-page snapshot, check `rev` and `query_context`;
+restart or disclose the limitation if they change or consistency cannot be established.
+`+record-get` addresses selected IDs and does not use this pagination loop; inspect
+`record_not_found` for missing records.
+
+These output rules were source-reviewed on 2026-10-30 against the
+[v1.0.98 change](https://github.com/larksuite/cli/pull/2782),
+[record export implementation](https://github.com/larksuite/cli/blob/v1.0.98/shortcuts/base/record_export.go),
+and [analysis SOP](https://github.com/larksuite/cli/blob/v1.0.98/skills/lark-base/references/lark-base-record-query-and-analysis-sop.md).
+Live CLI/service behavior remains unverified by that review.
+
 Use `+data-query` directly for aggregation/grouping when the Base token and table are known:
 
 ```bash
@@ -134,9 +169,10 @@ never successful records.
 
 Most Base table writes are asynchronous. Prefer the write response and returned record IDs; do not
 read each record immediately. When verification is required, finish the related writes, allow the
-service to settle, then perform one focused `+record-list`/`+record-search` acceptance read. Preview
-and reconfirm record deletion, bulk replacement, role/member changes, advanced permissions,
-workflow enable/disable, or AppMode publication-visible changes.
+service to settle, then perform one focused acceptance read: `+record-get` for known IDs, or
+`+record-list`/`+record-search` for the required scope. For NDJSON output, verify the affected rows
+in the returned file. Preview and reconfirm record deletion, bulk replacement, role/member changes,
+advanced permissions, workflow enable/disable, or AppMode publication-visible changes.
 
 ## Command discovery
 

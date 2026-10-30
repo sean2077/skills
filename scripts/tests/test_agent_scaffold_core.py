@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import runpy
 import shutil
 import subprocess
 import sys
@@ -132,6 +133,78 @@ class AtomicSymlinkTests(unittest.TestCase):
             self.assertEqual(previous, link.read_bytes())
             self.assertFalse(link.is_symlink())
             self.assertEqual([], list(root.glob(".projection.agent-scaffold-link-*")))
+
+
+class SymlinkDoctorTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="scaffold doctor ")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.repo = self.root / "writable-repo"
+        self.repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(self.repo), "config", "core.symlinks", "true"],
+            check=True, capture_output=True,
+        )
+        (self.repo / "keep.txt").write_bytes(b"project content\r\n")
+
+    def snapshot(self):
+        return {
+            path.relative_to(self.root).as_posix(): path.read_bytes()
+            for path in self.root.rglob("*") if path.is_file()
+        }
+
+    def test_probe_uses_target_filesystem_without_parent_write_permission(self):
+        before = self.snapshot()
+        allocate = tempfile.mkdtemp
+        probe_roots = []
+
+        def writable_target_only(*args, **kwargs):
+            if Path(kwargs["dir"]).resolve() != self.repo:
+                raise PermissionError("parent directory is read-only")
+            result = allocate(*args, **kwargs)
+            probe_roots.append(Path(result))
+            return result
+
+        with mock.patch.object(SYMLINK_MANAGER.tempfile, "mkdtemp", side_effect=writable_target_only):
+            with mock.patch.object(SYMLINK_MANAGER.os, "symlink", wraps=os.symlink) as create_link:
+                SYMLINK_MANAGER.doctor(self.repo)
+
+        self.assertEqual(1, len(probe_roots))
+        self.assertEqual([False, True], [call.kwargs.get("target_is_directory", False)
+                                        for call in create_link.call_args_list])
+        self.assertTrue(all(not path.exists() for path in probe_roots))
+        self.assertEqual(before, self.snapshot())
+
+    def test_probe_allocation_failure_has_controlled_cli_diagnostic(self):
+        before = self.snapshot()
+        errors = io.StringIO()
+        with mock.patch.object(SYMLINK_MANAGER.tempfile, "mkdtemp", side_effect=PermissionError("target is read-only")):
+            with mock.patch.object(sys, "argv", [str(SYMLINK_MANAGER_PATH), "doctor", "--repo", str(self.repo)]):
+                with contextlib.redirect_stderr(errors), self.assertRaises(SystemExit) as exited:
+                    runpy.run_path(str(SYMLINK_MANAGER_PATH), run_name="__main__")
+
+        self.assertEqual(2, exited.exception.code)
+        self.assertIn("symlink-manager: cannot create symlink probe", errors.getvalue())
+        self.assertNotIn("Traceback", errors.getvalue())
+        self.assertEqual(before, self.snapshot())
+
+    def test_failed_directory_symlink_probe_cleans_up(self):
+        before = self.snapshot()
+        create_link = os.symlink
+
+        def fail_directory_link(target, link, **kwargs):
+            if kwargs.get("target_is_directory"):
+                raise OSError("directory symlink denied")
+            return create_link(target, link, **kwargs)
+
+        with mock.patch.object(SYMLINK_MANAGER.os, "symlink", side_effect=fail_directory_link):
+            with self.assertRaisesRegex(SYMLINK_MANAGER.ContractError, "cannot create real symlinks"):
+                SYMLINK_MANAGER.doctor(self.repo)
+
+        self.assertEqual([], list(self.root.rglob(".agent-scaffold-symlink-*")))
+        self.assertEqual(before, self.snapshot())
 
 
 class CompactHeaderTests(unittest.TestCase):
@@ -945,9 +1018,13 @@ class HookProjectRootTests(unittest.TestCase):
             self.assertEqual(str(repo), HOOK_PATHS.project_root())
 
     def test_missing_repository_or_failed_git_does_not_invent_root(self):
-        hook_dir = self.root / "outside/hooks"
+        # Keep the fixed-depth fallback and Git discovery inside this fixture;
+        # the host's temporary directory may itself have repository metadata.
+        hook_dir = self.root / "missing-project/.agents/tools/hooks"
         hook_dir.mkdir(parents=True)
-        with mock.patch.object(HOOK_PATHS, "HOOK_DIR", str(hook_dir)):
+        with mock.patch.object(HOOK_PATHS, "HOOK_DIR", str(hook_dir)), mock.patch.dict(
+            os.environ, {"GIT_CEILING_DIRECTORIES": str(self.root)}
+        ):
             self.assertIsNone(HOOK_PATHS.project_root())
             for failure in (OSError("Git unavailable"), subprocess.TimeoutExpired("git", 5)):
                 with self.subTest(failure=type(failure).__name__), mock.patch.object(HOOK_PATHS.subprocess, "run", side_effect=failure):

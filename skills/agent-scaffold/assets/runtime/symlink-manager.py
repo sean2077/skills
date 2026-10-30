@@ -64,7 +64,12 @@ def doctor(repo: Path) -> None:
                 f"{source}; remove a local false override and enable it before installing"
             )
 
-    probe_root = Path(tempfile.mkdtemp(prefix=".agent-scaffold-symlink-", dir=repo.parent))
+    # Probe the target filesystem and permissions. The parent can be read-only
+    # or on another filesystem even when the checkout supports real links.
+    try:
+        probe_root = Path(tempfile.mkdtemp(prefix=".agent-scaffold-symlink-", dir=repo))
+    except OSError as exc:
+        raise ContractError(f"cannot create symlink probe in repository: {exc}") from exc
     file_link = probe_root / "file-link"
     dir_link = probe_root / "dir-link"
     try:
