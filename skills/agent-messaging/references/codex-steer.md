@@ -1,4 +1,4 @@
-# Claude Code → active Codex turn
+# Steer an active Codex turn
 
 Use steer when the message should affect ongoing work. It neither cancels that work nor queues a later turn. If later handling is intended, use [queue](codex-queue.md).
 

@@ -1,4 +1,4 @@
-# Claude Code → Codex queue
+# Queue input for native Codex
 
 Read for queued delivery to an existing native Codex thread. To affect an active turn, use [steer](codex-steer.md). Use the recipient's `CODEX_HOME` / endpoint and prefer its thread UUID over an ambiguous name.
 

@@ -2,8 +2,8 @@
   "name": "sean2077-skills",
   "description": "Reusable agent skills for development, ops, and productivity.",
   "skills": [
+    "./skills/agent-messaging",
     "./skills/agent-scaffold",
-    "./skills/claude-codex-messaging",
     "./skills/deep-interview",
     "./skills/lark-cli"
   ]

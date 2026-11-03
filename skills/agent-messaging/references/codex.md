@@ -1,4 +1,4 @@
-# Claude Code → Codex App Server
+# Codex App Server
 
 Read for start, interrupt or an alternate App Server client. For ordinary steer delivery, use the [bundled sender](codex-steer.md). Behavior below was checked against Codex 0.163.0; consult the installed schema if it differs. [Pinned sources](sources.md#codex).
 
@@ -11,7 +11,7 @@ The control socket uses **WebSocket with HTTP Upgrade**, not raw JSON lines. Nat
 On a new connection, send each object as a separate WebSocket text frame. Wait for successful `initialize` before `initialized` and further requests:
 
 ```json
-{"id":1,"method":"initialize","params":{"clientInfo":{"name":"claude-codex-messaging","version":"0.1.0"}}}
+{"id":1,"method":"initialize","params":{"clientInfo":{"name":"agent-messaging","version":"0.1.0"}}}
 {"method":"initialized","params":{}}
 ```
 

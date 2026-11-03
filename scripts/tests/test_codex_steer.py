@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SENDER = ROOT / "skills/claude-codex-messaging/scripts/steer-codex.mjs"
+SENDER = ROOT / "skills/agent-messaging/scripts/steer-codex.mjs"
 NODE = shutil.which("node")
 if NODE is None:
     raise RuntimeError("Node.js is required to test the bundled steer sender")

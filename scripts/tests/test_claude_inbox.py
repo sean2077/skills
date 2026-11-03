@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SENDER = ROOT / "skills/claude-codex-messaging/scripts/send-claude.mjs"
+SENDER = ROOT / "skills/agent-messaging/scripts/send-claude.mjs"
 TOKEN = "fixture-token-never-echo"
 # Preserve a literal UTF-8 BOM as well as CRLF and trailing newlines.
 TEXT = '\ufeff消息 "quotes" \\ backslash `backtick` $literal\r\nsecond line\n'

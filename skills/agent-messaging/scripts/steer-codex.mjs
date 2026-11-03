@@ -188,7 +188,7 @@ async function steer() {
 
   deadline = Date.now() + 15000;
   await connect(localPath === undefined ? endpoint : await proxyEndpoint(localPath), localPath !== undefined);
-  await request("initialize", { clientInfo: { name: "claude-codex-messaging", version: "0.1.0" } });
+  await request("initialize", { clientInfo: { name: "agent-messaging", version: "0.1.0" } });
   ws.send(JSON.stringify({ method: "initialized", params: {} }));
   const cursors = new Set();
   let cursor;
