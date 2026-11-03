@@ -449,6 +449,13 @@ class CodexSteerTests(unittest.TestCase):
                 self.assertEqual(0, fixture.connections)
                 self.assertEqual([], fixture.messages)
 
+    def test_refuses_senders_own_thread(self):
+        self.env["CODEX_THREAD_ID"] = self.env["TARGET_THREAD_ID"]
+        with WebSocketFixture() as fixture:
+            self.assert_status(self.run_sender(fixture), "not_sent", 1)
+            self.assertEqual(0, fixture.connections)
+            self.assertEqual([], fixture.messages)
+
     def test_missing_target_does_not_use_senders_home_or_history(self):
         self.env["CODEX_HOME"] = str(self.work / "senders-home")
         self.assert_status(self.run_sender(), "not_sent", 1)

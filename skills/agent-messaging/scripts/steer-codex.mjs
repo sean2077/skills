@@ -164,6 +164,9 @@ async function steer() {
   }
   const threadId = process.env.TARGET_THREAD_ID;
   if (!threadId) throw new Error("Missing TARGET_THREAD_ID from the intended receiver");
+  if (process.env.CODEX_THREAD_ID === threadId) {
+    throw new Error("Target is the sender's own thread; use the receiver's thread ID");
+  }
   let endpoint = process.env.TARGET_CODEX_ENDPOINT;
   if (!endpoint && process.env.TARGET_CODEX_HOME) {
     endpoint = "unix://" + join(process.env.TARGET_CODEX_HOME, "app-server-control", "app-server-control.sock");

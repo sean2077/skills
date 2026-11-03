@@ -178,6 +178,15 @@ class ClaudeInboxSenderTests(unittest.TestCase):
         self.assert_failure(result)
         self.assertIn("TARGET_CC_SOCKET", result.stderr)
 
+    def test_refuses_senders_own_inbox(self):
+        self.env["CLAUDE_CODE_MESSAGING_SOCKET"] = self.env["TARGET_CC_SOCKET"]
+        self.env["MESSAGE"] = TEXT
+        with self.receiver() as (_, capture):
+            result = self.run_sender()
+            self.assert_failure(result)
+            self.assertIn("own inbox", result.stderr)
+            self.assertFalse(Path(str(capture) + ".connected").exists())
+
     def test_missing_input_is_rejected(self):
         result = self.run_sender()
         self.assert_failure(result)

@@ -17,6 +17,12 @@ if (extra.length) fail(usage);
 const address = process.env.TARGET_CC_SOCKET;
 const token = process.env.TARGET_CC_TOKEN;
 if (!address) fail("Missing TARGET_CC_SOCKET from the intended receiver");
+const ownAddress = process.env.CLAUDE_CODE_MESSAGING_SOCKET;
+if (ownAddress && (process.platform === "win32"
+  ? ownAddress.toLowerCase() === address.toLowerCase()
+  : ownAddress === address)) {
+  fail("Target is the sender's own inbox; use the receiver's address");
+}
 if (process.platform === "win32" && !token) {
   fail("The native Windows inbox requires TARGET_CC_TOKEN");
 }

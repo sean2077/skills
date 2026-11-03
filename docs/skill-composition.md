@@ -5,7 +5,7 @@ Use the smallest useful route. Ordinary research, testing/TDD, specification wri
 | Requested outcome | Catalog route | Boundary |
 |---|---|---|
 | Establish, diagnose, or update the harness and selected project conventions | [agent-scaffold](../skills/agent-scaffold/SKILL.md) | Adopt existing layout and fill gaps; does not own ordinary delivery or publishing |
-| Message an existing native Claude Code or Codex CLI/Desktop session from any harness | [agent-messaging](../skills/agent-messaging/SKILL.md) | Prefer built-in messaging that can reach the target with the intended effect; message content/workflow remains caller-owned |
+| Message an existing native Claude Code or Codex CLI/Desktop session from any harness | [agent-messaging](../skills/agent-messaging/SKILL.md) | Prefer your host's built-in messaging when it can reach the target with the intended effect; message content/workflow remains caller-owned |
 | Resolve consequential user-owned requirements into an approved whole specification | [deep-interview](../skills/deep-interview/SKILL.md) | Not mandatory before a draft, one clarification, or already approved implementation |
 | Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Preserve identity, permissions, and transaction-specific authority |
 
@@ -23,7 +23,7 @@ Retain valid evidence and rerun invalidated checks plus project gates. Never inv
 
 ## Renamed installations
 
-`claude-codex-messaging` is now `agent-messaging`. Install the new name in the intended consumer/global scope and update any direct script paths. Installing it does not remove an old-name copy: preserve local edits, then remove only this catalog's old installation using the [installer safety guidance](compatibility.md#installer-semantics).
+`claude-codex-messaging` is now `agent-messaging`. Install the new name in the intended consumer/global scope; update project guidance, prompts, host/plugin configuration and direct script paths that name the old skill, and copy local modifications into the new skill directory. Installing it does not remove an old-name copy: remove only this catalog's old installation from that scope using the [installer safety guidance](compatibility.md#installer-semantics).
 
 ## Retired installations and direct consumers
 

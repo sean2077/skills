@@ -4,7 +4,7 @@ Read for sending to an existing CC process.
 
 ## Target
 
-Obtain `CLAUDE_CODE_MESSAGING_SOCKET` from the **receiver's** tool environment, or its `/status` Peer address (remove the display prefix `uds:`). Export that address as `TARGET_CC_SOCKET`. The sending process's inherited CC variables do not identify the intended receiver.
+Obtain `CLAUDE_CODE_MESSAGING_SOCKET` from the **receiver's** tool environment, or its `/status` Peer address (remove the display prefix `uds:`). Export that address as `TARGET_CC_SOCKET`. The sending process's inherited CC variables do not identify the intended receiver; the sender refuses a target equal to its own `CLAUDE_CODE_MESSAGING_SOCKET`.
 
 Use a reachable local IPC environment: Unix socket on macOS/Linux/WSL, native `\\.\pipe\...` on Windows. Container/host and WSL/Windows paths are not interchangeable.
 

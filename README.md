@@ -29,7 +29,7 @@ Each skill is independently installable. Its entry point owns the workflow and o
 
 | Skill | Use |
 |---|---|
-| [agent-messaging](skills/agent-messaging/) | Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when built-in messaging cannot provide the intended delivery. |
+| [agent-messaging](skills/agent-messaging/) | Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when your host's built-in messaging cannot provide the intended delivery. |
 | [agent-scaffold](skills/agent-scaffold/) | Initialize or maintain the harness and selected project conventions; preserve existing layouts and remember one-time exclusions. |
 | [deep-interview](skills/deep-interview/) | Resolve requirements into an approved specification; exact-file approval records are optional. |
 | [lark-cli](skills/lark-cli/) | Perform selected 飞书/Feishu/Lark CLI operations with identity and side-effect safeguards. |

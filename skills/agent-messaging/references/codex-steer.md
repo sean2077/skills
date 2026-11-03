@@ -9,7 +9,7 @@ Require Node.js 22.4+ and export the intended receiver's `TARGET_THREAD_ID`. Als
 - `TARGET_CODEX_HOME`: the receiver's native Codex home; the sender uses its `app-server-control/app-server-control.sock`.
 - `TARGET_CODEX_ENDPOINT`: its existing `ws://`, `wss://` or `unix://ABSOLUTE_PATH` endpoint. This takes precedence over `TARGET_CODEX_HOME`.
 
-Use the original live server. The sender never guesses from its own inherited `CODEX_HOME`, starts an app-server or resumes a thread. Container/host and WSL/native Windows paths are not interchangeable.
+Use the original live server. The sender never guesses from its own inherited `CODEX_HOME`, starts an app-server or resumes a thread. It refuses `TARGET_THREAD_ID` equal to the sending process's own `CODEX_THREAD_ID`. Container/host and WSL/native Windows paths are not interchangeable.
 
 The local socket route requires `codex app-server proxy --sock PATH`, verified in Codex 0.163.0. The sender uses `codex` on PATH; on Windows it runs `codex.exe` or an npm install's JS launcher, never the `.cmd` shim through a shell. Optionally set `CODEX_BIN` to a native executable or `.js`/`.mjs`/`.cjs` launcher. The proxy relays WebSocket bytes through a temporary local bridge and preserves Codex's native socket transport.
 

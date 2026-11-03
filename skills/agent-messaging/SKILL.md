@@ -1,11 +1,11 @@
 ---
 name: agent-messaging
-description: "Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when built-in messaging cannot reach the target with the intended effect. Covers CC inbox and Codex steer/queue/start/interrupt."
+description: "Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when your host's built-in messaging cannot reach the target with the intended effect. Covers CC inbox and Codex steer/queue/start/interrupt."
 ---
 
 # Agent messaging
 
-Prefer built-in messaging when it reaches the target with the intended effect, including same-product sessions/subagents. Otherwise choose by receiver and effect: steer for ongoing work, queue for later handling. Message text, replies and workflow remain caller-owned.
+Prefer your host's built-in messaging when it reaches the target with the intended effect, including same-product sessions/subagents. Otherwise choose by receiver and effect: steer for ongoing work, queue for later handling. Message text, replies and workflow remain caller-owned.
 
 | Receiver | Native route | Effect | Details |
 |---|---|---|---|
@@ -15,7 +15,7 @@ Prefer built-in messaging when it reaches the target with the intended effect, i
 | Codex | App Server `turn/interrupt` | Cancel current work; this operation carries no message. | [Codex](references/codex.md#interrupt) |
 | Claude Code | Native inbox socket / named pipe | Submit to the running CC process. | [Inbox sender](references/claude-code.md) |
 
-Use the intended receiver's native environment and endpoint. An ID or shared history alone does not establish access to its live process; CLI/Desktop launches may not expose a control endpoint.
+Use the intended receiver's native environment and endpoint; this skill adds no SDK, Channel or cloud API integration. Target a distinct session or thread, never the sender's own or an inherited parent identity. An ID or shared history alone does not establish access to its live process; CLI/Desktop launches may not expose a control endpoint.
 
 If the required endpoint or operation is unavailable, report it; do not silently substitute another operation or a newly resumed process. No Pairroom service is required.
 
