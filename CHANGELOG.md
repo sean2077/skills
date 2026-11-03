@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v11.0.0] — 2026-11-03
+
 ### Breaking
 
 - Rename `claude-codex-messaging` to `agent-messaging`; the old name is no longer published. Consumers must install the new name, update old-name references and carry local modifications into the new skill directory. Any harness can now message an existing native Claude Code or Codex CLI/Desktop session. Prefer built-in messaging when it can reach the target with the intended effect instead of excluding all same-product communication. Organize routes by receiver, reject self-targeting in the bundled senders, and retain caller-owned message/workflow choices.
