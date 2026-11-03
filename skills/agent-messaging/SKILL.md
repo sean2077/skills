@@ -1,6 +1,6 @@
 ---
 name: agent-messaging
-description: "Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when your host's built-in messaging cannot reach the target with the intended effect. Covers CC inbox and Codex steer/queue/start/interrupt."
+description: "Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when your host's built-in messaging cannot reach the target with the intended effect. Covers CC inbox and Codex steer/queue/start/interrupt; not SDK, Channel or cloud API routes."
 ---
 
 # Agent messaging
