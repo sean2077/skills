@@ -164,6 +164,9 @@ async function steer() {
   }
   const threadId = process.env.TARGET_THREAD_ID;
   if (!threadId) throw new Error("Missing TARGET_THREAD_ID from the intended receiver");
+  if (process.env.CODEX_THREAD_ID === threadId) {
+    throw new Error("Target is the sender's own thread; use the receiver's thread ID");
+  }
   let endpoint = process.env.TARGET_CODEX_ENDPOINT;
   if (!endpoint && process.env.TARGET_CODEX_HOME) {
     endpoint = "unix://" + join(process.env.TARGET_CODEX_HOME, "app-server-control", "app-server-control.sock");
@@ -188,7 +191,7 @@ async function steer() {
 
   deadline = Date.now() + 15000;
   await connect(localPath === undefined ? endpoint : await proxyEndpoint(localPath), localPath !== undefined);
-  await request("initialize", { clientInfo: { name: "claude-codex-messaging", version: "0.1.0" } });
+  await request("initialize", { clientInfo: { name: "agent-messaging", version: "0.1.0" } });
   ws.send(JSON.stringify({ method: "initialized", params: {} }));
   const cursors = new Set();
   let cursor;

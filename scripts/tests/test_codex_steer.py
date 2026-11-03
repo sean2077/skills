@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SENDER = ROOT / "skills/claude-codex-messaging/scripts/steer-codex.mjs"
+SENDER = ROOT / "skills/agent-messaging/scripts/steer-codex.mjs"
 NODE = shutil.which("node")
 if NODE is None:
     raise RuntimeError("Node.js is required to test the bundled steer sender")
@@ -448,6 +448,13 @@ class CodexSteerTests(unittest.TestCase):
                 self.assert_status(self.run_sender(fixture, *args, env=env), "not_sent", 1)
                 self.assertEqual(0, fixture.connections)
                 self.assertEqual([], fixture.messages)
+
+    def test_refuses_senders_own_thread(self):
+        self.env["CODEX_THREAD_ID"] = self.env["TARGET_THREAD_ID"]
+        with WebSocketFixture() as fixture:
+            self.assert_status(self.run_sender(fixture), "not_sent", 1)
+            self.assertEqual(0, fixture.connections)
+            self.assertEqual([], fixture.messages)
 
     def test_missing_target_does_not_use_senders_home_or_history(self):
         self.env["CODEX_HOME"] = str(self.work / "senders-home")

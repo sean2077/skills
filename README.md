@@ -1,8 +1,8 @@
 # skills
 
-A curated catalog of reusable [Agent Skills](https://agentskills.io/specification) for Agent harness setup, native Claude–Codex messaging, requirements interviews, and Feishu/Lark operations.
+A curated catalog of reusable [Agent Skills](https://agentskills.io/specification) for Agent harness setup, native agent messaging, requirements interviews, and Feishu/Lark operations.
 
-Install only what adds value to your host or project. Ordinary investigation, testing, cleanup, review, and delivery use the host/project workflow; there is no mandatory skill chain. See the [selection guide](docs/skill-composition.md) for route boundaries and retired installations.
+Install only what adds value to your host or project. Ordinary investigation, testing, cleanup, review, and delivery use the host/project workflow; there is no mandatory skill chain. See the [selection guide](docs/skill-composition.md) for route boundaries and renamed/retired installations.
 
 ## Install
 
@@ -29,8 +29,8 @@ Each skill is independently installable. Its entry point owns the workflow and o
 
 | Skill | Use |
 |---|---|
+| [agent-messaging](skills/agent-messaging/) | Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when your host's built-in messaging cannot provide the intended delivery. |
 | [agent-scaffold](skills/agent-scaffold/) | Initialize or maintain the harness and selected project conventions; preserve existing layouts and remember one-time exclusions. |
-| [claude-codex-messaging](skills/claude-codex-messaging/) | Message across existing native Claude Code and Codex CLI/Desktop sessions; distinguish queue, steer, start, interrupt, and CC inbox delivery. |
 | [deep-interview](skills/deep-interview/) | Resolve requirements into an approved specification; exact-file approval records are optional. |
 | [lark-cli](skills/lark-cli/) | Perform selected 飞书/Feishu/Lark CLI operations with identity and side-effect safeguards. |
 
@@ -40,7 +40,7 @@ Project skill `skill-eval` and subagent `skill-verifier` support this repository
 
 | Need | Start here |
 |---|---|
-| Choose routes or remove retired installations | [Selection and composition](docs/skill-composition.md) |
+| Choose routes or clean up renamed/retired installations | [Selection and composition](docs/skill-composition.md) |
 | Find the source to edit | [Architecture and ownership](docs/architecture.md) |
 | Contribute, verify, regenerate, or release | [Development](docs/development.md) |
 | Check installer behavior, host trust, and dated evidence | [Compatibility](docs/compatibility.md) |

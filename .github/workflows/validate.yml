@@ -118,7 +118,7 @@ jobs:
 
       - name: Test native messaging senders
         run: |
-          python scripts/tests/test_claude_codex_messaging.py
+          python scripts/tests/test_claude_inbox.py
           python scripts/tests/test_codex_steer.py
 
       - name: Check agent-scaffold invariants

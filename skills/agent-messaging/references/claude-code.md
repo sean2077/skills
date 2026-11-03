@@ -1,10 +1,10 @@
-# Codex → native Claude Code
+# Message native Claude Code
 
 Read for sending to an existing CC process.
 
 ## Target
 
-Obtain `CLAUDE_CODE_MESSAGING_SOCKET` from the **receiver's** tool environment, or its `/status` Peer address (remove the display prefix `uds:`). Export that address as `TARGET_CC_SOCKET`. The sending process's inherited CC variables do not identify the intended receiver.
+Obtain `CLAUDE_CODE_MESSAGING_SOCKET` from the **receiver's** tool environment, or its `/status` Peer address (remove the display prefix `uds:`). Export that address as `TARGET_CC_SOCKET`. The sending process's inherited CC variables do not identify the intended receiver; the sender refuses a target equal to its own `CLAUDE_CODE_MESSAGING_SOCKET`.
 
 Use a reachable local IPC environment: Unix socket on macOS/Linux/WSL, native `\\.\pipe\...` on Windows. Container/host and WSL/Windows paths are not interchangeable.
 
@@ -30,6 +30,6 @@ With no argument, the sender uses exported `MESSAGE`. A file or `-` takes preced
 
 CC reads ordinary inbox input between tool calls, or starts a turn when idle; it does not interrupt a running tool. Receiver `crossSessionInbound` may hold/refuse input even with a valid token.
 
-There is no acceptance/read acknowledgement, native Codex peer identity or automatic reply address. Do not resend merely because no reply arrived, or add SDK `priority`/`origin` fields to promise steer/interrupt behavior.
+This sender provides no acceptance/read acknowledgement, sender identity or automatic reply address. Do not resend merely because no reply arrived, or add SDK `priority`/`origin` fields to promise steer/interrupt behavior.
 
 The native frame follows pinned Pairroom code, not a fully published stable peer protocol. [Raw frames and evidence](sources.md#claude-code) are available for alternate clients or protocol checks.

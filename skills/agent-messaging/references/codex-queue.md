@@ -1,6 +1,6 @@
-# Claude Code → Codex queue
+# Queue input for native Codex
 
-Read for queued delivery to an existing native Codex thread. To affect an active turn, use [steer](codex-steer.md). Use the recipient's `CODEX_HOME` / endpoint and prefer its thread UUID over an ambiguous name.
+Read for queued delivery to an existing native Codex thread. To affect an active turn, use [steer](codex-steer.md). Use the recipient's `CODEX_HOME` / endpoint and prefer its thread UUID over an ambiguous name. Never queue to the sender's own thread (its `CODEX_THREAD_ID`); verify the chosen thread belongs to the receiver.
 
 ```bash
 codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE"
