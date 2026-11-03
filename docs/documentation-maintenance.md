@@ -10,7 +10,7 @@ Use the installed [documentation conventions](../.agents/conventions/docs.md) fo
 |---|---|
 | `README.md` | Consumer orientation, concise catalog, installation entry point, and navigation |
 | `AGENTS.md` / linked `CLAUDE.md` | Frequently needed repository instructions; preserve scaffold ownership of its managed block |
-| `docs/skill-composition.md` | Selecting and combining catalog routes; retired-installation cleanup |
+| `docs/skill-composition.md` | Selecting and combining catalog routes; renamed/retired-installation cleanup |
 | `docs/architecture.md` | Product surfaces and source/generated ownership |
 | `docs/development.md` | Maintainer commands, checks, generation, and this repository's release procedure |
 | `docs/compatibility.md` | Dated installer/host claims and their evidence limits |

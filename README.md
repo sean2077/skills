@@ -40,7 +40,7 @@ Project skill `skill-eval` and subagent `skill-verifier` support this repository
 
 | Need | Start here |
 |---|---|
-| Choose routes or remove retired installations | [Selection and composition](docs/skill-composition.md) |
+| Choose routes or clean up renamed/retired installations | [Selection and composition](docs/skill-composition.md) |
 | Find the source to edit | [Architecture and ownership](docs/architecture.md) |
 | Contribute, verify, regenerate, or release | [Development](docs/development.md) |
 | Check installer behavior, host trust, and dated evidence | [Compatibility](docs/compatibility.md) |
