@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking
+
+- Rename `claude-codex-messaging` to `agent-messaging`; the old name is no longer published. Consumers must install the new name, update old-name references and carry local modifications into the new skill directory. Any harness can now message an existing native Claude Code or Codex CLI/Desktop session. Prefer built-in messaging when it can reach the target with the intended effect instead of excluding all same-product communication. Organize routes by receiver, reject self-targeting in the bundled senders, and retain caller-owned message/workflow choices.
+
 ### Added
 
 - Add a runnable Codex steer sender and a short dedicated reference to `claude-codex-messaging`. Reuse native `app-server proxy` for local sockets and Node's built-in WebSocket client; run an npm install's JS launcher on Windows without a shell; confirm the loaded thread and active turn before one guarded `turn/steer`. Accept UTF-8 files, stdin or `MESSAGE`, report acceptance/rejection/unconfirmed delivery separately, and never retry or fall back to queue/start automatically.
@@ -15,7 +19,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Rename `claude-codex-messaging` to `agent-messaging` and allow any harness to message existing native Claude Code or Codex CLI/Desktop sessions. Prefer built-in messaging when it can reach the target with the intended effect instead of excluding all same-product communication. Organize routes by receiver, reject self-targeting in the bundled senders, retain caller-owned message/workflow choices, and document the old installation name's migration, local modifications and old-name references.
 - Update Lark recipes for v1.0.97 IM file/stdin inputs and literal input markers, and v1.0.98 Base record NDJSON manifests, explicit pagination and targeted record reads. Keep older-version guidance and distinguish source review from live service verification.
 - Reduce `claude-codex-messaging` context by routing queue separately from App Server control and loading protocol sources only when needed. Extract the inline CC sender into one Node script using only built-ins, accepting an existing UTF-8 file, stdin, or the existing `MESSAGE` environment input without echoing it. Keep native delivery semantics and make metadata/active-turn reads conditional on the selected operation; verify the sender against disposable Unix sockets and Windows pipes in CI.
 - Fold the managed `AGENTS.md` start/profile/domains comments into one opening comment. Preserve old three-line records on read, migrate them on apply/upgrade without changing saved scope or project prose, and continue rejecting malformed or duplicate metadata. Align the remaining references, the installer's selection messages and the agent-scaffold routing prompts with the field name, since they still described a separate marker.

@@ -1,6 +1,6 @@
 # Protocol sources
 
-Read only to verify an interface/version or implement an alternate CC client. Sources were reviewed 2026-10-22; this is not authenticated CLI/Desktop or Windows end-to-end certification.
+Read only to verify an interface/version or implement an alternate client. Sources were reviewed 2026-10-22; this is not authenticated CLI/Desktop or Windows end-to-end certification.
 
 ## Claude Code
 
