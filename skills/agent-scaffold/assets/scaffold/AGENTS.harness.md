@@ -14,6 +14,8 @@ Never edit the primary worktree, including docs. Reuse an assigned linked worktr
 
 Keep one lifecycle owner. `done --dir <absolute-wt>` merges, ff-only pushes, and removes the worktree; it requires explicit authorization and scaffold ownership, runs outside that worktree, and is not a PR/MR handoff. Leave externally managed worktrees to their owner instead of merging or cleaning them up. Bypass the trunk guard only with explicit user approval.
 
+Release the owning shell/session's directory handle before removal; a child `cd` cannot release its Windows handle. If `done` reports cleanup pending (exit 3), release the handle and use `cleanup --dir <absolute-wt>` for the empty unregistered `.worktrees/<name>` residue.
+
 <!-- agent-scaffold:worktree:end -->
 ### Authority documents (hard rules)
 

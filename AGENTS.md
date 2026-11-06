@@ -39,6 +39,8 @@ Never edit the primary worktree, including docs. Reuse an assigned linked worktr
 
 Keep one lifecycle owner. `done --dir <absolute-wt>` merges, ff-only pushes, and removes the worktree; it requires explicit authorization and scaffold ownership, runs outside that worktree, and is not a PR/MR handoff. Leave externally managed worktrees to their owner instead of merging or cleaning them up. Bypass the trunk guard only with explicit user approval.
 
+Release the owning shell/session's directory handle before removal; a child `cd` cannot release its Windows handle. If `done` reports cleanup pending (exit 3), release the handle and use `cleanup --dir <absolute-wt>` for the empty unregistered `.worktrees/<name>` residue.
+
 ### Authority documents (hard rules)
 
 `AGENTS.md` is the canonical repository-level Agent contract; read the applicable nested chain before acting. Keep it lean and current; route detail to project docs and nest only for real local differences. Repair durable guidance drift in the same change; follow higher-priority instructions and surface material disagreement instead of guessing. Interpret document status and freshness alongside repository evidence and user intent.

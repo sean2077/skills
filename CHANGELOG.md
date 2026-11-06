@@ -10,6 +10,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Document Codex CLI 0.166.0's optional `codex queue --resume` for unloaded receivers, its queue-success/resume-warning distinction, and a version-scoped report of active-goal queue starvation. Queue acknowledgement remains distinct from consumption.
 
+### Fixed
+
+- Prevent worktree cleanup from proceeding inside the target checkout, and check native Windows root-directory delete access before merging or pushing. An unregistered directory that remains now returns cleanup-pending status (exit 3) and keeps the local branch instead of reporting completion. Add `worktree.sh cleanup --dir <absolute-wt>` to safely retry removal of an empty unregistered direct child of `.worktrees/` without merging, pushing, or deleting branches; document how to release the owning shell or Agent handle rather than changing only a child process's directory.
+
 ## [v11.0.0] — 2026-11-03
 
 ### Breaking
