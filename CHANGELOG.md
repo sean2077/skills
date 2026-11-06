@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Document Codex CLI 0.166.0's optional `codex queue --resume` for unloaded receivers, its queue-success/resume-warning distinction, and a version-scoped report of active-goal queue starvation. Queue acknowledgement remains distinct from consumption.
+
 ## [v11.0.0] — 2026-11-03
 
 ### Breaking
