@@ -126,6 +126,7 @@ jobs:
         run: |
           python scripts/tests/test_agent_scaffold_core.py
           python scripts/tests/test_workspace_entry.py
+          python scripts/tests/test_worktree_cleanup.py
           python scripts/tests/test_project_conventions.py
           python scripts/tests/test_guidance_selection.py
           bash scripts/check-agent-scaffold.sh
@@ -230,6 +231,7 @@ jobs:
           python -m unittest -v scripts.tests.test_p0_hardening
           # The release runtime is an installed scaffold asset, so it must run on the scaffold floor.
           python scripts/tests/test_semver_release_plan.py
+          python scripts/tests/test_worktree_cleanup.py
 
       - name: Install and verify the scaffold on the Python 3.8 floor
         run: |

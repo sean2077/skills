@@ -22,7 +22,7 @@ git -C "$task" rev-parse HEAD
 
 Only when no checkout is assigned and scaffold owns creation, run `bash .agents/tools/worktree.sh new <name>` from the primary checkout. Verify the intended remote base: the helper's local trunk is not proof of latest main. A shell `cd` does not reload host guidance or permissions. Pass peers the absolute checkout and reviewed revision; see [workspace context](../skills/agent-scaffold/references/workspace-context.md).
 
-For a PR/MR, publish the task branch and verify the actual change request. Do not use `done` as an implicit merge or cleanup: `done --dir <absolute-wt>` merges, pushes, and removes a scaffold-owned worktree only with explicit authorization. External owners retain lifecycle control. Leave a worktree before removal; Windows processes may keep it locked.
+For a PR/MR, publish the task branch and verify the actual change request. Do not use `done` as an implicit merge or cleanup: `done --dir <absolute-wt>` merges, pushes, and removes a scaffold-owned worktree only with explicit authorization. External owners retain lifecycle control. Release the owning process's directory handle before removal; a child `cd` cannot release its Windows handle. For cleanup-pending status after Git unregisters the target, follow [Windows cleanup and recovery](../skills/agent-scaffold/references/platform-support.md#recover-an-already-unregistered-directory).
 
 ## Select checks by changed surface
 

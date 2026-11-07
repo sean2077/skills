@@ -96,7 +96,10 @@ as a generic "task finished" action, to clean up an externally managed worktree,
 place of a requested PR/MR. `--no-push` still merges and cleans up. For PR/MR delivery,
 leave the review branch and checkout available until their owner authorizes cleanup.
 Before removal, release processes using the directory; changing a child shell's cwd
-cannot release an Agent or terminal's Windows directory handle.
+cannot release an Agent or terminal's Windows directory handle. `done` refuses invocation
+from the target or its descendants. If it exits 3 after unregistering the worktree, keep
+the original path and use `cleanup --dir <absolute-wt>` for the empty `.worktrees/<name>`
+residue after releasing its handles; see [Windows cleanup and recovery](platform-support.md#windows--git-bash-finish-a-worktree-without-leaving-a-locked-directory).
 
 ## User choice and migration
 

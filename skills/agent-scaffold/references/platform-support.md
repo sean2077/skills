@@ -71,7 +71,16 @@ Windows is supported through **Git Bash only**. Install Python 3.8+ and Git for 
 
 ## Windows / Git Bash: finish a worktree without leaving a locked directory
 
-Run `done` from the primary worktree, not from the worktree being removed. This releases the invoking shell's current-directory handle before Git starts cleanup:
+Use `done` only for the authorized merge/push/removal lifecycle. It refuses invocation from
+the target worktree or a descendant before merging, pushing, or removing it. On Windows it
+also checks native delete access to the root directory before mutation. This catches an
+already-held root directory even when the command runs from elsewhere; it does not guarantee
+that another process or a handle inside a subdirectory cannot block later removal.
+
+Windows locks a process's [current directory against deletion](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setcurrentdirectory).
+Move the **owning persistent shell or Agent process** out first. `git -C`, the helper's own
+`cd`, and a `cd` inside a child tool invocation cannot release the parent process's handle.
+In an interactive Git Bash shell that owns the directory, run these commands in that shell:
 
 ```bash
 wt="$(git rev-parse --show-toplevel)"
@@ -88,7 +97,55 @@ WORKTREE_REMOVE_RETRY_DELAY_SECONDS=1 \
 bash "$root/.agents/tools/worktree.sh" done --dir "$wt"
 ```
 
-The helper validates retry settings before merging or pushing. It never kills processes, invokes `git worktree remove --force`, or recursively deletes residue. If the worktree remains registered, close terminals, Agent runtimes, editors, dev servers, or MCP processes that use its path, then rerun the original `done` command from the primary worktree; the branch is kept for that retry. If Git already unregistered it and only an empty directory remains, leave the directory in every shell or Agent process and run `rmdir "$wt"`. Inspect any non-empty residue before removing it manually.
+Longer retries cannot release a persistent process's current-directory handle. If an Agent
+host owns it, finish or reopen that session from the primary checkout or another stable
+directory. Close other terminals, editors, dev servers, or MCP processes only as appropriate
+for their owner; the helper does not terminate them.
+
+For a single-runspace interactive PowerShell that holds the directory, set both locations
+in that **same process**, using the actual primary checkout path:
+
+```powershell
+$repoRoot = 'C:\path\to\repo'
+Set-Location -LiteralPath $repoRoot
+[Environment]::CurrentDirectory = (Get-Location).ProviderPath
+```
+
+PowerShell's [`Set-Location`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-location)
+changes a runspace location, which is distinct from the process-wide current directory.
+Do not apply this process-wide change inside a shared multi-runspace host; reopen that host
+outside the target instead. A child PowerShell command cannot change its parent's location.
+The worktree helper itself still runs through Git Bash.
+
+### Recover an already-unregistered directory
+
+Git registration and filesystem removal are separate results. If `done` unregisters the
+worktree but leaves residue, it exits **3 (cleanup pending)** and keeps the local branch.
+Any merge or push already completed remains completed. Do not rerun `done` for this state:
+without its `.git` file, Git can discover the enclosing primary repository instead.
+
+After releasing the owning process's handle, run the installed helper from a stable
+directory with the **original absolute path**, rather than deriving it from Git inside the
+residue:
+
+```bash
+root='/c/path/to/repo'
+wt="$root/.worktrees/change-name"
+cd "$root"
+bash "$root/.agents/tools/worktree.sh" cleanup --dir "$wt"
+```
+
+`cleanup` only removes an unregistered, ordinary empty directory directly under the primary
+checkout's `.worktrees/`; a missing target is already clean. It rejects registered
+worktrees, non-empty directories, symlinks/junctions, and paths outside that scope with exit
+2; an empty directory still locked after bounded retries returns exit 3. It does not merge,
+push, prune registrations, or delete branches. Inspect non-empty or externally
+managed residue with its owner. A junction must not be treated as an empty directory:
+Windows can [remove the junction itself regardless of its target's contents](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-removedirectoryw).
+
+If the worktree is **still registered**, release its handles and rerun the original `done`
+command from outside it instead. The helper validates retry settings before mutation and
+never uses `git worktree remove --force` or recursive deletion to overcome a failure.
 
 ## Claude Code checkpoint boundary
 
