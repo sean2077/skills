@@ -197,7 +197,10 @@ jobs:
 
   workflow-python38:
     name: workflow runtime (Python 3.8 floor)
-    runs-on: ubuntu-latest
+    # ubuntu-latest now resolves to Ubuntu 26.04, which has no setup-python 3.8 build.
+    # Keep the compatibility-floor job on a supported image; the main matrix
+    # continues testing the newest Ubuntu through ubuntu-latest.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       PYTHONUTF8: "1"
