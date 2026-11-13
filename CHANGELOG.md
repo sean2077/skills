@@ -8,6 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Make the Codex queue recipe explicitly select the receiver's `CODEX_HOME` for local delivery, rather than silently using the sender's default daemon; distinguish a verified remote endpoint and the local `--no-daemon` restriction.
 - Document Codex CLI 0.166.0's optional `codex queue --resume` for unloaded receivers, its queue-success/resume-warning distinction, and a version-scoped report of active-goal queue starvation. Queue acknowledgement remains distinct from consumption.
 
 ### Fixed
