@@ -12,6 +12,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Keep the Python 3.8 CI compatibility-floor job on Ubuntu 24.04 after `ubuntu-latest` began rolling onto Ubuntu 26.04, for which `actions/setup-python` has no Python 3.8 x64 distribution.
 - Prevent worktree cleanup from proceeding inside the target checkout, and check native Windows root-directory delete access before merging or pushing. An unregistered directory that remains now returns cleanup-pending status (exit 3) and keeps the local branch instead of reporting completion. Add `worktree.sh cleanup --dir <absolute-wt>` to safely retry removal of an empty unregistered direct child of `.worktrees/` without merging, pushing, or deleting branches; document how to release the owning shell or Agent handle rather than changing only a child process's directory.
 
 ## [v11.0.0] — 2026-11-03
