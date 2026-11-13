@@ -1,6 +1,6 @@
 # Queue input for native Codex
 
-Read for queued delivery to an existing native Codex thread. To affect an active turn, use [steer](codex-steer.md). Prefer the receiver's thread UUID over an ambiguous name; never queue to the sender's own `CODEX_THREAD_ID`.
+Read for queued delivery to an existing native Codex thread. To affect an active turn, use [steer](codex-steer.md). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
 
 For a **local receiver**, set `TARGET_CODEX_HOME` to its actual Codex home as seen by the CLI process (not an inherited sender home), then pass it explicitly. `codex queue` selects its local daemon using `CODEX_HOME` or the calling user's default even when `--thread` is a UUID. An unset or wrong home can target the wrong server. Do not guess a Windows/WSL/container path.
 
@@ -15,7 +15,7 @@ For a **remote receiver**, use its verified reachable endpoint instead of local 
 codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE" --remote "$TARGET_ENDPOINT"
 ```
 
-If authenticated, `--remote-auth-token-env NAME` names the environment variable containing its token. A local `--no-daemon` queue call is rejected (unless `--remote` is supplied). The native CLI handles transport selection; it does not need a separate App Server client.
+If authenticated, `--remote-auth-token-env NAME` names the environment variable containing its token. `--no-daemon` is rejected for `codex queue`, with or without `--remote`: queuing must reach the shared server rather than a separate one. The native CLI handles transport selection; it does not need a separate App Server client.
 
 The CLI uses `thread/queue/add`. On Codex CLI **0.166.0+**, use `--resume` only if the recipient should be activated rather than merely queued:
 
