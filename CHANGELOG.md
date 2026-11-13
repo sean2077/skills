@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep the Python 3.8 CI compatibility-floor job on Ubuntu 24.04 after `ubuntu-latest` began rolling onto Ubuntu 26.04, for which `actions/setup-python` has no Python 3.8 x64 distribution.
+
 ### Changed
 
 - Document Codex CLI 0.166.0's optional `codex queue --resume` for unloaded receivers, its queue-success/resume-warning distinction, and a version-scoped report of active-goal queue starvation. Queue acknowledgement remains distinct from consumption.
