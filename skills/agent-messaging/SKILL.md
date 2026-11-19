@@ -1,6 +1,6 @@
 ---
 name: agent-messaging
-description: "Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when your host's built-in messaging cannot reach the target with the intended effect. Covers CC inbox and Codex steer/queue/start/interrupt; not SDK, Channel or cloud API routes."
+description: "Message existing native Claude Code or Codex CLI/Desktop sessions locally or over SSH from any harness when built-in messaging cannot reach the target with the intended effect. Covers CC inbox and Codex steer/queue/start/interrupt; not SDK, Channel or cloud API routes."
 ---
 
 # Agent messaging
@@ -19,4 +19,4 @@ Use the intended receiver's native environment and endpoint; this skill adds no 
 
 If the required endpoint or operation is unavailable, report it; do not silently substitute another operation or a newly resumed process. No Pairroom service is required.
 
-Read only the chosen route; reuse guidance and refresh stale target/turn details. Run bundled senders without reading code unless debugging/modifying. [Protocol sources](references/sources.md) are for verification or alternate clients.
+For another device reached through SSH, read [SSH delivery](references/ssh.md) alongside the chosen route. Otherwise read only the chosen route; reuse guidance and refresh stale target/turn details. Run bundled senders without reading code unless debugging/modifying. [Protocol sources](references/sources.md) are for verification or alternate clients.
