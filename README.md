@@ -1,6 +1,6 @@
 # skills
 
-A curated catalog of reusable [Agent Skills](https://agentskills.io/specification) for Agent harness setup, native agent messaging, requirements interviews, and Feishu/Lark operations.
+A curated catalog of reusable [Agent Skills](https://agentskills.io/specification) for Agent harness setup, native agent messaging, visible executor delegation, requirements interviews, and Feishu/Lark operations.
 
 Install only what adds value to your host or project. Ordinary investigation, testing, cleanup, review, and delivery use the host/project workflow; there is no mandatory skill chain. See the [selection guide](docs/skill-composition.md) for route boundaries and renamed/retired installations.
 
@@ -29,6 +29,7 @@ Each skill is independently installable. Its entry point owns the workflow and o
 
 | Skill | Use |
 |---|---|
+| [agent-executors](skills/agent-executors/) | Delegate execution to a visible, interactive `claude-ds` session in a WezTerm tab and coordinate it over built-in cross-session messaging. |
 | [agent-messaging](skills/agent-messaging/) | Message existing native Claude Code or Codex CLI/Desktop sessions from any harness when your host's built-in messaging cannot provide the intended delivery. |
 | [agent-scaffold](skills/agent-scaffold/) | Initialize or maintain the harness and selected project conventions; preserve existing layouts and remember one-time exclusions. |
 | [deep-interview](skills/deep-interview/) | Resolve requirements into an approved specification; exact-file approval records are optional. |
