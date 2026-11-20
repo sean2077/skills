@@ -16,7 +16,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Document cross-device `agent-messaging` over existing SSH access, reusing receiver-local native routes with explicit target environments, return addresses and stdin delivery; add no transport runtime.
 - Route `codex queue` local delivery through the receiver's explicit `CODEX_HOME`, because the CLI selects its daemon from the caller's home rather than the thread ID; show explicit `--remote` routing and note that `--no-daemon` queueing is rejected.
 - Document Codex CLI 0.166.0's optional `codex queue --resume` for unloaded receivers, its queue-success/resume-warning distinction, and a version-scoped report of active-goal queue starvation. Queue acknowledgement remains distinct from consumption.
-- Keep `agent-executors` lean: spawn a plain native session and leave host-specific environment handling to the planner; keep the same-window rule and only note the transcript-saving warning as a symptom.
+- Keep `agent-executors` lean: spawn a plain native session and leave host-specific environment handling to the planner; keep the same-window rule.
 
 ### Fixed
 

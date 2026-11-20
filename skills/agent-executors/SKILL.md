@@ -52,5 +52,4 @@ Use when this session owns planning and review, and the work should run in a sep
 - Closing the tab ends that executor process. Do not press `Ctrl-C` in an executor tab unless you intend to interrupt its current action.
 - The user may type in the tab. Treat their input as authoritative, reconcile it with the task file, and keep the planner as the coordinator.
 - Do not use `screen` or `tmux` for executors: they hide the tab from the user and do not register for built-in messaging.
-- If the status line reports `Transcript saving is off`, the executor inherited the planner's session environment; close it and respawn before assigning work.
 - Executor profile selection (`claude-ds`, model, effort) belongs to the host; this skill only establishes visibility and coordination.
