@@ -17,6 +17,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Route `codex queue` local delivery through the receiver's explicit `CODEX_HOME`, because the CLI selects its daemon from the caller's home rather than the thread ID; show explicit `--remote` routing and note that `--no-daemon` queueing is rejected.
 - Document Codex CLI 0.166.0's optional `codex queue --resume` for unloaded receivers, its queue-success/resume-warning distinction, and a version-scoped report of active-goal queue starvation. Queue acknowledgement remains distinct from consumption.
 - Keep `agent-executors` lean: spawn a plain native session and leave host-specific environment handling to the planner; keep the same-window rule.
+- Let `agent-executors` coordination default to direct cross-session messages; reserve files for content that must survive context loss, be re-read, or be shared.
 
 ### Fixed
 
