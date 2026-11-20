@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Add `agent-executors` for planner/reviewer sessions that delegate execution to a user-visible, interactive `claude-ds` WezTerm tab; cover tab creation, task handoff, built-in cross-session messaging, and the limits of closing or resuming an executor.
+
 ### Changed
 
 - Recognize current Miaoda/Spark `*.feishuapp.com` runtime URLs when routing `lark-cli` work, distinguish page tokens from application IDs, and document the Windows Git Bash remote `--path` conversion workaround for affected apps file commands (upstream CLI v1.0.100).
