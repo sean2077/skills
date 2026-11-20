@@ -15,30 +15,30 @@ Use when this session owns planning and review, and the work should run in a sep
 ## Start an executor
 
 1. Confirm the checkout and task identifier. Write the task file first: goal, confirmed facts, acceptance criteria, boundaries, and the planner session name.
-2. Resolve the target WezTerm GUI and window. Prefer the window that contains this session; [WezTerm tabs](references/wezterm-tabs.md) covers socket/window resolution, multiple GUI instances, and the quake-window caveat.
+2. Resolve **this session's WezTerm pane**; the executor tab must live in the same window as the planner. Never use `--new-window`. [WezTerm tabs](references/wezterm-tabs.md) covers resolving the pane when the host strips `WEZTERM_*`, multiple GUI instances, and placement verification.
 3. Spawn a tab with the executor profile:
 
    ```bash
-   wezterm cli spawn --window-id <id> --cwd <checkout> -- \
+   wezterm cli spawn --pane-id "$planner_pane" --cwd <checkout> -- \
      claude --settings "$HOME/.claude/deepseek.json" --effort max -n exec-<task>
    ```
 
-   The command returns the new pane id.
-
-4. Set a readable tab title and keep the mapping (pane id, session name, task file):
+   `--pane-id` makes the CLI derive the window from this session, so the new tab lands beside it. The command returns the new pane id.
+4. Verify the new pane is in the planner's window: compare `window_id` in `wezterm cli list --format json`. If it differs, close the tab and retry; do not hand a task to a misplaced executor.
+5. Set a readable tab title and keep the mapping (pane id, session name, task file):
 
    ```bash
    wezterm cli set-tab-title --pane-id <pane> "T<N> <short topic>"
    ```
 
-5. Wait until the TUI is ready, then point the executor at the task file and the planner name. Send text and Enter separately, and verify with `get-text`:
+6. Wait until the TUI is ready, then point the executor at the task file and the planner name. Send text and Enter separately, and verify with `get-text`:
 
    ```bash
    wezterm cli send-text --pane-id <pane> "You are the executor. Read <task file> fully first. Reply to <planner name> with one line at the end of each stage; write results to <result file>. Stay within the task boundaries."
    wezterm cli send-text --no-paste --pane-id <pane> $'\r'
    ```
 
-6. Report the tab mapping to the user. [Coordination](references/coordination.md) covers task/decision/result files, messaging, and review.
+7. Report the tab mapping to the user. [Coordination](references/coordination.md) covers task/decision/result files, messaging, and review.
 
 ## Coordinate
 
