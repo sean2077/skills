@@ -6,14 +6,16 @@ Use a known app ID or EventKey directly. Resolve application names with a focuse
 
 ## Miaoda/Spark apps
 
-Use the `apps` service for Miaoda/Spark applications (`*.aiforce.cloud`), not for BaseApp/AppMode or
-ordinary Drive/Docs/Slides resources. Apps are user assets; use `--as user`. Do not proactively log
-in; authorize the `apps` domain only after a structured missing-auth or `missing_scope` error.
+Use the `apps` service for Miaoda/Spark applications, not for BaseApp/AppMode or ordinary
+Drive/Docs/Slides resources. Current runtime URLs use `*.feishuapp.com`; older links may use
+`*.aiforce.cloud`. Apps are user assets; use `--as user`. Do not proactively log in; authorize the
+`apps` domain only after a structured missing-auth or `missing_scope` error.
 
 ### Resolve, read, and create
 
-A supplied `app_...` ID or an unambiguous Miaoda application URL is already resolved. When only an
-application name is available, run one focused lookup:
+A supplied `app_...` ID, including one embedded in a URL, is already resolved. A runtime URL
+with only `/page/<token>` identifies the app family but does not supply an `--app-id`; do not
+use the page token as an app ID. When only an application name is available, run one focused lookup:
 
 ```bash
 lark-cli apps +list --keyword '<application name>' --as user
@@ -63,6 +65,14 @@ Use these known shortcut families directly when their documented inputs are avai
 
 This list routes to the narrow exact shortcut; it is not permission to guess undocumented flags.
 Inspect only that shortcut's help when the requested operation needs arguments not cached here.
+
+**Windows Git Bash remote storage paths:** MSYS can rewrite a remote `--path /object.png` into a
+local drive path before `lark-cli` receives it. For `apps +file-get`, `+file-sign`, `+file-download`,
+`+file-delete`, and `+file-list`, use a per-command `MSYS_NO_PATHCONV=1` when passing a remote
+`--path` beginning with `/`. This does not change the cwd-relative local `--file`/`--output`
+policy. If the CLI returns `400000034`, inspect the passed path before assuming that the remote
+object is absent; the CLI's own validation also depends on its installed version. See the
+[upstream v1.0.100 fix](https://github.com/larksuite/cli/pull/2899).
 
 For common request/error/latency metrics, one command per metric is enough:
 
