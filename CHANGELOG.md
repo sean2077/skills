@@ -16,10 +16,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Document cross-device `agent-messaging` over existing SSH access, reusing receiver-local native routes with explicit target environments, return addresses and stdin delivery; add no transport runtime.
 - Route `codex queue` local delivery through the receiver's explicit `CODEX_HOME`, because the CLI selects its daemon from the caller's home rather than the thread ID; show explicit `--remote` routing and note that `--no-daemon` queueing is rejected.
 - Document Codex CLI 0.166.0's optional `codex queue --resume` for unloaded receivers, its queue-success/resume-warning distinction, and a version-scoped report of active-goal queue starvation. Queue acknowledgement remains distinct from consumption.
+- Keep `agent-executors` lean: spawn a plain native session and leave host-specific environment handling to the planner; keep the same-window rule and only note the transcript-saving warning as a symptom.
 
 ### Fixed
 
-- Strip inherited `CLAUDE*` environment variables when `agent-executors` spawns a tab; otherwise `CLAUDE_CODE_CHILD_SESSION=1` from the planner's Bash tool turns transcript saving off, leaks the planner's session id and messaging socket, and leaves the executor non-resumable.
 - Require `agent-executors` to spawn its tab in the planner's WezTerm window via `spawn --pane-id` and verify the new pane's `window_id`; remove the `--new-window` executor path, which could place the tab in an invisible quake window.
 - Keep the Python 3.8 CI compatibility-floor job on Ubuntu 24.04 after `ubuntu-latest` began rolling onto Ubuntu 26.04, for which `actions/setup-python` has no Python 3.8 x64 distribution.
 - Prevent worktree cleanup from proceeding inside the target checkout, and check native Windows root-directory delete access before merging or pushing. An unregistered directory that remains now returns cleanup-pending status (exit 3) and keeps the local branch instead of reporting completion. Add `worktree.sh cleanup --dir <absolute-wt>` to safely retry removal of an empty unregistered direct child of `.worktrees/` without merging, pushing, or deleting branches; document how to release the owning shell or Agent handle rather than changing only a child process's directory.
