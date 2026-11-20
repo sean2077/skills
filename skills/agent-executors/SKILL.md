@@ -16,15 +16,16 @@ Use when this session owns planning and review, and the work should run in a sep
 
 1. Confirm the checkout and task identifier. Write the task file first: goal, confirmed facts, acceptance criteria, boundaries, and the planner session name.
 2. Resolve **this session's WezTerm pane**; the executor tab must live in the same window as the planner. Never use `--new-window`. [WezTerm tabs](references/wezterm-tabs.md) covers resolving the pane when the host strips `WEZTERM_*`, multiple GUI instances, and placement verification.
-3. Spawn a tab with the executor profile:
+3. Spawn a tab with the executor profile, stripping inherited Claude session state:
 
    ```bash
    wezterm cli spawn --pane-id "$planner_pane" --cwd <checkout> -- \
-     claude --settings "$HOME/.claude/deepseek.json" --effort max -n exec-<task>
+     sh -c 'exec env $(env | sed -n "s/^\(CLAUDE[A-Z_]*\)=.*/-u \1/p") \
+       claude --settings "$HOME/.claude/deepseek.json" --effort max -n "exec-<task>"'
    ```
 
-   `--pane-id` makes the CLI derive the window from this session, so the new tab lands beside it. The command returns the new pane id.
-4. Verify the new pane is in the planner's window: compare `window_id` in `wezterm cli list --format json`. If it differs, close the tab and retry; do not hand a task to a misplaced executor.
+   The wrapper removes `CLAUDE_CODE_CHILD_SESSION` and the rest of the inherited `CLAUDE*` state, so the executor is a fresh root session with its own transcript and peer socket. `--pane-id` derives the window from this session, so the new tab lands beside it. The command returns the new pane id.
+4. Verify placement and persistence: compare `window_id` in `wezterm cli list --format json`; the status line must not show `Transcript saving is off`; `~/.claude/sessions/<pid>.json` and the matching project `.jsonl` must exist. If placement or persistence is wrong, close the tab and retry; do not hand a task to a misplaced or non-resumable executor.
 5. Set a readable tab title and keep the mapping (pane id, session name, task file):
 
    ```bash
@@ -49,7 +50,7 @@ Use when this session owns planning and review, and the work should run in a sep
 
 ## Boundaries
 
-- Closing the tab ends that executor process; its transcript remains available with `claude --resume`. Do not press `Ctrl-C` in an executor tab unless you intend to interrupt its current action.
+- Closing the tab ends that executor process; with inherited state stripped (step 3), its transcript remains available with `claude --resume`. Do not press `Ctrl-C` in an executor tab unless you intend to interrupt its current action.
 - The user may type in the tab. Treat their input as authoritative, reconcile it with the task file, and keep the planner as the coordinator.
 - Do not use `screen` or `tmux` for executors: those sessions do not register for built-in messaging, leave no readable transcript, and render badly when attached.
 - Executor profile selection (`claude-ds`, model, effort) belongs to the host; this skill only establishes visibility and coordination.
