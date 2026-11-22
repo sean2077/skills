@@ -17,6 +17,8 @@ if (extra.length) fail(usage);
 const address = process.env.TARGET_AGY_LS_ADDRESS;
 const token = process.env.TARGET_AGY_CSRF_TOKEN;
 const conversation = process.env.TARGET_AGY_CONVERSATION_ID;
+// Keep every field mandatory: native agy 1.5.14 exits 0 silently without
+// sending when its address or token variable is absent.
 if (!address || !token || !conversation) {
   fail("Require TARGET_AGY_LS_ADDRESS, TARGET_AGY_CSRF_TOKEN and TARGET_AGY_CONVERSATION_ID from the intended receiver");
 }

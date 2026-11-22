@@ -36,7 +36,7 @@ With no argument, use exported `MESSAGE`. A file or stdin takes precedence; BOM,
 
 The sender invokes `agy agentapi send-message -- CONVERSATION_ID CONTENT` once, with a separate argument for the full text and no shell. It maps the receiver's address/token into the child environment and removes inherited conversation/project/trajectory identity and source-step metadata so another server's context is not reused. Include a sender identity or return address in the message when needed.
 
-Use `AGY_BIN` for a native executable at a non-default path; on Windows the default is `agy.exe`. `.cmd`/`.bat` wrappers are rejected. The native command takes content as an argument, so OS argument-size limits apply even when this sender reads a file. It does not split or truncate messages. Native output echoes content and is suppressed by the sender; content is still present in the short-lived client's process arguments. Tokens remain environment-only.
+Use `AGY_BIN` for a native executable at a non-default path; on Windows the default is `agy.exe`. `.cmd`/`.bat` wrappers are rejected. The native command takes content as an argument, so OS argument-size limits apply even when this sender reads a file: Linux caps one argument at 128 KiB, and Windows caps the whole command line at 32,767 characters. An oversized message fails to launch and reports `not_sent`; the sender does not split or truncate messages. Native output echoes content and is suppressed by the sender; content is still present in the short-lived client's process arguments. Tokens remain environment-only.
 
 ## Result and delivery
 
