@@ -120,6 +120,7 @@ jobs:
         run: |
           python scripts/tests/test_claude_inbox.py
           python scripts/tests/test_codex_steer.py
+          python scripts/tests/test_agy_sender.py
 
       - name: Check agent-scaffold invariants
         if: ${{ !cancelled() }}
