@@ -1,27 +1,5 @@
 {
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "pairroom relay hook --runtime claude",
-            "timeout": 45,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "command": "pairroom relay hook --runtime claude",
-            "timeout": 45,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write|NotebookEdit",
