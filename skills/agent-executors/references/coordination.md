@@ -18,6 +18,7 @@ If a handoff directory helps, keep one per campaign and add files only as needed
 ## Messaging
 
 - Use the host's built-in cross-session messaging by session name. Messages arrive between tool calls; they do not interrupt a running tool.
+- Confirm receipt of the first message to a YOLO executor. Claude Code can hold a non-YOLO planner's message for approval when no `crossSessionInbound` rule applies; resolve that specific prompt within existing authorization instead of treating send success as delivery. See [cross-session permission behavior](https://code.claude.com/docs/en/permission-modes#skip-all-checks-with-bypasspermissions-mode).
 - Send one line per stage only when there is something to report; do not turn every action into a status message.
 - The executor must know the planner's session name. If the name is not available, have it list peers or report through the user.
 - Fall back to the `agent-messaging` skill only when built-in delivery cannot reach the session. It documents the Claude Code inbox sender and the Codex routes.
