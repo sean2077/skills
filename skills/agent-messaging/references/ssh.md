@@ -4,7 +4,7 @@ Use an existing authorized SSH login to run the chosen native route **on the rec
 
 ## Resolve both ends
 
-- Confirm the receiver's SSH destination/account, native environment, installed skill/runtime paths and live socket or Codex home/thread. Set `TARGET_*` in the remote process; an SSH shell does not inherit the running agent's environment. Obtain values from the receiver rather than forwarding the sender's session variables.
+- Confirm the receiver's SSH destination/account, native environment, installed skill/runtime paths and live socket, Codex home/thread, or Antigravity server/conversation. Set `TARGET_*` in the remote process; an SSH shell does not inherit the running agent's environment. Obtain values from the receiver rather than forwarding the sender's session variables.
 - Use the actual remote shell and IPC environment. Native Windows, WSL and containers are distinct; logging into the host does not enter the receiver's environment automatically. Check executable paths when the SSH shell's `PATH` differs.
 - For replies, include the sender's device/session and a return SSH destination plus native route usable **from the receiver**. SSH aliases are machine-local; `a` on B need not mean the same host as `a` on A. Establish both directions before promising back-and-forth collaboration. Keep tokens in an authorized remote environment/secret channel, out of messages and command arguments.
 - For code collaboration, identify each checkout/revision and divide file or worktree ownership. SSH does not synchronize working trees; exchange commits or patches explicitly.
@@ -18,6 +18,8 @@ ssh -T b 'TARGET_CODEX_ENDPOINT= TARGET_CODEX_HOME="/receiver/codex-home" TARGET
 ```
 
 The file is local to A; the command and paths are on B. Pass message bytes through stdin without a pseudo-terminal (`-T`), not by interpolating message text into the remote shell command. Quote substituted paths/IDs for that shell. For [CC inbox](claude-code.md), use `send-claude.mjs -` with the receiver's `TARGET_CC_SOCKET` and required token supplied remotely.
+
+For [Antigravity](antigravity.md), use `send-agy.mjs -` on B with B's receiver-confirmed `TARGET_AGY_LS_ADDRESS`, `TARGET_AGY_CSRF_TOKEN` and `TARGET_AGY_CONVERSATION_ID` supplied in that remote command's environment. The native `agy` executable must be available on B (`AGY_BIN` can select its path). Keep the token out of SSH arguments and message text; use the authorized remote secret channel. A's loopback address does not identify B's language server.
 
 For [queue](codex-queue.md), run its local-receiver command on B with B's explicit `CODEX_HOME`; an already reachable native `--remote` endpoint can instead be used directly. SSH does not change steer/queue/start/interrupt semantics or make a new resumed process control the original session.
 

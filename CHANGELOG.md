@@ -8,6 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Support Google Antigravity CLI (`agy`) receivers in `agent-messaging` with a native `agentapi send-message` sender, explicit receiver credentials, exact UTF-8 input, self-target protection and bounded single submission. Document SSH delivery, native argument limits and uncertain results without promising queue/steer semantics or resuming another process.
 - Add `agent-executors` for planner/reviewer sessions that delegate execution to a user-visible, interactive `claude-ds` WezTerm tab; cover tab creation, task handoff, built-in cross-session messaging, and the limits of closing or resuming an executor.
 
 ### Changed

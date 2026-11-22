@@ -1,6 +1,6 @@
 ---
 name: agent-messaging
-description: "Message existing native Claude Code or Codex CLI/Desktop sessions locally or over SSH from any harness when built-in messaging cannot reach the target with the intended effect. Covers CC inbox and Codex steer/queue/start/interrupt; not SDK, Channel or cloud API routes."
+description: "Message existing Claude Code, Codex CLI/Desktop or Google Antigravity (agy) sessions locally or over SSH when built-in messaging cannot reach the target with the intended effect. Covers CC inbox, Codex steer/queue/start/interrupt and agy native submission; no SDK/cloud API."
 ---
 
 # Agent messaging
@@ -14,6 +14,7 @@ Prefer your host's built-in messaging when it reaches the target with the intend
 | Codex | App Server `turn/start` | Start when idle; the verified implementation can steer when busy. | [Codex](references/codex.md#start) |
 | Codex | App Server `turn/interrupt` | Cancel current work; this operation carries no message. | [Codex](references/codex.md#interrupt) |
 | Claude Code | Native inbox socket / named pipe | Submit to the running CC process. | [Inbox sender](references/claude-code.md) |
+| Antigravity (`agy`) | Native `agentapi send-message` | Submit to an existing conversation; busy handling is receiver/version-dependent. | [Antigravity sender](references/antigravity.md) |
 
 Use the intended receiver's native environment and endpoint; this skill adds no SDK, Channel or cloud API integration. Target a distinct session or thread, never the sender's own or an inherited parent identity. An ID or shared history alone does not establish access to its live process; CLI/Desktop launches may not expose a control endpoint.
 

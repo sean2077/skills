@@ -5,7 +5,7 @@ Use the smallest useful route. Ordinary research, testing/TDD, specification wri
 | Requested outcome | Catalog route | Boundary |
 |---|---|---|
 | Establish, diagnose, or update the harness and selected project conventions | [agent-scaffold](../skills/agent-scaffold/SKILL.md) | Adopt existing layout and fill gaps; does not own ordinary delivery or publishing |
-| Message an existing native Claude Code or Codex CLI/Desktop session from any harness | [agent-messaging](../skills/agent-messaging/SKILL.md) | Prefer your host's built-in messaging when it can reach the target with the intended effect; message content/workflow remains caller-owned |
+| Message an existing Claude Code, Codex CLI/Desktop or Antigravity (`agy`) session from any harness | [agent-messaging](../skills/agent-messaging/SKILL.md) | Prefer built-in messaging when it reaches the target with the intended effect; agy native submission does not promise steer/queue selection; content/workflow remains caller-owned |
 | Resolve consequential user-owned requirements into an approved whole specification | [deep-interview](../skills/deep-interview/SKILL.md) | Not mandatory before a draft, one clarification, or already approved implementation |
 | Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Preserve identity, permissions, and transaction-specific authority |
 
