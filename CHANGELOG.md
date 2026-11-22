@@ -13,6 +13,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Remove the repository's Claude Code `Stop`/`StopFailure` and Codex `Stop` hooks that ran `pairroom relay hook`; sessions in this checkout no longer require or invoke PairRoom. The managed worktree-guard and authority-budget hooks are unchanged.
 - Default new `agent-executors` sessions to YOLO with `--dangerously-skip-permissions` to reduce routine permission stalls; keep explicit narrower modes, verify the effective mode before task delivery, and surface startup or host-policy blockers without changing shared settings.
 - Recognize current Miaoda/Spark `*.feishuapp.com` runtime URLs when routing `lark-cli` work, distinguish page tokens from application IDs, and document the Windows Git Bash remote `--path` conversion workaround for affected apps file commands (upstream CLI v1.0.100).
 - Document cross-device `agent-messaging` over existing SSH access, reusing receiver-local native routes with explicit target environments, return addresses and stdin delivery; add no transport runtime.
