@@ -53,10 +53,13 @@ Spawn `claude` directly, not through `screen` or a detached shell:
 
 ```bash
 wezterm cli spawn --pane-id "$pane" --cwd "$checkout" -- \
-  claude --settings "$HOME/.claude/deepseek.json" --effort max -n "exec-<task>"
+  claude --settings "$HOME/.claude/deepseek.json" --dangerously-skip-permissions \
+    --effort max -n "exec-<task>"
 ```
 
 The pane determines the window, so the new tab lands beside the planner. Do not pass `--new-window`. The new process inherits `WEZTERM_PANE`, so the host's SessionStart hook registers it and the session name becomes addressable. Keep the returned pane id.
+
+`--dangerously-skip-permissions` activates YOLO for this executor. `--allow-dangerously-skip-permissions` alone only makes the mode available and does not activate it. Keep the explicit permission flag when using a shell wrapper or resuming a persisted executor, unless a narrower mode was requested. See the [permission default](../SKILL.md#permission-default) and the official [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference).
 
 If the tab must stay open after Claude exits, wrap the command with the user's login shell (`zsh -ic '...; exec zsh'`); otherwise the tab closes with the session.
 
@@ -69,7 +72,9 @@ wezterm cli send-text --pane-id "$pane" "You are the executor. ..."
 wezterm cli send-text --no-paste --pane-id "$pane" $'\r'
 ```
 
-Poll `get-text` until the TUI is ready before typing. After sending, read it back to confirm the prompt appears and the task is not split across a dialog. If the session asks a startup question (trust, permissions, hooks), resolve it with the user or the host configuration; do not assume the prompt was accepted.
+Read `get-text` before typing: verify the effective permission mode and that the input is the normal prompt, not a startup dialog. Resolve prompts already covered by the user's authorization without asking again. If a trust, login, or hook decision needs new authorization, report that specific blocker. After sending, read back to confirm the task was submitted and is not split across a dialog.
+
+YOLO reduces routine tool approvals; it does not guarantee a prompt-free startup or remove explicit permission rules, managed restrictions, OS access limits, or missing credentials. If the selected mode is rejected or a permission prompt persists, report the exact cause before handing off work. Do not silently fall back to an approval-waiting session or alter shared policy to force the launch. See [Claude Code permissions](https://code.claude.com/docs/en/permissions).
 
 ## Failure modes
 

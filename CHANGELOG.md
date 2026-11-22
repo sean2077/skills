@@ -12,6 +12,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Default new `agent-executors` sessions to YOLO with `--dangerously-skip-permissions` to reduce routine permission stalls; keep explicit narrower modes, verify the effective mode before task delivery, and surface startup or host-policy blockers without changing shared settings.
 - Recognize current Miaoda/Spark `*.feishuapp.com` runtime URLs when routing `lark-cli` work, distinguish page tokens from application IDs, and document the Windows Git Bash remote `--path` conversion workaround for affected apps file commands (upstream CLI v1.0.100).
 - Document cross-device `agent-messaging` over existing SSH access, reusing receiver-local native routes with explicit target environments, return addresses and stdin delivery; add no transport runtime.
 - Route `codex queue` local delivery through the receiver's explicit `CODEX_HOME`, because the CLI selects its daemon from the caller's home rather than the thread ID; show explicit `--remote` routing and note that `--no-daemon` queueing is rejected.
