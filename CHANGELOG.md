@@ -18,7 +18,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Default messages to a running Codex session to steer when the caller does not specify timing. Reserve queued delivery for messages meant to wait and surface a failed live delivery instead of silently queueing.
+- Send ordinary messages to loaded Codex sessions with `steer-codex.mjs --auto`. The App Server steers the active turn or starts one if the target is idle. Keep explicit steer-only and queued delivery available.
 - Remove the repository's Claude Code `Stop`/`StopFailure` and Codex `Stop` hooks that ran `pairroom relay hook`; sessions in this checkout no longer require or invoke PairRoom. The managed worktree-guard and authority-budget hooks are unchanged.
 - Default new `agent-executors` sessions to YOLO with `--dangerously-skip-permissions` to reduce routine permission stalls; keep explicit narrower modes, verify the effective mode before task delivery, and surface startup or host-policy blockers without changing shared settings.
 - Recognize current Miaoda/Spark `*.feishuapp.com` runtime URLs when routing `lark-cli` work, distinguish page tokens from application IDs, and document the Windows Git Bash remote `--path` conversion workaround for affected apps file commands (upstream CLI v1.0.100).
@@ -31,8 +31,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Resolve Codex steer against the live thread state and newest turn so stale in-progress history after a restart no longer blocks delivery. Document and verify owner-only Linux Desktop Unix socket delivery from an independent Claude Code session.
+- Distinguish missing or refusing Codex control sockets from reachable App Servers that have not loaded the intended thread. Clarify shared Desktop setup and how to bypass shell aliases for explicit queued delivery.
 - Preserve unchanged `agent-scaffold` runtime/convention files and existing `.gitkeep` timestamps during repeated upgrades, avoiding needless copies while retaining drift refresh and executable-permission repair.
-- Stop the short-lived Antigravity sending client on handled interruption/termination and report one `unconfirmed` result; reject malformed Codex turn metadata before reporting an idle receiver or sending a steer. Add regression coverage for both boundaries without extra RPC calls or automatic retries.
+- Stop the short-lived Antigravity sending client on handled interruption/termination and report one `unconfirmed` result. Add regression coverage for the interruption and for malformed newest-turn metadata, which sends no Codex steer.
 - Bind `agent-executors` WezTerm commands to the planner's instance as well as its pane, recover the socket/pane pair together, use supported tab selection, and distinguish tab creation from messaging registration. Align task/decision/result files with the existing direct-message default while preserving YOLO and visible execution.
 - Preserve requested Lark Base View scope across record reads and aggregation guidance, distinguish bare NDJSON manifests from JSON envelopes, and move calendar joining out of read-only examples. Record the relevant upstream source evidence without claiming live-service verification.
 - Restore Claude Code colors in `agent-executors` tabs launched from Codex by clearing inherited `NO_COLOR` for the executor process.

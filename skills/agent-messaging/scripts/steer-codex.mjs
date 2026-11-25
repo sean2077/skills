@@ -2,29 +2,32 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
+import { constants as osConstants } from "node:os";
 import { delimiter, isAbsolute, join } from "node:path";
 
 const usage = [
   "Usage: node steer-codex.mjs [UTF8_FILE|-]",
+  "       node steer-codex.mjs --auto [UTF8_FILE|-]",
   "       node steer-codex.mjs --check",
   "No argument: read MESSAGE. --check: query the receiver's live turn without sending.",
+  "--auto: steer an active turn or start one on a loaded idle thread.",
   "Target: TARGET_THREAD_ID and TARGET_CODEX_ENDPOINT or TARGET_CODEX_HOME.",
   "Optional local proxy: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.",
 ].join("\n");
-const [source, ...extra] = process.argv.slice(2);
-if (source === "--help" && extra.length === 0) {
+const args = process.argv.slice(2);
+if (args[0] === "--help" && args.length === 1) {
   console.log(usage);
   process.exit(0);
 }
 
 let ws, bridge, proxy, pending, rejectOpen, fatal;
-let closing = false, steerAttempted = false, nextId = 0;
+let closing = false, attemptedMethod, nextId = 0;
 const connections = new Set();
 let deadline;
 
-function abort(message) {
+function abort(error) {
   if (closing || fatal) return;
-  fatal = new Error(message);
+  fatal = typeof error === "string" ? new Error(error) : error;
   rejectOpen?.(fatal);
   if (pending) {
     clearTimeout(pending.timer);
@@ -50,6 +53,25 @@ function codexBinary() {
     if (existsSync(join(dir, "codex.cmd")) && existsSync(launcher)) return launcher;
   }
   return "codex";
+}
+
+class RouteError extends Error {
+  constructor(reason, message) {
+    super(message);
+    this.reason = reason;
+  }
+}
+
+function proxyConnectError(stderr) {
+  const detail = /^Error: failed to connect to socket at [^\r\n]+\r?\n\s*Caused by:\r?\n[^\r\n]*\(os error (\d+)\)\s*$/.exec(stderr);
+  const code = Number(detail?.[1]);
+  if (code === osConstants.errno.ENOENT) {
+    return new RouteError("control_socket_missing", "Codex control socket path is missing; verify the receiver's endpoint or Codex home");
+  }
+  if (code === osConstants.errno.ECONNREFUSED || (process.platform === "win32" && code === 10061)) {
+    return new RouteError("control_socket_refused", "Codex control socket refused the connection; check the receiver's live App Server endpoint");
+  }
+  return new RouteError("control_proxy_failed", "Codex proxy closed before connecting; check the intended live endpoint and CODEX_BIN");
 }
 
 // The native proxy forwards WebSocket bytes, not JSON lines. Keep its temporary
@@ -78,20 +100,32 @@ async function proxyEndpoint(path) {
       const args = ["app-server", "proxy", "--sock", path];
       try {
         proxy = /\.[cm]?js$/i.test(binary)
-          ? spawn(process.execPath, [binary, ...args], { stdio: ["pipe", "pipe", "ignore"] })
-          : spawn(binary, args, { stdio: ["pipe", "pipe", "ignore"] });
+          ? spawn(process.execPath, [binary, ...args], { stdio: ["pipe", "pipe", "pipe"] })
+          : spawn(binary, args, { stdio: ["pipe", "pipe", "pipe"] });
       } catch {
         // Windows can reject some launchers synchronously (EINVAL/EFTYPE).
         abort("Cannot launch Codex proxy; check CODEX_BIN");
         return connection.destroy();
       }
       proxy.on("error", () => abort("Cannot launch Codex proxy; check CODEX_BIN"));
-      proxy.on("exit", () => abort("Codex proxy closed; check the intended live endpoint"));
-      proxy.stdin.on("error", () => abort("Codex proxy write failed"));
+      let stderr = "", forwardedOutput = false;
+      proxy.stderr.on("data", chunk => {
+        if (stderr.length < 4096) stderr += chunk.subarray(0, 4096 - stderr.length).toString();
+      });
+      proxy.stdout.once("data", () => { forwardedOutput = true; });
+      // Wait for stderr before closing the bridge, so the WebSocket error
+      // cannot hide a known socket failure during the handshake.
+      proxy.on("close", () => {
+        if (!forwardedOutput) abort(proxyConnectError(stderr));
+        connection.end();
+      });
+      proxy.stdin.on("error", error => {
+        if (error.code !== "EPIPE" && error.code !== "ERR_STREAM_DESTROYED") abort("Codex proxy write failed");
+      });
       proxy.stdout.on("error", () => abort("Codex proxy read failed"));
       proxy.stdin.write(header);
       connection.pipe(proxy.stdin);
-      proxy.stdout.pipe(connection);
+      proxy.stdout.pipe(connection, { end: false });
     }
     connection.on("data", handshake);
   });
@@ -109,7 +143,6 @@ class RpcError extends Error {
   constructor(method, code) {
     super(`${method} rejected (RPC ${code})`);
     this.method = method;
-    this.code = code;
   }
 }
 
@@ -155,17 +188,19 @@ function request(method, params) {
     const id = ++nextId;
     pending = { id, method, resolve, reject, timer: setTimeout(() => abort(`${method} timed out`), wait) };
     try {
-      // A closing socket silently drops frames; that steer was never attempted.
+      // A closing socket silently drops frames; the input was never attempted.
       if (ws.readyState !== WebSocket.OPEN) throw new Error("WebSocket connection closed");
-      if (method === "turn/steer") steerAttempted = true;
+      if (method === "turn/steer" || method === "turn/start") attemptedMethod = method;
       ws.send(JSON.stringify({ id, method, params }));
     } catch { abort("WebSocket send failed"); }
   });
 }
 
 async function run() {
-  if (extra.length) throw new Error(usage);
-  const checkOnly = source === "--check";
+  const checkOnly = args[0] === "--check";
+  const automatic = args[0] === "--auto";
+  const [source, ...extra] = automatic || checkOnly ? args.slice(1) : args;
+  if (extra.length || (checkOnly && source !== undefined)) throw new Error(usage);
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 4) || typeof WebSocket === "undefined") {
     throw new Error("Node.js 22.4+ with built-in WebSocket is required");
@@ -209,34 +244,34 @@ async function run() {
     const page = await request("thread/loaded/list", { limit: 50, ...(cursor ? { cursor } : {}) });
     if (!Array.isArray(page?.data) || !page.data.every(id => typeof id === "string")) throw new Error("Invalid loaded-thread list");
     if (page.data.includes(threadId)) break;
-    if (page.nextCursor === null || page.nextCursor === undefined) throw new Error("Target thread is not loaded on this server");
+    if (page.nextCursor === null || page.nextCursor === undefined) {
+      throw new RouteError("thread_not_loaded", "Target thread is not loaded on this server; verify the thread ID and the server that owns it");
+    }
     cursor = page.nextCursor;
     if (typeof cursor !== "string" || !cursor || cursors.has(cursor)) throw new Error("Invalid or repeated loaded-thread cursor");
     cursors.add(cursor);
   }
-  let turns;
-  try {
-    turns = await request("thread/turns/list", { threadId, limit: 10, sortDirection: "desc", itemsView: "notLoaded" });
-  } catch (error) {
-    if (!checkOnly || !(error instanceof RpcError) || error.code !== -32600) throw error;
-    // A freshly loaded thread can be idle before it has a turn history.
-    const summary = await request("thread/read", { threadId, includeTurns: false });
-    if (summary?.thread?.id === threadId && summary.thread.status?.type === "idle") {
-      return { status: "idle", threadId };
-    }
-    throw error;
+  if (automatic) {
+    // The server chooses start or steer atomically against its live turn.
+    const result = await request("turn/start", { threadId, input: [{ type: "text", text }] });
+    const turnId = result?.turn?.id;
+    if (typeof turnId !== "string" || !turnId) throw new Error("Missing turn input acknowledgement");
+    return { status: "accepted", threadId, turnId };
   }
-  const turnStatuses = new Set(["inProgress", "completed", "interrupted", "failed"]);
-  if (!Array.isArray(turns?.data) || !turns.data.every(turn =>
-    turn && typeof turn.id === "string" && turn.id && turnStatuses.has(turn.status))) {
-    throw new Error("Invalid active-turn list");
-  }
-  const active = turns.data.filter(turn => turn?.status === "inProgress");
-  if (checkOnly && active.length === 0) return { status: "idle", threadId };
-  if (active.length !== 1 || typeof active[0].id !== "string" || !active[0].id) {
+  const summary = await request("thread/read", { threadId, includeTurns: false });
+  if (summary?.thread?.id !== threadId) throw new Error("Invalid target thread metadata");
+  const runtimeStatus = summary.thread.status?.type;
+  if (checkOnly && runtimeStatus === "idle") return { status: "idle", threadId };
+  if (runtimeStatus !== "active") throw new Error("Target thread has no active turn; nothing was sent");
+  // A restart can leave older history marked inProgress. Only the newest turn
+  // is a candidate, and expectedTurnId guards against a stale or changed turn.
+  const turns = await request("thread/turns/list", { threadId, limit: 1, sortDirection: "desc", itemsView: "notLoaded" });
+  if (!Array.isArray(turns?.data)) throw new Error("Invalid active-turn list");
+  const [active] = turns.data;
+  if (turns.data.length !== 1 || active?.status !== "inProgress" || typeof active.id !== "string" || !active.id) {
     throw new Error("No unique active turn; nothing was sent");
   }
-  const turnId = active[0].id;
+  const turnId = active.id;
   if (checkOnly) return { status: "active", threadId, turnId };
   const result = await request("turn/steer", { threadId, expectedTurnId: turnId, input: [{ type: "text", text }] });
   if (result?.turnId !== turnId) throw new Error("Missing or mismatched steer acknowledgement");
@@ -248,10 +283,14 @@ process.on("SIGTERM", () => abort("Terminated"));
 let exitCode = 0, output, stream = process.stdout;
 try { output = await run(); }
 catch (error) {
-  const rejected = error instanceof RpcError && error.method === "turn/steer";
-  const status = !steerAttempted ? "not_sent" : rejected ? "rejected" : "unconfirmed";
+  const rejected = error instanceof RpcError && error.method === attemptedMethod;
+  const status = !attemptedMethod ? "not_sent" : rejected ? "rejected" : "unconfirmed";
   exitCode = status === "unconfirmed" ? 2 : 1;
-  output = { status, error: error.message + (status === "unconfirmed" ? "; check target state before retrying" : "") };
+  output = {
+    status,
+    ...(error instanceof RouteError ? { reason: error.reason } : {}),
+    error: error.message + (status === "unconfirmed" ? "; check target state before retrying" : ""),
+  };
   stream = process.stderr;
 } finally {
   closing = true;
@@ -259,6 +298,7 @@ catch (error) {
   for (const connection of connections) connection.destroy();
   proxy?.stdin.destroy();
   proxy?.stdout.destroy();
+  proxy?.stderr.destroy();
   proxy?.kill();
   ws?.close();
 }
