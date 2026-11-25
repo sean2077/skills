@@ -1,6 +1,6 @@
 # Codex App Server
 
-Read for start, interrupt or an alternate App Server client. For ordinary steer delivery, use the [bundled sender](codex-steer.md). Target a distinct thread, never the sending session's own `CODEX_THREAD_ID`. Behavior below was checked against Codex 0.163.0; consult the installed schema if it differs. [Pinned sources](sources.md#codex).
+Read for interrupt or an alternate App Server client. For ordinary delivery, use the [bundled sender](codex-steer.md#send). Target a distinct thread, never the sending session's own `CODEX_THREAD_ID`. Behavior below was checked against Codex 0.163.0; consult the installed schema if it differs. [Pinned sources](sources.md#codex)
 
 ## Connect to the existing server
 
@@ -53,7 +53,7 @@ Add input to the current turn, without creating or cancelling one. A mismatched 
 {"id":6,"method":"turn/start","params":{"threadId":"TARGET_THREAD_ID","input":[{"type":"text","text":"MESSAGE"}]}}
 ```
 
-The checked `start_or_steer_turn` implementation starts when idle and can steer an active normal turn. It is not queue or a strict idle-only operation; a prior state read cannot eliminate that race.
+For ordinary message input, the checked `start_or_steer_turn` implementation starts when idle and can steer an active normal turn. The server chooses using live state when the request arrives. Read the receiving turn ID from `result.turn.id`. Use guarded `turn/steer` when input must go to a specific active turn.
 
 ## Interrupt
 

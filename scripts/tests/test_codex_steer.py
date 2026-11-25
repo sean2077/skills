@@ -10,6 +10,7 @@ import shutil
 import socket
 import struct
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -23,6 +24,7 @@ if NODE is None:
 
 THREAD = "11111111-2222-4333-8444-555555555555"
 TURN = "active-turn-fixture"
+NEW_TURN = "started-turn-fixture"
 # A leading U+FEFF also checks that decoding preserves a literal UTF-8 BOM.
 TEXT = '\ufeff消息 "quotes" \\ backslash `backtick` $literal\r\nsecond line\n'
 
@@ -39,6 +41,17 @@ connection.on("error", () => process.exit(3));
 connection.on("close", () => process.exit(0));
 process.stdin.pipe(connection);
 connection.pipe(process.stdout);
+"""
+
+# Exit without completing the upgrade. Stderr can arrive after the proxy's
+# stdout closes, so the native socket diagnostic must survive that ordering.
+FAILED_PROXY = r"""
+import { closeSync, writeFileSync } from "node:fs";
+closeSync(1);
+setImmediate(() => {
+  writeFileSync(2, process.env.FIXTURE_PROXY_ERROR);
+  process.exitCode = 3;
+});
 """
 
 
@@ -197,20 +210,23 @@ class WebSocketFixture:
                 result = {"data": ["unrelated-thread"], "nextCursor": "page-two"}
             else:
                 result = {"data": [THREAD], "nextCursor": None}
+        elif method == "thread/read":
+            status = "idle" if self.mode in ("idle", "idle-stale-history", "fresh-idle") else "active"
+            result = {"thread": {"id": THREAD, "status": {"type": status}}}
         elif method == "thread/turns/list":
             if self.mode in ("fresh-idle", "fresh-active"):
                 self.send({"id": request_id, "error": {"code": -32600, "message": "Thread is not materialized"}})
                 return True
-            data = [{"id": "finished-turn", "status": "completed", "items": []}]
-            if self.mode != "idle":
-                data.append({"id": TURN, "status": "inProgress", "items": []})
+            newest_status = "completed" if self.mode in ("idle", "latest-completed") else "inProgress"
+            data = [{"id": TURN, "status": newest_status, "items": []},
+                    {"id": "earlier-turn", "status": "completed", "items": []}]
+            if self.mode in ("stale-history", "idle-stale-history", "latest-completed"):
+                data.append({"id": "stale-active-turn", "status": "inProgress", "items": []})
+            data = data[:message["params"]["limit"]]
             if self.mode == "ambiguous-turn":
                 data.append({"id": "other-active-turn", "status": "inProgress", "items": []})
             result = {"data": data, "nextCursor": None}
-        elif method == "thread/read" and self.mode in ("fresh-idle", "fresh-active"):
-            status = "idle" if self.mode == "fresh-idle" else "active"
-            result = {"thread": {"id": THREAD, "status": {"type": status}}}
-        elif method == "turn/steer":
+        elif method in ("turn/start", "turn/steer"):
             if self.mode == "rejected":
                 self.send({"id": request_id, "error": {"code": -32600, "message": TEXT}})
                 return True
@@ -228,7 +244,11 @@ class WebSocketFixture:
                 self.send({"id": request_id, "result": {"turnId": TURN},
                            "error": {"code": -32600, "message": TEXT}})
                 return True
-            result = {"turnId": "different-turn" if self.mode == "wrong-turn" else TURN}
+            if method == "turn/start":
+                turn_id = NEW_TURN if self.mode == "fresh-idle" else TURN
+                result = {} if self.mode == "missing-start-turn" else {"turn": {"id": turn_id}}
+            else:
+                result = {"turnId": "different-turn" if self.mode == "wrong-turn" else TURN}
         else:
             raise AssertionError("Unexpected operation: " + str(method))
         if self.mode == "notifications":
@@ -289,11 +309,12 @@ class CodexSteerTests(unittest.TestCase):
         self.assertEqual(status, value["status"])
         return value
 
-    def assert_trace(self, fixture, *, steers=1, pages=1, turns=1, reads=0):
+    def assert_trace(self, fixture, *, steers=1, starts=0, pages=1, turns=1, reads=1):
         methods = [message["method"] for message in fixture.messages]
         self.assertEqual(
             ["initialize", "initialized"] + ["thread/loaded/list"] * pages
-            + ["thread/turns/list"] * turns + ["thread/read"] * reads + ["turn/steer"] * steers,
+            + ["thread/read"] * reads + ["thread/turns/list"] * turns
+            + ["turn/steer"] * steers + ["turn/start"] * starts,
             methods,
         )
         self.assertNotIn("id", fixture.messages[1])
@@ -301,7 +322,7 @@ class CodexSteerTests(unittest.TestCase):
             if message["method"] == "thread/loaded/list":
                 self.assertEqual(50, message["params"]["limit"])
             elif message["method"] == "thread/turns/list":
-                self.assertEqual({"threadId": THREAD, "limit": 10,
+                self.assertEqual({"threadId": THREAD, "limit": 1,
                                   "sortDirection": "desc", "itemsView": "notLoaded"},
                                  message["params"])
             elif message["method"] == "thread/read":
@@ -319,6 +340,32 @@ class CodexSteerTests(unittest.TestCase):
         with WebSocketFixture() as fixture:
             self.assert_accepted(fixture, self.run_sender(fixture))
 
+    def test_auto_submits_exact_input_once_without_a_live_turn_snapshot(self):
+        for mode, turn_id in (("fresh-idle", NEW_TURN), ("active", TURN)):
+            with self.subTest(mode=mode), WebSocketFixture(mode) as fixture:
+                result = self.run_sender(fixture, "--auto", "-", text=TEXT)
+                self.assertEqual({"status": "accepted", "threadId": THREAD, "turnId": turn_id},
+                                 self.assert_status(result, "accepted", 0))
+                self.assert_trace(fixture, steers=0, starts=1, turns=0, reads=0)
+                self.assertEqual({"threadId": THREAD, "input": [{"type": "text", "text": TEXT}]},
+                                 fixture.messages[-1]["params"])
+
+    def test_auto_never_submits_to_an_unloaded_thread(self):
+        with WebSocketFixture("unloaded") as fixture:
+            value = self.assert_status(self.run_sender(fixture, "--auto"), "not_sent", 1)
+            self.assertEqual("thread_not_loaded", value.get("reason"))
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
+
+    def test_auto_does_not_retry_rejected_or_unconfirmed_input(self):
+        for mode, status, code in (
+            ("rejected", "rejected", 1),
+            ("disconnect", "unconfirmed", 2),
+            ("missing-start-turn", "unconfirmed", 2),
+        ):
+            with self.subTest(mode=mode), WebSocketFixture(mode) as fixture:
+                self.assert_status(self.run_sender(fixture, "--auto"), status, code)
+                self.assert_trace(fixture, steers=0, starts=1, turns=0, reads=0)
+
     def test_check_reports_active_turn_without_sending_environment_message(self):
         with WebSocketFixture() as fixture:
             result = self.run_sender(fixture, "--check")
@@ -332,11 +379,22 @@ class CodexSteerTests(unittest.TestCase):
             result = self.run_sender(fixture, "--check")
             self.assertEqual({"status": "idle", "threadId": THREAD},
                              self.assert_status(result, "idle", 0))
-            self.assert_trace(fixture, steers=0)
+            self.assert_trace(fixture, steers=0, turns=0)
 
     def test_check_distinguishes_unloaded_target_from_idle_thread(self):
         with WebSocketFixture("unloaded") as fixture:
-            self.assert_status(self.run_sender(fixture, "--check"), "not_sent", 1)
+            value = self.assert_status(self.run_sender(fixture, "--check"), "not_sent", 1)
+            self.assertEqual("thread_not_loaded", value.get("reason"))
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
+
+    def test_live_turn_is_selected_when_earlier_history_is_still_in_progress(self):
+        with WebSocketFixture("stale-history") as fixture:
+            self.assert_accepted(fixture, self.run_sender(fixture))
+
+    def test_idle_live_state_overrides_stale_in_progress_history(self):
+        with WebSocketFixture("idle-stale-history") as fixture:
+            self.assertEqual({"status": "idle", "threadId": THREAD},
+                             self.assert_status(self.run_sender(fixture, "--check"), "idle", 0))
             self.assert_trace(fixture, steers=0, turns=0)
 
     def test_check_reports_fresh_thread_idle_only_when_live_metadata_agrees(self):
@@ -344,10 +402,10 @@ class CodexSteerTests(unittest.TestCase):
             result = self.run_sender(fixture, "--check")
             self.assertEqual({"status": "idle", "threadId": THREAD},
                              self.assert_status(result, "idle", 0))
-            self.assert_trace(fixture, steers=0, reads=1)
+            self.assert_trace(fixture, steers=0, turns=0)
         with WebSocketFixture("fresh-active") as fixture:
             self.assert_status(self.run_sender(fixture, "--check"), "not_sent", 1)
-            self.assert_trace(fixture, steers=0, reads=1)
+            self.assert_trace(fixture, steers=0)
 
     def test_file_from_installed_path_overrides_environment_without_text_loss(self):
         text = TEXT * 6000
@@ -379,18 +437,18 @@ class CodexSteerTests(unittest.TestCase):
     def test_repeated_cursor_cannot_loop_or_fall_back(self):
         with WebSocketFixture("cursor-loop") as fixture:
             self.assert_status(self.run_sender(fixture), "not_sent", 1)
-            self.assert_trace(fixture, steers=0, pages=2, turns=0)
+            self.assert_trace(fixture, steers=0, pages=2, turns=0, reads=0)
 
     def test_unloaded_thread_is_not_resumed_or_queued(self):
         with WebSocketFixture("unloaded") as fixture:
             self.assert_status(self.run_sender(fixture), "not_sent", 1)
-            self.assert_trace(fixture, steers=0, turns=0)
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
 
     def test_no_unique_active_turn_does_not_start_or_send(self):
-        for mode in ("idle", "ambiguous-turn"):
+        for mode in ("idle", "ambiguous-turn", "latest-completed"):
             with self.subTest(mode=mode), WebSocketFixture(mode) as fixture:
                 self.assert_status(self.run_sender(fixture), "not_sent", 1)
-                self.assert_trace(fixture, steers=0)
+                self.assert_trace(fixture, steers=0, turns=0 if mode == "idle" else 1)
 
     def test_initialization_error_is_unsent_and_does_not_echo_server_text(self):
         with WebSocketFixture("initialize-error") as fixture:
@@ -449,6 +507,30 @@ class CodexSteerTests(unittest.TestCase):
                 self.assert_accepted(fixture, self.run_sender(fixture, env=env, set_endpoint=False))
                 self.assertEqual(["app-server", "proxy", "--sock", str(address)],
                                  json.loads(capture.read_text(encoding="utf-8")))
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "fixture uses native Linux socket error numbers")
+    def test_check_identifies_native_proxy_socket_failure_without_leaking_stderr(self):
+        launcher = self.work / "failing proxy.mjs"
+        launcher.write_text(FAILED_PROXY, encoding="utf-8")
+        stderr_header = "Error: failed to connect to socket at /private-proxy-path-marker.sock\n\nCaused by:\n    "
+        for reason, stderr in (
+            ("control_socket_refused", stderr_header + "Connection refused (os error 111)\n"),
+            ("control_socket_missing", stderr_header + "No such file or directory (os error 2)\n"),
+            (None, "Unrelated private-proxy-path-marker failure (os error 111)\n"),
+        ):
+            with self.subTest(reason=reason):
+                env = self.env.copy()
+                env.update(
+                    CODEX_BIN=str(launcher), TARGET_CODEX_HOME=str(self.work / "receiver home"),
+                    FIXTURE_PROXY_ERROR=stderr,
+                )
+                result = self.run_sender(None, "--check", env=env)
+                value = self.assert_status(result, "not_sent", 1)
+                if reason is None:
+                    self.assertNotIn(value.get("reason"), {"control_socket_refused", "control_socket_missing"})
+                else:
+                    self.assertEqual(reason, value.get("reason"))
+                self.assertNotIn("private-proxy-path-marker", result.stderr)
 
     @unittest.skipUnless(os.name == "nt", "npm .cmd shim resolution is Windows-only")
     def test_windows_npm_shim_runs_its_js_launcher_without_a_shell(self):
