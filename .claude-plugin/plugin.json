@@ -5,7 +5,6 @@
     "./skills/agent-executors",
     "./skills/agent-messaging",
     "./skills/agent-scaffold",
-    "./skills/deep-interview",
     "./skills/lark-cli"
   ]
 }

@@ -1,12 +1,11 @@
 # Choosing and combining skills
 
-Use the smallest useful route. Ordinary research, testing/TDD, specification writing, terminology maintenance, cleanup, review, commits, and releases follow project guidance and native host tools. Establishing conventions once is not a reason to run scaffold for every task.
+Use the smallest useful route. Ordinary research, requirements interviews, testing/TDD, specification writing, terminology maintenance, cleanup, review, commits, and releases follow project guidance and native host tools. Establishing conventions once is not a reason to run scaffold for every task.
 
 | Requested outcome | Catalog route | Boundary |
 |---|---|---|
 | Establish, diagnose, or update the harness and selected project conventions | [agent-scaffold](../skills/agent-scaffold/SKILL.md) | Adopt existing layout and fill gaps; does not own ordinary delivery or publishing |
 | Message an existing Claude Code, Codex CLI/Desktop or Antigravity (`agy`) session from any harness | [agent-messaging](../skills/agent-messaging/SKILL.md) | Prefer built-in messaging when it reaches the target with the intended effect; agy native submission does not promise steer/queue selection; content/workflow remains caller-owned |
-| Resolve consequential user-owned requirements into an approved whole specification | [deep-interview](../skills/deep-interview/SKILL.md) | Not mandatory before a draft, one clarification, or already approved implementation |
 | Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Preserve identity, permissions, and transaction-specific authority |
 
 ## Establish conventions, then use the project
@@ -27,11 +26,11 @@ Retain valid evidence and rerun invalidated checks plus project gates. Never inv
 
 ## Retired installations and direct consumers
 
-The catalog no longer ships `autopilot`, `analyze`, `prototype`, `ai-slop-cleaner`, `code-review`, `ralph`, `work-protocol`, `best-practice-research`, `tooling-conventions`, `project-docs-organizer`, `tdd`, `spec-writing`, `conventional-commit`, `semver-release`, or `domain-modeling`. There are no replacement aliases or new coordinators.
+The catalog no longer ships `autopilot`, `analyze`, `prototype`, `ai-slop-cleaner`, `code-review`, `ralph`, `work-protocol`, `best-practice-research`, `tooling-conventions`, `project-docs-organizer`, `tdd`, `spec-writing`, `conventional-commit`, `semver-release`, `domain-modeling`, or `deep-interview`. There are no replacement aliases or new coordinators.
 
 Source retirement does not uninstall consumer/global copies. Inspect ownership and local edits, then remove only this catalog's retired entries from the intended consumer/global scope, **never this catalog checkout**. Preserve unrelated same-name skills and native host features; see [installer safety](compatibility.md#installer-semantics).
 
-Finish or explicitly terminate durable runs with their original pinned runtime. Preserve `.agent-workflows/`, `.agents/work/`, and Git-common-dir coordination leases/registries/journals; native goals or prose do not adopt them. Inventory-checker consumers must preserve or deliberately migrate executable entry points before uninstalling. No automatic state/worktree cleanup occurs.
+Finish or explicitly terminate durable runs, including `.agent-workflows/deep-interview/` approval sessions, with their original pinned runtime. Preserve `.agent-workflows/`, `.agents/work/`, and Git-common-dir coordination leases/registries/journals; native goals or prose do not adopt them. Inventory-checker consumers must preserve or deliberately migrate executable entry points before uninstalling. No automatic state/worktree cleanup occurs.
 
 Direct release-script consumers must migrate or pin first. Release conventions, the tested analyzer, and changelog extractor now install to `.agents/tools/release/` when scaffold's `release` domain is selected, without old-path wrappers. Project release docs route there at task time, as this repository's [release flow](development.md#release-flow) does. Preserve adapted-material licensing and existing TDD, terminology, and release policies.
 

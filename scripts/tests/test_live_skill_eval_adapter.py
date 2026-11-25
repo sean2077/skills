@@ -56,13 +56,14 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             "project-docs-organizer": "documentation-organization", "docs-organizer": "documentation-organization",
             "tdd": "tdd", "spec-writing": "documentation", "domain-modeling": "domain-modeling",
             "conventional-commit": "commit", "semver-release": "release",
+            "deep-interview": "interview",
         }
         for route, workflow in retired.items():
             with self.subTest(route=route):
                 self.assertNotIn(route, routes)
                 actual = self.adapter.canonicalize_behavior(
                     {"mode": "treatment"}, {"route": route, "workflow": workflow},
-                    "tdd", False, routes,
+                    "agent-scaffold", False, routes,
                 )
                 self.assertEqual("none", actual["route"])
                 self.assertEqual(workflow, actual["workflow"])
@@ -78,7 +79,8 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
         self.assertFalse(set(self.adapter.WORKFLOW_ALIASES.values())
                          - set(self.adapter.WORKFLOWS))
         for reported, expected in (("analyze", "analysis"), ("experiment", "prototype"),
-                                   ("review", "code-review"), ("bounded-iteration", "iteration")):
+                                   ("review", "code-review"), ("bounded-iteration", "iteration"),
+                                   ("deep-interview", "interview")):
             with self.subTest(workflow=reported):
                 self.assertEqual(expected, self.adapter.normalize_workflow(reported))
 
@@ -103,12 +105,12 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
                                 self.assertIn(behavior["workflow"], self.adapter.WORKFLOWS)
 
     def test_baseline_normalization_preserves_host_workflow(self) -> None:
-        routes = ("spec-writing", "deep-interview", "tdd")
+        routes = ("agent-scaffold", "lark-cli")
         for workflow in ("analysis", "delivery", "interview", "tdd"):
             with self.subTest(workflow=workflow):
                 actual = self.adapter.canonicalize_behavior(
                     {"mode": "baseline"},
-                    {"route": "spec-writing", "workflow": workflow},
+                    {"route": "agent-scaffold", "workflow": workflow},
                     "none",
                     False,
                     routes,
@@ -121,17 +123,17 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             {"mode": "treatment"},
             {
                 "route": "none",
-                "workflow": "docs-organization",
+                "workflow": "agent-harness",
                 "decision-depth": "compact",
             },
-            "spec-writing",
+            "agent-scaffold",
             True,
-            ("spec-writing", "tdd"),
+            ("agent-scaffold", "lark-cli"),
         )
         self.assertEqual(
             {
-                "route": "spec-writing",
-                "workflow": "documentation-organization",
+                "route": "agent-scaffold",
+                "workflow": "harness-management",
                 "decision_depth": "compact",
             },
             actual,
@@ -140,13 +142,13 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
     def test_rejected_treatment_preserves_nearest_valid_route(self) -> None:
         actual = self.adapter.canonicalize_behavior(
             {"mode": "treatment"},
-            {"route": "spec-writing", "workflow": "docs-organization"},
-            "tdd",
+            {"route": "lark-cli", "workflow": "lark-cli"},
+            "agent-scaffold",
             False,
-            ("spec-writing", "tdd"),
+            ("agent-scaffold", "lark-cli"),
         )
-        self.assertEqual("spec-writing", actual["route"])
-        self.assertEqual("documentation-organization", actual["workflow"])
+        self.assertEqual("lark-cli", actual["route"])
+        self.assertEqual("lark", actual["workflow"])
 
     def test_prompt_uses_catalog_vocabulary_without_case_metadata(self) -> None:
         request = {
@@ -160,9 +162,9 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
             request,
             "candidate instructions",
             "agent-scaffold",
-            ("agent-scaffold", "deep-interview"),
+            ("agent-scaffold", "lark-cli"),
         )
-        self.assertIn("agent-scaffold, deep-interview", prompt)
+        self.assertIn("agent-scaffold, lark-cli", prompt)
         self.assertIn("preserve_layout", prompt)
         self.assertNotIn("decision_depth=compact or full", prompt)
         self.assertNotIn("decision_artifact=none", prompt)
@@ -192,25 +194,25 @@ class LiveSkillEvalAdapterTests(unittest.TestCase):
 
     def test_boundary_observations_are_candidate_local_and_not_answers(self) -> None:
         request = {"mode": "treatment", "case": {
-            "prompt": "Assess the active specification approval.",
-            "metadata": {"expected_behavior": {"approval_accepted": "SECRET_ORACLE"}},
+            "prompt": "Upgrade the harness while preserving the project layout.",
+            "metadata": {"expected_behavior": {"preserve_layout": "SECRET_ORACLE"}},
         }}
         prompt = self.adapter.make_prompt(
-            request, "candidate instructions", "deep-interview", ("deep-interview",)
+            request, "candidate instructions", "agent-scaffold", ("agent-scaffold",)
         )
-        self.assertIn("approval_accepted", prompt)
+        self.assertIn("preserve_layout", prompt)
         self.assertNotIn("identity_check_before_write", prompt)
         self.assertNotIn("SECRET_ORACLE", prompt)
-        self.assertNotIn("approval_accepted=true", prompt)
-        self.assertNotIn("approval_accepted=false", prompt)
+        self.assertNotIn("preserve_layout=true", prompt)
+        self.assertNotIn("preserve_layout=false", prompt)
 
     def test_missing_boundary_observations_are_not_synthesized(self) -> None:
         actual = self.adapter.canonicalize_behavior(
-            {"mode": "treatment"}, {"route": "deep-interview", "workflow": "interview"},
-            "deep-interview", True, ("deep-interview",),
+            {"mode": "treatment"}, {"route": "lark-cli", "workflow": "lark"},
+            "lark-cli", True, ("lark-cli",),
         )
-        self.assertNotIn("approval_accepted", actual)
-        self.assertNotIn("reapproval_required", actual)
+        self.assertNotIn("identity_check_before_write", actual)
+        self.assertNotIn("blind_write", actual)
 
     def test_baseline_host_selection_is_not_silently_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

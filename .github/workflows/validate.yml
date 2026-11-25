@@ -95,11 +95,9 @@ jobs:
           python scripts/tests/test_task_outcomes.py
           python scripts/tests/test_release_execution.py
 
-      - name: Validate deterministic workflow and P0 runtimes
+      - name: Validate deterministic P0 runtime
         run: |
-          python scripts/generate_workflow_runtimes.py --check
           python scripts/generate_p0_runtimes.py --check
-          python scripts/tests/test_workflow_runtimes.py
           python -m unittest -v scripts.tests.test_p0_agent_workflows
           python -m unittest -v scripts.tests.test_p0_hardening
           python .agents/skills/skill-eval/scripts/skill_eval.py validate evals/examples/offline/suite.json
@@ -218,19 +216,13 @@ jobs:
           python scripts/catalog_health.py
           python scripts/test_catalog_health.py
           python scripts/tests/test_live_skill_eval_adapter.py
-          python scripts/generate_workflow_runtimes.py --check
           python scripts/generate_p0_runtimes.py --check
           python -m compileall -q \
-            scripts/workflow_runtime scripts/p0_runtime \
-            skills/deep-interview/scripts \
+            scripts/p0_runtime \
             skills/agent-scaffold/scripts \
             skills/agent-scaffold/assets/runtime \
             .agents/skills/skill-eval/scripts \
             evals/agent-skills evals/tasks
-          python -m unittest -v \
-            scripts.tests.test_workflow_runtimes.RuntimeTests.test_generated_runtimes_are_current_and_compile \
-            scripts.tests.test_workflow_runtimes.RuntimeTests.test_read_only_discovery_has_no_filesystem_side_effects \
-            scripts.tests.test_workflow_runtimes.RuntimeTests.test_approval_requires_unchanged_original_bytes_including_eol
           python -m unittest -v scripts.tests.test_p0_agent_workflows
           python -m unittest -v scripts.tests.test_p0_hardening
           # The release runtime is an installed scaffold asset, so it must run on the scaffold floor.

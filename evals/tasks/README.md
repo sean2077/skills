@@ -150,8 +150,9 @@ Comparison requires completed runs matching fixture, evaluator, platform, Python
 ## Coverage after route retirement
 
 `agent-scaffold` has real installer/selection tests and bounded guidance fixtures; authenticated
-host discovery and actual dialogue need separate observations. `deep-interview` retains
-revision/digest/approval tests, and `lark-cli` retains mock and decision cases.
+host discovery and actual dialogue need separate observations. `lark-cli` retains mock and
+decision cases. Requirements interviews use host/project workflows; the retired interview
+runtime and its revision/digest/approval tests are no longer maintained.
 
 Commit scope, specification preservation, docs moves and test-first traces remain **host/project
 fixtures** with `none` and `brief` conditions; their retired skills are not installed as treatments.
