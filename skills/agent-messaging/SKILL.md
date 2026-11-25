@@ -5,7 +5,9 @@ description: "Message existing Claude Code, Codex CLI/Desktop or Google Antigrav
 
 # Agent messaging
 
-Prefer your host's built-in messaging when it reaches the target with the intended effect, including same-product sessions/subagents. Otherwise choose by receiver and effect: steer for ongoing work, queue for later handling. Message text, replies and workflow remain caller-owned.
+Prefer your host's built-in messaging when it reaches the target with the intended effect, including same-product sessions/subagents. Message text, replies and workflow remain caller-owned.
+
+**For Codex, default to steering the active turn.** A request to send a message to a running Codex session with no timing specified uses the [steer sender](references/codex-steer.md), or a built-in sender verified to steer. Use [queue](references/codex-queue.md) only when the caller wants later handling. If steering fails or the receiver is unreachable, report the result and the blocker. An unconfirmed result needs a target check before any resend. For an idle receiver, use [start](references/codex.md#start) when the caller wants a new turn to run now.
 
 | Receiver | Native route | Effect | Details |
 |---|---|---|---|
@@ -16,9 +18,9 @@ Prefer your host's built-in messaging when it reaches the target with the intend
 | Claude Code | Native inbox socket / named pipe | Submit to the running CC process. | [Inbox sender](references/claude-code.md) |
 | Antigravity (`agy`) | Native `agentapi send-message` | Submit to an existing conversation; busy handling is receiver/version-dependent. | [Antigravity sender](references/antigravity.md) |
 
-When a message from another session is stuck in Codex Desktop's queue, [handle the existing item, then check the live route for future messages](references/codex-steer.md#desktop-message-stays-queued). For time-sensitive input, select steer on the sending side.
+When a message from another session is stuck in Codex Desktop's queue, [handle the existing item, then check the live route for future messages](references/codex-steer.md#desktop-message-stays-queued).
 
-For Codex's `send_message_to_thread`, a fresh task can fail at `thread/resume` with `no rollout found`. If the receiver is already loaded on its daemon and queued delivery fits, [queue the first message](references/codex-queue.md#first-message-to-a-fresh-codex-task). Return to built-in sending for later messages once Codex has saved the session record.
+For Codex's `send_message_to_thread`, a fresh task can fail at `thread/resume` with `no rollout found`. If the receiver is already loaded on its daemon and the caller wants queued delivery, [queue the first message](references/codex-queue.md#first-message-to-a-fresh-codex-task).
 
 Use the intended receiver's native environment and endpoint; this skill adds no SDK, Channel or cloud API integration. Target a distinct session or thread, never the sender's own or an inherited parent identity. An ID or shared history alone does not establish access to its live process; CLI/Desktop launches may not expose a control endpoint.
 
