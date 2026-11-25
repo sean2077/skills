@@ -1,6 +1,6 @@
-# Steer an active Codex turn
+# Send to a live Codex chat
 
-Invoke the bundled [steer sender](#send) directly for an ordinary message to a running Codex turn. Use [queue](codex-queue.md) only when the caller explicitly requests later handling.
+Use the bundled [sender with `--auto`](#send) for ordinary delivery. A loaded chat starts a new turn when idle or receives the input in its current turn when busy. Use [queue](codex-queue.md) for an explicit request to defer.
 
 ## Target
 
@@ -18,7 +18,7 @@ Direct WebSocket connections cannot supply custom authentication headers. Use an
 ## Desktop message stays queued
 
 1. **Handle the existing message.** In the receiving Desktop chat, find it in the queue above the composer and use **Steer** if offered. This can apply the existing item to the current turn. During compaction, Desktop may have to wait. [Desktop queue controls](https://learn.chatgpt.com/docs/prompting#steering-and-queuing) · [Compaction behavior](https://learn.chatgpt.com/docs/changelog?date=2026-10-15)
-2. **Check the route for the next message.** If the sender used `codex queue`, Desktop's **Settings → General → Follow-up behavior** changes the composer's default. The external command explicitly enqueues its input. Run [the read-only check](#check-the-live-route) from the sending environment, or on the receiver over [SSH](ssh.md) if its socket is local to that machine. With an `active` result, use [steer](#send) by default. An `idle` result allows a separate [start](codex.md#start) when the caller intends a new turn. Check the existing queue before resending the same text. [CLI queue command](https://learn.chatgpt.com/docs/developer-commands#codex-queue)
+2. **Check the route for the next message.** If the sender used `codex queue`, Desktop's **Settings → General → Follow-up behavior** changes the composer's default. The external command explicitly enqueues its input. Run [the read-only check](#check-the-live-route) from the sending environment, or on the receiver over [SSH](ssh.md) if its socket is local to that machine. Both `active` and `idle` allow [automatic delivery](#send). Check the existing queue before resending the same text. [CLI queue command](https://learn.chatgpt.com/docs/developer-commands#codex-queue)
 3. **If the live route is unavailable.** Report the blocker from [the check](#check-the-live-route). Confirm the receiver environment, exact thread ID, and Desktop transport. If the turn belongs to a private stdio server, use Desktop's queue controls for that turn. If the caller chooses to queue, report deferred delivery and point to the manual **Steer** action when available. For recurring automatic delivery, use a receiver whose shared App Server the sender can reach. [Connection details](codex.md#connect-to-the-existing-server)
 
 ### Connect Desktop and the sender to one server
@@ -49,7 +49,7 @@ With the receiver's target variables set, use the skill's installed directory as
 node "$SKILL_DIR/scripts/steer-codex.mjs" --check
 ```
 
-`--check` ignores message input and reads the loaded thread's live state without sending. For an active thread it checks the newest turn ID. An idle thread can report idle before it has saved a first turn. Both results exit 0. `not_sent` reports a failed check. The sender rechecks the live turn when it sends.
+`--check` ignores message input and reads the loaded thread's live state without sending. For an active thread it checks the newest turn ID. An idle thread can report idle before it has saved a first turn. Both results exit 0. `not_sent` reports a failed check. Use this check to diagnose the route. The server uses its live state when handling an automatic send.
 
 When a failed check includes `reason`, use it to choose the next check.
 
@@ -67,26 +67,28 @@ Use the Desktop launch or its server logs to establish whether Desktop owns a pr
 Pass an existing UTF-8 file directly:
 
 ```bash
-node "$SKILL_DIR/scripts/steer-codex.mjs" /path/to/message.txt
+node "$SKILL_DIR/scripts/steer-codex.mjs" --auto /path/to/message.txt
 ```
 
 For stdin, use `-`:
 
 ```bash
-printf '%s' 'Message text' | node "$SKILL_DIR/scripts/steer-codex.mjs" -
+printf '%s' 'Message text' | node "$SKILL_DIR/scripts/steer-codex.mjs" --auto -
 ```
 
-With no argument, use exported `MESSAGE`. A file or stdin takes precedence; text, including BOM and trailing newlines, is preserved and never echoed. Empty text is sent as given. Invalid UTF-8 in a file or stdin fails before connecting; use one of those when exact bytes matter, because the environment may already have replaced invalid bytes.
+Omit the file or `-` to read exported `MESSAGE`. A file or stdin takes precedence; text, including BOM and trailing newlines, is preserved and never echoed. Empty text is sent as given. Invalid UTF-8 in a file or stdin fails before connecting; use one of those when exact bytes matter, because the environment may already have replaced invalid bytes.
 
-The sender confirms the thread is loaded and active, reads the newest turn without its item bodies, and sends one `turn/steer` with `expectedTurnId`. A restart can leave older history marked in progress. The live thread status and newest turn identify the candidate, and the server rejects a stale or changed turn ID. Each request waits at most 5 seconds within a 15-second total budget, so a slow server can produce `not_sent` or `unconfirmed`.
+The sender confirms the thread is loaded and makes one [`turn/start`](codex.md#start) request in automatic mode. The App Server decides whether to start or steer when it handles that request, so callers do not need to check whether the chat is busy first. The acknowledgement identifies the turn that received the input.
+
+To require an existing active turn, omit `--auto`. The sender checks the live thread status and newest turn without loading item bodies. Only that turn is eligible, even if older history is still marked in progress after a restart. The server rejects a stale or changed `expectedTurnId`. Each request waits at most 5 seconds within a 15-second total budget.
 
 ## Result
 
 | JSON `status` | Exit | Meaning |
 |---|---|---|
 | `accepted` | 0 | Matching server acknowledgement received; not proof the model read or finished handling the message. |
-| `not_sent` | 1 | Failed before attempting steer, such as an unloaded thread or no active turn. |
-| `rejected` | 1 | The server explicitly rejected steer. |
-| `unconfirmed` | 2 | Steer was attempted but its acknowledgement is missing or invalid; delivery may have occurred. |
+| `not_sent` | 1 | Failed before attempting delivery, such as an unloaded thread or a steer-only send to an idle chat. |
+| `rejected` | 1 | The server explicitly rejected the input request. |
+| `unconfirmed` | 2 | Delivery was attempted but its acknowledgement is missing or invalid; delivery may have occurred. |
 
 Success goes to stdout; failures go to stderr. There is no automatic retry. For `unconfirmed`, inspect the target before deciding whether to send again. [Pinned protocol sources](sources.md#codex) are only needed for verification.

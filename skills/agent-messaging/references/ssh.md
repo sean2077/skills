@@ -14,7 +14,7 @@ Use an existing authorized SSH login to run the chosen native route **on the rec
 Read the chosen native route for its prerequisites. This example assumes POSIX shells on both ends and the skill plus Node.js installed on B. Replace the destination, paths and thread ID with receiver-confirmed values:
 
 ```bash
-ssh -T b 'TARGET_CODEX_ENDPOINT= TARGET_CODEX_HOME="/receiver/codex-home" TARGET_THREAD_ID="receiver-thread-id" node "/installed/agent-messaging/scripts/steer-codex.mjs" -' < message.txt
+ssh -T b 'TARGET_CODEX_ENDPOINT= TARGET_CODEX_HOME="/receiver/codex-home" TARGET_THREAD_ID="receiver-thread-id" node "/installed/agent-messaging/scripts/steer-codex.mjs" --auto -' < message.txt
 ```
 
 The file is local to A; the command and paths are on B. Pass message bytes through stdin without a pseudo-terminal (`-T`), not by interpolating message text into the remote shell command. Quote substituted paths/IDs for that shell. For [CC inbox](claude-code.md), use `send-claude.mjs -` with the receiver's `TARGET_CC_SOCKET` and required token supplied remotely.

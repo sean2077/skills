@@ -24,6 +24,7 @@ if NODE is None:
 
 THREAD = "11111111-2222-4333-8444-555555555555"
 TURN = "active-turn-fixture"
+NEW_TURN = "started-turn-fixture"
 # A leading U+FEFF also checks that decoding preserves a literal UTF-8 BOM.
 TEXT = '\ufeff消息 "quotes" \\ backslash `backtick` $literal\r\nsecond line\n'
 
@@ -225,7 +226,7 @@ class WebSocketFixture:
             if self.mode == "ambiguous-turn":
                 data.append({"id": "other-active-turn", "status": "inProgress", "items": []})
             result = {"data": data, "nextCursor": None}
-        elif method == "turn/steer":
+        elif method in ("turn/start", "turn/steer"):
             if self.mode == "rejected":
                 self.send({"id": request_id, "error": {"code": -32600, "message": TEXT}})
                 return True
@@ -243,7 +244,11 @@ class WebSocketFixture:
                 self.send({"id": request_id, "result": {"turnId": TURN},
                            "error": {"code": -32600, "message": TEXT}})
                 return True
-            result = {"turnId": "different-turn" if self.mode == "wrong-turn" else TURN}
+            if method == "turn/start":
+                turn_id = NEW_TURN if self.mode == "fresh-idle" else TURN
+                result = {} if self.mode == "missing-start-turn" else {"turn": {"id": turn_id}}
+            else:
+                result = {"turnId": "different-turn" if self.mode == "wrong-turn" else TURN}
         else:
             raise AssertionError("Unexpected operation: " + str(method))
         if self.mode == "notifications":
@@ -304,11 +309,12 @@ class CodexSteerTests(unittest.TestCase):
         self.assertEqual(status, value["status"])
         return value
 
-    def assert_trace(self, fixture, *, steers=1, pages=1, turns=1, reads=1):
+    def assert_trace(self, fixture, *, steers=1, starts=0, pages=1, turns=1, reads=1):
         methods = [message["method"] for message in fixture.messages]
         self.assertEqual(
             ["initialize", "initialized"] + ["thread/loaded/list"] * pages
-            + ["thread/read"] * reads + ["thread/turns/list"] * turns + ["turn/steer"] * steers,
+            + ["thread/read"] * reads + ["thread/turns/list"] * turns
+            + ["turn/steer"] * steers + ["turn/start"] * starts,
             methods,
         )
         self.assertNotIn("id", fixture.messages[1])
@@ -333,6 +339,32 @@ class CodexSteerTests(unittest.TestCase):
     def test_environment_message_and_exact_rpc_sequence(self):
         with WebSocketFixture() as fixture:
             self.assert_accepted(fixture, self.run_sender(fixture))
+
+    def test_auto_submits_exact_input_once_without_a_live_turn_snapshot(self):
+        for mode, turn_id in (("fresh-idle", NEW_TURN), ("active", TURN)):
+            with self.subTest(mode=mode), WebSocketFixture(mode) as fixture:
+                result = self.run_sender(fixture, "--auto", "-", text=TEXT)
+                self.assertEqual({"status": "accepted", "threadId": THREAD, "turnId": turn_id},
+                                 self.assert_status(result, "accepted", 0))
+                self.assert_trace(fixture, steers=0, starts=1, turns=0, reads=0)
+                self.assertEqual({"threadId": THREAD, "input": [{"type": "text", "text": TEXT}]},
+                                 fixture.messages[-1]["params"])
+
+    def test_auto_never_submits_to_an_unloaded_thread(self):
+        with WebSocketFixture("unloaded") as fixture:
+            value = self.assert_status(self.run_sender(fixture, "--auto"), "not_sent", 1)
+            self.assertEqual("thread_not_loaded", value.get("reason"))
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
+
+    def test_auto_does_not_retry_rejected_or_unconfirmed_input(self):
+        for mode, status, code in (
+            ("rejected", "rejected", 1),
+            ("disconnect", "unconfirmed", 2),
+            ("missing-start-turn", "unconfirmed", 2),
+        ):
+            with self.subTest(mode=mode), WebSocketFixture(mode) as fixture:
+                self.assert_status(self.run_sender(fixture, "--auto"), status, code)
+                self.assert_trace(fixture, steers=0, starts=1, turns=0, reads=0)
 
     def test_check_reports_active_turn_without_sending_environment_message(self):
         with WebSocketFixture() as fixture:

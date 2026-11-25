@@ -5,9 +5,9 @@ description: "Message existing Claude Code, Codex CLI/Desktop or Google Antigrav
 
 # Agent messaging
 
-**Codex defaults to steer. Queue only when the caller explicitly requests later handling.** For an ordinary send to a running Codex session, invoke the bundled [`steer-codex.mjs`](references/codex-steer.md#send) directly, or use a built-in sender verified to steer that target. If this skill changes during a long-lived session, reread `SKILL.md` before the next send, even if the update notice only mentions a reference file.
+**Send to Codex now by default. Steer if the target is busy and start a turn if it is idle.** Use the bundled [`steer-codex.mjs --auto`](references/codex-steer.md#send) or a built-in sender verified to have both effects on the intended target. An explicit steer-only request uses the script without `--auto`. Queue only when the caller requests later handling. If this skill changes during a long-lived session, reread `SKILL.md` before the next send, even if the update notice only mentions a reference file.
 
-If steer is unavailable, report the result and blocker. [Queue](references/codex-queue.md) becomes a fallback only if the caller chooses deferred delivery. Report it as queued and point to [manual Desktop Steer](references/codex-steer.md#desktop-message-stays-queued) when available. Check an unconfirmed delivery before any resend. For an idle receiver, use [start](references/codex.md#start) when the caller wants a new turn to run now.
+If live delivery is unavailable, report the result and blocker. Check an unconfirmed delivery before any resend. For explicit [queue](references/codex-queue.md) requests, report deferred delivery and point to [manual Desktop Steer](references/codex-steer.md#desktop-message-stays-queued) when available.
 
 Use `command codex` for direct Codex CLI commands in Bash or Zsh to bypass aliases that inject unsupported flags. The steer script spawns its proxy executable directly.
 
@@ -15,9 +15,9 @@ For other receivers, prefer your host's built-in messaging when it reaches the t
 
 | Receiver | Native route | Effect | Details |
 |---|---|---|---|
+| Codex | App Server `turn/start` | Send now. Start when idle or steer the active turn when busy. | [Automatic sender](references/codex-steer.md#send) |
 | Codex | App Server `turn/steer` | Add input to the active turn, guarded by its turn ID. | [Steer sender](references/codex-steer.md) |
 | Codex | `codex queue` | Queue input for a later turn; a loaded idle target can start it. | [Queue](references/codex-queue.md) |
-| Codex | App Server `turn/start` | Start when idle; the verified implementation can steer when busy. | [Codex](references/codex.md#start) |
 | Codex | App Server `turn/interrupt` | Cancel current work; this operation carries no message. | [Codex](references/codex.md#interrupt) |
 | Claude Code | Native inbox socket / named pipe | Submit to the running CC process. | [Inbox sender](references/claude-code.md) |
 | Antigravity (`agy`) | Native `agentapi send-message` | Submit to an existing conversation; busy handling is receiver/version-dependent. | [Antigravity sender](references/antigravity.md) |
@@ -26,7 +26,7 @@ When a message from another session is stuck in Codex Desktop's queue, [handle t
 
 For same-machine Linux Desktop sends, prefer its configured [private Unix socket](references/codex-steer.md#connect-desktop-and-the-sender-to-one-server). Get the receiver's socket path and use it as `TARGET_CODEX_ENDPOINT`.
 
-For Codex's `send_message_to_thread`, a fresh task can fail at `thread/resume` with `no rollout found`. If the receiver is already loaded on its daemon and the caller wants queued delivery, [queue the first message](references/codex-queue.md#first-message-to-a-fresh-codex-task).
+For Codex's `send_message_to_thread`, a fresh task can fail at `thread/resume` with `no rollout found`. If the receiver is already loaded on its daemon, the [automatic sender](references/codex-steer.md#send) can deliver the first message directly.
 
 Use the intended receiver's native environment and endpoint; this skill adds no SDK, Channel or cloud API integration. Target a distinct session or thread, never the sender's own or an inherited parent identity. An ID or shared history alone does not establish access to its live process; CLI/Desktop launches may not expose a control endpoint.
 

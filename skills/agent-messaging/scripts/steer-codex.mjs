@@ -7,19 +7,21 @@ import { delimiter, isAbsolute, join } from "node:path";
 
 const usage = [
   "Usage: node steer-codex.mjs [UTF8_FILE|-]",
+  "       node steer-codex.mjs --auto [UTF8_FILE|-]",
   "       node steer-codex.mjs --check",
   "No argument: read MESSAGE. --check: query the receiver's live turn without sending.",
+  "--auto: steer an active turn or start one on a loaded idle thread.",
   "Target: TARGET_THREAD_ID and TARGET_CODEX_ENDPOINT or TARGET_CODEX_HOME.",
   "Optional local proxy: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.",
 ].join("\n");
-const [source, ...extra] = process.argv.slice(2);
-if (source === "--help" && extra.length === 0) {
+const args = process.argv.slice(2);
+if (args[0] === "--help" && args.length === 1) {
   console.log(usage);
   process.exit(0);
 }
 
 let ws, bridge, proxy, pending, rejectOpen, fatal;
-let closing = false, steerAttempted = false, nextId = 0;
+let closing = false, attemptedMethod, nextId = 0;
 const connections = new Set();
 let deadline;
 
@@ -186,17 +188,19 @@ function request(method, params) {
     const id = ++nextId;
     pending = { id, method, resolve, reject, timer: setTimeout(() => abort(`${method} timed out`), wait) };
     try {
-      // A closing socket silently drops frames; that steer was never attempted.
+      // A closing socket silently drops frames; the input was never attempted.
       if (ws.readyState !== WebSocket.OPEN) throw new Error("WebSocket connection closed");
-      if (method === "turn/steer") steerAttempted = true;
+      if (method === "turn/steer" || method === "turn/start") attemptedMethod = method;
       ws.send(JSON.stringify({ id, method, params }));
     } catch { abort("WebSocket send failed"); }
   });
 }
 
 async function run() {
-  if (extra.length) throw new Error(usage);
-  const checkOnly = source === "--check";
+  const checkOnly = args[0] === "--check";
+  const automatic = args[0] === "--auto";
+  const [source, ...extra] = automatic || checkOnly ? args.slice(1) : args;
+  if (extra.length || (checkOnly && source !== undefined)) throw new Error(usage);
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 4) || typeof WebSocket === "undefined") {
     throw new Error("Node.js 22.4+ with built-in WebSocket is required");
@@ -247,6 +251,13 @@ async function run() {
     if (typeof cursor !== "string" || !cursor || cursors.has(cursor)) throw new Error("Invalid or repeated loaded-thread cursor");
     cursors.add(cursor);
   }
+  if (automatic) {
+    // The server chooses start or steer atomically against its live turn.
+    const result = await request("turn/start", { threadId, input: [{ type: "text", text }] });
+    const turnId = result?.turn?.id;
+    if (typeof turnId !== "string" || !turnId) throw new Error("Missing turn input acknowledgement");
+    return { status: "accepted", threadId, turnId };
+  }
   const summary = await request("thread/read", { threadId, includeTurns: false });
   if (summary?.thread?.id !== threadId) throw new Error("Invalid target thread metadata");
   const runtimeStatus = summary.thread.status?.type;
@@ -272,8 +283,8 @@ process.on("SIGTERM", () => abort("Terminated"));
 let exitCode = 0, output, stream = process.stdout;
 try { output = await run(); }
 catch (error) {
-  const rejected = error instanceof RpcError && error.method === "turn/steer";
-  const status = !steerAttempted ? "not_sent" : rejected ? "rejected" : "unconfirmed";
+  const rejected = error instanceof RpcError && error.method === attemptedMethod;
+  const status = !attemptedMethod ? "not_sent" : rejected ? "rejected" : "unconfirmed";
   exitCode = status === "unconfirmed" ? 2 : 1;
   output = {
     status,

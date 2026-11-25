@@ -1,6 +1,6 @@
 # Queue input for native Codex
 
-Queue only when the caller explicitly requests later handling. If an ordinary send to a running Codex thread has no timing specified, use [steer](codex-steer.md). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
+Queue only when the caller explicitly requests later handling. For ordinary delivery, use the [automatic sender](codex-steer.md#send). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
 
 For a **local receiver**, set `TARGET_CODEX_HOME` to its actual Codex home as seen by the CLI process (not an inherited sender home), then bind it to `CODEX_HOME` for the call. `codex queue` selects its local daemon using `CODEX_HOME` or the calling user's default, even when `--thread` is a UUID. An unset or wrong home can target the wrong server. Do not guess a Windows/WSL/container path.
 
@@ -26,7 +26,7 @@ CODEX_HOME="${TARGET_CODEX_HOME:?Set the receiver's Codex home}" \
 
 `--resume` tries to resume an unloaded thread on the local daemon or selected `--remote` server. It leaves loaded threads alone. A failed resume warns but **still exits successfully** if the message was queued; it cannot take over another active writer. Verified by [Codex 0.166.0's release](https://github.com/openai/codex/releases/tag/rust-v0.166.0) and [PR #57232's implementation/tests](https://github.com/openai/codex/pull/57232), not by live-session execution.
 
-If the caller chooses queue after steer is blocked, report the acknowledgement as queued for later handling. For attention during a busy Desktop turn, have the recipient use [manual Desktop Steer](codex-steer.md#desktop-message-stays-queued) if the action is available.
+Report a queue acknowledgement as queued for later handling. For attention during a busy Desktop turn, have the recipient use [manual Desktop Steer](codex-steer.md#desktop-message-stays-queued) if the action is available.
 
 Queue semantics:
 
