@@ -4,7 +4,13 @@ import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
 import { delimiter, isAbsolute, join } from "node:path";
 
-const usage = "Usage: node steer-codex.mjs [UTF8_FILE|-]\nNo argument: read MESSAGE. Target: TARGET_THREAD_ID and TARGET_CODEX_ENDPOINT or TARGET_CODEX_HOME. Optional local proxy: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.";
+const usage = [
+  "Usage: node steer-codex.mjs [UTF8_FILE|-]",
+  "       node steer-codex.mjs --check",
+  "No argument: read MESSAGE. --check: query the receiver's live turn without sending.",
+  "Target: TARGET_THREAD_ID and TARGET_CODEX_ENDPOINT or TARGET_CODEX_HOME.",
+  "Optional local proxy: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.",
+].join("\n");
 const [source, ...extra] = process.argv.slice(2);
 if (source === "--help" && extra.length === 0) {
   console.log(usage);
@@ -103,6 +109,7 @@ class RpcError extends Error {
   constructor(method, code) {
     super(`${method} rejected (RPC ${code})`);
     this.method = method;
+    this.code = code;
   }
 }
 
@@ -156,8 +163,9 @@ function request(method, params) {
   });
 }
 
-async function steer() {
+async function run() {
   if (extra.length) throw new Error(usage);
+  const checkOnly = source === "--check";
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 4) || typeof WebSocket === "undefined") {
     throw new Error("Node.js 22.4+ with built-in WebSocket is required");
@@ -183,11 +191,13 @@ async function steer() {
     }
   }
   let text;
-  try {
-    text = source === undefined ? process.env.MESSAGE
-      : new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(readFileSync(source === "-" ? 0 : source));
-  } catch { throw new Error("Cannot read the message input as UTF-8"); }
-  if (text === undefined) throw new Error("Supply a UTF-8 file, - for stdin, or MESSAGE");
+  if (!checkOnly) {
+    try {
+      text = source === undefined ? process.env.MESSAGE
+        : new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(readFileSync(source === "-" ? 0 : source));
+    } catch { throw new Error("Cannot read the message input as UTF-8"); }
+    if (text === undefined) throw new Error("Supply a UTF-8 file, - for stdin, or MESSAGE");
+  }
 
   deadline = Date.now() + 15000;
   await connect(localPath === undefined ? endpoint : await proxyEndpoint(localPath), localPath !== undefined);
@@ -204,13 +214,26 @@ async function steer() {
     if (typeof cursor !== "string" || !cursor || cursors.has(cursor)) throw new Error("Invalid or repeated loaded-thread cursor");
     cursors.add(cursor);
   }
-  const turns = await request("thread/turns/list", { threadId, limit: 10, sortDirection: "desc", itemsView: "notLoaded" });
+  let turns;
+  try {
+    turns = await request("thread/turns/list", { threadId, limit: 10, sortDirection: "desc", itemsView: "notLoaded" });
+  } catch (error) {
+    if (!checkOnly || !(error instanceof RpcError) || error.code !== -32600) throw error;
+    // A freshly loaded thread can be idle before it has a turn history.
+    const summary = await request("thread/read", { threadId, includeTurns: false });
+    if (summary?.thread?.id === threadId && summary.thread.status?.type === "idle") {
+      return { status: "idle", threadId };
+    }
+    throw error;
+  }
   if (!Array.isArray(turns?.data)) throw new Error("Invalid active-turn list");
   const active = turns.data.filter(turn => turn?.status === "inProgress");
+  if (checkOnly && active.length === 0) return { status: "idle", threadId };
   if (active.length !== 1 || typeof active[0].id !== "string" || !active[0].id) {
     throw new Error("No unique active turn; nothing was sent");
   }
   const turnId = active[0].id;
+  if (checkOnly) return { status: "active", threadId, turnId };
   const result = await request("turn/steer", { threadId, expectedTurnId: turnId, input: [{ type: "text", text }] });
   if (result?.turnId !== turnId) throw new Error("Missing or mismatched steer acknowledgement");
   return { status: "accepted", threadId, turnId };
@@ -219,7 +242,7 @@ async function steer() {
 process.on("SIGINT", () => abort("Interrupted"));
 process.on("SIGTERM", () => abort("Terminated"));
 let exitCode = 0, output, stream = process.stdout;
-try { output = await steer(); }
+try { output = await run(); }
 catch (error) {
   const rejected = error instanceof RpcError && error.method === "turn/steer";
   const status = !steerAttempted ? "not_sent" : rejected ? "rejected" : "unconfirmed";

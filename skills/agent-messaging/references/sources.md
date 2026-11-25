@@ -28,6 +28,12 @@ Verified source: `rust-v0.163.0`, commit `83086188ae0614bd882818ff1aa23f31949620
 - [Windows AF_UNIX](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/uds/src/lib.rs) and [native peer checks](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/uds/src/windows_peer.rs).
 - [Turn input semantics](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/app-server/src/request_processors/turn_processor.rs), [live turn reads](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/app-server/src/request_processors/thread_processor.rs), and [request schemas](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/app-server-protocol/src/protocol/v2/thread.rs).
 
+### Desktop
+
+The Linux Desktop 26.1120.50957 package with bundled CLI 0.171.0-alpha.13.2 was inspected on 2026-11-25. For a local host on a non-Windows platform, the `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1` branch checks `app-server daemon version` and uses the default control socket when the reported server version is compatible. Custom CLI path or command, forced CLI mode, and extra startup overrides can cause Desktop to select its stdio path. This was package-code review. Desktop was not relaunched, and this check does not establish attachment or live Claude-to-Desktop delivery. [Desktop queue controls](https://learn.chatgpt.com/docs/prompting#steering-and-queuing) · [External queue behavior report](https://github.com/openai/codex/issues/48928)
+
+On 2026-11-25, isolated Linux App Server runs with the bundled CLI 0.171.0-alpha.13.2 and standalone CLI 0.172.0 exercised the sender via the native Unix socket proxy. The check reported a fresh loaded thread as idle and a running turn as active. The sender received the original turn ID in the steer acknowledgement, and the exact input reached a loopback mock model without a new turn. Neither run launched the Desktop UI or used a live model.
+
 ## Antigravity (agy)
 
 Reviewed 2026-11-22:

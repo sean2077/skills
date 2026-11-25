@@ -26,6 +26,8 @@ CODEX_HOME="${TARGET_CODEX_HOME:?Set the receiver's Codex home}" \
 
 `--resume` tries to resume an unloaded thread on the local daemon or selected `--remote` server. It leaves loaded threads alone. A failed resume warns but **still exits successfully** if the message was queued; it cannot take over another active writer. Verified by [Codex 0.166.0's release](https://github.com/openai/codex/releases/tag/rust-v0.166.0) and [PR #57232's implementation/tests](https://github.com/openai/codex/pull/57232), not by live-session execution.
 
+For a queued message that needs attention during a busy Desktop turn, use the [Desktop queue and live-steer procedure](codex-steer.md#desktop-message-stays-queued).
+
 Queue semantics:
 
 - Loaded + idle can begin the queued turn; busy normally waits for a turn boundary. Under an active `/goal`, continuations may starve the queue ([open Windows App 26.1002.7124.0 / CLI 0.160.1 report](https://github.com/openai/codex/issues/52705)); this was not reproduced or verified on newer builds.
