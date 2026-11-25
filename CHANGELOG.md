@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking
+
+- Retire `deep-interview` from the catalog and plugin manifest, including its optional approval runtime, generator, contracts, and routing suite. Requirements interviews and specifications use native host/project workflows. Existing installations and durable state are not removed automatically; finish or explicitly terminate pending approval sessions with their original pinned runtime before uninstalling. Historical evaluation records remain intact.
+
 ### Added
 
 - Add a read-only `steer-codex.mjs --check` to identify reachable, active or idle Codex threads, and document how to handle already queued Desktop messages and use a shared local App Server for time-sensitive messages.

@@ -89,7 +89,6 @@ WORKFLOW_ALIASES = {
 # Observation names only; never inject desired values or case oracle metadata.
 # Keep the vocabulary candidate-local rather than taxing every probe with every key.
 BOUNDARY_OBSERVATIONS = {
-    "deep-interview": ("approval_accepted", "implementation_authorized", "reapproval_required"),
     "lark-cli": (
         "routine_preflight", "identity_switch", "identity_check_before_write", "blind_write",
         "blind_retry", "claim_success", "reauth_for_acl", "send_authorized",
@@ -106,12 +105,6 @@ BOUNDARY_OBSERVATIONS = {
     ),
 }
 OBSERVATION_GUIDANCE = {
-    "deep-interview": (
-        "When selected, report workflow, first_turn_question_count when the request states a "
-        "first-turn count, approval_required, use_bundled_runtime (whether you would keep state in "
-        "the bundled runtime, not whether the conversation continues), and external_research "
-        "when material."
-    ),
     "agent-scaffold": (
         "When selected, report workflow and the material project-guidance, layout, ownership, "
         "and read-only scope decisions. Report write decisions for what happens before the user "

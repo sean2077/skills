@@ -4,7 +4,7 @@
 
 ## Editing and verification
 
-Edit canonical sources using the [ownership map](docs/architecture.md). Generate runtime payloads from `scripts/workflow_runtime/` and `scripts/p0_runtime/`; update scaffold-owned copies through `agent-scaffold upgrade`.
+Edit canonical sources using the [ownership map](docs/architecture.md). Generate the project `skill-eval` runtime from `scripts/p0_runtime/`; update scaffold-owned copies through `agent-scaffold upgrade`.
 
 Run affected checks from [development](docs/development.md); `.github/workflows/validate.yml` defines CI. Add an Unreleased entry for user- or maintainer-visible changes. Use Conventional Commits without `Co-Authored-By`.
 
