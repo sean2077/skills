@@ -49,15 +49,9 @@ If the ids differ, close the new tab and retry with `--pane-id <planner pane>`. 
 
 ## Spawn a native session
 
-Spawn `claude` directly, not through `screen` or a detached shell:
+Use the [executor launch command](../SKILL.md#start-an-executor) to start Claude in a native WezTerm tab. The planner pane determines the window. The new process inherits `WEZTERM_PANE`, so the host's SessionStart hook registers it and the session name becomes addressable. Keep the returned pane id.
 
-```bash
-wezterm cli spawn --pane-id "$pane" --cwd "$checkout" -- \
-  claude --settings "$HOME/.claude/deepseek.json" --dangerously-skip-permissions \
-    --effort max -n "exec-<task>"
-```
-
-The pane determines the window, so the new tab lands beside the planner. Do not pass `--new-window`. The new process inherits `WEZTERM_PANE`, so the host's SessionStart hook registers it and the session name becomes addressable. Keep the returned pane id.
+Codex can pass `NO_COLOR=1` through `wezterm cli spawn`, disabling color in Claude Code. For a Codex launch that should display color, place `env -u NO_COLOR` immediately before `claude`. This clears the variable in the executor process and preserves `TERM` and `COLORTERM` set by WezTerm. Use the same prefix when resuming an executor in a new tab or invoking `claude` inside a shell wrapper.
 
 `--dangerously-skip-permissions` activates YOLO for this executor. `--allow-dangerously-skip-permissions` alone only makes the mode available and does not activate it. Keep the explicit permission flag when using a shell wrapper or resuming a persisted executor, unless a narrower mode was requested. See the [permission default](../SKILL.md#permission-default) and the official [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference).
 
