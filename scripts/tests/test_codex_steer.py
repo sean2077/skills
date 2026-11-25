@@ -10,6 +10,7 @@ import shutil
 import socket
 import struct
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -39,6 +40,17 @@ connection.on("error", () => process.exit(3));
 connection.on("close", () => process.exit(0));
 process.stdin.pipe(connection);
 connection.pipe(process.stdout);
+"""
+
+# Exit without completing the upgrade. Stderr can arrive after the proxy's
+# stdout closes, so the native socket diagnostic must survive that ordering.
+FAILED_PROXY = r"""
+import { closeSync, writeFileSync } from "node:fs";
+closeSync(1);
+setImmediate(() => {
+  writeFileSync(2, process.env.FIXTURE_PROXY_ERROR);
+  process.exitCode = 3;
+});
 """
 
 
@@ -336,7 +348,8 @@ class CodexSteerTests(unittest.TestCase):
 
     def test_check_distinguishes_unloaded_target_from_idle_thread(self):
         with WebSocketFixture("unloaded") as fixture:
-            self.assert_status(self.run_sender(fixture, "--check"), "not_sent", 1)
+            value = self.assert_status(self.run_sender(fixture, "--check"), "not_sent", 1)
+            self.assertEqual("thread_not_loaded", value.get("reason"))
             self.assert_trace(fixture, steers=0, turns=0)
 
     def test_check_reports_fresh_thread_idle_only_when_live_metadata_agrees(self):
@@ -449,6 +462,30 @@ class CodexSteerTests(unittest.TestCase):
                 self.assert_accepted(fixture, self.run_sender(fixture, env=env, set_endpoint=False))
                 self.assertEqual(["app-server", "proxy", "--sock", str(address)],
                                  json.loads(capture.read_text(encoding="utf-8")))
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "fixture uses native Linux socket error numbers")
+    def test_check_identifies_native_proxy_socket_failure_without_leaking_stderr(self):
+        launcher = self.work / "failing proxy.mjs"
+        launcher.write_text(FAILED_PROXY, encoding="utf-8")
+        stderr_header = "Error: failed to connect to socket at /private-proxy-path-marker.sock\n\nCaused by:\n    "
+        for reason, stderr in (
+            ("control_socket_refused", stderr_header + "Connection refused (os error 111)\n"),
+            ("control_socket_missing", stderr_header + "No such file or directory (os error 2)\n"),
+            (None, "Unrelated private-proxy-path-marker failure (os error 111)\n"),
+        ):
+            with self.subTest(reason=reason):
+                env = self.env.copy()
+                env.update(
+                    CODEX_BIN=str(launcher), TARGET_CODEX_HOME=str(self.work / "receiver home"),
+                    FIXTURE_PROXY_ERROR=stderr,
+                )
+                result = self.run_sender(None, "--check", env=env)
+                value = self.assert_status(result, "not_sent", 1)
+                if reason is None:
+                    self.assertNotIn(value.get("reason"), {"control_socket_refused", "control_socket_missing"})
+                else:
+                    self.assertEqual(reason, value.get("reason"))
+                self.assertNotIn("private-proxy-path-marker", result.stderr)
 
     @unittest.skipUnless(os.name == "nt", "npm .cmd shim resolution is Windows-only")
     def test_windows_npm_shim_runs_its_js_launcher_without_a_shell(self):

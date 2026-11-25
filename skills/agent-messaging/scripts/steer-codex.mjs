@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
+import { constants as osConstants } from "node:os";
 import { delimiter, isAbsolute, join } from "node:path";
 
 const usage = [
@@ -22,9 +23,9 @@ let closing = false, steerAttempted = false, nextId = 0;
 const connections = new Set();
 let deadline;
 
-function abort(message) {
+function abort(error) {
   if (closing || fatal) return;
-  fatal = new Error(message);
+  fatal = typeof error === "string" ? new Error(error) : error;
   rejectOpen?.(fatal);
   if (pending) {
     clearTimeout(pending.timer);
@@ -50,6 +51,25 @@ function codexBinary() {
     if (existsSync(join(dir, "codex.cmd")) && existsSync(launcher)) return launcher;
   }
   return "codex";
+}
+
+class RouteError extends Error {
+  constructor(reason, message) {
+    super(message);
+    this.reason = reason;
+  }
+}
+
+function proxyConnectError(stderr) {
+  const detail = /^Error: failed to connect to socket at [^\r\n]+\r?\n\s*Caused by:\r?\n[^\r\n]*\(os error (\d+)\)\s*$/.exec(stderr);
+  const code = Number(detail?.[1]);
+  if (code === osConstants.errno.ENOENT) {
+    return new RouteError("control_socket_missing", "Codex control socket path is missing; verify the receiver's endpoint or Codex home");
+  }
+  if (code === osConstants.errno.ECONNREFUSED || (process.platform === "win32" && code === 10061)) {
+    return new RouteError("control_socket_refused", "Codex control socket refused the connection; check the receiver's live App Server endpoint");
+  }
+  return new RouteError("control_proxy_failed", "Codex proxy closed before connecting; check the intended live endpoint and CODEX_BIN");
 }
 
 // The native proxy forwards WebSocket bytes, not JSON lines. Keep its temporary
@@ -78,20 +98,32 @@ async function proxyEndpoint(path) {
       const args = ["app-server", "proxy", "--sock", path];
       try {
         proxy = /\.[cm]?js$/i.test(binary)
-          ? spawn(process.execPath, [binary, ...args], { stdio: ["pipe", "pipe", "ignore"] })
-          : spawn(binary, args, { stdio: ["pipe", "pipe", "ignore"] });
+          ? spawn(process.execPath, [binary, ...args], { stdio: ["pipe", "pipe", "pipe"] })
+          : spawn(binary, args, { stdio: ["pipe", "pipe", "pipe"] });
       } catch {
         // Windows can reject some launchers synchronously (EINVAL/EFTYPE).
         abort("Cannot launch Codex proxy; check CODEX_BIN");
         return connection.destroy();
       }
       proxy.on("error", () => abort("Cannot launch Codex proxy; check CODEX_BIN"));
-      proxy.on("exit", () => abort("Codex proxy closed; check the intended live endpoint"));
-      proxy.stdin.on("error", () => abort("Codex proxy write failed"));
+      let stderr = "", forwardedOutput = false;
+      proxy.stderr.on("data", chunk => {
+        if (stderr.length < 4096) stderr += chunk.subarray(0, 4096 - stderr.length).toString();
+      });
+      proxy.stdout.once("data", () => { forwardedOutput = true; });
+      // Wait for stderr before closing the bridge, so the WebSocket error
+      // cannot hide a known socket failure during the handshake.
+      proxy.on("close", () => {
+        if (!forwardedOutput) abort(proxyConnectError(stderr));
+        connection.end();
+      });
+      proxy.stdin.on("error", error => {
+        if (error.code !== "EPIPE" && error.code !== "ERR_STREAM_DESTROYED") abort("Codex proxy write failed");
+      });
       proxy.stdout.on("error", () => abort("Codex proxy read failed"));
       proxy.stdin.write(header);
       connection.pipe(proxy.stdin);
-      proxy.stdout.pipe(connection);
+      proxy.stdout.pipe(connection, { end: false });
     }
     connection.on("data", handshake);
   });
@@ -209,7 +241,9 @@ async function run() {
     const page = await request("thread/loaded/list", { limit: 50, ...(cursor ? { cursor } : {}) });
     if (!Array.isArray(page?.data) || !page.data.every(id => typeof id === "string")) throw new Error("Invalid loaded-thread list");
     if (page.data.includes(threadId)) break;
-    if (page.nextCursor === null || page.nextCursor === undefined) throw new Error("Target thread is not loaded on this server");
+    if (page.nextCursor === null || page.nextCursor === undefined) {
+      throw new RouteError("thread_not_loaded", "Target thread is not loaded on this server; verify the thread ID and the server that owns it");
+    }
     cursor = page.nextCursor;
     if (typeof cursor !== "string" || !cursor || cursors.has(cursor)) throw new Error("Invalid or repeated loaded-thread cursor");
     cursors.add(cursor);
@@ -247,7 +281,11 @@ catch (error) {
   const rejected = error instanceof RpcError && error.method === "turn/steer";
   const status = !steerAttempted ? "not_sent" : rejected ? "rejected" : "unconfirmed";
   exitCode = status === "unconfirmed" ? 2 : 1;
-  output = { status, error: error.message + (status === "unconfirmed" ? "; check target state before retrying" : "") };
+  output = {
+    status,
+    ...(error instanceof RouteError ? { reason: error.reason } : {}),
+    error: error.message + (status === "unconfirmed" ? "; check target state before retrying" : ""),
+  };
   stream = process.stderr;
 } finally {
   closing = true;
@@ -255,6 +293,7 @@ catch (error) {
   for (const connection of connections) connection.destroy();
   proxy?.stdin.destroy();
   proxy?.stdout.destroy();
+  proxy?.stderr.destroy();
   proxy?.kill();
   ws?.close();
 }

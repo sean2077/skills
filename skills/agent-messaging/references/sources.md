@@ -36,6 +36,8 @@ With `CODEX_APP_SERVER_WS_URL` instead, the isolated Desktop's local host initia
 
 Separate isolated runs with the bundled CLI 0.171.0-alpha.13.2 and standalone CLI 0.172.0 exercised the native Unix socket proxy. The check reported a fresh loaded thread as idle and a running turn as active. The sender received the original turn ID in the steer acknowledgement, and the exact input reached a loopback mock model without a new turn.
 
+The same Linux CLI builds were also checked with an absent socket and a socket bound without a listener. The sender distinguished the two failures without exposing the proxy's stderr. The WebSocket fixture separately exercised a reachable server that had not loaded the requested thread.
+
 ## Antigravity (agy)
 
 Reviewed 2026-11-22:

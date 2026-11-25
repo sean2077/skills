@@ -1,32 +1,32 @@
 # Queue input for native Codex
 
-Use this route when the caller wants the message handled later. When sending to a running Codex thread with no timing specified, use [steer](codex-steer.md). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
+Queue only when the caller explicitly requests later handling. If an ordinary send to a running Codex thread has no timing specified, use [steer](codex-steer.md). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
 
 For a **local receiver**, set `TARGET_CODEX_HOME` to its actual Codex home as seen by the CLI process (not an inherited sender home), then bind it to `CODEX_HOME` for the call. `codex queue` selects its local daemon using `CODEX_HOME` or the calling user's default, even when `--thread` is a UUID. An unset or wrong home can target the wrong server. Do not guess a Windows/WSL/container path.
 
 ```bash
 CODEX_HOME="${TARGET_CODEX_HOME:?Set the receiver's Codex home}" \
-  codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE"
+  command codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE"
 ```
 
 For a **remote receiver**, use its verified reachable endpoint instead of local daemon discovery:
 
 ```bash
-codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE" --remote "$TARGET_ENDPOINT"
+command codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE" --remote "$TARGET_ENDPOINT"
 ```
 
-If authenticated, `--remote-auth-token-env NAME` names the environment variable containing its token. `--no-daemon` is rejected for `codex queue` in both local and `--remote` modes; local queueing must reach the shared daemon rather than a separate server. The native CLI handles transport selection; it does not need a separate App Server client.
+Use `command codex` in Bash or Zsh when an alias adds interactive flags such as `--dangerously-bypass-approvals-and-sandbox`, which queue rejects. If authenticated, `--remote-auth-token-env NAME` names the environment variable containing its token. `--no-daemon` is rejected for `codex queue` in both local and `--remote` modes; local queueing must reach the shared daemon rather than a separate server. The native CLI handles transport selection.
 
 The CLI uses `thread/queue/add`. On Codex CLI **0.166.0+**, use `--resume` only if the recipient should be activated rather than merely queued:
 
 ```bash
 CODEX_HOME="${TARGET_CODEX_HOME:?Set the receiver's Codex home}" \
-  codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE" --resume
+  command codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE" --resume
 ```
 
 `--resume` tries to resume an unloaded thread on the local daemon or selected `--remote` server. It leaves loaded threads alone. A failed resume warns but **still exits successfully** if the message was queued; it cannot take over another active writer. Verified by [Codex 0.166.0's release](https://github.com/openai/codex/releases/tag/rust-v0.166.0) and [PR #57232's implementation/tests](https://github.com/openai/codex/pull/57232), not by live-session execution.
 
-For a queued message that needs attention during a busy Desktop turn, use the [Desktop queue and live-steer procedure](codex-steer.md#desktop-message-stays-queued).
+If the caller chooses queue after steer is blocked, report the acknowledgement as queued for later handling. For attention during a busy Desktop turn, have the recipient use [manual Desktop Steer](codex-steer.md#desktop-message-stays-queued) if the action is available.
 
 Queue semantics:
 

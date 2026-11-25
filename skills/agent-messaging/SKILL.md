@@ -5,9 +5,13 @@ description: "Message existing Claude Code, Codex CLI/Desktop or Google Antigrav
 
 # Agent messaging
 
-Prefer your host's built-in messaging when it reaches the target with the intended effect, including same-product sessions/subagents. Message text, replies and workflow remain caller-owned.
+**Codex defaults to steer. Queue only when the caller explicitly requests later handling.** For an ordinary send to a running Codex session, invoke the bundled [`steer-codex.mjs`](references/codex-steer.md#send) directly, or use a built-in sender verified to steer that target. If this skill changes during a long-lived session, reread `SKILL.md` before the next send, even if the update notice only mentions a reference file.
 
-**For Codex, default to steering the active turn.** A request to send a message to a running Codex session with no timing specified uses the [steer sender](references/codex-steer.md), or a built-in sender verified to steer. Use [queue](references/codex-queue.md) only when the caller wants later handling. If steering fails or the receiver is unreachable, report the result and the blocker. An unconfirmed result needs a target check before any resend. For an idle receiver, use [start](references/codex.md#start) when the caller wants a new turn to run now.
+If steer is unavailable, report the result and blocker. [Queue](references/codex-queue.md) becomes a fallback only if the caller chooses deferred delivery. Report it as queued and point to [manual Desktop Steer](references/codex-steer.md#desktop-message-stays-queued) when available. Check an unconfirmed delivery before any resend. For an idle receiver, use [start](references/codex.md#start) when the caller wants a new turn to run now.
+
+Use `command codex` for direct Codex CLI commands in Bash or Zsh to bypass aliases that inject unsupported flags. The steer script spawns its proxy executable directly.
+
+For other receivers, prefer your host's built-in messaging when it reaches the target with the intended effect, including same-product sessions/subagents. Message text, replies and workflow remain caller-owned.
 
 | Receiver | Native route | Effect | Details |
 |---|---|---|---|
