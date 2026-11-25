@@ -18,7 +18,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Send ordinary messages to loaded Codex sessions with `steer-codex.mjs --auto`. The App Server steers the active turn or starts one if the target is idle. Keep explicit steer-only and queued delivery available.
+- Send ordinary messages to Codex with `steer-codex.mjs --auto`. Steer or start a turn on a reachable App Server, then use native queue fallback when the live route fails before submission. Report queued separately from live acceptance, and keep `--no-queue` for live-only requests.
 - Remove the repository's Claude Code `Stop`/`StopFailure` and Codex `Stop` hooks that ran `pairroom relay hook`; sessions in this checkout no longer require or invoke PairRoom. The managed worktree-guard and authority-budget hooks are unchanged.
 - Default new `agent-executors` sessions to YOLO with `--dangerously-skip-permissions` to reduce routine permission stalls; keep explicit narrower modes, verify the effective mode before task delivery, and surface startup or host-policy blockers without changing shared settings.
 - Recognize current Miaoda/Spark `*.feishuapp.com` runtime URLs when routing `lark-cli` work, distinguish page tokens from application IDs, and document the Windows Git Bash remote `--path` conversion workaround for affected apps file commands (upstream CLI v1.0.100).

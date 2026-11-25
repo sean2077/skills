@@ -1,41 +1,38 @@
 # Queue input for native Codex
 
-Queue only when the caller explicitly requests later handling. For ordinary delivery, use the [automatic sender](codex-steer.md#send). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
+Use this command for an explicit request to defer. For ordinary delivery, the [automatic sender](codex-steer.md#send) prefers live input and uses queue as its fallback. Verify the receiver's exact thread UUID and ensure it differs from the sender's `CODEX_THREAD_ID`.
 
-For a **local receiver**, set `TARGET_CODEX_HOME` to its actual Codex home as seen by the CLI process (not an inherited sender home), then bind it to `CODEX_HOME` for the call. `codex queue` selects its local daemon using `CODEX_HOME` or the calling user's default, even when `--thread` is a UUID. An unset or wrong home can target the wrong server. Do not guess a Windows/WSL/container path.
+For a **local receiver**, run on its host from its absolute Codex home with `CODEX_HOME` set to that directory. This keeps the sender's project config out of the queue call. If the receiver sets `CODEX_SQLITE_HOME` in its environment, use the same value. Otherwise unset any inherited override from the sender. The native CLI can use a local daemon or a short-lived embedded App Server. An existing saved thread can be queued even when no shared listener is running. [Codex 0.172.0 server selection](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_archive_commands.rs#L273-L294) · [Native queue command](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_queue_commands.rs#L29-L88)
 
 ```bash
-CODEX_HOME="${TARGET_CODEX_HOME:?Set the receiver's Codex home}" \
-  command codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE"
+(
+  receiver_home="${TARGET_CODEX_HOME:?Set the receiver's Codex home}"
+  cd -- "$receiver_home" || exit
+  CODEX_HOME="$receiver_home" command codex queue --thread "$TARGET_THREAD_ID" --message="$MESSAGE"
+)
 ```
 
 For a **remote receiver**, use its verified reachable endpoint instead of local daemon discovery:
 
 ```bash
-command codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE" --remote "$TARGET_ENDPOINT"
+command codex queue --thread "$TARGET_THREAD_ID" --message="$MESSAGE" --remote "$TARGET_CODEX_ENDPOINT"
 ```
 
-Use `command codex` in Bash or Zsh when an alias adds interactive flags such as `--dangerously-bypass-approvals-and-sandbox`, which queue rejects. If authenticated, `--remote-auth-token-env NAME` names the environment variable containing its token. `--no-daemon` is rejected for `codex queue` in both local and `--remote` modes; local queueing must reach the shared daemon rather than a separate server. The native CLI handles transport selection.
+Use `command codex` in Bash or Zsh to bypass aliases that add unsupported interactive flags such as `--dangerously-bypass-approvals-and-sandbox`. Omit `--no-daemon` from the sending command and leave server selection to the CLI, even if the receiver was launched with `--no-daemon`. For an authenticated remote endpoint, `--remote-auth-token-env NAME` specifies the environment variable containing its token.
 
-The CLI uses `thread/queue/add`. On Codex CLI **0.166.0+**, use `--resume` only if the recipient should be activated rather than merely queued:
-
-```bash
-CODEX_HOME="${TARGET_CODEX_HOME:?Set the receiver's Codex home}" \
-  command codex queue --thread "$TARGET_THREAD_ID" --message "$MESSAGE" --resume
-```
+The CLI uses `thread/queue/add`. On Codex CLI **0.166.0+**, append `--resume` to the chosen command only if the recipient should also be activated.
 
 `--resume` tries to resume an unloaded thread on the local daemon or selected `--remote` server. It leaves loaded threads alone. A failed resume warns but **still exits successfully** if the message was queued; it cannot take over another active writer. Verified by [Codex 0.166.0's release](https://github.com/openai/codex/releases/tag/rust-v0.166.0) and [PR #57232's implementation/tests](https://github.com/openai/codex/pull/57232), not by live-session execution.
 
-Report a queue acknowledgement as queued for later handling. For attention during a busy Desktop turn, have the recipient use [manual Desktop Steer](codex-steer.md#desktop-message-stays-queued) if the action is available.
+Report a queue acknowledgement as queued. In Desktop, use the existing item's [manual Steer](codex-steer.md#desktop-message-stays-queued) if available. In the interactive CLI, typing a follow-up and pressing Enter while Codex works can steer. That composer action is separate from running the external `codex queue` command. [Interactive steering and queuing](https://learn.chatgpt.com/docs/prompting#steering-and-queuing)
 
 Queue semantics:
 
-- Loaded + idle can begin the queued turn; busy normally waits for a turn boundary. Under an active `/goal`, continuations may starve the queue ([open Windows App 26.1002.7124.0 / CLI 0.160.1 report](https://github.com/openai/codex/issues/52705)); this was not reproduced or verified on newer builds.
-- Unloaded input persists until the thread resumes; optional `--resume` attempts activation, not guaranteed delivery.
-- An interrupted target is not automatically restarted; archived/ephemeral threads reject delivery.
-- Success means **queued**, not read/completed, even when `--resume` warns. Check target consumption where needed; do not blindly retry, since each repeat adds another message.
+- A loaded idle thread can start the queued message promptly. A busy thread can accept it immediately into the queue and process it in a later turn. Separate servers sharing the same storage may discover the change on a poll. Under an active `/goal`, consecutive continuations can delay dispatch. [Dispatch source](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/ext/queue/src/service.rs#L418-L495) · [Earlier Windows report](https://github.com/openai/codex/issues/52705)
+- An existing saved thread can keep queued input until it is loaded. A fresh thread with no saved history needs to be loaded on the receiving server. Interrupted threads are not automatically restarted, and archived or ephemeral threads can reject queueing. [Queue target validation](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/app-server/src/request_processors/thread_queue_processor.rs#L249-L311)
+- A successful command acknowledges storage of the queue item, even when optional `--resume` warns. Check the target's queue and history when delivery is uncertain. Repeating the command can add a second item.
 
-Core queue semantics reviewed at Codex 0.163.0; `--resume` and local home selection source-reviewed at 0.166.0 (2026-11-06 and 2026-11-13 respectively). The [version-pinned queue implementation](https://github.com/openai/codex/blob/rust-v0.166.0/codex-rs/tui/src/session_queue_commands.rs) and [home resolution](https://github.com/openai/codex/blob/rust-v0.166.0/codex-rs/utils/home-dir/src/lib.rs) establish routing, not live consumption. Check `codex --version` / `codex queue --help` before using a version-specific flag. [Version-pinned evidence](sources.md#codex) is for verification, not required for each send.
+Linux tests with CLI 0.172.0 and the Desktop-bundled 0.171.0-alpha.13.2 verified queue storage and dispatch with isolated sessions. Check `codex --version` and `codex queue --help` for the installed command. [Verification details](sources.md#queue-and-fallback)
 
 ## First message to a fresh Codex task
 
