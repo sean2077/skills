@@ -22,11 +22,11 @@ Honor an explicit user or environment requirement for a narrower mode: omit the 
 
 1. Confirm the checkout and task identifier. Write the task file first: goal, confirmed facts, acceptance criteria, boundaries, and the planner session name.
 2. Resolve **this session's WezTerm pane**; the executor tab must live in the same window as the planner. Never use `--new-window`. [WezTerm tabs](references/wezterm-tabs.md) covers resolving the pane when the host strips `WEZTERM_*`, multiple GUI instances, and placement verification.
-3. Spawn a tab with the executor profile and the default YOLO mode:
+3. Spawn a tab with the executor profile and the default YOLO mode. For Codex launches, use the `env` prefix below unless the user requests monochrome output. In other cases, start with `claude` after `--`.
 
    ```bash
    wezterm cli spawn --pane-id "$planner_pane" --cwd "$checkout" -- \
-     claude --settings "$HOME/.claude/deepseek.json" --dangerously-skip-permissions \
+     env -u NO_COLOR claude --settings "$HOME/.claude/deepseek.json" --dangerously-skip-permissions \
        --effort max -n "exec-<task>"
    ```
 
