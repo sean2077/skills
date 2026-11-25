@@ -141,7 +141,6 @@ class RpcError extends Error {
   constructor(method, code) {
     super(`${method} rejected (RPC ${code})`);
     this.method = method;
-    this.code = code;
   }
 }
 
@@ -248,25 +247,20 @@ async function run() {
     if (typeof cursor !== "string" || !cursor || cursors.has(cursor)) throw new Error("Invalid or repeated loaded-thread cursor");
     cursors.add(cursor);
   }
-  let turns;
-  try {
-    turns = await request("thread/turns/list", { threadId, limit: 10, sortDirection: "desc", itemsView: "notLoaded" });
-  } catch (error) {
-    if (!checkOnly || !(error instanceof RpcError) || error.code !== -32600) throw error;
-    // A freshly loaded thread can be idle before it has a turn history.
-    const summary = await request("thread/read", { threadId, includeTurns: false });
-    if (summary?.thread?.id === threadId && summary.thread.status?.type === "idle") {
-      return { status: "idle", threadId };
-    }
-    throw error;
-  }
+  const summary = await request("thread/read", { threadId, includeTurns: false });
+  if (summary?.thread?.id !== threadId) throw new Error("Invalid target thread metadata");
+  const runtimeStatus = summary.thread.status?.type;
+  if (checkOnly && runtimeStatus === "idle") return { status: "idle", threadId };
+  if (runtimeStatus !== "active") throw new Error("Target thread has no active turn; nothing was sent");
+  // A restart can leave older history marked inProgress. Only the newest turn
+  // is a candidate, and expectedTurnId guards against a stale or changed turn.
+  const turns = await request("thread/turns/list", { threadId, limit: 1, sortDirection: "desc", itemsView: "notLoaded" });
   if (!Array.isArray(turns?.data)) throw new Error("Invalid active-turn list");
-  const active = turns.data.filter(turn => turn?.status === "inProgress");
-  if (checkOnly && active.length === 0) return { status: "idle", threadId };
-  if (active.length !== 1 || typeof active[0].id !== "string" || !active[0].id) {
+  const [active] = turns.data;
+  if (turns.data.length !== 1 || active?.status !== "inProgress" || typeof active.id !== "string" || !active.id) {
     throw new Error("No unique active turn; nothing was sent");
   }
-  const turnId = active[0].id;
+  const turnId = active.id;
   if (checkOnly) return { status: "active", threadId, turnId };
   const result = await request("turn/steer", { threadId, expectedTurnId: turnId, input: [{ type: "text", text }] });
   if (result?.turnId !== turnId) throw new Error("Missing or mismatched steer acknowledgement");

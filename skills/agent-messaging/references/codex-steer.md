@@ -23,17 +23,23 @@ Direct WebSocket connections cannot supply custom authentication headers. Use an
 
 ### Connect Desktop and the sender to one server
 
-On Linux Desktop 26.1120.50957, an isolated Desktop initialized against an external App Server via `CODEX_APP_SERVER_WS_URL`. For an operator who chooses this setup, let active work finish and fully quit Desktop. Start a compatible App Server using the receiver's normal Codex home and an unused loopback port. Leave it running, then launch Desktop from a second terminal with the same URL:
+Linux Desktop 26.1120.50957 and an independent Claude Code session were tested over the same private Unix socket. If Desktop is already connected to that server, get the socket path from the receiver and go directly to the check. To change the Desktop transport, let active work finish and fully quit Desktop. Stop any old App Server serving the chat before starting its replacement with the receiver's normal Codex home. [Build evidence](sources.md#desktop)
 
 ~~~bash
-# First terminal on the Desktop host
-command codex app-server --listen ws://127.0.0.1:4500
+# First terminal on the Desktop host. Leave the App Server running.
+socket_dir="${XDG_RUNTIME_DIR:?Set the receiver runtime directory}/codex-desktop-steer"
+mkdir -m 0700 -p -- "$socket_dir"
+socket_path="$socket_dir/app.sock"
+command codex app-server --listen "unix://$socket_path"
 
 # Second terminal on the Desktop host
-CODEX_APP_SERVER_WS_URL=ws://127.0.0.1:4500 chatgpt
+socket_path="${XDG_RUNTIME_DIR:?Set the receiver runtime directory}/codex-desktop-steer/app.sock"
+CODEX_APP_SERVER_WS_URL="ws+unix://localhost${socket_path}:/rpc" chatgpt
 ~~~
 
-Open the intended chat in that Desktop instance. Set `TARGET_CODEX_ENDPOINT=ws://127.0.0.1:4500` and `TARGET_THREAD_ID` to the intended receiver, then run [the read-only check](#check-the-live-route). For repeated use, save the URL in the Desktop launch command and the sender setup. Start the App Server before Desktop and recheck the target after reconnecting. Keep the listener on loopback and run cross-machine sends over SSH on the Desktop host. The URL override is version-specific. The Linux Desktop test covered initialization and same-server steering in an isolated profile. Reopening an existing signed-in chat still requires the target check. The local-daemon environment switch alone left this Desktop build on stdio in the isolated test. [Build evidence and limits](sources.md#desktop) · [App Server command](https://learn.chatgpt.com/docs/developer-commands#codex-app-server)
+Open the intended chat in that Desktop instance. Give the sender `TARGET_CODEX_ENDPOINT="unix://$socket_path"` and its exact `TARGET_THREAD_ID`, then run the read-only check. The Desktop URL includes `localhost` and `:/rpc` in the tested build. The sender uses the plain `unix://` path. Confirm that the socket is owned by the receiving user with mode `0600` and that its parent directory has mode `0700`. If the socket path is a symlink, verify the permissions on the resolved socket and its actual parent too. Processes running as the receiving user can still connect. [Read-only check](#check-the-live-route) · [App Server transport](https://learn.chatgpt.com/docs/app-server#protocol)
+
+For repeated use, save the Desktop launch command and receiver endpoint. Start the App Server before Desktop and check the reopened chat. For cross-machine sends to this Unix socket, use SSH to run the sender on the Desktop host. An existing loopback TCP setup can use its verified `ws://127.0.0.1:PORT` endpoint with both clients. Direct TCP without WebSocket authentication makes the endpoint accessible to local processes that can reach the port. [SSH delivery](ssh.md) · [WebSocket authentication](https://learn.chatgpt.com/docs/app-server#protocol)
 
 ## Check the live route
 
@@ -43,7 +49,7 @@ With the receiver's target variables set, use the skill's installed directory as
 node "$SKILL_DIR/scripts/steer-codex.mjs" --check
 ```
 
-`--check` ignores message input and reads the loaded thread's live state without sending. `active` means one active turn was found, `idle` means the loaded thread had no active turn, and `not_sent` reports a failed check. Both successful results exit 0. A freshly opened thread can report idle through thread metadata before it has saved a first turn. The sender rechecks the live turn when it sends.
+`--check` ignores message input and reads the loaded thread's live state without sending. For an active thread it checks the newest turn ID. An idle thread can report idle before it has saved a first turn. Both results exit 0. `not_sent` reports a failed check. The sender rechecks the live turn when it sends.
 
 When a failed check includes `reason`, use it to choose the next check.
 
@@ -72,7 +78,7 @@ printf '%s' 'Message text' | node "$SKILL_DIR/scripts/steer-codex.mjs" -
 
 With no argument, use exported `MESSAGE`. A file or stdin takes precedence; text, including BOM and trailing newlines, is preserved and never echoed. Empty text is sent as given. Invalid UTF-8 in a file or stdin fails before connecting; use one of those when exact bytes matter, because the environment may already have replaced invalid bytes.
 
-The sender confirms the thread is loaded, reads recent turn metadata with item bodies unloaded, and sends one `turn/steer` with `expectedTurnId`. An absent, changed, or unsteerable turn fails without a queue/start fallback. Each request waits at most 5 seconds within a 15-second total budget, so a slow server can produce `not_sent` or `unconfirmed`.
+The sender confirms the thread is loaded and active, reads the newest turn without its item bodies, and sends one `turn/steer` with `expectedTurnId`. A restart can leave older history marked in progress. The live thread status and newest turn identify the candidate, and the server rejects a stale or changed turn ID. Each request waits at most 5 seconds within a 15-second total budget, so a slow server can produce `not_sent` or `unconfirmed`.
 
 ## Result
 

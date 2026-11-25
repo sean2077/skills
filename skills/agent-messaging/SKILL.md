@@ -24,6 +24,8 @@ For other receivers, prefer your host's built-in messaging when it reaches the t
 
 When a message from another session is stuck in Codex Desktop's queue, [handle the existing item, then check the live route for future messages](references/codex-steer.md#desktop-message-stays-queued).
 
+For same-machine Linux Desktop sends, prefer its configured [private Unix socket](references/codex-steer.md#connect-desktop-and-the-sender-to-one-server). Get the receiver's socket path and use it as `TARGET_CODEX_ENDPOINT`.
+
 For Codex's `send_message_to_thread`, a fresh task can fail at `thread/resume` with `no rollout found`. If the receiver is already loaded on its daemon and the caller wants queued delivery, [queue the first message](references/codex-queue.md#first-message-to-a-fresh-codex-task).
 
 Use the intended receiver's native environment and endpoint; this skill adds no SDK, Channel or cloud API integration. Target a distinct session or thread, never the sender's own or an inherited parent identity. An ID or shared history alone does not establish access to its live process; CLI/Desktop launches may not expose a control endpoint.

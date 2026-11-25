@@ -27,6 +27,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Resolve Codex steer against the live thread state and newest turn so stale in-progress history after a restart no longer blocks delivery. Document and verify owner-only Linux Desktop Unix socket delivery from an independent Claude Code session.
 - Distinguish missing or refusing Codex control sockets from reachable App Servers that have not loaded the intended thread. Clarify shared Desktop setup and how to bypass shell aliases for explicit queued delivery.
 - Require `agent-executors` to spawn its tab in the planner's WezTerm window via `spawn --pane-id` and verify the new pane's `window_id`; remove the `--new-window` executor path, which could place the tab in an invisible quake window.
 - Keep the Python 3.8 CI compatibility-floor job on Ubuntu 24.04 after `ubuntu-latest` began rolling onto Ubuntu 26.04, for which `actions/setup-python` has no Python 3.8 x64 distribution.

@@ -209,19 +209,22 @@ class WebSocketFixture:
                 result = {"data": ["unrelated-thread"], "nextCursor": "page-two"}
             else:
                 result = {"data": [THREAD], "nextCursor": None}
+        elif method == "thread/read":
+            status = "idle" if self.mode in ("idle", "idle-stale-history", "fresh-idle") else "active"
+            result = {"thread": {"id": THREAD, "status": {"type": status}}}
         elif method == "thread/turns/list":
             if self.mode in ("fresh-idle", "fresh-active"):
                 self.send({"id": request_id, "error": {"code": -32600, "message": "Thread is not materialized"}})
                 return True
-            data = [{"id": "finished-turn", "status": "completed", "items": []}]
-            if self.mode != "idle":
-                data.append({"id": TURN, "status": "inProgress", "items": []})
+            newest_status = "completed" if self.mode in ("idle", "latest-completed") else "inProgress"
+            data = [{"id": TURN, "status": newest_status, "items": []},
+                    {"id": "earlier-turn", "status": "completed", "items": []}]
+            if self.mode in ("stale-history", "idle-stale-history", "latest-completed"):
+                data.append({"id": "stale-active-turn", "status": "inProgress", "items": []})
+            data = data[:message["params"]["limit"]]
             if self.mode == "ambiguous-turn":
                 data.append({"id": "other-active-turn", "status": "inProgress", "items": []})
             result = {"data": data, "nextCursor": None}
-        elif method == "thread/read" and self.mode in ("fresh-idle", "fresh-active"):
-            status = "idle" if self.mode == "fresh-idle" else "active"
-            result = {"thread": {"id": THREAD, "status": {"type": status}}}
         elif method == "turn/steer":
             if self.mode == "rejected":
                 self.send({"id": request_id, "error": {"code": -32600, "message": TEXT}})
@@ -301,11 +304,11 @@ class CodexSteerTests(unittest.TestCase):
         self.assertEqual(status, value["status"])
         return value
 
-    def assert_trace(self, fixture, *, steers=1, pages=1, turns=1, reads=0):
+    def assert_trace(self, fixture, *, steers=1, pages=1, turns=1, reads=1):
         methods = [message["method"] for message in fixture.messages]
         self.assertEqual(
             ["initialize", "initialized"] + ["thread/loaded/list"] * pages
-            + ["thread/turns/list"] * turns + ["thread/read"] * reads + ["turn/steer"] * steers,
+            + ["thread/read"] * reads + ["thread/turns/list"] * turns + ["turn/steer"] * steers,
             methods,
         )
         self.assertNotIn("id", fixture.messages[1])
@@ -313,7 +316,7 @@ class CodexSteerTests(unittest.TestCase):
             if message["method"] == "thread/loaded/list":
                 self.assertEqual(50, message["params"]["limit"])
             elif message["method"] == "thread/turns/list":
-                self.assertEqual({"threadId": THREAD, "limit": 10,
+                self.assertEqual({"threadId": THREAD, "limit": 1,
                                   "sortDirection": "desc", "itemsView": "notLoaded"},
                                  message["params"])
             elif message["method"] == "thread/read":
@@ -344,12 +347,22 @@ class CodexSteerTests(unittest.TestCase):
             result = self.run_sender(fixture, "--check")
             self.assertEqual({"status": "idle", "threadId": THREAD},
                              self.assert_status(result, "idle", 0))
-            self.assert_trace(fixture, steers=0)
+            self.assert_trace(fixture, steers=0, turns=0)
 
     def test_check_distinguishes_unloaded_target_from_idle_thread(self):
         with WebSocketFixture("unloaded") as fixture:
             value = self.assert_status(self.run_sender(fixture, "--check"), "not_sent", 1)
             self.assertEqual("thread_not_loaded", value.get("reason"))
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
+
+    def test_live_turn_is_selected_when_earlier_history_is_still_in_progress(self):
+        with WebSocketFixture("stale-history") as fixture:
+            self.assert_accepted(fixture, self.run_sender(fixture))
+
+    def test_idle_live_state_overrides_stale_in_progress_history(self):
+        with WebSocketFixture("idle-stale-history") as fixture:
+            self.assertEqual({"status": "idle", "threadId": THREAD},
+                             self.assert_status(self.run_sender(fixture, "--check"), "idle", 0))
             self.assert_trace(fixture, steers=0, turns=0)
 
     def test_check_reports_fresh_thread_idle_only_when_live_metadata_agrees(self):
@@ -357,10 +370,10 @@ class CodexSteerTests(unittest.TestCase):
             result = self.run_sender(fixture, "--check")
             self.assertEqual({"status": "idle", "threadId": THREAD},
                              self.assert_status(result, "idle", 0))
-            self.assert_trace(fixture, steers=0, reads=1)
+            self.assert_trace(fixture, steers=0, turns=0)
         with WebSocketFixture("fresh-active") as fixture:
             self.assert_status(self.run_sender(fixture, "--check"), "not_sent", 1)
-            self.assert_trace(fixture, steers=0, reads=1)
+            self.assert_trace(fixture, steers=0)
 
     def test_file_from_installed_path_overrides_environment_without_text_loss(self):
         text = TEXT * 6000
@@ -392,18 +405,18 @@ class CodexSteerTests(unittest.TestCase):
     def test_repeated_cursor_cannot_loop_or_fall_back(self):
         with WebSocketFixture("cursor-loop") as fixture:
             self.assert_status(self.run_sender(fixture), "not_sent", 1)
-            self.assert_trace(fixture, steers=0, pages=2, turns=0)
+            self.assert_trace(fixture, steers=0, pages=2, turns=0, reads=0)
 
     def test_unloaded_thread_is_not_resumed_or_queued(self):
         with WebSocketFixture("unloaded") as fixture:
             self.assert_status(self.run_sender(fixture), "not_sent", 1)
-            self.assert_trace(fixture, steers=0, turns=0)
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
 
     def test_no_unique_active_turn_does_not_start_or_send(self):
-        for mode in ("idle", "ambiguous-turn"):
+        for mode in ("idle", "ambiguous-turn", "latest-completed"):
             with self.subTest(mode=mode), WebSocketFixture(mode) as fixture:
                 self.assert_status(self.run_sender(fixture), "not_sent", 1)
-                self.assert_trace(fixture, steers=0)
+                self.assert_trace(fixture, steers=0, turns=0 if mode == "idle" else 1)
 
     def test_initialization_error_is_unsent_and_does_not_echo_server_text(self):
         with WebSocketFixture("initialize-error") as fixture:
