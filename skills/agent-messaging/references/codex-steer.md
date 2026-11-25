@@ -21,7 +21,19 @@ Direct WebSocket connections cannot supply custom authentication headers. Use an
 2. **Check the route for the next message.** If the sender used `codex queue`, Desktop's **Settings → General → Follow-up behavior** changes the composer's default. The external command explicitly enqueues its input. Run [the read-only check](#check-the-live-route) from the sending environment, or on the receiver over [SSH](ssh.md) if its socket is local to that machine. An `active` result supports trying [steer](#send) for an authorized message needed during the current turn. An `idle` result allows a separate [start](codex.md#start) when the caller intends a new turn. Keep queueing for messages meant to wait, and check the existing queue before resending the same text. [CLI queue command](https://learn.chatgpt.com/docs/developer-commands#codex-queue)
 3. **If the live route is unavailable.** A connection failure or an unloaded target can mean the Desktop owns a private stdio server, the socket belongs to a different home or machine, or the target is on another server. Verify the receiver environment and exact thread ID. For an existing Desktop turn with no reachable endpoint, use its queue controls. For recurring automatic delivery, use a receiver whose shared daemon the sender can reach and verify. [Connection details](codex.md#connect-to-the-existing-server)
 
-The inspected Linux Desktop build has a launch option, `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1`, for using an existing compatible local daemon. If the operator chooses to try it, let active work finish, fully quit Desktop, start the shared daemon with `codex app-server daemon start`, check `codex app-server daemon version`, then launch Desktop with that environment variable. Reopen the intended chat and rerun the check before relying on the route. This option is build-specific, excludes Windows in the inspected build, and has only been checked in the package code. [Build evidence and limits](sources.md#desktop)
+### Connect Desktop and the sender to one server
+
+On Linux Desktop 26.1120.50957, an isolated Desktop initialized against an external App Server via `CODEX_APP_SERVER_WS_URL`. For an operator who chooses this setup, let active work finish and fully quit Desktop. Start a compatible App Server using the receiver's normal Codex home and an unused loopback port. Leave it running, then launch Desktop from a second terminal with the same URL:
+
+~~~bash
+# First terminal
+codex app-server --listen ws://127.0.0.1:4500
+
+# Second terminal on the Desktop host
+CODEX_APP_SERVER_WS_URL=ws://127.0.0.1:4500 chatgpt
+~~~
+
+Open the intended chat in that Desktop instance. Set `TARGET_CODEX_ENDPOINT` to the same URL and `TARGET_THREAD_ID` to the intended receiver, then run the read-only check. Keep the listener on loopback. For cross-machine sends, use SSH to run the sender on the Desktop host. The URL override is version-specific. The isolated test covered initialization and same-server steering but did not move an existing signed-in chat. The local-daemon environment switch alone left this Desktop build on stdio in the isolated test. [Build evidence and limits](sources.md#desktop) · [App Server command](https://learn.chatgpt.com/docs/developer-commands#codex-app-server)
 
 ## Check the live route
 
