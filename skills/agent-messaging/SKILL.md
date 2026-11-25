@@ -16,6 +16,8 @@ Prefer your host's built-in messaging when it reaches the target with the intend
 | Claude Code | Native inbox socket / named pipe | Submit to the running CC process. | [Inbox sender](references/claude-code.md) |
 | Antigravity (`agy`) | Native `agentapi send-message` | Submit to an existing conversation; busy handling is receiver/version-dependent. | [Antigravity sender](references/antigravity.md) |
 
+When a message from another session is stuck in Codex Desktop's queue, [handle the existing item, then check the live route for future messages](references/codex-steer.md#desktop-message-stays-queued). For time-sensitive input, select steer on the sending side.
+
 For Codex's `send_message_to_thread`, a fresh task can fail at `thread/resume` with `no rollout found`. If the receiver is already loaded on its daemon and queued delivery fits, [queue the first message](references/codex-queue.md#first-message-to-a-fresh-codex-task). Return to built-in sending for later messages once Codex has saved the session record.
 
 Use the intended receiver's native environment and endpoint; this skill adds no SDK, Channel or cloud API integration. Target a distinct session or thread, never the sender's own or an inherited parent identity. An ID or shared history alone does not establish access to its live process; CLI/Desktop launches may not expose a control endpoint.

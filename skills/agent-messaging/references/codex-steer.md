@@ -15,9 +15,27 @@ The local socket route requires `codex app-server proxy --sock PATH`, verified i
 
 Direct WebSocket connections cannot supply custom authentication headers. Use an authorized alternate client if the endpoint requires them; keep tokens out of endpoint URLs. See [raw App Server requests](codex.md) when needed.
 
+## Desktop message stays queued
+
+1. **Handle the existing message.** In the receiving Desktop chat, find it in the queue above the composer and use **Steer** if offered. This can apply the existing item to the current turn. During compaction, Desktop may have to wait. [Desktop queue controls](https://learn.chatgpt.com/docs/prompting#steering-and-queuing) · [Compaction behavior](https://learn.chatgpt.com/docs/changelog?date=2026-10-15)
+2. **Check the route for the next message.** If the sender used `codex queue`, Desktop's **Settings → General → Follow-up behavior** changes the composer's default. The external command explicitly enqueues its input. Run [the read-only check](#check-the-live-route) from the sending environment, or on the receiver over [SSH](ssh.md) if its socket is local to that machine. An `active` result supports trying [steer](#send) for an authorized message needed during the current turn. An `idle` result allows a separate [start](codex.md#start) when the caller intends a new turn. Keep queueing for messages meant to wait, and check the existing queue before resending the same text. [CLI queue command](https://learn.chatgpt.com/docs/developer-commands#codex-queue)
+3. **If the live route is unavailable.** A connection failure or an unloaded target can mean the Desktop owns a private stdio server, the socket belongs to a different home or machine, or the target is on another server. Verify the receiver environment and exact thread ID. For an existing Desktop turn with no reachable endpoint, use its queue controls. For recurring automatic delivery, use a receiver whose shared daemon the sender can reach and verify. [Connection details](codex.md#connect-to-the-existing-server)
+
+The inspected Linux Desktop build has a launch option, `CODEX_APP_SERVER_USE_LOCAL_DAEMON=1`, for using an existing compatible local daemon. If the operator chooses to try it, let active work finish, fully quit Desktop, start the shared daemon with `codex app-server daemon start`, check `codex app-server daemon version`, then launch Desktop with that environment variable. Reopen the intended chat and rerun the check before relying on the route. This option is build-specific, excludes Windows in the inspected build, and has only been checked in the package code. [Build evidence and limits](sources.md#desktop)
+
+## Check the live route
+
+With the receiver's target variables set, use the skill's installed directory as `SKILL_DIR`:
+
+```bash
+node "$SKILL_DIR/scripts/steer-codex.mjs" --check
+```
+
+`--check` ignores message input and reads the loaded thread's live state without sending. `active` means one active turn was found, `idle` means the loaded thread had no active turn, and `not_sent` reports a failed check. Both successful results exit 0. A freshly opened thread can report idle through thread metadata before it has saved a first turn. The sender rechecks the live turn when it sends.
+
 ## Send
 
-`SKILL_DIR` is this skill's installed directory. Pass an existing UTF-8 file directly:
+Pass an existing UTF-8 file directly:
 
 ```bash
 node "$SKILL_DIR/scripts/steer-codex.mjs" /path/to/message.txt
@@ -31,7 +49,7 @@ printf '%s' 'Message text' | node "$SKILL_DIR/scripts/steer-codex.mjs" -
 
 With no argument, use exported `MESSAGE`. A file or stdin takes precedence; text, including BOM and trailing newlines, is preserved and never echoed. Empty text is sent as given. Invalid UTF-8 in a file or stdin fails before connecting; use one of those when exact bytes matter, because the environment may already have replaced invalid bytes.
 
-The sender confirms the thread is loaded, following bounded pages; reads recent turn metadata with item bodies unloaded; then sends one `turn/steer` with `expectedTurnId`. It does not download full conversation history. No active turn or changed/unsteerable turn fails without a queue/start fallback. Each request waits at most 5 seconds within a 15-second total budget, so a slow server can produce `not_sent` or `unconfirmed`.
+The sender confirms the thread is loaded, reads recent turn metadata with item bodies unloaded, and sends one `turn/steer` with `expectedTurnId`. An absent, changed, or unsteerable turn fails without a queue/start fallback. Each request waits at most 5 seconds within a 15-second total budget, so a slow server can produce `not_sent` or `unconfirmed`.
 
 ## Result
 
