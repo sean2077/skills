@@ -32,7 +32,6 @@ Keep entry points focused and references reachable from `SKILL.md`, directly or 
 | Edit here | Produces or reconciles | Update path |
 |---|---|---|
 | `skills/<name>/SKILL.md`, references, and non-generated scripts/assets | Catalog payload | Edit directly, except for the generated content below; reconcile affected routes, manifests, tests, and notices. |
-| `scripts/workflow_runtime/{common,deep_interview}.py` | Exact-file approval runtime shipped by `deep-interview` | `python scripts/generate_workflow_runtimes.py` |
 | `scripts/p0_runtime/{common,skill_eval}.py` | Project `skill-eval` runtime package | `python scripts/generate_p0_runtimes.py` |
 | `.agents/skills/<name>/` | `.claude/skills/<name>` symlinks; Codex uses the project source | `bash .agents/relink-skills.sh`; preserve unrelated entries and reject ownership conflicts |
 | `.agents/subagents/<name>/` | `.claude/agents/*.md` and `.codex/agents/*.toml` | `python .agents/tools/generate-subagents.py` |
@@ -49,12 +48,9 @@ Generic daily rules for each selected domain ship as installed convention guides
 
 ## Runtime boundaries
 
-| Component | Owned semantics |
-|---|---|
-| `deep-interview` | Optional approval bound to exact specification bytes and revision; conversation and document structure remain caller-owned. |
-| Project `skill-eval` | Comparable evaluation execution and repository-isolated evidence; not an OS sandbox. |
+Project `skill-eval` owns comparable evaluation execution and repository-isolated evidence; it is not an OS sandbox.
 
-Generated workflow runtimes reject non-standard JSON numbers and attempt best-effort parent-directory sync after atomic state replacement on POSIX. Keep one state owner per mutable surface; combining skills does not require running every controller. See [harness principles](harness-constraint-policy.md).
+Its generated runtime rejects non-standard JSON numbers and attempts best-effort parent-directory sync after atomic state replacement on POSIX. Keep one state owner per mutable surface; combining skills does not require running every controller. See [harness principles](harness-constraint-policy.md).
 
 ## Validation ownership
 

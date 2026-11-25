@@ -30,7 +30,7 @@ For a PR/MR, publish the task branch and verify the actual change request. Do no
 |---|---|
 | Repository documentation only | Whitespace, changed links/anchors and reader routes; `validate_skills.py`; inspect or safely execute changed commands and identify unverified claims |
 | Skill entry point, references, frontmatter, route, manifest, or layout | Catalog health/validation and fixtures, official `skills-ref`, applicable payload/contracts; installer smoke tests when distribution changes |
-| Shared/generated runtimes | Both generator `--check` commands and affected workflow, P0, hardening, private-skill, and evaluation tests |
+| Shared/generated runtimes | P0 generator `--check` and affected P0, hardening, private-skill, and evaluation tests |
 | Scaffold source or managed projections | Core/workspace/selection/layout-preservation tests, static shell gate, throwaway E2E, real symlinks, and platform matrix |
 | Shell scripts | Targeted behavior tests and ShellCheck |
 | Evaluation manifests/adapters | Suite/result validation, adapter/oracle regressions, scope/cost/isolation checks; live runs require separate configuration and authorization |
@@ -100,7 +100,6 @@ An explicitly blind/cold-reader comparison needs a fresh instance with only task
 Edit the [canonical source](architecture.md#source-and-generated-ownership), then run only its owning generator and review the diff:
 
 ```bash
-python scripts/generate_workflow_runtimes.py
 python scripts/generate_p0_runtimes.py
 ```
 

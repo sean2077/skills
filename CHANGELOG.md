@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking
+
+- Retire `deep-interview` from the catalog and plugin manifest, including its optional approval runtime, generator, contracts, and routing suite. Requirements interviews and specifications use native host/project workflows. Existing installations and durable state are not removed automatically; finish or explicitly terminate pending approval sessions with their original pinned runtime before uninstalling. Historical evaluation records remain intact.
+
 ### Added
 
 - Add a read-only `steer-codex.mjs --check` to identify reachable, active or idle Codex threads, and document how to handle already queued Desktop messages and use a shared local App Server for time-sensitive messages.
@@ -29,6 +33,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Resolve Codex steer against the live thread state and newest turn so stale in-progress history after a restart no longer blocks delivery. Document and verify owner-only Linux Desktop Unix socket delivery from an independent Claude Code session.
 - Distinguish missing or refusing Codex control sockets from reachable App Servers that have not loaded the intended thread. Clarify shared Desktop setup and how to bypass shell aliases for explicit queued delivery.
+- Restore Claude Code colors in `agent-executors` tabs launched from Codex by clearing inherited `NO_COLOR` for the executor process.
 - Require `agent-executors` to spawn its tab in the planner's WezTerm window via `spawn --pane-id` and verify the new pane's `window_id`; remove the `--new-window` executor path, which could place the tab in an invisible quake window.
 - Keep the Python 3.8 CI compatibility-floor job on Ubuntu 24.04 after `ubuntu-latest` began rolling onto Ubuntu 26.04, for which `actions/setup-python` has no Python 3.8 x64 distribution.
 - Prevent worktree cleanup from proceeding inside the target checkout, and check native Windows root-directory delete access before merging or pushing. An unregistered directory that remains now returns cleanup-pending status (exit 3) and keeps the local branch instead of reporting completion. Add `worktree.sh cleanup --dir <absolute-wt>` to safely retry removal of an empty unregistered direct child of `.worktrees/` without merging, pushing, or deleting branches; document how to release the owning shell or Agent handle rather than changing only a child process's directory.
