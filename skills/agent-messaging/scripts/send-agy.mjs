@@ -66,11 +66,16 @@ try {
   fail("Cannot launch native agy; check AGY_BIN and message argument size");
 }
 
-let launched = false, finished = false, timedOut = false;
-const timer = setTimeout(() => {
-  timedOut = true;
+let launched = false, finished = false, stopReason;
+function stop(message) {
+  if (finished || stopReason) return;
+  stopReason = message;
+  clearTimeout(timer);
   child.kill("SIGKILL");
-}, 10000);
+}
+const timer = setTimeout(() => stop("Native agy timed out; inspect the receiver before resending"), 10000);
+process.on("SIGINT", () => stop("Native agy interrupted; inspect the receiver before resending"));
+process.on("SIGTERM", () => stop("Native agy terminated; inspect the receiver before resending"));
 
 function finish(status, message) {
   if (finished) return;
@@ -87,8 +92,8 @@ child.once("error", () => finish(launched ? "unconfirmed" : "not_sent", launched
   ? "Native agy failed after launch; inspect the receiver before resending"
   : "Cannot launch native agy; check AGY_BIN and message argument size"));
 child.once("exit", (code) => {
-  if (timedOut) {
-    finish("unconfirmed", "Native agy timed out; inspect the receiver before resending");
+  if (stopReason) {
+    finish("unconfirmed", stopReason);
   } else if (code === 0) {
     finish("submitted", "Native agy reported success; model consumption is not confirmed");
   } else {

@@ -226,7 +226,11 @@ async function run() {
     }
     throw error;
   }
-  if (!Array.isArray(turns?.data)) throw new Error("Invalid active-turn list");
+  const turnStatuses = new Set(["inProgress", "completed", "interrupted", "failed"]);
+  if (!Array.isArray(turns?.data) || !turns.data.every(turn =>
+    turn && typeof turn.id === "string" && turn.id && turnStatuses.has(turn.status))) {
+    throw new Error("Invalid active-turn list");
+  }
   const active = turns.data.filter(turn => turn?.status === "inProgress");
   if (checkOnly && active.length === 0) return { status: "idle", threadId };
   if (active.length !== 1 || typeof active[0].id !== "string" || !active[0].id) {

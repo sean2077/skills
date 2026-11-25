@@ -46,7 +46,7 @@ Use `AGY_BIN` for a native executable at a non-default path; on Windows the defa
 | `not_sent` | 1 | Input/target validation or client launch failed before native submission. |
 | `unconfirmed` | 2 | The launched client failed, was interrupted, or exceeded 10 seconds; delivery may have occurred. |
 
-Success goes to stdout; failures go to stderr. Timeout stops only the short-lived sending client. There is no automatic retry. After `unconfirmed`, inspect the receiver before deciding whether to resend.
+Success goes to stdout; failures go to stderr. Timeout or a handled interrupt/termination stops the short-lived sending client and waits for it to exit before reporting `unconfirmed`. This cannot retract a message already submitted. There is no automatic retry. After `unconfirmed`, inspect the receiver before deciding whether to resend.
 
 This route submits to an existing conversation. It does not select Codex-style steer/queue/start/interrupt semantics, and TUI queue settings are not a verified `agentapi` contract. If exact busy behavior is required, verify that receiver/version or report that the requested effect is unavailable. Native permissions remain receiver-owned.
 

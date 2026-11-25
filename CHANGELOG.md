@@ -31,6 +31,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Preserve unchanged `agent-scaffold` runtime/convention files and existing `.gitkeep` timestamps during repeated upgrades, avoiding needless copies while retaining drift refresh and executable-permission repair.
+- Stop the short-lived Antigravity sending client on handled interruption/termination and report one `unconfirmed` result; reject malformed Codex turn metadata before reporting an idle receiver or sending a steer. Add regression coverage for both boundaries without extra RPC calls or automatic retries.
+- Bind `agent-executors` WezTerm commands to the planner's instance as well as its pane, recover the socket/pane pair together, use supported tab selection, and distinguish tab creation from messaging registration. Align task/decision/result files with the existing direct-message default while preserving YOLO and visible execution.
+- Preserve requested Lark Base View scope across record reads and aggregation guidance, distinguish bare NDJSON manifests from JSON envelopes, and move calendar joining out of read-only examples. Record the relevant upstream source evidence without claiming live-service verification.
 - Restore Claude Code colors in `agent-executors` tabs launched from Codex by clearing inherited `NO_COLOR` for the executor process.
 - Require `agent-executors` to spawn its tab in the planner's WezTerm window via `spawn --pane-id` and verify the new pane's `window_id`; remove the `--new-window` executor path, which could place the tab in an invisible quake window.
 - Keep the Python 3.8 CI compatibility-floor job on Ubuntu 24.04 after `ubuntu-latest` began rolling onto Ubuntu 26.04, for which `actions/setup-python` has no Python 3.8 x64 distribution.

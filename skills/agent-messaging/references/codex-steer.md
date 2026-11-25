@@ -43,7 +43,7 @@ With the receiver's target variables set, use the skill's installed directory as
 node "$SKILL_DIR/scripts/steer-codex.mjs" --check
 ```
 
-`--check` ignores message input and reads the loaded thread's live state without sending. `active` means one active turn was found, `idle` means the loaded thread had no active turn, and `not_sent` reports a failed check. Both successful results exit 0. A freshly opened thread can report idle through thread metadata before it has saved a first turn. The sender rechecks the live turn when it sends.
+`--check` ignores message input and reads the loaded thread's live state without sending. `active` means one active turn was found, `idle` means the loaded thread had no active turn, and `not_sent` reports a failed check, including malformed or unknown turn metadata. Both successful results exit 0. A freshly opened thread can report idle through thread metadata before it has saved a first turn. The sender rechecks the live turn when it sends.
 
 ## Send
 

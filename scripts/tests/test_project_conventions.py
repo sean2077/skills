@@ -150,6 +150,46 @@ class ProjectConventionPreservationTests(unittest.TestCase):
         self.assertFalse((self.root / "handbook/开发.md").exists())
         self.assertTrue(self.invoke("verify")["ok"])
 
+    def test_current_upgrade_preserves_file_bytes_and_mtimes(self):
+        self.seed()
+        self.invoke("apply", extra=("--domains", "all"))
+        before = self.snapshot()
+        timestamps = {}
+        for name, value in before.items():
+            if value[0] != "file":
+                continue
+            path = self.root / name
+            os.utime(path, ns=(946684800000000000, 946684800000000000))
+            timestamps[name] = path.stat().st_mtime_ns
+
+        self.invoke("upgrade")
+
+        self.assertEqual(before, self.snapshot())
+        changed = [name for name, timestamp in timestamps.items()
+                   if (self.root / name).stat().st_mtime_ns != timestamp]
+        self.assertEqual([], changed, "a current upgrade must not rewrite or touch files")
+
+    def test_upgrade_refreshes_changed_bytes_and_repairs_unchanged_executable(self):
+        self.seed()
+        self.invoke("apply")
+        runtime = self.root / ".agents/tools/hooks/hook-paths.py"
+        expected = runtime.read_bytes()
+        runtime.write_bytes(b"# outdated runtime\n")
+        executable = self.root / ".agents/tools/generate-subagents.py"
+        executable_bytes = executable.read_bytes()
+        if os.name != "nt":
+            executable.chmod(0o644)
+
+        self.invoke("apply", expected=2)
+        self.assertEqual(b"# outdated runtime\n", runtime.read_bytes())
+        self.invoke("upgrade")
+
+        self.assertEqual(expected, runtime.read_bytes())
+        self.assertEqual(executable_bytes, executable.read_bytes())
+        if os.name != "nt":
+            self.assertTrue(executable.stat().st_mode & 0o111)
+        self.assertTrue(self.invoke("verify")["ok"])
+
     def test_installer_does_not_write_through_external_document_symlink(self):
         self.seed()
         outside = Path(self.temp.name) / "external guide"
