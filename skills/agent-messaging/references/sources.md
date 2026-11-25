@@ -42,6 +42,14 @@ On the same two CLI builds, `steer-codex.mjs --auto` through a native Unix socke
 
 The same Linux CLI builds were also checked with an absent socket and a socket bound without a listener. The sender distinguished the two failures without exposing the proxy's stderr. The WebSocket fixture separately exercised a reachable server that had not loaded the requested thread.
 
+### Queue and fallback
+
+On 2026-11-25, isolated Linux Codex CLI 0.172.0 sessions were exercised through a real terminal and a local mock model. A loaded idle CLI on the shared App Server began queued input in about 0.1 seconds. While a turn was deliberately held open, the queue command acknowledged the item and the model received it in a different turn after the first turn finished. The same next-turn behavior was reproduced in a private `codex --no-daemon` CLI using a separate sender with the same Codex home. [CLI queue request](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_queue_commands.rs#L97-L139) · [Dispatch](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/ext/queue/src/service.rs#L418-L495)
+
+The Linux Desktop-bundled App Server 0.171.0-alpha.13.2 was also run over private stdio in a disposable home. Both the same bundled `codex queue` and standalone CLI 0.172.0 wrote into its queue with no shared socket. The backend could list the item immediately, emitted a queue change after about 10 seconds, and passed the input to the mock model in the next turn. This exercised the bundled backend. Queue visibility in a signed-in Desktop UI was not measured in that check. [Desktop queue controls](https://learn.chatgpt.com/docs/prompting#steering-and-queuing)
+
+The bundled sender was exercised with each of those native binaries. With the target App Server stopped, `--auto` queued text for an existing saved thread by its receiver home. After reopening the App Server on a custom Unix socket, a second send queued through that endpoint while the thread was unloaded. Both queue IDs and exact inputs matched the queue list. Loading the thread delivered both messages to the mock model. [Embedded server selection](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_archive_commands.rs#L273-L294) · [Queue target validation](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/app-server/src/request_processors/thread_queue_processor.rs#L249-L311)
+
 ## Antigravity (agy)
 
 Reviewed 2026-11-22:

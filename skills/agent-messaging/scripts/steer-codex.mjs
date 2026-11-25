@@ -1,18 +1,20 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import net from "node:net";
 import { constants as osConstants } from "node:os";
-import { delimiter, isAbsolute, join } from "node:path";
+import { delimiter, isAbsolute, join, resolve } from "node:path";
 
 const usage = [
   "Usage: node steer-codex.mjs [UTF8_FILE|-]",
-  "       node steer-codex.mjs --auto [UTF8_FILE|-]",
+  "       node steer-codex.mjs --auto [--no-queue] [UTF8_FILE|-]",
   "       node steer-codex.mjs --check",
   "No argument: read MESSAGE. --check: query the receiver's live turn without sending.",
-  "--auto: steer an active turn or start one on a loaded idle thread.",
+  "--auto: send now when possible or queue once if the live route is unavailable.",
+  "--no-queue: require live delivery without adding a queued message.",
   "Target: TARGET_THREAD_ID and TARGET_CODEX_ENDPOINT or TARGET_CODEX_HOME.",
-  "Optional local proxy: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.",
+  "For local queue fallback, set the receiver's absolute TARGET_CODEX_HOME.",
+  "Optional Codex executable: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.",
 ].join("\n");
 const args = process.argv.slice(2);
 if (args[0] === "--help" && args.length === 1) {
@@ -21,9 +23,10 @@ if (args[0] === "--help" && args.length === 1) {
 }
 
 let ws, bridge, proxy, pending, rejectOpen, fatal;
-let closing = false, attemptedMethod, nextId = 0;
+let closing = false, attemptedMethod, nextId = 0, cancelQueue;
 const connections = new Set();
 let deadline;
+const threadUuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 function abort(error) {
   if (closing || fatal) return;
@@ -55,6 +58,16 @@ function codexBinary() {
   return "codex";
 }
 
+function spawnCodex(args, options) {
+  const binary = codexBinary();
+  if (/\.(cmd|bat)$/i.test(binary)) throw new Error("Use a native CODEX_BIN executable or JS launcher, not a shell wrapper");
+  const jsLauncher = /\.[cm]?js$/i.test(binary);
+  const executable = jsLauncher || /[/\\]/.test(binary) ? resolve(binary) : binary;
+  return jsLauncher
+    ? spawn(process.execPath, [executable, ...args], options)
+    : spawn(executable, args, options);
+}
+
 class RouteError extends Error {
   constructor(reason, message) {
     super(message);
@@ -77,8 +90,6 @@ function proxyConnectError(stderr) {
 // The native proxy forwards WebSocket bytes, not JSON lines. Keep its temporary
 // loopback bridge private to one connection carrying this unguessable path.
 async function proxyEndpoint(path) {
-  const binary = codexBinary();
-  if (/\.(cmd|bat)$/i.test(binary)) throw new Error("Use a native CODEX_BIN executable or JS launcher, not a shell wrapper");
   const secretPath = "/" + randomBytes(24).toString("hex");
   bridge = net.createServer(connection => {
     connections.add(connection);
@@ -97,11 +108,8 @@ async function proxyEndpoint(path) {
       connection.setTimeout(0);
       bridge.close();
       for (const other of connections) if (other !== connection) other.destroy();
-      const args = ["app-server", "proxy", "--sock", path];
       try {
-        proxy = /\.[cm]?js$/i.test(binary)
-          ? spawn(process.execPath, [binary, ...args], { stdio: ["pipe", "pipe", "pipe"] })
-          : spawn(binary, args, { stdio: ["pipe", "pipe", "pipe"] });
+        proxy = spawnCodex(["app-server", "proxy", "--sock", path], { stdio: "pipe" });
       } catch {
         // Windows can reject some launchers synchronously (EINVAL/EFTYPE).
         abort("Cannot launch Codex proxy; check CODEX_BIN");
@@ -149,10 +157,11 @@ class RpcError extends Error {
 async function connect(endpoint, viaProxy) {
   try { ws = new WebSocket(endpoint); }
   catch { throw new Error("Cannot open the supplied WebSocket endpoint"); }
-  ws.addEventListener("error", () => abort(viaProxy
+  const reason = viaProxy ? "control_proxy_failed" : "websocket_unavailable";
+  ws.addEventListener("error", () => abort(new RouteError(reason, viaProxy
     ? "Codex proxy connection failed; check the intended live endpoint and CODEX_BIN"
-    : "WebSocket connection failed"));
-  ws.addEventListener("close", () => abort("WebSocket connection closed"));
+    : "WebSocket connection failed")));
+  ws.addEventListener("close", () => abort(new RouteError(reason, "WebSocket connection closed")));
   ws.addEventListener("message", event => {
     try {
       const reply = JSON.parse(event.data);
@@ -173,7 +182,7 @@ async function connect(endpoint, viaProxy) {
   try {
     await new Promise((resolve, reject) => {
       rejectOpen = reject;
-      timer = setTimeout(() => abort("WebSocket connection timed out"), timeout());
+      timer = setTimeout(() => abort(new RouteError(reason, "WebSocket connection timed out")), timeout());
       ws.addEventListener("open", resolve, { once: true });
     });
   } finally {
@@ -187,33 +196,153 @@ function request(method, params) {
   return new Promise((resolve, reject) => {
     const id = ++nextId;
     pending = { id, method, resolve, reject, timer: setTimeout(() => abort(`${method} timed out`), wait) };
+    // A closing socket silently drops frames. This request never left the client.
+    if (ws.readyState !== WebSocket.OPEN) {
+      abort(new RouteError("websocket_unavailable", "WebSocket connection closed"));
+      return;
+    }
     try {
-      // A closing socket silently drops frames; the input was never attempted.
-      if (ws.readyState !== WebSocket.OPEN) throw new Error("WebSocket connection closed");
       if (method === "turn/steer" || method === "turn/start") attemptedMethod = method;
       ws.send(JSON.stringify({ id, method, params }));
     } catch { abort("WebSocket send failed"); }
   });
 }
 
+async function connectToLoadedThread(threadId, endpoint, localPath) {
+  deadline = Date.now() + 15000;
+  await connect(localPath === undefined ? endpoint : await proxyEndpoint(localPath), localPath !== undefined);
+  await request("initialize", { clientInfo: { name: "agent-messaging", version: "0.1.0" } });
+  ws.send(JSON.stringify({ method: "initialized", params: {} }));
+  const cursors = new Set();
+  let cursor;
+  for (;;) {
+    const page = await request("thread/loaded/list", { limit: 50, ...(cursor ? { cursor } : {}) });
+    if (!Array.isArray(page?.data) || !page.data.every(id => typeof id === "string")) throw new Error("Invalid loaded-thread list");
+    if (page.data.includes(threadId)) break;
+    if (page.nextCursor === null || page.nextCursor === undefined) {
+      throw new RouteError("thread_not_loaded", "Target thread is not loaded on this server; verify the thread ID and the server that owns it");
+    }
+    cursor = page.nextCursor;
+    if (typeof cursor !== "string" || !cursor || cursors.has(cursor)) throw new Error("Invalid or repeated loaded-thread cursor");
+    cursors.add(cursor);
+  }
+}
+
+function closeLiveConnection() {
+  if (closing) return;
+  closing = true;
+  bridge?.close();
+  for (const connection of connections) connection.destroy();
+  proxy?.stdin.destroy();
+  proxy?.stdout.destroy();
+  proxy?.stderr.destroy();
+  proxy?.kill();
+  ws?.close();
+}
+
+function isLocalDirectory(path) {
+  return path && isAbsolute(path) && !/[\r\n\0]/.test(path) &&
+    statSync(path, { throwIfNoEntry: false })?.isDirectory();
+}
+
+function queueFallback(reason, threadId, text, endpoint, home) {
+  if (!threadUuid.test(threadId)) {
+    throw new RouteError(reason, "Queue fallback requires the receiver's exact thread UUID");
+  }
+  if (text.includes("\0")) {
+    throw new RouteError(reason, "Native Codex queue cannot take NUL bytes in its message argument");
+  }
+
+  // Queue through the reachable receiver even if it has not loaded the chat.
+  // If the connection failed, only fall back to a caller-confirmed local home.
+  const remote = reason === "thread_not_loaded";
+  const args = ["queue", "--thread", threadId, `--message=${text}`];
+  const env = { ...process.env };
+  if (remote) {
+    args.push("--remote", endpoint);
+  } else {
+    if (!isLocalDirectory(home)) {
+      throw new RouteError(reason, "Live endpoint unavailable. Supply the receiver's existing absolute TARGET_CODEX_HOME to queue locally");
+    }
+    for (const key of Object.keys(env)) {
+      const name = process.platform === "win32" ? key.toUpperCase() : key;
+      if (name === "CODEX_HOME" || name === "CODEX_SQLITE_HOME") delete env[key];
+    }
+    env.CODEX_HOME = home;
+    const sqliteHome = process.env.TARGET_CODEX_SQLITE_HOME;
+    if (sqliteHome) {
+      if (!isLocalDirectory(sqliteHome)) throw new RouteError(reason, "Set TARGET_CODEX_SQLITE_HOME to the receiver's existing absolute SQLite home");
+      env.CODEX_SQLITE_HOME = sqliteHome;
+    }
+  }
+  closeLiveConnection();
+
+  return new Promise((resolve, reject) => {
+    let child;
+    const launchError = error => error.code === "E2BIG"
+      ? "Message exceeded the native queue argument limit"
+      : "Cannot launch native Codex queue. Check CODEX_BIN";
+    try {
+      // A trusted sender project could otherwise override the receiver's SQLite home.
+      child = spawnCodex(args, { env, cwd: remote ? undefined : home, stdio: ["ignore", "pipe", "ignore"] });
+    } catch (error) {
+      reject(new RouteError(reason, launchError(error)));
+      return;
+    }
+    if (child.pid !== undefined) attemptedMethod = "codex queue";
+
+    let stdout = "";
+    const timer = setTimeout(() => cancelQueue("Native Codex queue timed out"), 10000);
+    function finish(error, queueId) {
+      if (!cancelQueue) return;
+      clearTimeout(timer);
+      cancelQueue = undefined;
+      if (error) reject(new RouteError(reason, error));
+      else resolve({ status: "queued", threadId, queueId, reason });
+    }
+    cancelQueue = message => {
+      child.kill();
+      child.stdout.destroy();
+      finish(message);
+    };
+    child.once("error", error => finish(launchError(error)));
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", chunk => { stdout = (stdout + chunk).slice(-4096); });
+    child.once("close", code => {
+      const match = /^Queued message ([0-9a-f-]+) for thread ([0-9a-f-]+)\.$/im.exec(stdout);
+      if (code === 0 && match && threadUuid.test(match[1]) &&
+          match[2].toLowerCase() === threadId.toLowerCase()) {
+        finish(undefined, match[1]);
+      } else {
+        const detail = Number.isInteger(code) && code !== 0 ? ` (exit ${code})` : "";
+        finish(`Native Codex queue did not confirm the message${detail}`);
+      }
+    });
+  });
+}
+
 async function run() {
-  const checkOnly = args[0] === "--check";
-  const automatic = args[0] === "--auto";
-  const [source, ...extra] = automatic || checkOnly ? args.slice(1) : args;
-  if (extra.length || (checkOnly && source !== undefined)) throw new Error(usage);
+  const mode = args[0];
+  const checkOnly = mode === "--check";
+  const automatic = mode === "--auto";
+  const options = automatic || checkOnly ? args.slice(1) : args;
+  const liveOnly = automatic && options[0] === "--no-queue";
+  const [source, ...extra] = liveOnly ? options.slice(1) : options;
+  if (extra.length || (checkOnly && source !== undefined)) {
+    throw new Error("Invalid arguments. Run with --help for usage.");
+  }
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 4) || typeof WebSocket === "undefined") {
     throw new Error("Node.js 22.4+ with built-in WebSocket is required");
   }
   const threadId = process.env.TARGET_THREAD_ID;
   if (!threadId) throw new Error("Missing TARGET_THREAD_ID from the intended receiver");
-  if (process.env.CODEX_THREAD_ID === threadId) {
+  if (process.env.CODEX_THREAD_ID?.toLowerCase() === threadId.toLowerCase()) {
     throw new Error("Target is the sender's own thread; use the receiver's thread ID");
   }
-  let endpoint = process.env.TARGET_CODEX_ENDPOINT;
-  if (!endpoint && process.env.TARGET_CODEX_HOME) {
-    endpoint = "unix://" + join(process.env.TARGET_CODEX_HOME, "app-server-control", "app-server-control.sock");
-  }
+  const home = process.env.TARGET_CODEX_HOME;
+  const endpoint = process.env.TARGET_CODEX_ENDPOINT ||
+    (home && "unix://" + join(home, "app-server-control", "app-server-control.sock"));
   if (!endpoint) throw new Error("Supply TARGET_CODEX_ENDPOINT or the intended TARGET_CODEX_HOME");
   const localPath = endpoint.startsWith("unix://") ? endpoint.slice(7) : undefined;
   if (localPath !== undefined) {
@@ -234,29 +363,18 @@ async function run() {
     if (text === undefined) throw new Error("Supply a UTF-8 file, - for stdin, or MESSAGE");
   }
 
-  deadline = Date.now() + 15000;
-  await connect(localPath === undefined ? endpoint : await proxyEndpoint(localPath), localPath !== undefined);
-  await request("initialize", { clientInfo: { name: "agent-messaging", version: "0.1.0" } });
-  ws.send(JSON.stringify({ method: "initialized", params: {} }));
-  const cursors = new Set();
-  let cursor;
-  for (;;) {
-    const page = await request("thread/loaded/list", { limit: 50, ...(cursor ? { cursor } : {}) });
-    if (!Array.isArray(page?.data) || !page.data.every(id => typeof id === "string")) throw new Error("Invalid loaded-thread list");
-    if (page.data.includes(threadId)) break;
-    if (page.nextCursor === null || page.nextCursor === undefined) {
-      throw new RouteError("thread_not_loaded", "Target thread is not loaded on this server; verify the thread ID and the server that owns it");
+  try {
+    await connectToLoadedThread(threadId, endpoint, localPath);
+    if (automatic) {
+      // The server chooses start or steer atomically against its live turn.
+      const result = await request("turn/start", { threadId, input: [{ type: "text", text }] });
+      const turnId = result?.turn?.id;
+      if (typeof turnId !== "string" || !turnId) throw new Error("Missing turn input acknowledgement");
+      return { status: "accepted", threadId, turnId };
     }
-    cursor = page.nextCursor;
-    if (typeof cursor !== "string" || !cursor || cursors.has(cursor)) throw new Error("Invalid or repeated loaded-thread cursor");
-    cursors.add(cursor);
-  }
-  if (automatic) {
-    // The server chooses start or steer atomically against its live turn.
-    const result = await request("turn/start", { threadId, input: [{ type: "text", text }] });
-    const turnId = result?.turn?.id;
-    if (typeof turnId !== "string" || !turnId) throw new Error("Missing turn input acknowledgement");
-    return { status: "accepted", threadId, turnId };
+  } catch (error) {
+    if (!automatic || liveOnly || attemptedMethod || !(error instanceof RouteError)) throw error;
+    return queueFallback(error.reason, threadId, text, endpoint, home);
   }
   const summary = await request("thread/read", { threadId, includeTurns: false });
   if (summary?.thread?.id !== threadId) throw new Error("Invalid target thread metadata");
@@ -278,8 +396,8 @@ async function run() {
   return { status: "accepted", threadId, turnId };
 }
 
-process.on("SIGINT", () => abort("Interrupted"));
-process.on("SIGTERM", () => abort("Terminated"));
+process.on("SIGINT", () => (cancelQueue || abort)("Interrupted"));
+process.on("SIGTERM", () => (cancelQueue || abort)("Terminated"));
 let exitCode = 0, output, stream = process.stdout;
 try { output = await run(); }
 catch (error) {
@@ -293,14 +411,7 @@ catch (error) {
   };
   stream = process.stderr;
 } finally {
-  closing = true;
-  bridge?.close();
-  for (const connection of connections) connection.destroy();
-  proxy?.stdin.destroy();
-  proxy?.stdout.destroy();
-  proxy?.stderr.destroy();
-  proxy?.kill();
-  ws?.close();
+  closeLiveConnection();
 }
 await new Promise(resolve => stream.write(JSON.stringify(output) + "\n", resolve));
 // A peer need not acknowledge the WebSocket close; do not leave a CLI waiting.

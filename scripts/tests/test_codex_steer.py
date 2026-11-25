@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the steer CLI over real WebSockets, without a live Codex session."""
+"""Exercise live and queued sends without a live Codex session."""
 from __future__ import annotations
 
 import base64
@@ -23,6 +23,7 @@ if NODE is None:
     raise RuntimeError("Node.js is required to test the bundled steer sender")
 
 THREAD = "11111111-2222-4333-8444-555555555555"
+QUEUE = "99999999-1111-4777-8888-999999999999"
 TURN = "active-turn-fixture"
 NEW_TURN = "started-turn-fixture"
 # A leading U+FEFF also checks that decoding preserves a literal UTF-8 BOM.
@@ -52,6 +53,28 @@ setImmediate(() => {
   writeFileSync(2, process.env.FIXTURE_PROXY_ERROR);
   process.exitCode = 3;
 });
+"""
+
+# Capture each native command and simulate a missing Unix proxy or a queue reply.
+NATIVE_CODEX = r"""
+import { appendFileSync } from "node:fs";
+import { constants } from "node:os";
+const args = process.argv.slice(2);
+appendFileSync(process.env.FIXTURE_NATIVE_CAPTURE,
+  JSON.stringify({args, cwd: process.cwd(), home: process.env.CODEX_HOME, sqliteHome: process.env.CODEX_SQLITE_HOME ?? null}) + "\n");
+if (args[0] === "app-server" && args[1] === "proxy") {
+  process.stderr.write(`Error: failed to connect to socket at ${args[3]}\n\nCaused by:\n    No such file or directory (os error ${constants.errno.ENOENT})\n`);
+  process.exitCode = 3;
+} else if (args[0] === "queue") {
+  if (process.env.FIXTURE_QUEUE_FAILURE) {
+    process.stderr.write("private queue diagnostic: " + args.find(arg => arg.startsWith("--message=")));
+    process.exitCode = 7;
+  } else {
+    process.stdout.write(process.env.FIXTURE_QUEUE_ACK);
+  }
+} else {
+  throw new Error("Unexpected native Codex command");
+}
 """
 
 
@@ -276,9 +299,22 @@ class CodexSteerTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.work = Path(self.temp.name)
         self.env = os.environ.copy()
-        for name in ("TARGET_THREAD_ID", "TARGET_CODEX_ENDPOINT", "TARGET_CODEX_HOME", "CODEX_BIN", "MESSAGE"):
+        for name in ("TARGET_CODEX_ENDPOINT", "TARGET_CODEX_HOME", "TARGET_CODEX_SQLITE_HOME",
+                     "CODEX_THREAD_ID", "FIXTURE_QUEUE_FAILURE"):
             self.env.pop(name, None)
-        self.env.update(TARGET_THREAD_ID=THREAD, MESSAGE=TEXT)
+        launcher = self.work / "fake Codex.mjs"
+        launcher.write_text(NATIVE_CODEX, encoding="utf-8")
+        self.native_capture = self.work / "native-calls.jsonl"
+        self.env.update(
+            TARGET_THREAD_ID=THREAD, MESSAGE=TEXT, CODEX_BIN=str(launcher),
+            CODEX_HOME=str(self.work / "sender home"), FIXTURE_NATIVE_CAPTURE=str(self.native_capture),
+            FIXTURE_QUEUE_ACK=f"Queued message {QUEUE} for thread {THREAD}.\n",
+        )
+
+    def native_calls(self):
+        if not self.native_capture.exists():
+            return []
+        return [json.loads(line) for line in self.native_capture.read_text(encoding="utf-8").splitlines()]
 
     def run_sender(self, fixture=None, *args, text=None, env=None, script=SENDER, set_endpoint=True):
         env = (self.env if env is None else env).copy()
@@ -357,11 +393,107 @@ class CodexSteerTests(unittest.TestCase):
                 self.assert_trace(fixture, steers=0, starts=1, turns=0, reads=0)
                 self.assertEqual({"threadId": THREAD, "input": [{"type": "text", "text": TEXT}]},
                                  fixture.messages[-1]["params"])
+                self.assertEqual([], self.native_calls())
 
-    def test_auto_never_submits_to_an_unloaded_thread(self):
+    def test_auto_queues_once_on_the_same_endpoint_when_thread_is_unloaded(self):
         with WebSocketFixture("unloaded") as fixture:
-            value = self.assert_status(self.run_sender(fixture, "--auto"), "not_sent", 1)
-            self.assertEqual("thread_not_loaded", value.get("reason"))
+            value = self.assert_status(self.run_sender(fixture, "--auto"), "queued", 0)
+            self.assertEqual(THREAD, value["threadId"])
+            self.assertEqual(QUEUE, value["queueId"])
+            self.assertEqual("thread_not_loaded", value["reason"])
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
+            call, = self.native_calls()
+            self.assertEqual("queue", call["args"][0])
+            self.assertCountEqual(["--remote", fixture.endpoint, "--thread", THREAD, "--message=" + TEXT],
+                                  call["args"][1:])
+
+    def test_auto_queues_once_with_the_receiver_home_when_its_control_socket_is_missing(self):
+        receiver_home = self.work / "接收方 home"
+        receiver_home.mkdir()
+        receiver_sqlite_home = self.work / "receiver sqlite"
+        receiver_sqlite_home.mkdir()
+        sqlite_key = "Codex_Sqlite_Home" if os.name == "nt" else "CODEX_SQLITE_HOME"
+        self.env.pop("CODEX_SQLITE_HOME", None)
+        self.env[sqlite_key] = str(self.work / "sender sqlite")
+        self.env["TARGET_CODEX_HOME"] = str(receiver_home)
+        text = "--resume\n" + TEXT
+        for sqlite_home in (None, str(receiver_sqlite_home)):
+            with self.subTest(sqlite_home=sqlite_home):
+                env = self.env.copy()
+                env["CODEX_BIN"] = Path(env["CODEX_BIN"]).name
+                if sqlite_home:
+                    env["TARGET_CODEX_SQLITE_HOME"] = sqlite_home
+                result = self.run_sender(None, "--auto", "-", text=text, env=env)
+                value = self.assert_status(result, "queued", 0)
+                self.assertEqual(THREAD, value["threadId"])
+                self.assertEqual(QUEUE, value["queueId"])
+                self.assertEqual("control_socket_missing", value["reason"])
+                proxy, queue = self.native_calls()
+                self.assertEqual(["app-server", "proxy", "--sock",
+                                  str(receiver_home / "app-server-control/app-server-control.sock")], proxy["args"])
+                self.assertEqual(str(receiver_home), queue["home"])
+                self.assertEqual(receiver_home.resolve(), Path(queue["cwd"]).resolve())
+                self.assertEqual(sqlite_home, queue["sqliteHome"])
+                self.assertEqual("queue", queue["args"][0])
+                self.assertCountEqual(["--thread", THREAD, "--message=" + text], queue["args"][1:])
+                self.native_capture.unlink()
+
+    def test_auto_cannot_queue_to_an_unreachable_endpoint_without_an_explicit_receiver_home(self):
+        # Keep the port reserved without listening so no other process can take it.
+        with socket.socket() as reserved:
+            reserved.bind(("127.0.0.1", 0))
+            self.env["TARGET_CODEX_ENDPOINT"] = "ws://127.0.0.1:{}".format(reserved.getsockname()[1])
+            self.assert_status(self.run_sender(None, "--auto"), "not_sent", 1)
+        self.assertEqual([], self.native_calls())
+
+    def test_send_modes_without_fallback_cannot_queue_an_unloaded_thread(self):
+        for args in (("--auto", "--no-queue"), ("--check",), ()):
+            with self.subTest(args=args), WebSocketFixture("unloaded") as fixture:
+                value = self.assert_status(self.run_sender(fixture, *args), "not_sent", 1)
+                self.assertEqual("thread_not_loaded", value["reason"])
+                self.assert_trace(fixture, steers=0, turns=0, reads=0)
+                self.assertEqual([], self.native_calls())
+
+    def test_auto_cannot_queue_invalid_input_its_own_thread_or_a_name(self):
+        for case in ("invalid-utf8", "self", "name"):
+            with self.subTest(case=case), WebSocketFixture("unloaded") as fixture:
+                env = self.env.copy()
+                text = b"bad\xff" if case == "invalid-utf8" else TEXT
+                if case == "self":
+                    env["CODEX_THREAD_ID"] = THREAD
+                elif case == "name":
+                    env["TARGET_THREAD_ID"] = "ambiguous thread name"
+                self.assert_status(self.run_sender(fixture, "--auto", "-", env=env, text=text), "not_sent", 1)
+                if case in ("invalid-utf8", "self"):
+                    self.assertEqual(0, fixture.connections)
+                self.assertEqual([], self.native_calls())
+
+    def test_failed_queue_process_does_not_retry_or_echo_its_output(self):
+        with WebSocketFixture("unloaded") as fixture:
+            self.env["FIXTURE_QUEUE_FAILURE"] = "1"
+            result = self.run_sender(fixture, "--auto")
+            self.assert_status(result, "unconfirmed", 2)
+            self.assertNotIn("private queue diagnostic", result.stderr)
+            self.assertNotIn("second line", result.stderr)
+            call, = self.native_calls()
+            self.assertEqual("queue", call["args"][0])
+            self.assert_trace(fixture, steers=0, turns=0, reads=0)
+
+    def test_queue_requires_an_acknowledgement_for_the_expected_thread(self):
+        for acknowledgement in ("", f"Queued message {QUEUE} for thread {QUEUE}.\n"):
+            with self.subTest(acknowledgement=acknowledgement), WebSocketFixture("unloaded") as fixture:
+                self.env["FIXTURE_QUEUE_ACK"] = acknowledgement
+                self.assert_status(self.run_sender(fixture, "--auto"), "unconfirmed", 2)
+                call, = self.native_calls()
+                self.assertEqual("queue", call["args"][0])
+                self.assert_trace(fixture, steers=0, turns=0, reads=0)
+                self.native_capture.unlink()
+
+    def test_queue_launcher_missing_before_spawn_is_unsent(self):
+        with WebSocketFixture("unloaded") as fixture:
+            self.env["CODEX_BIN"] = str(self.work / "missing-codex.exe")
+            self.assert_status(self.run_sender(fixture, "--auto"), "not_sent", 1)
+            self.assertEqual([], self.native_calls())
             self.assert_trace(fixture, steers=0, turns=0, reads=0)
 
     def test_auto_does_not_retry_rejected_or_unconfirmed_input(self):
@@ -373,6 +505,7 @@ class CodexSteerTests(unittest.TestCase):
             with self.subTest(mode=mode), WebSocketFixture(mode) as fixture:
                 self.assert_status(self.run_sender(fixture, "--auto"), status, code)
                 self.assert_trace(fixture, steers=0, starts=1, turns=0, reads=0)
+                self.assertEqual([], self.native_calls())
 
     def test_check_reports_active_turn_without_sending_environment_message(self):
         with WebSocketFixture() as fixture:
@@ -559,6 +692,7 @@ class CodexSteerTests(unittest.TestCase):
         capture = self.work / "proxy-args.json"
         with WebSocketFixture() as fixture:
             env = self.env.copy()
+            env.pop("CODEX_BIN")
             env.update(
                 PATH=str(bin_dir) + os.pathsep + env.get("PATH", ""),
                 TARGET_CODEX_HOME=str(self.work / "receiver home"),
