@@ -108,6 +108,8 @@ plain row listing that does not need type-aware mutation may skip `+field-list`.
 metadata before writes whose CellValue shape depends on field types, select options, links, formulas,
 or read-only fields.
 
+When the user names a View, carry its real `--view-id` into record list/search calls; a known table ID alone does not preserve that scope. Check `query_context.record_scope` and keep the same View/filter/sort across pages. `--filter-json` replaces the View's filter and `--sort-json` replaces its sort, so add them only when that change is intended.
+
 For known record IDs, use `+record-get` with repeated `--record-id` instead of scanning the table.
 In v1.0.98, `+record-list`, `+record-search`, and `+record-get` default to NDJSON files plus a
 manifest. Stdout contains that manifest directly, without an `ok`/`data` envelope; check exit
@@ -143,13 +145,15 @@ These output rules were source-reviewed on 2026-10-30 against the
 and [analysis SOP](https://github.com/larksuite/cli/blob/v1.0.98/skills/lark-base/references/lark-base-record-query-and-analysis-sop.md).
 Live CLI/service behavior remains unverified by that review.
 
-Use `+data-query` directly for aggregation/grouping when the Base token and table are known:
+Use `+data-query` for single-table aggregation/grouping when the Base token, table, and intended query scope are known:
 
 ```bash
 lark-cli base +data-query --base-token '<base-token>' --dsl \
   '{"datasource":{"type":"table","table":{"tableId":"<table-id>"}},"dimensions":[{"field_name":"城市","alias":"city"}],"measures":[{"field_name":"金额","aggregation":"sum","alias":"total"}],"shaper":{"format":"flat"}}' \
   --as user
 ```
+
+Its LiteQuery `filters` use a different DSL from Record/View tuple filters, and a table datasource does not automatically carry the requested View filter. Use equivalent verified DSL filters or analyze the complete scoped NDJSON export. Dimensions-only results are distinct combinations, not raw records; use NDJSON for joins, windows, or record-level analysis. These scope boundaries were checked on 2026-11-25 against the [v1.0.100 analysis SOP](https://github.com/larksuite/cli/blob/v1.0.100/skills/lark-base/references/lark-base-record-query-and-analysis-sop.md); this was source review, not live service verification.
 
 ## Base write fast paths
 

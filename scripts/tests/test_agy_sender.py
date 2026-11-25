@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,7 @@ TEXT = '\ufeff消息 "quotes" \\ backslash `backtick` $literal\r\nsecond line\n'
 AGY = r"""
 import json
 import os
+import socket
 import sys
 import threading
 
@@ -46,6 +48,10 @@ with open(os.environ["FIXTURE_AGY_CAPTURE"], "a", encoding="utf-8") as capture:
         "unrelated": os.environ.get("FIXTURE_AGY_UNRELATED"),
         "pid": os.getpid(),
     }) + "\n")
+
+if os.environ.get("FIXTURE_AGY_READY_PORT"):
+    with socket.create_connection(("127.0.0.1", int(os.environ["FIXTURE_AGY_READY_PORT"])), timeout=5) as ready:
+        ready.sendall(b"ready")
 
 # Deliberately try to expose native diagnostics. The sender must keep its own
 # status output bounded and never echo the payload or credential from them.
@@ -222,6 +228,45 @@ class AgySenderTests(unittest.TestCase):
                     os.kill(call["pid"], signal.SIGTERM)
                 except OSError:
                     pass
+
+    @unittest.skipIf(os.name == "nt", "targeted POSIX signals are not Windows console events")
+    def test_interruption_stops_native_client_and_reports_unconfirmed_once(self):
+        self.env.update(MESSAGE=TEXT, FIXTURE_AGY_MODE="stall")
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            with self.subTest(signal=signum), socket.socket() as ready:
+                self.capture.unlink(missing_ok=True)
+                ready.bind(("127.0.0.1", 0))
+                ready.listen(1)
+                ready.settimeout(5)
+                env = self.env.copy()
+                env["FIXTURE_AGY_READY_PORT"] = str(ready.getsockname()[1])
+                process = subprocess.Popen(
+                    [NODE, str(SENDER)], cwd=self.work, env=env,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                )
+                try:
+                    with ready.accept()[0] as connection:
+                        connection.settimeout(5)
+                        with connection.makefile("rb") as stream:
+                            self.assertEqual(b"ready", stream.read(5))
+                    self.assertEqual(1, len(self.calls()))
+                    child_pid = self.calls()[0]["pid"]
+                    process.send_signal(signum)
+                    stdout, stderr = process.communicate(timeout=3)
+                    result = subprocess.CompletedProcess(process.args, process.returncode, stdout, stderr)
+                    self.assert_status(result, "unconfirmed", 2)
+                    self.assertEqual(1, len(self.calls()))
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(child_pid, 0)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        process.communicate(timeout=3)
+                    for call in self.calls():
+                        try:
+                            os.kill(call["pid"], signal.SIGKILL)
+                        except OSError:
+                            pass
 
     def test_help_needs_no_receiver_and_extra_arguments_do_not_launch(self):
         env = self.env.copy()

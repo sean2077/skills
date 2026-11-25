@@ -144,13 +144,14 @@ asset_source() { asset_field "$1" source; }
 copy_script() {  # <source> <destination> <executable:0|1>
   local source="$1" destination="$2" executable="$3"
   mkdir -p "$(dirname "$destination")"
-  if [[ -e "$destination" && "$FORCE_SCRIPTS" != 1 ]]; then
-    cmp -s "$source" "$destination" \
-      || die "${destination#"$TARGET"/}: managed runtime drift requires upgrade"
+  if [[ -f "$destination" ]] && cmp -s "$source" "$destination"; then
+    :  # Preserve timestamps and avoid launching a copy process for current assets.
+  elif [[ -e "$destination" && "$FORCE_SCRIPTS" != 1 ]]; then
+    die "${destination#"$TARGET"/}: managed runtime drift requires upgrade"
   else
     atomic_replace_file "$source" "$destination"
   fi
-  if [[ "$executable" == 1 ]]; then
+  if [[ "$executable" == 1 && ! -x "$destination" ]]; then
     chmod +x "$destination" 2>/dev/null || true
   fi
 }
@@ -313,7 +314,10 @@ do_install() {
   log "active-profile managed assets are in place"
 
   mkdir -p "$TARGET/.agents/skills" "$TARGET/.agents/subagents"
-  touch "$TARGET/.agents/skills/.gitkeep" "$TARGET/.agents/subagents/.gitkeep"
+  local seed
+  for seed in "$TARGET/.agents/skills/.gitkeep" "$TARGET/.agents/subagents/.gitkeep"; do
+    [[ -e "$seed" || -L "$seed" ]] || touch "$seed"
+  done
 
   local cc_source cx_source cc_add="$TMPDIR_H/claude-add.json" cx_add="$TMPDIR_H/codex-add.json"
   cc_source="$SKILL_DIR/$(asset_source host.claude-hooks)"

@@ -225,6 +225,14 @@ class WebSocketFixture:
             data = data[:message["params"]["limit"]]
             if self.mode == "ambiguous-turn":
                 data.append({"id": "other-active-turn", "status": "inProgress", "items": []})
+            if self.mode == "missing-turn-status":
+                data = [{"id": "unknown-turn"}]
+            elif self.mode == "unknown-turn-status":
+                data = [{"id": "unknown-turn", "status": "not-a-turn-status"}]
+            elif self.mode == "malformed-turn-with-active":
+                data.append(None)
+            elif self.mode == "missing-turn-id":
+                data = [{"status": "completed"}]
             result = {"data": data, "nextCursor": None}
         elif method in ("turn/start", "turn/steer"):
             if self.mode == "rejected":
@@ -396,6 +404,14 @@ class CodexSteerTests(unittest.TestCase):
             self.assertEqual({"status": "idle", "threadId": THREAD},
                              self.assert_status(self.run_sender(fixture, "--check"), "idle", 0))
             self.assert_trace(fixture, steers=0, turns=0)
+
+    def test_malformed_turn_metadata_is_not_idle_or_safe_to_steer(self):
+        for mode in ("missing-turn-status", "unknown-turn-status", "malformed-turn-with-active", "missing-turn-id"):
+            for check_only in (False, True):
+                with self.subTest(mode=mode, check_only=check_only), WebSocketFixture(mode) as fixture:
+                    args = ("--check",) if check_only else ()
+                    self.assert_status(self.run_sender(fixture, *args), "not_sent", 1)
+                    self.assert_trace(fixture, steers=0)
 
     def test_check_reports_fresh_thread_idle_only_when_live_metadata_agrees(self):
         with WebSocketFixture("fresh-idle") as fixture:

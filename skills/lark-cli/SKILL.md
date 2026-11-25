@@ -29,7 +29,7 @@ For raw `lark-cli api <METHOD> <path>`, use the known endpoint contract: a bare 
 
 ## Results and data safety
 
-Inspect process status and the response envelope together. A nonzero exit, `ok == false`, contradictory signals, or missing required result fields cannot be treated as success just because another signal looks successful. Do not use legacy top-level `code == 0` as the success test. Distinguish a confirmed failure from an unknown outcome.
+Inspect process status and the command's documented result shape together. For enveloped JSON, a nonzero exit, `ok == false`, contradictory signals, or missing required result fields cannot be treated as success just because another signal looks successful. Base NDJSON reads return a bare manifest: follow the [record-read contract](references/tables-and-records.md#base-resolution-and-read-fast-paths), not an invented `ok`/`data` wrapper. Do not use legacy top-level `code == 0` as the success test. Distinguish a confirmed failure from an unknown outcome.
 
 Use a conclusive command response as evidence. Read back when needed to establish the requested result or satisfy domain verification requirements. Never blindly retry an ambiguous write; inspect the result first and reuse an idempotency key only for the same logical action.
 

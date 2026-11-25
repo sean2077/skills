@@ -2,7 +2,7 @@
 
 ## Select the operation
 
-Use `calendar +agenda` for a bounded agenda and `calendar +get` for known event metadata. `+get` does not include attendees or rooms; use `+list-attendees` for those. A calendar share token can be used with `+join-event`.
+Use `calendar +agenda` for a bounded agenda and `calendar +get` for known event metadata. `+get` does not include attendees or rooms; use `+list-attendees` for those. Joining through a calendar share token is a participation change, not a read.
 
 Use `+search-event` to find scheduled events and `+suggestion` to explore candidate times. Resolve attendee names through `contact +search-user`, retain returned typed IDs, and check availability needed for scheduling.
 
@@ -40,9 +40,6 @@ lark-cli calendar +get --calendar-id '<calendar-id>' --event-id '<event-id>' --a
 lark-cli calendar +list-attendees --calendar-id '<calendar-id>' --event-id '<event-id>' --as user
 lark-cli calendar +list-attendees --event-id '<event-id>' --type user --as user
 
-# Join by share token from a calendar share URL (.../calendar/share?token=<token>)
-lark-cli calendar +join-event --token '<share-token>' --as user
-
 # Event search; returns basic fields
 lark-cli calendar +search-event --query '<keyword>' --start '2026-08-17' --end '2026-08-24' \
   --attendee-ids 'ou_xxx' --page-size 30 --as user
@@ -57,6 +54,14 @@ availability are genuinely needed. Do not fetch full event detail for every sear
 use `+get` when the question is who is attending or which rooms are booked.
 
 ## Scheduling fast paths
+
+When the user requests joining a shared event, use the token from its calendar share URL (`.../calendar/share?token=<token>`). Merely viewing or summarizing that link does not require joining:
+
+```bash
+lark-cli calendar +join-event --token '<share-token>' --as user
+```
+
+Match the token's scope to the request: a recurring-series token joins the entire series, including exceptions; an exception token joins only that exception. This behavior was source-reviewed on 2026-11-25 against the upstream [v1.0.100 join-event reference](https://github.com/larksuite/cli/blob/v1.0.100/skills/lark-calendar/references/lark-calendar-join-event.md), without live service verification.
 
 Resolve relative dates to explicit ISO 8601 timestamps with timezone offsets. When the user gives an
 exact current-turn request, the request itself authorizes an ordinary create after recipients and

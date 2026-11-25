@@ -9,8 +9,8 @@ Use when this session owns planning and review, and the work should run in a sep
 
 ## Roles
 
-- **Planner/reviewer** (this session): clarify scope, write task files, make decisions, verify independently. Do not implement, upload, or mutate devices.
-- **Executor**: a normal Claude Code session started with the executor profile. It reads the task file, implements, tests, uploads, and reports.
+- **Planner/reviewer** (this session): clarify scope, prepare task briefs, make decisions, verify independently. Do not implement, upload, or mutate devices.
+- **Executor**: a normal Claude Code session started with the executor profile. It reads the task brief, implements, tests, uploads, and reports.
 
 ## Permission default
 
@@ -20,29 +20,29 @@ Honor an explicit user or environment requirement for a narrower mode: omit the 
 
 ## Start an executor
 
-1. Confirm the checkout and task identifier. Write the task file first: goal, confirmed facts, acceptance criteria, boundaries, and the planner session name.
-2. Resolve **this session's WezTerm pane**; the executor tab must live in the same window as the planner. Never use `--new-window`. [WezTerm tabs](references/wezterm-tabs.md) covers resolving the pane when the host strips `WEZTERM_*`, multiple GUI instances, and placement verification.
+1. Confirm the checkout and task identifier. Prepare the goal, confirmed facts, acceptance criteria, boundaries, and planner session name. Use an absolute task-file path for work that needs durable context; a complete short brief can be sent directly for a one-shot exchange.
+2. Resolve **this session's WezTerm instance and pane**; the executor tab must live in the same window as the planner. Never use `--new-window`. [WezTerm tabs](references/wezterm-tabs.md) covers recovering the pane/socket pair when the host strips `WEZTERM_*`, preserving the instance selector on every command, and placement verification. The examples below use the recovered `planner_socket`.
 3. Spawn a tab with the executor profile and the default YOLO mode. For Codex launches, use the `env` prefix below unless the user requests monochrome output. In other cases, start with `claude` after `--`.
 
    ```bash
-   wezterm cli spawn --pane-id "$planner_pane" --cwd "$checkout" -- \
+   WEZTERM_UNIX_SOCKET="$planner_socket" wezterm cli spawn --pane-id "$planner_pane" --cwd "$checkout" -- \
      env -u NO_COLOR claude --settings "$HOME/.claude/deepseek.json" --dangerously-skip-permissions \
        --effort max -n "exec-<task>"
    ```
 
-   `--pane-id` derives the window from this session, so the new tab lands beside it. The command returns the new pane id.
-4. Verify placement: compare `window_id` in `wezterm cli list --format json`. If it differs, close the tab and retry; do not hand a task to a misplaced executor.
-5. Set a readable tab title and keep the mapping (pane id, session name, task file, permission mode):
+   `--pane-id` derives the window within that instance. Keep the returned pane id as `executor_pane`.
+4. Verify placement: compare both panes' `window_id` in `wezterm cli list --format json`, targeting the same instance. If it differs, close the new executor pane and resolve the target before retrying; do not hand a task to a misplaced executor.
+5. Set a readable tab title and keep the mapping (instance selector, pane id, session name, task brief, permission mode):
 
    ```bash
-   wezterm cli set-tab-title --pane-id <pane> "T<N> <short topic>"
+   WEZTERM_UNIX_SOCKET="$planner_socket" wezterm cli set-tab-title --pane-id "$executor_pane" "T<N> <short topic>"
    ```
 
-6. Confirm with `get-text` that the TUI is ready and the intended permission mode is active before sending the task. Resolve [startup dialogs](references/wezterm-tabs.md#deliver-the-first-task) first. Then point the executor at the task file and planner name. Send text and Enter separately, and verify with `get-text`:
+6. Confirm with `get-text` that the TUI is ready and the intended permission mode is active before sending the task. Resolve [startup dialogs](references/wezterm-tabs.md#deliver-the-first-task) first. Send the short brief or task-file pointer with the planner name; request a result file only when the evidence needs to persist. Send text and Enter separately, and verify with `get-text`:
 
    ```bash
-   wezterm cli send-text --pane-id <pane> "You are the executor. Read <task file> fully first. Reply to <planner name> with one line at the end of each stage; write results to <result file>. Stay within the task boundaries."
-   wezterm cli send-text --no-paste --pane-id <pane> $'\r'
+   WEZTERM_UNIX_SOCKET="$planner_socket" wezterm cli send-text --pane-id "$executor_pane" "You are the executor. Task: <complete brief or absolute task-file path>. Read any referenced task file fully before acting. Report material progress and final evidence to <planner name>. Stay within the task boundaries."
+   WEZTERM_UNIX_SOCKET="$planner_socket" wezterm cli send-text --no-paste --pane-id "$executor_pane" $'\r'
    ```
 
 7. Report the tab mapping to the user. [Coordination](references/coordination.md) covers task/decision/result files, messaging, and review.
@@ -50,7 +50,7 @@ Honor an explicit user or environment requirement for a narrower mode: omit the 
 ## Coordinate
 
 - Prefer built-in cross-session messaging (`SendMessage`) by session name. The executor receives messages between tool calls, not as an interrupt. Fall back to the `agent-messaging` skill only when the session is not registered or the host cannot reach it.
-- Put decisions in a file and send one short pointer; do not paste whole documents into the terminal.
+- Send ordinary decisions directly. Write a file when a decision changes acceptance/scope or must survive context loss, then send a short pointer instead of pasting the whole document.
 - Review independently: read the diff, CI, upload read-back, and the executor's evidence. A result summary is not evidence.
 - Keep one planner per executor and one executor per branch or uploaded revision. Do not silently respawn after a stall; report it and decide with the user.
 

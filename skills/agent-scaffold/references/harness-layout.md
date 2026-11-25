@@ -48,6 +48,10 @@ dormant copies, as a default-to-light change does. `.agents/conventions/` is sca
 the guides are refreshed on upgrade and byte-checked by verify, so project facts belong in
 project docs. See [one-time selection](onboarding-selection.md).
 
+Upgrade preserves byte-identical runtime and convention files and existing `.gitkeep` seeds,
+including their modification times. Changed managed files are refreshed; executable intent
+is still repaired when the installed file lacks execute permission.
+
 Each managed convention file carries its own `agent-scaffold:convention=<domain>` comment
 (`notice` for attribution, `docs-reorganization` for the docs companion). An existing same-name file without that ownership marker is a
 conflict, not an upgrade target; preserve it and resolve placement/ownership explicitly before

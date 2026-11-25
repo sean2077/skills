@@ -6,6 +6,7 @@ Use the smallest useful route. Ordinary research, requirements interviews, testi
 |---|---|---|
 | Establish, diagnose, or update the harness and selected project conventions | [agent-scaffold](../skills/agent-scaffold/SKILL.md) | Adopt existing layout and fill gaps; does not own ordinary delivery or publishing |
 | Message an existing Claude Code, Codex CLI/Desktop or Antigravity (`agy`) session from any harness | [agent-messaging](../skills/agent-messaging/SKILL.md) | Prefer built-in messaging when it reaches the target with the intended effect; agy native submission does not promise steer/queue selection; content/workflow remains caller-owned |
+| Delegate implementation to a visible, interactive Claude Code executor session | [agent-executors](../skills/agent-executors/SKILL.md) | Keep the executor in the planner's WezTerm instance and window; the planner coordinates and reviews the delegated work |
 | Operate Feishu/Lark through the selected CLI | [lark-cli](../skills/lark-cli/SKILL.md) | Preserve identity, permissions, and transaction-specific authority |
 
 ## Establish conventions, then use the project

@@ -100,6 +100,8 @@ Typical envelopes are:
 {"ok":false,"identity":"user","error":{"type":"authorization","subtype":"missing_scope"}}
 ```
 
+Use the selected command's actual output contract: Base NDJSON reads emit a manifest directly and event consumers emit NDJSON. Absence of an envelope in those formats is not a failure; validate their documented result fields and process status.
+
 A success envelope uses `ok == true`, but inspect it together with exit status when both are available. Nonzero exit, `ok == false`,
 contradictory signals, or missing required fields must not become a success because another
 signal looks successful. Do not check legacy top-level `code == 0` as the success criterion;
