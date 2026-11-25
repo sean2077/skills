@@ -1,6 +1,6 @@
 # Queue input for native Codex
 
-Read for queued delivery to an existing native Codex thread. To affect an active turn, use [steer](codex-steer.md). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
+Use this route when the caller wants the message handled later. When sending to a running Codex thread with no timing specified, use [steer](codex-steer.md). Prefer the receiver's thread UUID over an ambiguous name. Never queue to the sender's own `CODEX_THREAD_ID`, and verify the chosen thread belongs to the receiver.
 
 For a **local receiver**, set `TARGET_CODEX_HOME` to its actual Codex home as seen by the CLI process (not an inherited sender home), then bind it to `CODEX_HOME` for the call. `codex queue` selects its local daemon using `CODEX_HOME` or the calling user's default, even when `--thread` is a UUID. An unset or wrong home can target the wrong server. Do not guess a Windows/WSL/container path.
 
@@ -43,4 +43,4 @@ In Codex CLI 0.172.0, the built-in `send_message_to_thread` reads the thread, th
 
 Confirm the exact thread ID is loaded on the receiver's App Server using `thread/loaded/list`. If queueing suits the request, use the receiver's confirmed `CODEX_HOME` or endpoint with the queue command above. Omit `--resume` for a loaded receiver. An idle receiver can start the queued turn and persist its rollout. [App Server connection and thread lookup](codex.md#connect-to-the-existing-server) · [Loaded-thread queue path](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/app-server/src/request_processors/thread_queue_processor.rs#L267-L292)
 
-Once the first message appears in the target's turn history, use the built-in sender for subsequent messages. A queue acknowledgement only confirms that the message was queued. In a live Linux check on 2026-11-25 with Codex CLI 0.172.0, the queued message started the target's first turn and created the rollout. The next built-in send succeeded and appeared in the same thread.
+A queue acknowledgement only confirms that the message was queued. In a live Linux check on 2026-11-25 with Codex CLI 0.172.0, the queued message started the target's first turn and created the rollout. The next built-in send succeeded and appeared in the same thread. For subsequent deliveries, choose the route by the requested timing.

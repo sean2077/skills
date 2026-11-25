@@ -1,6 +1,6 @@
 # Steer an active Codex turn
 
-Use steer when the message should affect ongoing work. It neither cancels that work nor queues a later turn. If later handling is intended, use [queue](codex-queue.md).
+Use steer by default for a message to a running Codex turn. If later handling is intended, use [queue](codex-queue.md).
 
 ## Target
 
@@ -18,7 +18,7 @@ Direct WebSocket connections cannot supply custom authentication headers. Use an
 ## Desktop message stays queued
 
 1. **Handle the existing message.** In the receiving Desktop chat, find it in the queue above the composer and use **Steer** if offered. This can apply the existing item to the current turn. During compaction, Desktop may have to wait. [Desktop queue controls](https://learn.chatgpt.com/docs/prompting#steering-and-queuing) · [Compaction behavior](https://learn.chatgpt.com/docs/changelog?date=2026-10-15)
-2. **Check the route for the next message.** If the sender used `codex queue`, Desktop's **Settings → General → Follow-up behavior** changes the composer's default. The external command explicitly enqueues its input. Run [the read-only check](#check-the-live-route) from the sending environment, or on the receiver over [SSH](ssh.md) if its socket is local to that machine. An `active` result supports trying [steer](#send) for an authorized message needed during the current turn. An `idle` result allows a separate [start](codex.md#start) when the caller intends a new turn. Keep queueing for messages meant to wait, and check the existing queue before resending the same text. [CLI queue command](https://learn.chatgpt.com/docs/developer-commands#codex-queue)
+2. **Check the route for the next message.** If the sender used `codex queue`, Desktop's **Settings → General → Follow-up behavior** changes the composer's default. The external command explicitly enqueues its input. Run [the read-only check](#check-the-live-route) from the sending environment, or on the receiver over [SSH](ssh.md) if its socket is local to that machine. With an `active` result, use [steer](#send) by default. An `idle` result allows a separate [start](codex.md#start) when the caller intends a new turn. Check the existing queue before resending the same text. [CLI queue command](https://learn.chatgpt.com/docs/developer-commands#codex-queue)
 3. **If the live route is unavailable.** A connection failure or an unloaded target can mean the Desktop owns a private stdio server, the socket belongs to a different home or machine, or the target is on another server. Verify the receiver environment and exact thread ID. For an existing Desktop turn with no reachable endpoint, use its queue controls. For recurring automatic delivery, use a receiver whose shared daemon the sender can reach and verify. [Connection details](codex.md#connect-to-the-existing-server)
 
 ### Connect Desktop and the sender to one server
