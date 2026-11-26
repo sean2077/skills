@@ -22,16 +22,17 @@ Honor an explicit user or environment requirement for a narrower mode: omit the 
 
 1. Confirm the checkout and task identifier. Prepare the goal, confirmed facts, acceptance criteria, boundaries, and planner session name. Use an absolute task-file path for work that needs durable context; a complete short brief can be sent directly for a one-shot exchange.
 2. Resolve **this session's WezTerm instance and pane**; the executor tab must live in the same window as the planner. Never use `--new-window`. [WezTerm tabs](references/wezterm-tabs.md) covers recovering the pane/socket pair when the host strips `WEZTERM_*`, preserving the instance selector on every command, and placement verification. The examples below use the recovered `planner_socket`.
-3. Spawn a tab with the executor profile and the default YOLO mode. For Codex launches, use the `env` prefix below unless the user requests monochrome output. In other cases, start with `claude` after `--`.
+3. Spawn a tab with the executor profile and the default YOLO mode. `wezterm cli spawn` forwards this session's environment, and Claude Code marks Bash tool shells with `CLAUDE_CODE_CHILD_SESSION=1` (possibly alongside the planner's session id, messaging socket and `CLAUDE_CODE_FORCE_SESSION_PERSISTENCE`). The `env` wrapper strips that inherited Claude session state so the executor starts as a fresh root session; it also clears `NO_COLOR`.
 
    ```bash
    WEZTERM_UNIX_SOCKET="$planner_socket" wezterm cli spawn --pane-id "$planner_pane" --cwd "$checkout" -- \
-     env -u NO_COLOR claude --settings "$HOME/.claude/deepseek.json" --dangerously-skip-permissions \
-       --effort max -n "exec-<task>"
+     sh -c 'exec env -u NO_COLOR $(env | sed -nE "s/^(CLAUDECODE|CLAUDE_PID|CLAUDE_CODE_[A-Z_]*)=.*/-u \1/p") \
+       claude --settings "$HOME/.claude/deepseek.json" --dangerously-skip-permissions \
+         --effort max -n "exec-<task>"'
    ```
 
    `--pane-id` derives the window within that instance. Keep the returned pane id as `executor_pane`.
-4. Verify placement: compare both panes' `window_id` in `wezterm cli list --format json`, targeting the same instance. If it differs, close the new executor pane and resolve the target before retrying; do not hand a task to a misplaced executor.
+4. Verify placement: compare both panes' `window_id` in `wezterm cli list --format json`, targeting the same instance. If it differs, close the new executor pane and resolve the target before retrying; do not hand a task to a misplaced executor. Also read `get-text`: the status line must not report `Transcript saving is off`; if it does, the inherited state was not stripped — close the tab and retry.
 5. Set a readable tab title and keep the mapping (instance selector, pane id, session name, task brief, permission mode):
 
    ```bash
