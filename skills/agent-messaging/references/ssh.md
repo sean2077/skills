@@ -23,7 +23,7 @@ For Codex, set the verified `TARGET_CODEX_ENDPOINT` on B when it has a custom so
 
 For [Antigravity](antigravity.md), use `send-agy.mjs -` on B with B's receiver-confirmed `TARGET_AGY_LS_ADDRESS`, `TARGET_AGY_CSRF_TOKEN` and `TARGET_AGY_CONVERSATION_ID` supplied in that remote command's environment. The native `agy` executable must be available on B (`AGY_BIN` can select its path). Keep the token out of SSH arguments and message text; use the authorized remote secret channel. A's loopback address does not identify B's language server.
 
-For [queue](codex-queue.md), run its local-receiver command on B with B's explicit `CODEX_HOME`; an already reachable native `--remote` endpoint can instead be used directly. SSH does not change steer/queue/start/interrupt semantics or make a new resumed process control the original session.
+For [queue](codex-queue.md), run its local-receiver command on B with B's explicit `TARGET_CODEX_HOME`; an already reachable native `--remote` endpoint can instead be used directly. SSH does not change steer/queue/start/interrupt semantics or make a new resumed process control the original session.
 
 Interpret the native route's result as usual. A dropped SSH connection or missing reply does not prove non-delivery; check the receiver before resending.
 
