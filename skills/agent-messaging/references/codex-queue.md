@@ -2,21 +2,27 @@
 
 Use this command for an explicit request to defer. For ordinary delivery, the [automatic sender](codex-steer.md#send) prefers live input and uses queue as its fallback. Verify the receiver's exact thread UUID and ensure it differs from the sender's `CODEX_THREAD_ID`.
 
-For a **local receiver**, run on its host from its absolute Codex home with `CODEX_HOME` set to that directory. This keeps the sender's project config out of the queue call. If the receiver sets `CODEX_SQLITE_HOME` in its environment, use the same value. Otherwise unset any inherited override from the sender. The native CLI can use a local daemon or a short-lived embedded App Server. An existing saved thread can be queued even when no shared listener is running. [Codex 0.172.0 server selection](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_archive_commands.rs#L273-L294) · [Native queue command](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_queue_commands.rs#L29-L88)
+For a **local receiver**, run on its host from its absolute Codex home with `CODEX_HOME` set to that directory. This keeps the sender's project config out of the queue call. Set `TARGET_CODEX_SQLITE_HOME` to the receiver's existing absolute SQLite home only if its launch uses a `CODEX_SQLITE_HOME` override; otherwise leave it unset or empty. The subshell clears the sender's override and preserves the receiver's configured `sqlite_home` (which takes precedence) or default store. [Codex environment variables](https://learn.chatgpt.com/docs/config-file/environment-variables) The native CLI can use a local daemon or a short-lived embedded App Server. An existing saved thread can be queued even when no shared listener is running. [Codex 0.172.0 server selection](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_archive_commands.rs#L273-L294) · [Native queue command](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/tui/src/session_queue_commands.rs#L29-L88)
 
 ```bash
 (
-  receiver_home="${TARGET_CODEX_HOME:?Set the receiver's Codex home}"
+  receiver_home="${TARGET_CODEX_HOME:?Set the receiver Codex home}"
   cd -- "$receiver_home" || exit
-  CODEX_HOME="$receiver_home" command codex queue --thread "$TARGET_THREAD_ID" --message="$MESSAGE"
+  unset CODEX_SQLITE_HOME
+  if [ -n "${TARGET_CODEX_SQLITE_HOME:-}" ]; then
+    export CODEX_SQLITE_HOME="$TARGET_CODEX_SQLITE_HOME"
+  fi
+  CODEX_HOME="$receiver_home" MSYS_NO_PATHCONV=1 command codex queue --thread "$TARGET_THREAD_ID" --message="$MESSAGE"
 )
 ```
 
 For a **remote receiver**, use its verified reachable endpoint instead of local daemon discovery:
 
 ```bash
-command codex queue --thread "$TARGET_THREAD_ID" --message="$MESSAGE" --remote "$TARGET_CODEX_ENDPOINT"
+MSYS_NO_PATHCONV=1 command codex queue --thread "$TARGET_THREAD_ID" --message="$MESSAGE" --remote "$TARGET_CODEX_ENDPOINT"
 ```
+
+The per-command `MSYS_NO_PATHCONV=1` guards native Windows Git Bash arguments against [MSYS path conversion](https://www.msys2.org/docs/filesystem-paths/#process-arguments), including message text resembling a Unix path. Supply native receiver paths (for example `C:/Users/...`) on Windows; do not disable conversion globally.
 
 Use `command codex` in Bash or Zsh to bypass aliases that add unsupported interactive flags such as `--dangerously-bypass-approvals-and-sandbox`. Omit `--no-daemon` from the sending command and leave server selection to the CLI, even if the receiver was launched with `--no-daemon`. For an authenticated remote endpoint, `--remote-auth-token-env NAME` specifies the environment variable containing its token.
 
