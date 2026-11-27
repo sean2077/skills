@@ -31,6 +31,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fix the direct Codex queue example's Bash quoting, clear inherited SQLite storage overrides or use the receiver's explicit `TARGET_CODEX_SQLITE_HOME` override, name the queue target variables, and exclude only the message argument from Windows Git Bash path conversion without changing queue semantics. Add the optional SQLite target to the sender's help.
 - Strip inherited `CLAUDECODE`, `CLAUDE_PID` and `CLAUDE_CODE_*` session state when `agent-executors` spawns an executor, so `wezterm cli spawn` environment forwarding no longer gives the executor the planner's child-session marker, session id, messaging socket or `CLAUDE_CODE_FORCE_SESSION_PERSISTENCE`; keep other `CLAUDE_*` configuration variables.
 - Resolve Codex steer against the live thread state and newest turn so stale in-progress history after a restart no longer blocks delivery. Document and verify owner-only Linux Desktop Unix socket delivery from an independent Claude Code session.
 - Distinguish missing or refusing Codex control sockets from reachable App Servers that have not loaded the intended thread. Clarify shared Desktop setup and how to bypass shell aliases for explicit queued delivery.

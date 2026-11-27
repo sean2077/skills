@@ -14,6 +14,7 @@ const usage = [
   "--no-queue: require live delivery without adding a queued message.",
   "Target: TARGET_THREAD_ID and TARGET_CODEX_ENDPOINT or TARGET_CODEX_HOME.",
   "For local queue fallback, set the receiver's absolute TARGET_CODEX_HOME.",
+  "Add TARGET_CODEX_SQLITE_HOME when the receiver uses a CODEX_SQLITE_HOME override.",
   "Optional Codex executable: CODEX_BIN (native executable or JS launcher). Requires Node.js 22.4+.",
 ].join("\n");
 const args = process.argv.slice(2);
